@@ -345,8 +345,12 @@ pub unsafe extern "C" fn init_chain_relay(
 fn init_proxy_storage() -> sgx_status_t {
     // TODO: Write the ocall to worker to get main accounts, proxies and storage read proofs
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+    let mut resp: Vec<u8> = vec![0; 4196 * 4];
+
     let res = unsafe {
-        ocall_get_proxies(&mut rt as *mut sgx_status_t)
+        ocall_get_proxies(&mut rt as *mut sgx_status_t,
+                          resp.as_mut_ptr(),
+                          resp.len() as u32)
     };
     if rt != sgx_status_t::SGX_SUCCESS {
         return Err(rt);
@@ -1023,7 +1027,9 @@ fn verify_worker_responses(
 extern "C" {
 
     pub fn ocall_get_proxies(
-        ret: *mut sgx_status_t
+        ret: *mut sgx_status_t,
+        response: *mut u8,
+        resp_size: u32,
     ) -> sgx_status_t;
 
     pub fn ocall_read_ipfs(
