@@ -25,37 +25,36 @@ use std::sync::{
     Mutex,
 };
 use std::thread;
-
-use sgx_types::*;
+use std::time::{Duration, SystemTime};
 
 use base58::{FromBase58, ToBase58};
-use clap::{load_yaml, App};
+use clap::{App, load_yaml};
 use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
+    Event, Hash, Header, SignedBlock, substratee_registry::ShardIdentifier, UncheckedExtrinsic,
 };
+use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
+    Pair,
     sr25519,
     storage::StorageKey,
-    Pair,
 };
+use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
 use sp_keyring::AccountKeyring;
-use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
+use substrate_api_client::{Api, GenericAddress, utils::FromHexString, XtStatus};
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
 };
 use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server};
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
-use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
-use std::time::{Duration, SystemTime};
-
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
+
+use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks};
 
 mod constants;
 mod enclave;
@@ -243,7 +242,7 @@ fn main() {
                 sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
                 &format!("localhost:{}", mu_ra_port),
             )
-            .unwrap();
+                .unwrap();
             println!("[+] Done!");
             enclave.destroy();
         } else {
@@ -422,7 +421,7 @@ fn request_keys(provider_url: &str, _shard: &ShardIdentifier) {
         sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
         &provider_url,
     )
-    .unwrap();
+        .unwrap();
     println!("key provisioning successfully performed");
 }
 
@@ -542,18 +541,11 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
         VersionedAuthorityList::from(grandpas),
         grandpa_proof,
     )
-    .unwrap();
+        .unwrap();
 
     info!("Finished initializing chain relay, syncing....");
 
-    // TODO: Implement Get Proxies here
-    get_proxies();
-
     produce_blocks(eid, api, latest)
-}
-
-pub fn get_proxies(){
-
 }
 
 /// Starts block production
@@ -780,6 +772,26 @@ pub unsafe extern "C" fn ocall_worker_request(
     write_slice_and_whitespace_pad(resp_slice, resp.encode());
     sgx_status_t::SGX_SUCCESS
 }
+
+/// # Safety
+///
+/// FFI are always unsafe
+#[no_mangle]
+pub unsafe extern "C" fn ocall_get_proxies(request: *const u8,
+                                           req_size: u32,
+                                           response: *mut u8,
+                                           resp_size: u32, ) -> sgx_status_t {
+    let mut req_slice = slice::from_raw_parts(request, req_size as usize);
+    let resp_slice = slice::from_raw_parts_mut(response, resp_size as usize);
+
+    let api = Api::<sr25519::Pair>::new(NODE_URL.lock().unwrap().clone()).unwrap();
+
+    // TODO: Here we write the business logic to get the first account and it's proof, recursively
+    // TODO: Get all the accounts, proxies and proofs
+    // TODO: Here instead of a Ecall, we can just return the results back to enclave for verification
+    sgx_status_t::SGX_SUCCESS
+}
+
 
 /// # Safety
 ///

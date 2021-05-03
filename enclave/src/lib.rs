@@ -341,9 +341,19 @@ pub unsafe extern "C" fn init_chain_relay(
     init_proxy_storage()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn init_proxy_storage() -> sgx_status_t {
+
+fn init_proxy_storage() -> sgx_status_t {
     // TODO: Write the ocall to worker to get main accounts, proxies and storage read proofs
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+    let res = unsafe {
+        ocall_get_proxies(&mut rt as *mut sgx_status_t)
+    };
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(rt);
+    }
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(res);
+    }
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -1011,6 +1021,11 @@ fn verify_worker_responses(
 }
 
 extern "C" {
+
+    pub fn ocall_get_proxies(
+        ret: *mut sgx_status_t
+    ) -> sgx_status_t;
+
     pub fn ocall_read_ipfs(
         ret_val: *mut sgx_status_t,
         cid: *const u8,

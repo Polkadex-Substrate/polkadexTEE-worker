@@ -80,15 +80,17 @@ enclave {
 		);
 
 		public size_t test_main_entrance();
+
+		public sgx_status_t ecall_submit_proxies(
+		    [in, size=] uint8_t*
 	};
 
 	untrusted {
 
 	    sgx_status_t ocall_get_proxies(
-	        [out] uint8_t* main_account,
-	        [out] uint8_t* proxies,
-	        [out] uint8_t* read_proofs
-	        );
+        	        [in, size = req_size] uint8_t * request, uint32_t req_size,
+        	        [out, size = resp_size] uint8_t * response, uint32_t resp_size
+        	    );
 
 		sgx_status_t ocall_sgx_init_quote(
 			[out] sgx_target_info_t *ret_ti,
