@@ -69,7 +69,7 @@ use substratee_worker_primitives::block::{
 };
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
-
+use polkadex_primitives::LinkedAccount;
 use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 
@@ -338,14 +338,22 @@ pub unsafe extern "C" fn init_chain_relay(
         Err(e) => return e,
     }
 
-    init_proxy_storage()
+    match init_proxy_storage(){
+        Ok(accounts) => {
+        // TODO: accounts contains the mains, proxies and proofs
+        // TODO: Verify the proofs
+        // TODO: Create the atomic pointer
+        },
+        Err(e) => return e,
+    }
+
+    sgx_status_t::SGX_SUCCESS
 }
 
 
-fn init_proxy_storage() -> sgx_status_t {
-    // TODO: Write the ocall to worker to get main accounts, proxies and storage read proofs
+fn init_proxy_storage<V: Encode + Decode>() -> SgxResult<Vec<LinkedAccount<V>>> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-    let mut resp: Vec<u8> = vec![0; 4196 * 4];
+    let mut resp: Vec<u8> = vec![0; 4196 * 4]; // TODO: How will we figure the size of response
 
     let res = unsafe {
         ocall_get_proxies(&mut rt as *mut sgx_status_t,
@@ -358,7 +366,8 @@ fn init_proxy_storage() -> sgx_status_t {
     if res != sgx_status_t::SGX_SUCCESS {
         return Err(res);
     }
-    sgx_status_t::SGX_SUCCESS
+
+    Ok(Decode::decode(&mut resp.as_slice()).unwrap())
 }
 
 #[no_mangle]

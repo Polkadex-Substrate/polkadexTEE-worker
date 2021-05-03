@@ -4,6 +4,7 @@ members = [
 	 "worker/worker-api",
 	 "substratee-node-primitives",
 	 "substratee-worker-primitives",
+	"polkadex-primitives",
 	 "client",
 	 "stf",
 #	 "enclave",
