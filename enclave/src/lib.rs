@@ -299,8 +299,11 @@ pub unsafe extern "C" fn init_chain_relay(
     authority_list_size: usize,
     authority_proof: *const u8,
     authority_proof_size: usize,
+    linked_accounts: *const u8,
+    linked_accounts_size: usize,
     latest_header: *mut u8,
     latest_header_size: usize,
+
 ) -> sgx_status_t {
     info!("Initializing Chain Relay!");
 
@@ -308,6 +311,7 @@ pub unsafe extern "C" fn init_chain_relay(
     let latest_header_slice = slice::from_raw_parts_mut(latest_header, latest_header_size);
     let mut auth = slice::from_raw_parts(authority_list, authority_list_size);
     let mut proof = slice::from_raw_parts(authority_proof, authority_proof_size);
+    let mut linked_accounts_slice = slice::from_raw_parts(linked_accounts,linked_accounts_size);
 
     let header = match Header::decode(&mut header) {
         Ok(h) => h,
@@ -333,42 +337,20 @@ pub unsafe extern "C" fn init_chain_relay(
         }
     };
 
+    // TODO: Decode the slice to LinkedAccount struct
+
     match io::light_validation::read_or_init_validator(header, auth, proof) {
         Ok(header) => write_slice_and_whitespace_pad(latest_header_slice, header.encode()),
         Err(e) => return e,
     }
 
-    match init_proxy_storage(){
-        Ok(accounts) => {
-        // TODO: accounts contains the mains, proxies and proofs
-        // TODO: Verify the proofs
-        // TODO: Create the atomic pointer
-        },
-        Err(e) => return e,
-    }
+    // TODO: Verify the proofs
+    // TODO: Create the atomic pointer
 
     sgx_status_t::SGX_SUCCESS
 }
 
 
-fn init_proxy_storage<V: Encode + Decode>() -> SgxResult<Vec<LinkedAccount<V>>> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-    let mut resp: Vec<u8> = vec![0; 4196 * 4]; // TODO: How will we figure the size of response
-
-    let res = unsafe {
-        ocall_get_proxies(&mut rt as *mut sgx_status_t,
-                          resp.as_mut_ptr(),
-                          resp.len() as u32)
-    };
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(rt);
-    }
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(res);
-    }
-
-    Ok(Decode::decode(&mut resp.as_slice()).unwrap())
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn produce_blocks(
@@ -1034,12 +1016,6 @@ fn verify_worker_responses(
 }
 
 extern "C" {
-
-    pub fn ocall_get_proxies(
-        ret: *mut sgx_status_t,
-        response: *mut u8,
-        resp_size: u32,
-    ) -> sgx_status_t;
 
     pub fn ocall_read_ipfs(
         ret_val: *mut sgx_status_t,

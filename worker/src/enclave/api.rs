@@ -201,6 +201,9 @@ pub fn enclave_init_chain_relay(
     let mut status = sgx_status_t::SGX_SUCCESS;
     let result = unsafe {
         // Todo: this is a bit ugly but the common `encode()` is not implemented for authority list
+
+
+        // TODO: Fix the wrapper with linkedAccounts pointer and size
         authority_list.using_encoded(|authorities| {
             init_chain_relay(
                 eid,

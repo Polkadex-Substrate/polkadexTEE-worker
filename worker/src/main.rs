@@ -535,6 +535,13 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     debug!("Grandpa Authority List: \n {:?} \n ", grandpas);
 
+    // QUESTION: What is the header (genesis/latest) that we need to pass to get the proof?
+    // QUESTION: if genesis, won't the proof grow in O(N)?
+    // TODO: Read the 0x000..000 account
+    // TODO: Recursively get all the LinkedAccounts and Proofs ( i.e next == None)
+    // TODO: Encode
+    // TODO: Pass it as params to enclave_init_chain_relay
+
     let latest = enclave_init_chain_relay(
         eid,
         genesis_header,
@@ -770,25 +777,6 @@ pub unsafe extern "C" fn ocall_worker_request(
         .collect();
 
     write_slice_and_whitespace_pad(resp_slice, resp.encode());
-    sgx_status_t::SGX_SUCCESS
-}
-
-/// # Safety
-///
-/// FFI are always unsafe
-#[no_mangle]
-pub unsafe extern "C" fn ocall_get_proxies(request: *const u8,
-                                           req_size: u32,
-                                           response: *mut u8,
-                                           resp_size: u32, ) -> sgx_status_t {
-    let mut req_slice = slice::from_raw_parts(request, req_size as usize);
-    let resp_slice = slice::from_raw_parts_mut(response, resp_size as usize);
-
-    let api = Api::<sr25519::Pair>::new(NODE_URL.lock().unwrap().clone()).unwrap();
-
-    // TODO: Here we write the business logic to get the first account and it's proof, recursively
-    // TODO: Get all the accounts, proxies and proofs
-    // TODO: Here instead of a Ecall, we can just return the results back to enclave for verification
     sgx_status_t::SGX_SUCCESS
 }
 
