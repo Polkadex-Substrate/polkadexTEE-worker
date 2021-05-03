@@ -546,7 +546,14 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finished initializing chain relay, syncing....");
 
+    // TODO: Implement Get Proxies here
+    get_proxies();
+
     produce_blocks(eid, api, latest)
+}
+
+pub fn get_proxies(){
+
 }
 
 /// Starts block production

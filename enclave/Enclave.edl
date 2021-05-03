@@ -83,6 +83,13 @@ enclave {
 	};
 
 	untrusted {
+
+	    sgx_status_t ocall_get_proxies(
+	        [out] uint8_t* main_account,
+	        [out] uint8_t* proxies,
+	        [out] uint8_t* read_proofs
+	        );
+
 		sgx_status_t ocall_sgx_init_quote(
 			[out] sgx_target_info_t *ret_ti,
 			[out] sgx_epid_group_id_t *ret_gid

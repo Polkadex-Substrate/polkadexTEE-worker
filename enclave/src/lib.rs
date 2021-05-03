@@ -24,63 +24,55 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 #![allow(clippy::missing_safety_doc)]
 
-use log::*;
-
 #[cfg(not(target_env = "sgx"))]
 #[macro_use]
 extern crate sgx_tstd as std;
 
 use base58::ToBase58;
-
+use chain_relay::{
+    Block,
+    Header, LightValidation, storage_proof::{StorageProof, StorageProofChecker},
+};
+use codec::{Decode, Encode};
+use constants::{
+    BLOCK_CONFIRMED, CALL_CONFIRMED, CALLTIMEOUT, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
+    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
+};
+use core::ops::Deref;
+use log::*;
+use rpc::{api::SideChainApi, basic_pool::BasicPool};
+use rpc::author::{Author, AuthorApi, hash::TrustedOperationOrHash};
+use rpc::worker_api_direct;
+use sgx_externalities::SgxExternalitiesTypeTrait;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
-
+use sp_core::{blake2_256, crypto::Pair, H256};
+use sp_finality_grandpa::VersionedAuthorityList;
+use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT};
+use sp_runtime::OpaqueExtrinsic;
+use std::collections::HashMap;
+use std::slice;
+use std::sync::{SgxMutex, SgxMutexGuard};
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::untrusted::time::SystemTimeEx;
+use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
+use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
 use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
+use substratee_stf::{
+    AccountId, Getter, ShardIdentifier, Stf, TrustedCall, TrustedCallSigned, TrustedGetterSigned,
+};
+use substratee_stf::sgx::{OpaqueCall, shards_key_hash, storage_hashes_to_update_per_shard};
+use substratee_stf::State as StfState;
 use substratee_worker_primitives::block::{
     Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
 };
 use substratee_worker_primitives::BlockHash;
-
-use codec::{Decode, Encode};
-use sp_core::{blake2_256, crypto::Pair, H256};
-use sp_finality_grandpa::VersionedAuthorityList;
-
-use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
-};
-
-use std::slice;
-use std::vec::Vec;
-
-use core::ops::Deref;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::{SgxMutex, SgxMutexGuard};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::untrusted::time::SystemTimeEx;
 use utils::write_slice_and_whitespace_pad;
 
 use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
-use chain_relay::{
-    storage_proof::{StorageProof, StorageProofChecker},
-    Block, Header, LightValidation,
-};
-use sp_runtime::OpaqueExtrinsic;
-use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT};
-use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
 
-use sgx_externalities::SgxExternalitiesTypeTrait;
-use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
-use substratee_stf::State as StfState;
-use substratee_stf::{
-    AccountId, Getter, ShardIdentifier, Stf, TrustedCall, TrustedCallSigned, TrustedGetterSigned,
-};
-
-use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
-use rpc::worker_api_direct;
-use rpc::{api::SideChainApi, basic_pool::BasicPool};
 
 mod aes;
 mod attestation;
@@ -216,7 +208,7 @@ fn create_extrinsics(
                 RUNTIME_SPEC_VERSION,
                 RUNTIME_TRANSACTION_VERSION
             )
-            .encode();
+                .encode();
             nonce += 1;
             xt
         })
@@ -345,6 +337,13 @@ pub unsafe extern "C" fn init_chain_relay(
         Ok(header) => write_slice_and_whitespace_pad(latest_header_slice, header.encode()),
         Err(e) => return e,
     }
+
+    init_proxy_storage()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn init_proxy_storage() -> sgx_status_t {
+    // TODO: Write the ocall to worker to get main accounts, proxies and storage read proofs
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -780,7 +779,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     let mut opaque_calls = Vec::<OpaqueCall>::new();
     for xt_opaque in block.extrinsics.iter() {
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
@@ -791,7 +790,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         };
 
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, CALL_WORKER] {
                 if let Ok((decrypted_trusted_call, shard)) = decrypt_unchecked_extrinsic(xt) {
@@ -829,7 +828,7 @@ fn handle_shield_funds_xt(
 ) -> SgxResult<()> {
     let (call, account_encrypted, amount, shard) = xt.function.clone();
     info!("Found ShieldFunds extrinsic in block: \nCall: {:?} \nAccount Encrypted {:?} \nAmount: {} \nShard: {}",
-        call, account_encrypted, amount, shard.encode().to_base58(),
+          call, account_encrypted, amount, shard.encode().to_base58(),
     );
 
     let mut state = if state::exists(&shard) {
@@ -877,9 +876,9 @@ fn decrypt_unchecked_extrinsic(
     let (call, request) = xt.function;
     let (shard, cyphertext) = (request.shard, request.cyphertext);
     debug!("Found CallWorker extrinsic in block: \nCall: {:?} \nRequest: \nshard: {}\ncyphertext: {:?}",
-        call,
-        shard.encode().to_base58(),
-        cyphertext
+           call,
+           shard.encode().to_base58(),
+           cyphertext
     );
 
     debug!("decrypt the call");
@@ -997,7 +996,7 @@ fn verify_worker_responses(
                     key,
                     proof.to_vec(),
                 )
-                .sgx_error_with_log("Erroneous StorageProof")?;
+                    .sgx_error_with_log("Erroneous StorageProof")?;
 
                 // Todo: Why do they do it like that, we could supply the proof only and get the value from the proof directly??
                 if &actual != value {
@@ -1047,8 +1046,8 @@ extern "C" {
         signed_blocks: *const u8,
         signed_blocks_size: u32,
     ) -> sgx_status_t;
-
 }
+
 // TODO: this is redundantly defined in worker/src/main.rs
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub enum WorkerRequest {
