@@ -53,5 +53,15 @@ impl PolkadexAccountsStorage {
         }
         in_memory_map
     }
+
+    pub fn check_main_account(acc: AccountId) -> bool {
+        // TODO
+        true
+    }
+
+    pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> bool {
+        // TODO
+        true
+    }
 }
 
