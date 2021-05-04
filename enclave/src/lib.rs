@@ -352,9 +352,13 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 ) -> sgx_status_t {
     let mut pdex_accounts_slice = slice::from_raw_parts(pdex_accounts, pdex_accounts_size);
 
-    // QUESTION: How to decode a vector of custom structs?
-    // TODO: Decode the slice to LinkedAccount struct
-    let polkadex_accounts: Vec<PolkadexAccount> = vec![]; // we have the decoded vector
+    let polkadex_accounts: polkadex_accounts = match Decode::decode(&mut pdex_accounts_slice) {
+        Ok(b) => b,
+        Err(e) => {
+            error!("Decoding signed blocks failed. Error: {:?}", e);
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    };
 
     let mut validator = match io::light_validation::unseal() {
         Ok(v) => v,
