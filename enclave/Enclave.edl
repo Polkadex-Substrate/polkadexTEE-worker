@@ -48,8 +48,7 @@ enclave {
         );
 
         public sgx_status_t accept_pdex_accounts(
-            [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size
-        );
+            [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size);
 
         public sgx_status_t produce_blocks(
             [in, size=blocks_size] uint8_t* blocks, size_t blocks_size,
