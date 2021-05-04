@@ -60,6 +60,7 @@ mod constants;
 mod enclave;
 mod ipfs;
 mod tests;
+mod polkadex;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -535,13 +536,6 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     debug!("Grandpa Authority List: \n {:?} \n ", grandpas);
 
-    // QUESTION: What is the header (genesis/latest) that we need to pass to get the proof?
-    // QUESTION: if genesis, won't the proof grow in O(N)?
-    // TODO: Read the 0x000..000 account
-    // TODO: Recursively get all the LinkedAccounts and Proofs ( i.e next == None)
-    // TODO: Encode
-    // TODO: Pass it as params to enclave_init_chain_relay
-
     let latest = enclave_init_chain_relay(
         eid,
         genesis_header,
@@ -551,6 +545,11 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
         .unwrap();
 
     info!("Finished initializing chain relay, syncing....");
+
+
+    polkadex::get_main_accounts(latest.clone(), api);
+
+    // TODO: Pass it as params to enclave_init_chain_relay
 
     produce_blocks(eid, api, latest)
 }

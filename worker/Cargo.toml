@@ -75,6 +75,13 @@ version = "3.0.0"
 git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
 
+[dependencies.frame-support]
+git = "https://github.com/paritytech/substrate.git"
+version = "3.0.0"
+
+[dependencies.polkadex-primitives]
+path = "../polkadex-primitives"
+
 [dependencies.substratee-stf]
 path = "../stf"
 

@@ -3118,6 +3118,7 @@ name = "polkadex-primitives"
 version = "0.1.0"
 dependencies = [
  "parity-scale-codec 2.0.1",
+ "substratee-node-runtime",
 ]
 
 [[package]]
@@ -5178,6 +5179,7 @@ dependencies = [
  "clap",
  "dirs 1.0.5",
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "frame-support",
  "frame-system",
  "futures 0.3.13",
  "hex 0.3.2",
@@ -5187,6 +5189,7 @@ dependencies = [
  "multihash 0.8.0",
  "pallet-balances",
  "parity-scale-codec 2.0.1",
+ "polkadex-primitives",
  "primitive-types 0.9.0",
  "rust-crypto",
  "serde",

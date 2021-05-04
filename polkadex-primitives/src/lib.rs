@@ -1,9 +1,9 @@
 use codec::{Encode, Decode};
+use my_node_runtime::{AccountId,Header};
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
-    prev: Vec<u8>,
-    next: Option<Vec<u8>>,
-    proxies: Vec<Vec<u8>>,
-    proof: Option<Vec<Vec<u8>>>
+    prev: AccountId,
+    pub next: Option<AccountId>,
+    proxies: vec![]
 }
