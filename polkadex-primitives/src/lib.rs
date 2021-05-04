@@ -5,6 +5,7 @@ use my_node_runtime::{AccountId,Header};
 pub struct LinkedAccount {
     prev: AccountId,
     pub next: Option<AccountId>,
+    pub current: AccountId,
     proxies: vec![]
 }
 

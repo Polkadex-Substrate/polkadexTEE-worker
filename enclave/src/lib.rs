@@ -368,6 +368,12 @@ pub unsafe extern "C" fn accept_pdex_accounts(
     }
 
     // TODO: Create the atomic pointer
+    match polkadex::create_in_memory_account_storage(polkadex_accounts) {
+        Ok(()) => {}
+        Err(e) => {
+            return e;
+        }
+    }
 }
 
 
