@@ -4,7 +4,7 @@ use polkadex_primitives::PolkadexAccounts;
 use sp_runtime::traits::Header as HeaderT;
 use std::collections::HashMap;
 // TODO: Fix this import
-use std::sync::{Arc, SgxMutex, atomic::{AtomicPtr, Ordering} };
+use std::sync::{Arc, atomic::{AtomicPtr, Ordering}, SgxMutex};
 
 static GLOBAL_ACCOUNTS_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -21,7 +21,7 @@ pub fn verify_pdex_account_read_proofs(
             )
                 .sgx_error_with_log("Erroneous StorageProof")?;
 
-            last_account = account.account;
+            last_account = account.account.next;
         }
     };
 
@@ -35,9 +35,6 @@ pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccounts>) -> SgxR
     GLOBAL_ACCOUNTS_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
     Ok(())
 }
-
-
-
 
 pub struct PolkadexAccountsStorage {
     accounts: HashMap<AccountId, Vec<AccountId>>

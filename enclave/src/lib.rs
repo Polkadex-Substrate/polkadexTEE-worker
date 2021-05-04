@@ -356,8 +356,14 @@ pub unsafe extern "C" fn accept_pdex_accounts(
     // TODO: Decode the slice to LinkedAccount struct
     let polkadex_accounts: Vec<PolkadexAccount> = vec![]; // we have the decoded vector
 
-    // QUESTION: How do we get the latest enclave approved header here?
-    let latest_header: Header = Header::default(); // Assume we some how get it
+    let mut validator = match io::light_validation::unseal() {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+
+    let latest_header = validator
+        .latest_finalized_header(validator.num_relays)
+        .unwrap();
 
     // TODO: Verify the proofs
     match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts) {
