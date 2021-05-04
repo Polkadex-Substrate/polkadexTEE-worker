@@ -54,7 +54,8 @@ use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisio
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks};
+use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks, enclave_accept_pdex_accounts};
+use crate::polkadex::PolkadexAccount;
 
 mod constants;
 mod enclave;
@@ -546,10 +547,11 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finished initializing chain relay, syncing....");
 
+    let polkadex_accounts: Vec<PolkadexAccount> = polkadex::get_main_accounts(latest.clone(), api);
 
-    polkadex::get_main_accounts(latest.clone(), api);
+    enclave_accept_pdex_accounts(eid,polkadex_accounts).unwrap();
 
-    // TODO: Pass it as params to enclave_init_chain_relay
+    info!("Finishing retrieving Polkadex Accounts, ...");
 
     produce_blocks(eid, api, latest)
 }

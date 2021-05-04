@@ -40,6 +40,7 @@ use constants::{
 };
 use core::ops::Deref;
 use log::*;
+use polkadex_primitives::{LinkedAccount, PolkadexAccount};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use rpc::author::{Author, AuthorApi, hash::TrustedOperationOrHash};
 use rpc::worker_api_direct;
@@ -69,10 +70,9 @@ use substratee_worker_primitives::block::{
 };
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
-use polkadex_primitives::LinkedAccount;
+
 use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
-
 
 mod aes;
 mod attestation;
@@ -303,7 +303,6 @@ pub unsafe extern "C" fn init_chain_relay(
     linked_accounts_size: usize,
     latest_header: *mut u8,
     latest_header_size: usize,
-
 ) -> sgx_status_t {
     info!("Initializing Chain Relay!");
 
@@ -311,7 +310,7 @@ pub unsafe extern "C" fn init_chain_relay(
     let latest_header_slice = slice::from_raw_parts_mut(latest_header, latest_header_size);
     let mut auth = slice::from_raw_parts(authority_list, authority_list_size);
     let mut proof = slice::from_raw_parts(authority_proof, authority_proof_size);
-    let mut linked_accounts_slice = slice::from_raw_parts(linked_accounts,linked_accounts_size);
+    let mut linked_accounts_slice = slice::from_raw_parts(linked_accounts, linked_accounts_size);
 
     let header = match Header::decode(&mut header) {
         Ok(h) => h,
@@ -337,19 +336,39 @@ pub unsafe extern "C" fn init_chain_relay(
         }
     };
 
-    // TODO: Decode the slice to LinkedAccount struct
-
     match io::light_validation::read_or_init_validator(header, auth, proof) {
         Ok(header) => write_slice_and_whitespace_pad(latest_header_slice, header.encode()),
         Err(e) => return e,
     }
 
-    // TODO: Verify the proofs
-    // TODO: Create the atomic pointer
-
     sgx_status_t::SGX_SUCCESS
 }
 
+
+#[no_mangle]
+pub unsafe extern "C" fn accept_pdex_accounts(
+    pdex_accounts: *const u8,
+    pdex_accounts_size: usize,
+) -> sgx_status_t {
+    let mut pdex_accounts_slice = slice::from_raw_parts(pdex_accounts, pdex_accounts_size);
+
+    // QUESTION: How to decode a vector of custom structs?
+    // TODO: Decode the slice to LinkedAccount struct
+    let polkadex_accounts: Vec<PolkadexAccount> = vec![]; // we have the decoded vector
+
+    // QUESTION: How do we get the latest enclave approved header here?
+    let latest_header: Header = Header::default(); // Assume we some how get it
+
+    // TODO: Verify the proofs
+    match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts) {
+        Ok(()) => {}
+        Err(e) => {
+            return e;
+        }
+    }
+
+    // TODO: Create the atomic pointer
+}
 
 
 #[no_mangle]
@@ -1016,7 +1035,6 @@ fn verify_worker_responses(
 }
 
 extern "C" {
-
     pub fn ocall_read_ipfs(
         ret_val: *mut sgx_status_t,
         cid: *const u8,

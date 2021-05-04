@@ -7,3 +7,9 @@ pub struct LinkedAccount {
     pub next: Option<AccountId>,
     proxies: vec![]
 }
+
+#[derive(Encode, Decode, Clone, Debug, PartialEq)]
+pub struct PolkadexAccount {
+    pub account: LinkedAccount,
+    pub proof: Vec<Vec<u8>>,
+}
