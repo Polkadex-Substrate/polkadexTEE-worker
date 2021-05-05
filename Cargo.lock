@@ -3118,7 +3118,8 @@ name = "polkadex-primitives"
 version = "0.1.0"
 dependencies = [
  "parity-scale-codec 2.0.1",
- "substratee-node-runtime",
+ "sgx_tstd",
+ "sp-core",
 ]
 
 [[package]]

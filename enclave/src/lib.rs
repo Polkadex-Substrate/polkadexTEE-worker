@@ -83,6 +83,7 @@ mod ipfs;
 mod rsa3072;
 mod state;
 mod utils;
+mod polkadex;
 
 pub mod cert;
 pub mod hex;
@@ -377,13 +378,13 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         }
     }
 
-    // TODO: Create the atomic pointer
+    /* // TODO: Create the atomic pointer
     match polkadex::create_in_memory_account_storage(polkadex_accounts) {
         Ok(()) => {}
         Err(e) => {
             return e;
         }
-    }
+    } */
 }
 
 
