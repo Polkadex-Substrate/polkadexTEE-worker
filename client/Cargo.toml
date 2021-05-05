@@ -57,8 +57,9 @@ version = "3.0.0"
 default-features=false
 
 [dependencies.my-node-runtime]
-git = "https://github.com/scs/substraTEE-node"
-package = "substratee-node-runtime"
+git = "https://github.com/Polkadex-Substrate/Polkadex"
+branch = "main"
+package = "node-polkadex-runtime"
 
 [dependencies.substratee-worker-primitives]
 path = "../substratee-worker-primitives"

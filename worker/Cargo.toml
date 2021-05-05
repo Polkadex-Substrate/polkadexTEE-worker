@@ -48,8 +48,9 @@ path = "../substratee-worker-primitives"
 path = "worker-api"
 
 [dependencies.my-node-runtime]
-git = "https://github.com/scs/substraTEE-node"
-package = "substratee-node-runtime"
+git = "https://github.com/Polkadex-Substrate/Polkadex"
+package = "node-polkadex-runtime"
+branch = "main"
 
 [dependencies.sp-finality-grandpa]
 git = "https://github.com/paritytech/substrate.git"
