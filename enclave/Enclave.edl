@@ -43,12 +43,12 @@ enclave {
 			[in, size=genesis_hash_size] uint8_t* genesis_hash, size_t genesis_hash_size,
             [in, size=authority_list_size] uint8_t* authority_list, size_t authority_list_size,
             [in, size=authority_proof_size] uint8_t* authority_proof, size_t authority_proof_size,
-            [in, size=linked_accounts_size] uint8_t* linked_accounts, size_t linked_accounts_size,
             [out, size=latest_header_size] uint8_t* latest_header, size_t latest_header_size
         );
 
         public sgx_status_t accept_pdex_accounts(
-            [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size);
+            [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size
+        );
 
         public sgx_status_t produce_blocks(
             [in, size=blocks_size] uint8_t* blocks, size_t blocks_size,
@@ -84,13 +84,9 @@ enclave {
 		);
 
 		public size_t test_main_entrance();
-
-		public sgx_status_t ecall_submit_proxies(
-		    [in, size=] uint8_t*
 	};
 
 	untrusted {
-
 		sgx_status_t ocall_sgx_init_quote(
 			[out] sgx_target_info_t *ret_ti,
 			[out] sgx_epid_group_id_t *ret_gid

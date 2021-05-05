@@ -55,8 +55,7 @@ use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
 use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks, enclave_accept_pdex_accounts};
-use crate::polkadex::PolkadexAccount;
-use polkadex_primitives::PolkadexAccount;
+use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 
 mod constants;
 mod enclave;

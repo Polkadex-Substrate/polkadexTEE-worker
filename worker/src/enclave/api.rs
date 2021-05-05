@@ -29,7 +29,7 @@ use sp_core::ed25519;
 use sp_finality_grandpa::VersionedAuthorityList;
 
 use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
-use crate::polkadex::PolkadexAccount;
+use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 
 extern "C" {
     fn init(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;

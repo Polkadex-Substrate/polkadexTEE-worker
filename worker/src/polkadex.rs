@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use frame_support::PalletId;
+use sp_runtime::ModuleId;
 // TODO: Fix this import
 use my_node_runtime::{AccountId, Header};
 use sp_core::sr25519;
@@ -12,16 +12,16 @@ use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 
 pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<PolkadexAccount> {
     // Read the genesis account
-    let genesis_account_id: AccountID = PalletId(*b"polka/ga").into_account();
+    let genesis_account_id: AccountId = ModuleId(*b"polka/ga").into_account();
 
     // Recursively get all the LinkedAccounts and Proofs ( i.e next == None)
     let mut accounts: Vec<PolkadexAccount> = vec![];
     let last_account = get_storage_and_proof(&genesis_account_id, &header, api);
-    accounts.push(last_account);
+    accounts.push(last_account.clone());
 
     while last_account.account.next != None {
-        let last_account = get_storage_and_proof(&last_account.account.next.unwrap(), &header, api);
-        accounts.push(last_account);
+        let last_account = get_storage_and_proof(&last_account.account.next.clone().unwrap(), &header, api);
+        accounts.push(last_account.clone());
     }
     accounts
 }
@@ -36,17 +36,19 @@ pub fn get_storage_and_proof(acc: &AccountId, header: &Header, api: &Api<sr25519
         .map(|account: LinkedAccount| account.into())
         .unwrap();
 
-    let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof(
-        "OCEX",
-        "MainAccounts",
-        acc,
-        Some(header.hash()))
-        .unwrap()
-        .map(|read_proof| read_proof.proof.into_iter().map(|bytes| bytes.0).collect())
-        .unwrap();
+    let last_acc_proof: Vec<Vec<u8>> = vec![];
+
+    // let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof(
+    //     "OCEX",
+    //     "MainAccounts",
+    //     acc,
+    //     Some(header.hash()))
+    //     .unwrap()
+    //     .map(|read_proof| read_proof.proof.into_iter().map(|bytes| bytes.0).collect())
+    //     .unwrap();
 
     PolkadexAccount {
         account: last_acc.clone(),
-        proof: last_acc_proof,
+        proof: last_acc_proof.clone(),
     }
 }

@@ -6,7 +6,7 @@ pub struct LinkedAccount {
     prev: AccountId,
     pub next: Option<AccountId>,
     pub current: AccountId,
-    proxies: vec![]
+    proxies: Vec<AccountId>
 }
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
