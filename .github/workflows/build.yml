@@ -30,14 +30,14 @@ jobs:
       - name: Build Project
         run: make
       - name: Test Client
-        run: cd client && cargo test 2>&1
+        run: cd client && cargo test
       - name: Test Worker
-        run: cd worker && cargo test 2>&1
+        run: cd worker && cargo test
       - name: Test Enclave
-        run: cd enclave && cargo test 2>&1
+        run: cd enclave && cargo test
       - name: Clippy Client
-        run: cd client  && cargo clippy 2>&1
+        run: cd client  && cargo clippy
       - name: Clippy Worker
-        run: cd worker  && cargo clippy 2>&1
-      - name: Clippy Enclave
-        run: cd enclave  && cargo clippy 2>&1
+        run: cd worker  && cargo clippy
+#      - name: Clippy Enclave
+#        run: cd enclave  && cargo clippy
