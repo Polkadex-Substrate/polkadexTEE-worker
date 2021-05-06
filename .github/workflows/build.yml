@@ -2,9 +2,9 @@ name: PolkadexTEE-worker CI
 
 on:
   push:
-    branches: [ '**' ]
+    branches: [ 'master','develop']
   pull_request:
-    branches: [ '**' ]
+    branches: [ 'master','develop']
 
 jobs:
   build-polkadexTEE:
