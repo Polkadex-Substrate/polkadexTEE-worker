@@ -20,6 +20,8 @@ jobs:
             ~/.cargo/git
             target
             enclave/target
+            bin
+            bin2
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Rust and WASM Environment
         run: ./ci/install_rust.sh
@@ -33,3 +35,9 @@ jobs:
         run: cd worker && cargo test 2>&1
       - name: Test Enclave
         run: cd enclave && cargo test 2>&1
+      - name: Clippy Client
+        run: cd client  && cargo clippy 2>&1
+      - name: Clippy Worker
+        run: cd worker  && cargo clippy 2>&1
+      - name: Clippy Enclave
+        run: cd enclave  && cargo clippy 2>&1
