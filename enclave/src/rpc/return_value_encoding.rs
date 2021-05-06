@@ -17,21 +17,21 @@
 
 pub extern crate alloc;
 use alloc::{
-    string::String,
+    str,
     vec::Vec,
 };
 
-use codec::{Encode, WrapperTypeEncode};
+use codec::{Encode};
 
 use substratee_worker_primitives::RpcReturnValue;
 use substratee_worker_primitives::{DirectRequestStatus};
 
 
-pub fn compute_encoded_return_error(error_msg: String) -> Vec<u8> {
+pub fn compute_encoded_return_error(error_msg: &str) -> Vec<u8> {
     compute_encoded_return_value(error_msg, false, DirectRequestStatus::Error)
 }
 
-pub fn compute_encoded_return_value<T>(value: T, do_watch : bool, status: DirectRequestStatus) -> Vec<u8> where T : Encode {
+pub fn compute_encoded_return_value<T:Encode>(value: T, do_watch : bool, status: DirectRequestStatus) -> Vec<u8> {
     let return_value = RpcReturnValue {
         value: value.encode(),
         do_watch,
@@ -39,14 +39,3 @@ pub fn compute_encoded_return_value<T>(value: T, do_watch : bool, status: Direct
     };
     return_value.encode()
 }
-
-// pub fn compute_encoded_return_value<X, T>(value: X, do_watch : bool, status: DirectRequestStatus) -> Vec<u8>
-//     where T: Encode + ?Sized, X: WrapperTypeEncode<Target = T> {
-//
-//     let return_value = RpcReturnValue {
-//         value: value.encode(),
-//         do_watch,
-//         status,
-//     };
-//     return_value.encode()
-// }

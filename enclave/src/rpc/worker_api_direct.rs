@@ -164,18 +164,16 @@ fn init_io_handler() -> IoHandler {
                                 Ok(hash_value) => compute_encoded_return_value(hash_value, true,
                                                                                DirectRequestStatus::TrustedOperationStatus(
                                     TrustedOperationStatus::Submitted)),
-                                Err(rpc_error) => compute_encoded_return_error(rpc_error.message),
+                                Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
                             };
                             Ok(json!(json_value))
                         }
-                        Err(_) => Ok(json!(compute_encoded_return_error(
-                            "Could not decode request".to_owned()
-                        ))),
+                        Err(_) => Ok(json!(compute_encoded_return_error("Could not decode request"))),
                     }
                 }
                 Err(e) => {
                     let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                    Ok(json!(compute_encoded_return_error(error_msg)))
+                    Ok(json!(compute_encoded_return_error(&error_msg)))
                 }
             }
         },
@@ -209,18 +207,18 @@ fn init_io_handler() -> IoHandler {
                                 ),
                             }
                             .encode(),
-                            Err(rpc_error) => compute_encoded_return_error(rpc_error.message),
+                            Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
                         };
                         Ok(json!(json_value))
                     }
                     Err(_) => Ok(json!(compute_encoded_return_error(
-                        "Could not decode request".to_owned()
+                        "Could not decode request"
                     ))),
                 }
             }
             Err(e) => {
                 let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                Ok(json!(compute_encoded_return_error(error_msg)))
+                Ok(json!(compute_encoded_return_error(&error_msg)))
             }
         }
     });
@@ -256,7 +254,7 @@ fn init_io_handler() -> IoHandler {
             }
             Err(e) => {
                 let error_msg: String = format!("Could not retrieve pending calls due to: {}", e);
-                Ok(json!(compute_encoded_return_error(error_msg)))
+                Ok(json!(compute_encoded_return_error(&error_msg)))
             }
         }
     });
@@ -269,7 +267,7 @@ fn init_io_handler() -> IoHandler {
             Ok(key) => key,
             Err(status) => {
                 let error_msg: String = format!("Could not get rsa pubkey due to: {}", status);
-                return Ok(json!(compute_encoded_return_error(error_msg)));
+                return Ok(json!(compute_encoded_return_error(&error_msg)));
             }
         };
 
@@ -280,7 +278,7 @@ fn init_io_handler() -> IoHandler {
                     "[Enclave] can't serialize rsa_pubkey {:?} {}",
                     rsa_pubkey, x
                 );
-                return Ok(json!(compute_encoded_return_error(error_msg)));
+                return Ok(json!(compute_encoded_return_error(&error_msg)));
             }
         };
         let json_value =
