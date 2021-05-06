@@ -6,3 +6,4 @@ pub mod basic_pool;
 pub mod worker_api_direct;
 
 mod return_value_encoding;
+mod rpc_place_order;

@@ -41,6 +41,7 @@ use crate::rpc::{
     api::SideChainApi,
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
+    rpc_place_order::RpcPlaceOrder
 };
 
 use crate::top_pool::pool::Options as PoolOptions;
@@ -136,6 +137,10 @@ fn init_io_handler() -> IoHandler {
     let mut rpc_methods_vec: Vec<&str> = Vec::new();
 
     // Add rpc methods
+
+    // place order
+    io.add_sync_method(RpcPlaceOrder::method_name(), RpcPlaceOrder {});
+
     // author_submitAndWatchExtrinsic
     let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";
     rpc_methods_vec.push(author_submit_and_watch_extrinsic_name);
