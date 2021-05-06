@@ -8,24 +8,9 @@ on:
 
 jobs:
   build-polkadexTEE:
-    strategy:
-      matrix:
-        runs-on:
-          - ubuntu-18.04
-        image:
-          - "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
-    runs-on: ${{ matrix.runs-on }}
-    container:
-      image: ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
       - uses: actions/checkout@v2
-      - name: Install Rust Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          target: wasm32-unknown-unknown
-          override: true
-          default: true
-          components: rustfmt, clippy
       - name: Build Project
         run: make
