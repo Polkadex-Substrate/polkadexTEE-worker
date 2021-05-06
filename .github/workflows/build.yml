@@ -28,8 +28,8 @@ jobs:
       - name: Build Project
         run: make
       - name: Test Client
-        run: cd enclave && cargo test 2>&1
+        run: cd client && cargo test 2>&1
       - name: Test Worker
-        run: cd workder && cargo test 2>&1
+        run: cd worker && cargo test 2>&1
       - name: Test Enclave
         run: cd enclave && cargo test 2>&1
