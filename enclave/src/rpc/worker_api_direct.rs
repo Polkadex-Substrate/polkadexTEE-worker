@@ -61,6 +61,7 @@ use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
 
 use crate::rsa3072;
 use crate::utils::write_slice_and_whitespace_pad;
+use crate::rpc::return_value_encoding::{compute_encoded_return_error, compute_encoded_return_value};
 
 static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -130,15 +131,6 @@ fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, Str
     Ok(shard)
 }
 
-fn compute_encoded_return_error(error_msg: String) -> Vec<u8> {
-    let return_value = RpcReturnValue {
-        value: error_msg.encode(),
-        do_watch: false,
-        status: DirectRequestStatus::Error,
-    };
-    return_value.encode()
-}
-
 fn init_io_handler() -> IoHandler {
     let mut io = IoHandler::new();
     let mut rpc_methods_vec: Vec<&str> = Vec::new();
@@ -152,7 +144,7 @@ fn init_io_handler() -> IoHandler {
         move |params: Params| {
             match params.parse::<Vec<u8>>() {
                 Ok(encoded_params) => {
-                    // Aquire lock
+                    // Acquire lock
                     let tx_pool_mutex = load_top_pool().unwrap();
                     let tx_pool_guard = tx_pool_mutex.lock().unwrap();
                     let tx_pool = Arc::new(tx_pool_guard.deref());
@@ -169,14 +161,9 @@ fn init_io_handler() -> IoHandler {
                             };
                             let response: Result<Hash, RpcError> = executor::block_on(result);
                             let json_value = match response {
-                                Ok(hash_value) => RpcReturnValue {
-                                    do_watch: true,
-                                    value: hash_value.encode(),
-                                    status: DirectRequestStatus::TrustedOperationStatus(
-                                        TrustedOperationStatus::Submitted,
-                                    ),
-                                }
-                                .encode(),
+                                Ok(hash_value) => compute_encoded_return_value(hash_value, true,
+                                                                               DirectRequestStatus::TrustedOperationStatus(
+                                    TrustedOperationStatus::Submitted)),
                                 Err(rpc_error) => compute_encoded_return_error(rpc_error.message),
                             };
                             Ok(json!(json_value))
