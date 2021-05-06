@@ -71,23 +71,73 @@ impl PolkadexAccountsStorage {
         in_memory_map
     }
 
-    pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
-        // Aquire lock on proxy_registry
-        let mutex = load_proxy_registry().unwrap();
-        let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
-        Ok(proxy_storage.accounts.contains_key(&*acc.encode()))
+    pub fn add_main_account(&mut self, acc: AccountId) {
+        let vec: Vec<AccountId> = Vec::new();
+        self.accounts.insert(acc.encode(), vec);
     }
 
-    pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
-        // Aquire lock on proxy_registry
-        let mutex = load_proxy_registry().unwrap();
-        let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
-
-        let list_of_proxies = proxy_storage.accounts.get(&*main_acc.encode()).unwrap(); //FIXME: Remove Unwrap
-        Ok(list_of_proxies.contains(&proxy))
+    pub fn remove_main_account(&mut self, acc: AccountId) {
+        self.accounts.remove(&acc.encode());
     }
-    //pub fn insert_storage() -> SgxResult<Arc<&PolkadexAccountsStorage>>{
-    //pub fn inser_proxy
+
+    pub fn add_proxy(&mut self, main: AccountId, proxy: AccountId) {
+        let proxies: &mut Vec<AccountId> = self.accounts.get_mut(&main.encode()).unwrap();
+        proxies.push(proxy);
+    }
+
+    pub fn remove_proxy(&mut self, main: AccountId, proxy: AccountId) {
+        let proxies: &mut Vec<AccountId> = self.accounts.get_mut(&main.encode()).unwrap();
+        for index in 0..proxies.len() {
+            if proxies.get(index).unwrap() == &proxy {
+                proxies.remove(index);
+                break;
+            }
+        }
+    }
+}
+
+pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    Ok(proxy_storage.accounts.contains_key(&*acc.encode()))
+}
+
+pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+
+    let list_of_proxies = proxy_storage.accounts.get(&*main_acc.encode()).unwrap(); //FIXME: Remove Unwrap
+    Ok(list_of_proxies.contains(&proxy))
+}
+
+pub fn add_main_account(main_acc: AccountId) {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    proxy_storage.add_main_account(main_acc);
+}
+
+pub fn remove_main_account(main_acc: AccountId) {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    proxy_storage.remove_main_account(main_acc);
+}
+
+pub fn add_proxy(main_acc: AccountId, proxy: AccountId) {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    proxy_storage.add_proxy(main_acc, proxy);
+}
+
+pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    proxy_storage.remove_proxy(main_acc, proxy);
 }
 
 pub fn load_proxy_registry() -> Option<&'static SgxMutex<PolkadexAccountsStorage>> {
