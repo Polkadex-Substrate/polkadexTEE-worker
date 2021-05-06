@@ -837,7 +837,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
-            if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
+            if xt.function == [OCEX_MODULE, OCEX_REGISTER] {
                 if let Err(e) = handle_ocex_register(&mut opaque_calls, xt) {
                     error!("Error performing shieldfunds. Error: {:?}", e);
                 }
@@ -901,43 +901,46 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
 fn handle_ocex_register(
     calls: &mut Vec<OpaqueCall>,
-    xt: UncheckedExtrinsicV4<ShieldFundsFn>,
+    xt: UncheckedExtrinsicV4<OCEXRegisterFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc) = xt.function.clone();
+    let call = xt.function.clone(); // TODO: what to do in this case
     info!(
-        "Found OCEX Register extrinsic in block: \nCall: {:?}  \nMain Acc: {}",
+        "Found OCEX Register extrinsic in block: \nCall: {:?} ",
         call,
-        main_acc.encode().to_base58(),
+        // main_acc.encode().to_base58(),
     );
-    polkadex::add_main_account(main_acc);
+    // polkadex::add_main_account(main_acc);
+    Ok(())
 }
 
 fn handle_ocex_add_proxy(
     calls: &mut Vec<OpaqueCall>,
-    xt: UncheckedExtrinsicV4<ShieldFundsFn>,
+    xt: UncheckedExtrinsicV4<OCEXAddProxyFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc, proxy) = xt.function.clone();
+    let (call, proxy) = xt.function.clone();
     info!(
-        "Found OCEX Add Proxy extrinsic in block: \nCall: {:?}  \nMain Acc: {} \nProxy Acc: {}",
+        "Found OCEX Add Proxy extrinsic in block: \nCall: {:?}  \nProxy Acc: {}",
         call,
-        main_acc.encode().to_base58(),
+        // main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::add_proxy(main_acc, proxy);
+    // polkadex::add_proxy(main_acc, proxy);
+    Ok(())
 }
 
 fn handle_ocex_remove_proxy(
     calls: &mut Vec<OpaqueCall>,
-    xt: UncheckedExtrinsicV4<ShieldFundsFn>,
+    xt: UncheckedExtrinsicV4<OCEXRemoveProxyFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc, proxy) = xt.function.clone();
+    let (call, proxy) = xt.function.clone();
     info!(
-        "Found OCEX Remove Proxy extrinsic in block: \nCall: {:?}  \nMain Acc: {} \nProxy Acc: {}",
+        "Found OCEX Remove Proxy extrinsic in block: \nCall: {:?}  \nProxy Acc: {}",
         call,
-        main_acc.encode().to_base58(),
+        // main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::remove_proxy(main_acc, proxy);
+    // polkadex::remove_proxy(main_acc, proxy);
+    Ok(())
 }
 
 fn handle_shield_funds_xt(
