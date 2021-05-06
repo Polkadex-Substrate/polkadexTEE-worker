@@ -19,8 +19,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-            bin
-            bin2
+            enclave/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Rust and WASM Environment
         run: ./ci/install_rust.sh
