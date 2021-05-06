@@ -1,0 +1,23 @@
+name: PolkadexTEE-worker CI
+
+on:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  build-polkadexTEE:
+    strategy:
+      matrix:
+        runs-on:
+          - ubuntu-18.04
+        image:
+          - "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
+    runs-on: ${{ matrix.runs-on }}
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Project
+        run: ls && make
