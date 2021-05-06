@@ -353,7 +353,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 ) -> sgx_status_t {
     let mut pdex_accounts_slice = slice::from_raw_parts(pdex_accounts, pdex_accounts_size);
 
-    let polkadex_accounts: polkadex_accounts = match Decode::decode(&mut pdex_accounts_slice) {
+    let polkadex_accounts: Vec<PolkadexAccount> = match Decode::decode(&mut pdex_accounts_slice) {
         Ok(b) => b,
         Err(e) => {
             error!("Decoding signed blocks failed. Error: {:?}", e);
@@ -371,20 +371,22 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .unwrap();
 
     // TODO: Verify the proofs
-    match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts) {
-        Ok(()) => {}
+    match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone()) {
+        Ok(()) => { },
         Err(e) => {
             return e;
         }
-    }
+    };
 
-    /* // TODO: Create the atomic pointer
+    // TODO: Create the atomic pointer
     match polkadex::create_in_memory_account_storage(polkadex_accounts) {
-        Ok(()) => {}
+        Ok(()) => {  },
         Err(e) => {
             return e;
         }
-    } */
+    };
+    sgx_status_t::SGX_SUCCESS
+
 }
 
 

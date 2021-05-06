@@ -13,10 +13,10 @@ pub type AccountId = AccountId32;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
-    prev: AccountId,
+    pub prev: AccountId,
     pub next: Option<AccountId>,
     pub current: AccountId,
-    proxies: Vec<AccountId>
+    pub proxies: Vec<AccountId>
 }
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
