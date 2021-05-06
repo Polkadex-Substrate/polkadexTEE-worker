@@ -372,7 +372,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .latest_finalized_header(validator.num_relays)
         .unwrap();
 
-    // TODO: Verify the proofs
+    // Verify the proofs
     match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone()) {
         Ok(()) => {}
         Err(e) => {
@@ -380,7 +380,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         }
     };
 
-    // TODO: Create the atomic pointer
+    // Create the atomic pointer
     match polkadex::create_in_memory_account_storage(polkadex_accounts) {
         Ok(()) => {}
         Err(e) => {
@@ -909,18 +909,35 @@ fn handle_ocex_register(
         call,
         main_acc.encode().to_base58(),
     );
+    polkadex::add_main_account(main_acc);
 }
 
 fn handle_ocex_add_proxy(
     calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<ShieldFundsFn>,
 ) -> SgxResult<()> {
+    let (call, main_acc, proxy) = xt.function.clone();
+    info!(
+        "Found OCEX Add Proxy extrinsic in block: \nCall: {:?}  \nMain Acc: {} \nProxy Acc: {}",
+        call,
+        main_acc.encode().to_base58(),
+        proxy.encode().to_base58()
+    );
+    polkadex::add_proxy(main_acc, proxy);
 }
 
 fn handle_ocex_remove_proxy(
     calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<ShieldFundsFn>,
 ) -> SgxResult<()> {
+    let (call, main_acc, proxy) = xt.function.clone();
+    info!(
+        "Found OCEX Remove Proxy extrinsic in block: \nCall: {:?}  \nMain Acc: {} \nProxy Acc: {}",
+        call,
+        main_acc.encode().to_base58(),
+        proxy.encode().to_base58()
+    );
+    polkadex::remove_proxy(main_acc, proxy);
 }
 
 fn handle_shield_funds_xt(
