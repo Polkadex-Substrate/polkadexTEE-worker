@@ -33,11 +33,11 @@ jobs:
         run: cd client && cargo test
       - name: Test Worker
         run: cd worker && cargo test
-      - name: Test Enclave
-        run: cd enclave && cargo test
+#      - name: Test Enclave
+#        run: cd enclave && cargo test
       - name: Clippy Client
         run: cd client  && cargo clippy
       - name: Clippy Worker
         run: cd worker  && cargo clippy
-#      - name: Clippy Enclave
-#        run: cd enclave  && cargo clippy
+      - name: Clippy Enclave
+        run: cd enclave  && cargo clippy
