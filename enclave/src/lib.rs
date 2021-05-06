@@ -30,13 +30,14 @@ extern crate sgx_tstd as std;
 
 use base58::ToBase58;
 use chain_relay::{
-    storage_proof::{StorageProof, StorageProofChecker},
-    Block, Header, LightValidation,
+    Block,
+    Header, LightValidation, storage_proof::{StorageProof, StorageProofChecker},
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE, OCEX_MODULE,OCEX_REGISTER,
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_MODULE,
+    OCEX_REGISTER, OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    SUBSRATEE_REGISTRY_MODULE, OCEX_MODULE,OCEX_REGISTER,
     OCEX_ADD_PROXY,OCEX_REMOVE_PROXY
 };
 use core::ops::Deref;
