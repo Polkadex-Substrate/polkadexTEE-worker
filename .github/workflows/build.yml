@@ -28,3 +28,9 @@ jobs:
         run: cargo --version && rustup show && env
       - name: Build Project
         run: make
+      - name: Test Client
+        run: cd enclave && cargo test 2>&1
+      - name: Test Worker
+        run: cd workder && cargo test 2>&1
+      - name: Test Enclave
+        run: cd enclave && cargo test 2>&1
