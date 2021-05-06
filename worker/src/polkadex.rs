@@ -19,10 +19,10 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
     let last_account = get_storage_and_proof(&genesis_account_id, &header, api);
     accounts.push(last_account.clone());
 
-    /* while last_account.account.next != None {
+    while last_account.account.next != None {
         let last_account = get_storage_and_proof(&last_account.account.next.clone().unwrap(), &header, api);
         accounts.push(last_account.clone());
-    } */
+    }
     accounts
 }
 

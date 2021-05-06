@@ -10,10 +10,14 @@ use substratee_stf::{
 //use std::collections::HashMap;
 // TODO: Fix this import
 use std::sync::{Arc, atomic::{AtomicPtr, Ordering}, SgxMutex};
-use sgx_tstd::collections::BTreeMap;
+use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use core::hash::Hasher;
+use core::ops::Deref;
+use multibase::Base;
+use codec::Encode;
+
 
 static GLOBAL_ACCOUNTS_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -45,30 +49,48 @@ pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> SgxRe
     Ok(())
 }
 
+/// Access that pointer
+
 pub struct PolkadexAccountsStorage {
-    accounts: BTreeMap<AccountId, Vec<AccountId>>
+    accounts: HashMap<Vec<u8>, Vec<AccountId>>
 }
 
 impl PolkadexAccountsStorage {
     pub fn create(accounts: Vec<PolkadexAccount>) -> PolkadexAccountsStorage {
         let mut in_memory_map: PolkadexAccountsStorage = PolkadexAccountsStorage {
-            accounts: BTreeMap::new(),
+            accounts: HashMap::new(),
         };
         for account in accounts {
-            in_memory_map.accounts.insert(account.account.current, account.account.proxies);
+            in_memory_map.accounts.insert(account.account.current.encode(), account.account.proxies);
         }
         in_memory_map
     }
 
-    pub fn check_main_account(acc: AccountId) -> bool {
-        // TODO
-        true
+    pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
+        let polkadex_map = Self::load_storage()?;
+        Ok(polkadex_map.accounts.contains_key(&*acc.encode()))
     }
 
-    pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> bool {
-        // TODO
-        true
+    pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
+        let polkadex_map = Self::load_storage()?;
+        let list_of_proxies = polkadex_map.accounts.get(&*main_acc.encode()).unwrap(); //FIXME: Remove Unwrap
+        Ok(list_of_proxies.contains(&proxy))
     }
+
+    pub fn load_storage() -> SgxResult<Arc<PolkadexAccountsStorage>>{
+        let ptr = GLOBAL_ACCOUNTS_STORAGE.load(Ordering::SeqCst)
+            as *mut SgxMutex<PolkadexAccountsStorage>;
+        if ptr.is_null() { return Err(sgx_status_t::SGX_ERROR_UNEXPECTED) };
+        let ptr: &SgxMutex<PolkadexAccountsStorage> = unsafe{&* ptr};
+        let pool_guard = ptr.lock().unwrap();
+        let registry: Arc<PolkadexAccountsStorage> = Arc::new(*pool_guard);
+        Ok(registry)
+    }
+
+    //pub fn insert_storage() -> SgxResult<Arc<&PolkadexAccountsStorage>>{
+
+
+    //pub fn inser_proxy
 }
 
 
