@@ -62,6 +62,9 @@ use sp_core::ed25519 as spEd25519;
 use rpc::author::{Author, AuthorApi};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 
+// Polkadex Imports
+use crate::test_polkadex_balance_storage::*;
+
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
@@ -120,6 +123,10 @@ pub extern "C" fn test_main_entrance() -> size_t {
         //ipfs::test_verification_ok_for_correct_content,
         //ipfs::test_verification_fails_for_incorrect_content,
         //test_ocall_read_write_ipfs,
+
+        // Polkadex Balance Storage Unit Tests
+        test_create_balance_storage,
+        test_balance_struct
     )
 }
 
