@@ -36,8 +36,8 @@ use chain_relay::{
 use codec::{Decode, Encode};
 use constants::{
     BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_DEPOSIT,
-    OCEX_MODULE, OCEX_REGISTER, OCEX_REMOVE_PROXY, OCEX_WITHDRAW, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
+    OCEX_MODULE, OCEX_REGISTER, OCEX_RELEASE, OCEX_REMOVE_PROXY, OCEX_WITHDRAW,
+    RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
@@ -61,8 +61,8 @@ use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
 use substratee_node_primitives::{
-    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn, OCEXWithdrawFn,
-    ShieldFundsFn,
+    AssetId, CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn,
+    OCEXWithdrawFn, ShieldFundsFn,
 };
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
@@ -928,7 +928,7 @@ fn handle_ocex_register(
     calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXRegisterFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc) = xt.function.clone(); // TODO: what to do in this case
+    let (call, main_acc) = xt.function.clone();
     info!(
         "Found OCEX Register extrinsic in block: \nCall: {:?} \nMain: {:?} ",
         call,
@@ -996,11 +996,8 @@ fn handle_ocex_withdraw(
     match polkadex::check_main_account(main_acc.into()) {
         Ok(exists) => {
             if exists == true {
-                match polkadex_balance_storage::withdraw(main_acc, token, amount) {
-                    Ok(()) => {
-                        // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
-                        Ok(())
-                    }
+                match polkadex_balance_storage::withdraw(main_acc, token.clone(), amount) {
+                    Ok(()) => execute_ocex_release_extrinsic(main_acc, token, amount, 0), // TODO: How to get nonce?
                     Err(e) => return Err(e),
                 }
             } else {
@@ -1009,6 +1006,43 @@ fn handle_ocex_withdraw(
         }
         Err(e) => return Err(e),
     }
+}
+
+fn execute_ocex_release_extrinsic(
+    acc: [u8; 32],
+    token: AssetId,
+    amount: u128,
+    mut nonce: u32,
+) -> SgxResult<()> {
+    // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
+    let mut validator = match io::light_validation::unseal() {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    };
+    // Compose the release extrinsic
+    let xt_block = [OCEX_MODULE, OCEX_RELEASE];
+    let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
+    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
+
+    // Load the enclave's key pair
+    let signer = ed25519::unseal_pair()?;
+    debug!("Restored ECC pubkey: {:?}", signer.public());
+
+    let xt: Vec<u8> = compose_extrinsic_offline!(
+        signer.clone(),
+        call,
+        nonce, // TODO: Where is this?
+        Era::Immortal,
+        genesis_hash,
+        genesis_hash, // FIXME: Shouldn't this be the latest head?
+        RUNTIME_SPEC_VERSION,
+        RUNTIME_TRANSACTION_VERSION
+    )
+    .encode();
+    nonce += 1;
+
+    // TODO: We need to send this using ocall to Polkadex network
+    Ok(())
 }
 
 fn handle_shield_funds_xt(
