@@ -48,6 +48,8 @@ pub static OCEX_MODULE: u8 = 14u8;
 pub static OCEX_REGISTER: u8 = 3u8;
 pub static OCEX_ADD_PROXY: u8 = 4u8;
 pub static OCEX_REMOVE_PROXY: u8 = 5u8;
+pub static OCEX_DEPOSIT: u8 = 0u8;
+pub static OCEX_WITHDRAW: u8 = 2u8;
 
 // bump this to be consistent with SubstraTEE-node runtime
 pub static RUNTIME_SPEC_VERSION: u32 = 100;
