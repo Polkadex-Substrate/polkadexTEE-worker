@@ -27,12 +27,19 @@ pub type OCEXRegisterFn = ([u8; 2], [u8;32]);
 pub type OCEXAddProxyFn = ([u8; 2], [u8;32], [u8;32]);
 pub type OCEXRemoveProxyFn = ([u8; 2], [u8;32], [u8;32]);
 
+#[derive(Hash, Eq)]
 pub enum AssetId {
     POLKADEX,
     DOT, // TODO: Enabled in Parachain upgrade
     CHAINSAFE(H160),
     TOKEN(H160),
     // PARACHAIN(para_id, network, palletInstance, assetID),
+}
+
+impl PartialEq for AssetId {
+    fn eq(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 #[cfg(feature = "std")]
