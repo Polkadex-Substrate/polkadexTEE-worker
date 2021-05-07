@@ -81,15 +81,20 @@ pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStor
 }
 
 pub fn deposit(main_acc: [u8; 32], token: AssetId, amt: u128) -> SgxResult<()> {
-    // Aquire lock on balance_storage
+    // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     balance_storage.deposit(token, main_acc, amt)
 }
 
 pub fn withdraw(main_acc: [u8; 32], token: AssetId, amt: u128) -> SgxResult<()> {
-    // Aquire lock on balance_storage
+    // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    balance_storage.withdraw(token, main_acc, amt)
+    let free_balance: u128 = balance_storage.read_free_balance(token.clone(), main_acc);
+    if free_balance >= amt {
+        balance_storage.withdraw(token, main_acc, amt)
+    } else {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED); // TODO: How can we define custom errors
+    }
 }

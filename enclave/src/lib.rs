@@ -992,7 +992,23 @@ fn handle_ocex_withdraw(
         token,
         amount
     );
-    polkadex_balance_storage::withdraw(main_acc, token, amount)
+
+    match polkadex::check_main_account(main_acc.into()) {
+        Ok(exists) => {
+            if exists == true {
+                match polkadex_balance_storage::withdraw(main_acc, token, amount) {
+                    Ok(()) => {
+                        // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
+                        Ok(())
+                    }
+                    Err(e) => return Err(e),
+                }
+            } else {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED); // TODO: How to pass custom error?
+            }
+        }
+        Err(e) => return Err(e),
+    }
 }
 
 fn handle_shield_funds_xt(
