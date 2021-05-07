@@ -10,7 +10,7 @@ static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut
 
 pub struct PolkadexBalanceStorage {
     /// map (tokenID, AccountID) -> (balance free, balance reserved)
-    storage: HashMap<(AssetId, [u8; 32]), (u128, u128)>,
+    pub storage: HashMap<(AssetId, [u8; 32]), (u128, u128)>,
 }
 
 impl PolkadexBalanceStorage {
@@ -20,21 +20,20 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn read_balance(&self, token: AssetId, acc: [u8; 32]) -> &(u128, u128) {
-        self.storage.get(&(token, acc)).unwrap()
-    }
-
-    pub fn read_free_balance(&self, token: AssetId, acc: [u8; 32]) -> u128 {
-        self.storage.get(&(token, acc)).unwrap().0
-    }
-    pub fn read_reserve_balance(&self, token: AssetId, acc: [u8; 32]) -> u128 {
-        self.storage.get(&(token, acc)).unwrap().1
+    pub fn read_balance(&self, token: AssetId, acc: [u8; 32]) -> Option<&(u128, u128)> {
+        self.storage.get(&(token, acc))
     }
 
     pub fn set_free_balance(&mut self, token: AssetId, acc: [u8; 32], amt: u128) -> SgxResult<()> {
-        let balance = self.storage.get_mut(&(token, acc)).unwrap();
-        balance.0 = amt;
-        Ok(())
+        match self.storage.get_mut(&(token, acc)) {
+            Some(balance) => {
+                balance.0 = amt;
+                Ok(())
+            }
+            None => {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
     }
 
     pub fn set_reserve_balance(
@@ -43,21 +42,39 @@ impl PolkadexBalanceStorage {
         acc: [u8; 32],
         amt: u128,
     ) -> SgxResult<()> {
-        let balance = self.storage.get_mut(&(token, acc)).unwrap();
-        balance.1 = amt;
-        Ok(())
+        match self.storage.get_mut(&(token, acc)) {
+            Some(balance) => {
+                balance.1 = amt;
+                Ok(())
+            }
+            None => {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
     }
 
     pub fn deposit(&mut self, token: AssetId, acc: [u8; 32], amt: u128) -> SgxResult<()> {
-        let balance = self.storage.get_mut(&(token, acc)).unwrap();
-        balance.0 = balance.0 + amt; // TODO: Handle Overflow
-        Ok(())
+        match self.storage.get_mut(&(token, acc)) {
+            Some(balance) => {
+                balance.0 = balance.0.saturating_add(amt);
+                Ok(())
+            }
+            None => {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
     }
 
     pub fn withdraw(&mut self, token: AssetId, acc: [u8; 32], amt: u128) -> SgxResult<()> {
-        let balance = self.storage.get_mut(&(token, acc)).unwrap();
-        balance.0 = balance.0 - amt; // TODO: Handle Underflow
-        Ok(())
+        match self.storage.get_mut(&(token, acc)) {
+            Some(balance) => {
+                balance.0 = balance.0.saturating_sub(amt);
+                Ok(())
+            }
+            None => {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
     }
     // We can write functions which settle balances for two trades but we need to know the trade structure for it
 }
@@ -91,10 +108,16 @@ pub fn withdraw(main_acc: [u8; 32], token: AssetId, amt: u128) -> SgxResult<()> 
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    let free_balance: u128 = balance_storage.read_free_balance(token.clone(), main_acc);
-    if free_balance >= amt {
-        balance_storage.withdraw(token, main_acc, amt)
-    } else {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED); // TODO: How can we define custom errors
+    match balance_storage.read_balance(token.clone(), main_acc) {
+        Some(balance) => {
+            if balance.0 >= amt {
+                balance_storage.withdraw(token, main_acc, amt)
+            } else {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
+        None => {
+            return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        }
     }
 }
