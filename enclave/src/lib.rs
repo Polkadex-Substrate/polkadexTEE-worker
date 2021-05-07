@@ -84,6 +84,7 @@ mod ed25519;
 mod io;
 mod ipfs;
 mod polkadex;
+mod polkadex_balance_storage;
 mod rsa3072;
 mod state;
 mod utils;
