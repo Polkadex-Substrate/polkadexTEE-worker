@@ -15,7 +15,7 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
 
     // Recursively get all the LinkedAccounts and Proofs ( i.e next == None)
     let mut accounts: Vec<PolkadexAccount> = vec![];
-    let mut last_account = get_storage_and_proof(&genesis_account_id, &header, api);
+    let mut last_account = get_storage_and_proof(genesis_account_id.as_ref(), &header, api);
     accounts.push(last_account.clone());
 
     while last_account.account.next != None {
@@ -27,7 +27,7 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
 }
 
 pub fn get_storage_and_proof(
-    acc: &AccountId,
+    acc: &[u8;32],
     header: &Header,
     api: &Api<sr25519::Pair>,
 ) -> PolkadexAccount {
