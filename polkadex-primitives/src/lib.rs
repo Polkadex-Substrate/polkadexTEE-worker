@@ -9,7 +9,7 @@ use std::vec::Vec;
 use codec::{Encode, Decode};
 use sp_core::crypto::AccountId32;
 
-pub type AccountId = AccountId32;
+pub type AccountId = [u8;32];
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
