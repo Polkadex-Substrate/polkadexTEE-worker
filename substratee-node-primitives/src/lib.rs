@@ -24,9 +24,9 @@ pub type ShieldFundsFn = ([u8; 2], Vec<u8>, u128, ShardIdentifier);
 pub type CallWorkerFn = ([u8; 2], Request);
 
 // Polkadex Types
-pub type OCEXRegisterFn = ([u8; 2], H256);
-pub type OCEXAddProxyFn = ([u8; 2], H256, H256);
-pub type OCEXRemoveProxyFn = ([u8; 2], H256, H256);
+pub type OCEXRegisterFn = ([u8; 2], [u8; 32]);
+pub type OCEXAddProxyFn = ([u8; 2], [u8; 32], [u8; 32]);
+pub type OCEXRemoveProxyFn = ([u8; 2], [u8; 32], [u8; 32]);
 
 #[cfg(feature = "std")]
 pub mod calls {
