@@ -1,13 +1,11 @@
 #![cfg_attr(all(not(target_env = "sgx"), not(feature = "std")), no_std)]
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
+use codec::{Decode, Encode};
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
-
-use std::vec::Vec;
-
-use codec::{Decode, Encode};
 use sp_core::{H160, H256};
+use std::vec::Vec;
 
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
@@ -27,6 +25,8 @@ pub type CallWorkerFn = ([u8; 2], Request);
 pub type OCEXRegisterFn = ([u8; 2], [u8; 32]);
 pub type OCEXAddProxyFn = ([u8; 2], [u8; 32], [u8; 32]);
 pub type OCEXRemoveProxyFn = ([u8; 2], [u8; 32], [u8; 32]);
+pub type OCEXDepositFn = ([u8; 2], [u8; 32], AssetId, u128);
+pub type OCEXWithdrawFn = ([u8; 2], [u8; 32], AssetId, u128);
 
 #[derive(Hash, Eq)]
 pub enum AssetId {

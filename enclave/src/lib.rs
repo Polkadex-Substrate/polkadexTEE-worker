@@ -61,7 +61,8 @@ use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
 use substratee_node_primitives::{
-    CallWorkerFn, OCEXAddProxyFn, OCEXRegisterFn, OCEXRemoveProxyFn, ShieldFundsFn,
+    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn, OCEXWithdrawFn,
+    ShieldFundsFn,
 };
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
@@ -828,7 +829,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
                 if let Err(e) = handle_shield_funds_xt(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing shield funds. Error: {:?}", e);
                 }
             }
         };
@@ -862,6 +863,29 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
                 if let Err(e) = handle_ocex_remove_proxy(&mut opaque_calls, xt) {
+                    error!("Error performing shieldfunds. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Deposit
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
+                if let Err(e) = handle_ocex_deposit(&mut opaque_calls, xt) {
+                    error!("Error performing shieldfunds. Error: {:?}", e);
+                }
+            }
+        }
+        // Polkadex OCEX Withdraw
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
+                if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
                     error!("Error performing shieldfunds. Error: {:?}", e);
                 }
             }
@@ -939,6 +963,36 @@ fn handle_ocex_remove_proxy(
         proxy.encode().to_base58()
     );
     polkadex::remove_proxy(main_acc.into(), proxy.into())
+}
+
+fn handle_ocex_deposit(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXDepositFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, token, amount) = xt.function.clone();
+    info!(
+        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {} \nAmount: {}",
+        call,
+        main_acc.encode().to_base58(),
+        token,
+        amount
+    );
+    polkadex_balance_storage::deposit(main_acc, token, amount)
+}
+
+fn handle_ocex_withdraw(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, token, amount) = xt.function.clone();
+    info!(
+        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {} \nAmount: {}",
+        call,
+        main_acc.encode().to_base58(),
+        token,
+        amount
+    );
+    polkadex_balance_storage::withdraw(main_acc, token, amount)
 }
 
 fn handle_shield_funds_xt(

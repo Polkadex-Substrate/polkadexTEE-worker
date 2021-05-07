@@ -79,3 +79,17 @@ pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStor
         Ok(unsafe { &*ptr })
     }
 }
+
+pub fn deposit(main_acc: [u8; 32], token: AssetId, amt: u128) -> SgxResult<()> {
+    // Aquire lock on balance_storage
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    Ok(balance_storage.deposit(token, main_acc, amt))
+}
+
+pub fn withdraw(main_acc: [u8; 32], token: AssetId, amt: u128) -> SgxResult<()> {
+    // Aquire lock on balance_storage
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    Ok(balance_storage.withdraw(token, main_acc, amt))
+}
