@@ -88,6 +88,7 @@ mod polkadex;
 mod polkadex_balance_storage;
 mod rsa3072;
 mod state;
+mod test_polkadex_balance_storage;
 mod utils;
 
 pub mod cert;
@@ -986,7 +987,7 @@ fn handle_ocex_withdraw(
 ) -> SgxResult<()> {
     let (call, main_acc, token, amount) = xt.function.clone();
     info!(
-        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
+        "Found OCEX Withdraw extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
         main_acc.encode().to_base58(),
         token,
@@ -1001,7 +1002,7 @@ fn handle_ocex_withdraw(
                     Err(e) => return Err(e),
                 }
             } else {
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED); // TODO: How to pass custom error?
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
             }
         }
         Err(e) => return Err(e),
