@@ -6,7 +6,7 @@ use sgx_tstd as std;
 
 use std::vec::Vec;
 use codec::{Decode, Encode};
-use sp_core::H256;
+use sp_core::{H160, H256};
 
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
@@ -26,6 +26,14 @@ pub type CallWorkerFn = ([u8; 2], Request);
 pub type OCEXRegisterFn = ([u8; 2], [u8;32]);
 pub type OCEXAddProxyFn = ([u8; 2], [u8;32], [u8;32]);
 pub type OCEXRemoveProxyFn = ([u8; 2], [u8;32], [u8;32]);
+
+pub enum AssetId {
+    POLKADEX,
+    DOT, // TODO: Enabled in Parachain upgrade
+    CHAINSAFE(H160),
+    TOKEN(H160),
+    // PARACHAIN(para_id, network, palletInstance, assetID),
+}
 
 #[cfg(feature = "std")]
 pub mod calls {
