@@ -35,9 +35,9 @@ use chain_relay::{
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_MODULE,
-    OCEX_REGISTER, OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
-    SUBSRATEE_REGISTRY_MODULE,
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_DEPOSIT,
+    OCEX_MODULE, OCEX_REGISTER, OCEX_REMOVE_PROXY, OCEX_WITHDRAW, RUNTIME_SPEC_VERSION,
+    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
@@ -971,7 +971,7 @@ fn handle_ocex_deposit(
 ) -> SgxResult<()> {
     let (call, main_acc, token, amount) = xt.function.clone();
     info!(
-        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {} \nAmount: {}",
+        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
         main_acc.encode().to_base58(),
         token,
@@ -986,7 +986,7 @@ fn handle_ocex_withdraw(
 ) -> SgxResult<()> {
     let (call, main_acc, token, amount) = xt.function.clone();
     info!(
-        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {} \nAmount: {}",
+        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
         main_acc.encode().to_base58(),
         token,
