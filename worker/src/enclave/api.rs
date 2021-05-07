@@ -15,9 +15,9 @@
 
 */
 
-use std::{fs::File, path::PathBuf};
 /// keep this api free from chain-specific types!
 use std::io::{Read, Write};
+use std::{fs::File, path::PathBuf};
 
 use codec::{Decode, Encode};
 use log::*;
@@ -29,7 +29,7 @@ use sp_core::ed25519;
 use sp_finality_grandpa::VersionedAuthorityList;
 
 use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
-use polkadex_primitives::{LinkedAccount,PolkadexAccount};
+use polkadex_primitives::PolkadexAccount;
 
 extern "C" {
     fn init(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
@@ -156,9 +156,9 @@ pub fn enclave_init() -> SgxResult<SgxEnclave> {
     // Step 2: call sgx_create_enclave to initialize an enclave instance
     // Debug Support: 1 = debug mode, 0 = not debug mode
     #[cfg(not(feature = "production"))]
-        let debug = 1;
+    let debug = 1;
     #[cfg(feature = "production")]
-        let debug = 0;
+    let debug = 0;
 
     let mut misc_attr = sgx_misc_attribute_t {
         secs_attr: sgx_attributes_t { flags: 0, xfrm: 0 },
@@ -210,7 +210,6 @@ pub fn enclave_init_chain_relay(
     let result = unsafe {
         // Todo: this is a bit ugly but the common `encode()` is not implemented for authority list
 
-
         // TODO: Fix the wrapper with linkedAccounts pointer and size
         authority_list.using_encoded(|authorities| {
             init_chain_relay(
@@ -244,14 +243,15 @@ pub fn enclave_accept_pdex_accounts(
     eid: sgx_enclave_id_t,
     pdex_accounts: Vec<PolkadexAccount>,
 ) -> SgxResult<()> {
-
     let mut status = sgx_status_t::SGX_SUCCESS;
 
     let result = unsafe {
-        accept_pdex_accounts(eid,
-                             &mut status,
-                             pdex_accounts.encode().as_ptr(),
-                             pdex_accounts.encode().len())
+        accept_pdex_accounts(
+            eid,
+            &mut status,
+            pdex_accounts.encode().as_ptr(),
+            pdex_accounts.encode().len(),
+        )
     };
 
     if status != sgx_status_t::SGX_SUCCESS {
