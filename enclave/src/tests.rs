@@ -64,6 +64,7 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 
 // Polkadex Imports
 use crate::test_polkadex_balance_storage::*;
+use crate::test_orderbook_storage::*;
 
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
@@ -124,7 +125,9 @@ pub extern "C" fn test_main_entrance() -> size_t {
 
         // Polkadex Balance Storage Unit Tests
         test_create_balance_storage,
-        test_balance_struct
+        test_balance_struct,
+        test_create_orderbook_storage,
+        test_orderbook
     )
 }
 
