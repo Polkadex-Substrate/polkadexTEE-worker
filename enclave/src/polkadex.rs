@@ -1,3 +1,4 @@
+
 use chain_relay::{storage_proof::StorageProofChecker, Header};
 use codec::Encode;
 use core::hash::Hasher;
@@ -55,10 +56,17 @@ pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> SgxRe
 
 /// Access that pointer
 pub struct PolkadexAccountsStorage {
-    accounts: HashMap<[u8;32], Vec<[u8;32]>>,
+    pub(crate) accounts: HashMap<[u8;32], Vec<[u8;32]>>,
 }
 
 impl PolkadexAccountsStorage {
+
+    pub fn from_hashmap(hashmap: HashMap<[u8;32], Vec<[u8;32]>>) -> Self{
+        Self{
+            accounts: hashmap
+        }
+    }
+
     pub fn create(accounts: Vec<PolkadexAccount>) -> PolkadexAccountsStorage {
         let mut in_memory_map: PolkadexAccountsStorage = PolkadexAccountsStorage {
             accounts: HashMap::new(),

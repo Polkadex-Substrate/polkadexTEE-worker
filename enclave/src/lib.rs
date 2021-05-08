@@ -84,6 +84,7 @@ mod rsa3072;
 mod state;
 mod utils;
 mod polkadex;
+mod test_proxy;
 
 pub mod cert;
 pub mod hex;
