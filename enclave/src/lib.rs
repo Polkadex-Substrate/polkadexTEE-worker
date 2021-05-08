@@ -95,6 +95,8 @@ pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
+mod polkadex_orderbook_storage;
+mod test_orderbook_storage;
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 
