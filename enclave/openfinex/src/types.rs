@@ -23,14 +23,14 @@ pub enum OrderState {
 }
 // Create Order
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CreateOrder {
-    user_uid: String,
-    market_id: String,
-    market_type: String,
-    order_type: OrderType,
-    side: OrderSide,
-    quantity: u128,
-    price: Option<u128>,
+pub struct Order {
+    pub user_uid: String,
+    pub market_id: String,
+    pub market_type: String,
+    pub order_type: OrderType,
+    pub side: OrderSide,
+    pub quantity: u128,
+    pub price: Option<u128>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateOrderResponse {
