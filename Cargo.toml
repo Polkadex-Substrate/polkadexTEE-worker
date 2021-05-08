@@ -7,7 +7,7 @@ members = [
     "polkadex-primitives",
     "client",
     "stf",
-#    "enclave",
+    "enclave",
 ]
 
 #[patch."https://github.com/scs/pallet-substratee-registry.git"]

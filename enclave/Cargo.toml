@@ -133,6 +133,9 @@ default-features = false
 [dependencies.chain-relay]
 path = "chain_relay"
 
+[dependencies.openfinex]
+path = "openfinex"
+
 [dependencies.substratee-stf]
 path = "../stf"
 default-features = false
