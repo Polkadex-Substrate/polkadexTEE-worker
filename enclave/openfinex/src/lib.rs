@@ -4,13 +4,12 @@
 use sgx_tstd::string::String;
 use sgx_types::{sgx_status_t, SgxResult};
 
-use crate::types::{
+use polkadex_primitives::openfinex::{
     CancelOrder, CreateOrder, CreateOrderResponse, OrderUpdate, Response, TradeEvent,
 };
 
 mod tests;
 mod tlsclient;
-mod types;
 
 pub struct OpenFinexClient;
 // Create a WS Client to OpenFinex
@@ -34,20 +33,4 @@ pub fn send_cancel_order_req_to_openfinex(
     order: CancelOrder,
 ) -> SgxResult<Response> {
     Ok(Response { code: 0 })
-}
-
-// Handle Trade event
-/// Assumes that authentication of tradeevent sender happens before
-/// this function is called
-pub fn handle_trade_event(trade: TradeEvent) -> SgxResult<()> {
-    // TODO: Check both orders in Orderbook DB
-    // TODO: Check the match methematically
-    // TODO: Mutate Balances
-    // TODO: Update/Delete Orders from Orderbook DB
-    Ok(())
-}
-
-// Handle Order update event
-pub fn handle_order_update_event(order_update: OrderUpdate) -> SgxResult<()> {
-    Ok(())
 }

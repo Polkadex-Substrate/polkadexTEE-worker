@@ -93,6 +93,7 @@ mod utils;
 
 pub mod cert;
 pub mod hex;
+mod openfinex_events;
 pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
