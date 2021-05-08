@@ -10,7 +10,7 @@ use polkadex_primitives::openfinex::{
 
 mod tests;
 mod tlsclient;
-
+mod types;
 
 pub struct OpenFinexClient;
 // Create a WS Client to OpenFinex
