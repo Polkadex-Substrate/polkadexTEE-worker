@@ -14,7 +14,7 @@ pub struct CreateOrder {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateOrderResponse {
-    order_uid: String,
+    pub(crate) order_uid: String,
 }
 
 // Cancel Orders
@@ -52,7 +52,7 @@ pub struct ErrorMessage {
 // Status Response
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    code: usize,
+    pub(crate) code: usize,
 }
 
 // Order Update Events
