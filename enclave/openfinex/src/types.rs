@@ -1,16 +1,36 @@
 use serde::{Deserialize, Serialize};
 use sgx_tstd::string::String;
 use sgx_tstd::vec::Vec;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum OrderType {
+    LIMIT,
+    MARKET,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum OrderSide {
+    BID,
+    ASK,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum OrderState {
+    UNFILLED,
+    PARTIAL,
+    FILLED,
+    CANCELLED,
+}
 // Create Order
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateOrder {
     user_uid: String,
     market_id: String,
     market_type: String,
-    order_type: String,
-    side: String,
-    quantity: String,
-    price: Option<String>,
+    order_type: OrderType,
+    side: OrderSide,
+    quantity: u128,
+    price: Option<u128>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateOrderResponse {
@@ -30,7 +50,7 @@ pub struct CancelOrder {
 pub struct DepositFund {
     user_uid: String,
     currency_id: String,
-    amount: String,
+    amount: u128,
     tx_id: Option<String>,
 }
 
@@ -39,7 +59,7 @@ pub struct DepositFund {
 pub struct WithdrawFund {
     user_id: String,
     currency_id: String,
-    amount: String,
+    amount: u128,
     tx_id: Option<String>,
 }
 
@@ -61,16 +81,16 @@ pub struct OrderUpdate {
     market_id: String,
     order_id: String,
     unique_order_id: String, // Why is there two order ids??
-    side: String,
-    kind: String,
-    state: String,
-    order_type: String,
-    price: String,
-    avg_price: String,
-    current_volume: String,
-    original_volume: String,
-    executed_volume: String,
-    trade_count_order: String,
+    side: OrderSide,
+    kind: OrderSide,
+    state: OrderState,
+    order_type: OrderType,
+    price: u128,
+    avg_price: u128,
+    current_volume: u128,
+    original_volume: u128,
+    executed_volume: u128,
+    trade_count_order: u128,
     timestamp: String,
 }
 
@@ -79,13 +99,13 @@ pub struct OrderUpdate {
 pub struct TradeEvent {
     market_id: String,
     trade_id: String,
-    price: String,
-    amount: String,
-    funds: String, // price*amount
+    price: u128,
+    amount: u128,
+    funds: u128, // price*amount
     maker_order_id: String,
     maker_order_uuid: String,
     taker_order_id: String,
     taker_order_uuid: String,
-    maker_side: String,
+    maker_side: OrderSide,
     timestamp: String,
 }

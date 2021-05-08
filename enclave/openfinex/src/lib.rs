@@ -37,7 +37,13 @@ pub fn send_cancel_order_req_to_openfinex(
 }
 
 // Handle Trade event
+/// Assumes that authentication of tradeevent sender happens before
+/// this function is called
 pub fn handle_trade_event(trade: TradeEvent) -> SgxResult<()> {
+    // TODO: Check both orders in Orderbook DB
+    // TODO: Check the match methematically
+    // TODO: Mutate Balances
+    // TODO: Update/Delete Orders from Orderbook DB
     Ok(())
 }
 
