@@ -1,4 +1,6 @@
+#[cfg(feature = "sgx")]
 use sgx_tstd::string::String;
+#[cfg(feature = "sgx")]
 use sgx_tstd::vec::Vec;
 #[derive(Debug, Clone)]
 pub enum OrderType {
