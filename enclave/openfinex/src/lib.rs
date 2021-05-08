@@ -11,6 +11,7 @@ use polkadex_primitives::openfinex::{
 mod tests;
 mod tlsclient;
 
+
 pub struct OpenFinexClient;
 // Create a WS Client to OpenFinex
 pub fn subscribe_to_openfinex_events(address: &str) -> SgxResult<OpenFinexClient> {
@@ -20,7 +21,7 @@ pub fn subscribe_to_openfinex_events(address: &str) -> SgxResult<OpenFinexClient
 // Forwards the Create Order placed via RPC to OpenFinex
 pub fn send_place_order_req_to_openfinex(
     api: OpenFinexClient,
-    order: CreateOrder,
+    order: Order,
 ) -> SgxResult<CreateOrderResponse> {
     Ok(CreateOrderResponse {
         order_uid: String::from("sample"),
