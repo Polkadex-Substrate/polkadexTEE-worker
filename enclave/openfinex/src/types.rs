@@ -2,19 +2,19 @@ use serde::{Deserialize, Serialize};
 use sgx_tstd::string::String;
 use sgx_tstd::vec::Vec;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OrderType {
     LIMIT,
     MARKET,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OrderSide {
     BID,
     ASK,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OrderState {
     UNFILLED,
     PARTIAL,
@@ -22,7 +22,7 @@ pub enum OrderState {
     CANCELLED,
 }
 // Create Order
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Order {
     pub user_uid: String,
     pub market_id: String,
