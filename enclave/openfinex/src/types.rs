@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-
+use sgx_tstd::string::String;
+use sgx_tstd::vec::Vec;
 // Create Order
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateOrder {
