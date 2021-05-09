@@ -21,6 +21,7 @@ use crate::rpc;
 use crate::rsa3072;
 use crate::state;
 use crate::top_pool;
+use crate::test_proxy;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
 use log::*;
@@ -113,7 +114,15 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_ocall_worker_request,
         test_create_state_diff,
         test_executing_call_updates_account_nonce,
-        test_invalid_nonce_call_is_not_executed
+        test_invalid_nonce_call_is_not_executed,
+
+        // Proxies test Cases
+        test_proxy::test_check_main_account,
+        test_proxy::test_check_proxy_account,
+        test_proxy::test_add_main_account,
+        test_proxy::test_remove_main_account,
+        test_proxy::test_add_proxy_account,
+        test_proxy::test_remove_proxy_account
 
         // these unit tests (?) need an ipfs node running..
         //ipfs::test_creates_ipfs_content_struct_works,
