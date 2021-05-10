@@ -28,13 +28,13 @@ jobs:
       - name: Information
         run: cargo --version && rustup show && env
       - name: Build Project
-        run: make
+        run: SGX_MODE=SW make
       - name: Test Client
         run: cd client && cargo test
       - name: Test Worker
         run: cd worker && cargo test
-#      - name: Test Enclave
-#        run: cd enclave && cargo test
+      - name: Test Enclave
+        run: ./bin/substratee-worker test --unit
       - name: Clippy Client
         run: cd client  && cargo clippy
       - name: Clippy Worker
