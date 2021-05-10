@@ -34,9 +34,13 @@ use my_node_runtime::Balance;
 #[cfg(feature = "std")]
 pub use my_node_runtime::Index;
 #[cfg(feature = "sgx")]
-use sgx_runtime::Balance;
+//use sgx_runtime::Balance;
+// TODO: replace dummy
+pub type Balance = u128;
 #[cfg(feature = "sgx")]
-pub use sgx_runtime::Index;
+// TODO: replace dummy
+pub type Index = u32;
+//pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 //use sp_core::{Encode, Decode};
@@ -90,17 +94,32 @@ impl From<sr25519::Pair> for KeyPair {
 
 #[cfg(feature = "sgx")]
 pub mod sgx;
+#[cfg(feature = "sgx")]
+pub mod sgx_ext_mock;
 
 #[cfg(feature = "std")]
 pub mod cli;
 
+// used for dummy only..
 #[cfg(feature = "sgx")]
-//pub type State = sp_io::SgxExternalitiesType;
-pub type StateType = sgx_externalities::SgxExternalitiesType;
+use alloc::vec::Vec;
 #[cfg(feature = "sgx")]
-pub type State = sgx_externalities::SgxExternalities;
+use sgx_tstd::collections::HashMap;
+
+
 #[cfg(feature = "sgx")]
-pub type StateTypeDiff = sgx_externalities::SgxExternalitiesDiffType;
+//pub type StateType = sgx_externalities::SgxExternalitiesType;
+//TODO: remove dummy
+pub type StateType = sgx_ext_mock::SgxExternalitiesType;
+#[cfg(feature = "sgx")]
+//pub type StateTypeDiff = sgx_externalities::SgxExternalitiesDiffType;
+// TODO: remove dummy
+pub type StateTypeDiff = sgx_ext_mock::SgxExternalitiesDiffType;
+// TODO: remove dummy
+#[cfg(feature = "sgx")]
+// TODO: remove dummy
+//pub type State = sgx_externalities::SgxExternalities;
+pub type State = sgx_ext_mock::SgxExternalities;
 
 #[derive(Encode, Decode, Clone, core::fmt::Debug)]
 #[allow(non_camel_case_types)]

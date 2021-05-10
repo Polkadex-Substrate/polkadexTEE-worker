@@ -27,11 +27,11 @@ git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
 default-features = false
 
-[dependencies.sp-io]
-default-features = false
-git = "https://github.com/scs/sgx-runtime"
-package = "sp-io"
-features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"]
+#[dependencies.sp-io]
+#default-features = false
+#git = "https://github.com/scs/sgx-runtime"
+#package = "sp-io"
+#features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"]
 
 [dependencies.sp-core]
 git = "https://github.com/paritytech/substrate.git"

@@ -31,7 +31,8 @@ use crate::io;
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::{FromBase58, ToBase58};
 use codec::{Decode, Encode};
-use sgx_externalities::SgxExternalitiesTypeTrait;
+//use sgx_externalities::SgxExternalitiesTypeTrait;
+use substratee_stf::sgx_ext_mock::SgxExternalitiesTypeTrait;
 use sp_core::H256;
 use std::path::Path;
 use substratee_stf::{
@@ -188,8 +189,9 @@ pub fn list_shards() -> SgxResult<Vec<ShardIdentifier>> {
     Ok(shards)
 }
 
-//  tests
-use sgx_externalities::SgxExternalitiesTrait;
+/* //  tests
+//use sgx_externalities::SgxExternalitiesTrait;
+use substratee_stf::sgx_ext_mock::SgxExternalitiesTrait;
 
 pub fn test_sgx_state_decode_encode_works() {
     // given
@@ -253,3 +255,4 @@ pub fn test_write_and_load_state_works() {
 pub fn remove_shard_dir(shard: &ShardIdentifier) {
     std::fs::remove_dir_all(&format!("{}/{}", SHARDS_PATH, shard.encode().to_base58())).unwrap();
 }
+ */

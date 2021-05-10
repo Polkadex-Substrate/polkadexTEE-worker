@@ -71,7 +71,8 @@ use sp_runtime::OpaqueExtrinsic;
 use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT};
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
 
-use sgx_externalities::SgxExternalitiesTypeTrait;
+//use sgx_externalities::SgxExternalitiesTypeTrait;
+use substratee_stf::sgx_ext_mock::SgxExternalitiesTypeTrait;
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{
@@ -380,7 +381,7 @@ pub unsafe extern "C" fn produce_blocks(
             if let Err(e) = validator.submit_simple_header(
                 validator.num_relays,
                 signed_block.block.header.clone(),
-                signed_block.justification.clone(),
+                signed_block.justifications.clone(),
             ) {
                 error!("Block verification failed. Error : {:?}", e);
                 return sgx_status_t::SGX_ERROR_UNEXPECTED;

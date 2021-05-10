@@ -34,7 +34,7 @@ use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
+    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
 };
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
@@ -452,10 +452,10 @@ fn print_events(events: Events, _sender: Sender<String>) {
                     }
                 }
             }
-            Event::substratee_registry(re) => {
+            Event::pallet_substratee_registry(re) => {
                 debug!("{:?}", re);
                 match &re {
-                    my_node_runtime::substratee_registry::RawEvent::AddedEnclave(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::AddedEnclave(
                         sender,
                         worker_url,
                     ) => {
@@ -466,13 +466,13 @@ fn print_events(events: Events, _sender: Sender<String>) {
                             str::from_utf8(worker_url).unwrap()
                         );
                     }
-                    my_node_runtime::substratee_registry::RawEvent::Forwarded(shard) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::Forwarded(shard) => {
                         println!(
                             "[+] Received trusted call for shard {}",
                             shard.encode().to_base58()
                         );
                     }
-                    my_node_runtime::substratee_registry::RawEvent::CallConfirmed(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::CallConfirmed(
                         sender,
                         payload,
                     ) => {
@@ -480,7 +480,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
-                    my_node_runtime::substratee_registry::RawEvent::BlockConfirmed(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::BlockConfirmed(
                         sender,
                         payload,
                     ) => {
@@ -488,20 +488,20 @@ fn print_events(events: Events, _sender: Sender<String>) {
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
-                    my_node_runtime::substratee_registry::RawEvent::ShieldFunds(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::ShieldFunds(
                         incognito_account,
                     ) => {
                         info!("[+] Received ShieldFunds event");
                         debug!("    For:    {:?}", incognito_account);
                     }
-                    my_node_runtime::substratee_registry::RawEvent::UnshieldedFunds(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::UnshieldedFunds(
                         incognito_account,
                     ) => {
                         info!("[+] Received UnshieldedFunds event");
                         debug!("    For:    {:?}", incognito_account);
                     }
                     _ => {
-                        trace!("Ignoring unsupported substratee_registry event");
+                        trace!("Ignoring unsupported pallet_substratee_registry event");
                     }
                 }
             }
