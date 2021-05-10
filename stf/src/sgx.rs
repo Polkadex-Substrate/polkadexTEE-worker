@@ -6,16 +6,12 @@ use std::vec;
 use codec::{Decode, Encode};
 use derive_more::Display;
 use log_sgx::*;
-//use sgx_runtime::{Balance, BlockNumber as L1BlockNumer, Runtime};
-// TODO: remove dummy
-pub type Balance = u128;
-pub type L1BlockNumer = u32;
-
+use sgx_runtime::{Balance, BlockNumber as L1BlockNumer, Runtime};
 use sp_core::crypto::AccountId32;
 use sp_core::Pair;
 use sp_core::H256 as Hash;
-//use sp_io::hashing::blake2_256;
-//use sp_io::SgxExternalitiesTrait;
+use sp_io::hashing::blake2_256;
+use sp_io::SgxExternalitiesTrait;
 use sp_runtime::MultiAddress;
 use substratee_worker_primitives::BlockNumber;
 use support::metadata::StorageHasher;
@@ -25,7 +21,6 @@ use crate::{
     AccountId, Getter, Index, PublicGetter, ShardIdentifier, State, Stf, TrustedCall,
     TrustedCallSigned, TrustedGetter, SUBSRATEE_REGISTRY_MODULE, UNSHIELD,
 };
-use crate::{StateType, StateTypeDiff};
 
 /// Simple blob that holds a call in encoded format
 #[derive(Clone, Debug)]
@@ -48,8 +43,7 @@ const ALICE_ENCODED: [u8; 32] = [
 impl Stf {
     pub fn init_state() -> State {
         debug!("initializing stf state");
-        State{state: StateType::default(), state_diff: StateTypeDiff::default()}
-        /* let mut ext = State::new();
+        let mut ext = State::new();
         // set initial state hash
         let state_hash: Hash = blake2_256(&ext.clone().encode()).into();
         ext.execute_with(|| {
@@ -92,7 +86,7 @@ impl Stf {
                 &storage_value_key("System", "LastHash"),
                 &state_hash.encode(),
             );
-             //FIXME: for testing purpose only - maybe add feature?
+            //FIXME: for testing purpose only - maybe add feature?
             // for example: feature = endowtestaccounts
             let public = AccountId32::from(
                 sp_core::ed25519::Pair::from_seed(b"12345678901234567890123456789012").public(),
@@ -113,29 +107,29 @@ impl Stf {
                 debug!("{:?} balance is zero", print_public);
             }
         });
-        ext */
+        ext
     }
 
     pub fn update_storage(ext: &mut State, map_update: &HashMap<Vec<u8>, Option<Vec<u8>>>) {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             map_update.iter().for_each(|(k, v)| {
                 match v {
-                     Some(value) => sp_io::storage::set(k, value),
+                    Some(value) => sp_io::storage::set(k, value),
                     None => sp_io::storage::clear(k),
                 };
             });
-        }); */
+        });
     }
 
     pub fn update_layer_one_block_number(ext: &mut State, number: L1BlockNumer) {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             let key = storage_value_key("System", "LayerOneNumber");
             sp_io::storage::set(&key, &number.encode());
-        }); */
+        });
     }
 
     pub fn get_layer_one_block_number(ext: &mut State) -> Option<L1BlockNumer> {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             let key = storage_value_key("System", "LayerOneNumber");
             if let Some(infovec) = sp_io::storage::get(&key) {
                 if let Ok(number) = L1BlockNumer::decode(&mut infovec.as_slice()) {
@@ -148,21 +142,20 @@ impl Stf {
                 error!("No Blocknumber l1 in state?");
                 None
             }
-        }) */
-        None
+        })
     }
 
     pub fn update_sidechain_block_number(ext: &mut State, number: BlockNumber) {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             let key = storage_value_key("System", "Number");
             sp_io::storage::set(&key, &number.encode());
-        }); */
+        });
     }
 
     pub fn get_sidechain_block_number(ext: &mut State) -> Option<BlockNumber> {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             let key = storage_value_key("System", "Number");
-             if let Some(infovec) = sp_io::storage::get(&key) {
+            if let Some(infovec) = sp_io::storage::get(&key) {
                 if let Ok(number) = BlockNumber::decode(&mut infovec.as_slice()) {
                     Some(number)
                 } else {
@@ -173,21 +166,20 @@ impl Stf {
                 error!("No sidechain blocknumber in state?");
                 None
             }
-        }) */
-        None
+        })
     }
 
     pub fn update_last_block_hash(ext: &mut State, hash: Hash) {
-       /*  ext.execute_with(|| {
+        ext.execute_with(|| {
             let key = storage_value_key("System", "LastHash");
             sp_io::storage::set(&key, &hash.encode());
-        }); */
+        });
     }
 
     pub fn get_last_block_hash(ext: &mut State) -> Option<Hash> {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             let key = storage_value_key("System", "LastHash");
-             if let Some(infovec) = sp_io::storage::get(&key) {
+            if let Some(infovec) = sp_io::storage::get(&key) {
                 if let Ok(hash) = Hash::decode(&mut infovec.as_slice()) {
                     Some(hash)
                 } else {
@@ -198,8 +190,7 @@ impl Stf {
                 error!("No Blockhash in state?");
                 None
             }
-        }) */
-        None
+        })
     }
 
     pub fn execute(
@@ -207,11 +198,11 @@ impl Stf {
         call: TrustedCallSigned,
         calls: &mut Vec<OpaqueCall>,
     ) -> Result<(), StfError> {
-        /*let call_hash = blake2_256(&call.encode());
-         ext.execute_with(|| {
+        let call_hash = blake2_256(&call.encode());
+        ext.execute_with(|| {
             let sender = call.call.account().clone();
             validate_nonce(&sender, call.nonce)?;
-             match call.call {
+            match call.call {
                 TrustedCall::balance_set_balance(root, who, free_balance, reserved_balance) => {
                     Self::ensure_root(root)?;
                     debug!(
@@ -277,37 +268,34 @@ impl Stf {
             }?;
             increment_nonce(&sender);
             Ok(())
-        }) */
-        Ok(())
+        })
     }
 
     pub fn account_nonce(ext: &mut State, account: &AccountId) -> Index {
-       /*  ext.execute_with(|| {
+        ext.execute_with(|| {
             if let Some(info) = get_account_info(account) {
                 debug!("Account {:?} nonce is {}", account.encode(), info.nonce);
                 info.nonce
             } else {
                 0 as Index
             }
-        }) */
-        0 as Index
+        })
     }
 
     //FIXME: Add Test feature as this function is only used for unit testing currently
     pub fn account_data(ext: &mut State, account: &AccountId) -> Option<AccountData> {
-        /* ext.execute_with(|| {
+        ext.execute_with(|| {
             if let Some(info) = get_account_info(account) {
                 debug!("Account {:?} data is {:?}", account.encode(), info.data);
                 Some(info.data)
             } else {
                 None
             }
-        }) */
-        None
+        })
     }
 
     pub fn get_state(ext: &mut State, getter: Getter) -> Option<Vec<u8>> {
-        /* ext.execute_with(|| match getter {
+        ext.execute_with(|| match getter {
             Getter::trusted(g) => match g.getter {
                 TrustedGetter::free_balance(who) => {
                     if let Some(info) = get_account_info(&who) {
@@ -340,21 +328,19 @@ impl Stf {
             Getter::public(g) => match g {
                 PublicGetter::some_value => Some(42u32.encode()),
             },
-        }) */
-        None
+        })
     }
 
     fn ensure_root(account: AccountId) -> Result<(), StfError> {
-        /* if sp_io::storage::get(&storage_value_key("Sudo", "Key")).unwrap() == account.encode() {
+        if sp_io::storage::get(&storage_value_key("Sudo", "Key")).unwrap() == account.encode() {
             Ok(())
         } else {
             Err(StfError::MissingPrivileges(account))
-        } */
-        Ok(())
+        }
     }
 
     fn shield_funds(account: AccountId, amount: u128) -> Result<(), StfError> {
-        /* match get_account_info(&account) {
+        match get_account_info(&account) {
             Some(account_info) => sgx_runtime::BalancesCall::<Runtime>::set_balance(
                 MultiAddress::Id(account),
                 account_info.data.free + amount,
@@ -369,7 +355,7 @@ impl Stf {
             )
             .dispatch_bypass_filter(sgx_runtime::Origin::root())
             .map_err(|_| StfError::Dispatch("shield_funds::set_balance".to_string()))?,
-        }; */
+        };
         Ok(())
     }
 
@@ -380,13 +366,13 @@ impl Stf {
                     return Err(StfError::MissingFunds);
                 }
 
-                /* sgx_runtime::BalancesCall::<Runtime>::set_balance(
+                sgx_runtime::BalancesCall::<Runtime>::set_balance(
                     MultiAddress::Id(account),
                     account_info.data.free - amount,
                     account_info.data.reserved,
                 )
                 .dispatch_bypass_filter(sgx_runtime::Origin::root())
-                .map_err(|_| StfError::Dispatch("unshield_funds::set_balance".to_string()))?; */
+                .map_err(|_| StfError::Dispatch("unshield_funds::set_balance".to_string()))?;
                 Ok(())
             }
             None => Err(StfError::InexistentAccount(account)),
@@ -442,7 +428,7 @@ pub fn account_key_hash(account: &AccountId) -> Vec<u8> {
 }
 
 fn get_account_info(who: &AccountId) -> Option<AccountInfo> {
-    /* if let Some(infovec) = sp_io::storage::get(&storage_map_key(
+    if let Some(infovec) = sp_io::storage::get(&storage_map_key(
         "System",
         "Account",
         who,
@@ -455,8 +441,7 @@ fn get_account_info(who: &AccountId) -> Option<AccountInfo> {
         }
     } else {
         None
-    } */
-    None
+    }
 }
 
 fn validate_nonce(who: &AccountId, nonce: Index) -> Result<(), StfError> {
@@ -475,7 +460,7 @@ fn increment_nonce(account: &AccountId) {
     if let Some(mut acc_info) = get_account_info(account) {
         debug!("incrementing account nonce");
         acc_info.nonce += 1;
-        //sp_io::storage::set(&account_key_hash(account), &acc_info.encode());
+        sp_io::storage::set(&account_key_hash(account), &acc_info.encode());
         debug!(
             "updated account {:?} nonce: {:?}",
             account.encode(),

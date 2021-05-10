@@ -50,8 +50,7 @@ use std::untrusted::time::SystemTimeEx;
 use chain_relay::{Block, Header};
 use sp_runtime::traits::Header as HeaderT;
 
-//use sgx_externalities::SgxExternalitiesTypeTrait;
-use substratee_stf::sgx_ext_mock::SgxExternalitiesTrait;
+use sgx_externalities::SgxExternalitiesTypeTrait;
 use substratee_stf::sgx::AccountInfo;
 use substratee_stf::StateTypeDiff as StfStateTypeDiff;
 use substratee_stf::{ShardIdentifier, Stf, TrustedCall};
@@ -66,7 +65,7 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
-        /* top_pool::base_pool::test_should_import_transaction_to_ready,
+        top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
         top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,
         top_pool::base_pool::test_should_promote_a_subgraph,
@@ -114,7 +113,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_ocall_worker_request,
         test_create_state_diff,
         test_executing_call_updates_account_nonce,
-        test_invalid_nonce_call_is_not_executed */
+        test_invalid_nonce_call_is_not_executed
 
         // these unit tests (?) need an ipfs node running..
         //ipfs::test_creates_ipfs_content_struct_works,
@@ -230,7 +229,7 @@ fn test_time_is_not_overdue() {
     // then
     assert!(!time_has_run_out)
 }
-/*
+
 #[allow(unused)]
 fn test_compose_block_and_confirmation() {
     // given
@@ -773,4 +772,3 @@ fn test_invalid_nonce_call_is_not_executed() {
     // clean up
     state::remove_shard_dir(&shard);
 }
- */

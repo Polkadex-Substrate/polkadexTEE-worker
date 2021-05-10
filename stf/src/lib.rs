@@ -34,13 +34,9 @@ use my_node_runtime::Balance;
 #[cfg(feature = "std")]
 pub use my_node_runtime::Index;
 #[cfg(feature = "sgx")]
-//use sgx_runtime::Balance;
-// TODO: replace dummy
-pub type Balance = u128;
+use sgx_runtime::Balance;
 #[cfg(feature = "sgx")]
-// TODO: replace dummy
-pub type Index = u32;
-//pub use sgx_runtime::Index;
+pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 //use sp_core::{Encode, Decode};
@@ -94,32 +90,17 @@ impl From<sr25519::Pair> for KeyPair {
 
 #[cfg(feature = "sgx")]
 pub mod sgx;
-#[cfg(feature = "sgx")]
-pub mod sgx_ext_mock;
 
 #[cfg(feature = "std")]
 pub mod cli;
 
-// used for dummy only..
 #[cfg(feature = "sgx")]
-use alloc::vec::Vec;
+//pub type State = sp_io::SgxExternalitiesType;
+pub type StateType = sgx_externalities::SgxExternalitiesType;
 #[cfg(feature = "sgx")]
-use sgx_tstd::collections::HashMap;
-
-
+pub type State = sgx_externalities::SgxExternalities;
 #[cfg(feature = "sgx")]
-//pub type StateType = sgx_externalities::SgxExternalitiesType;
-//TODO: remove dummy
-pub type StateType = sgx_ext_mock::SgxExternalitiesType;
-#[cfg(feature = "sgx")]
-//pub type StateTypeDiff = sgx_externalities::SgxExternalitiesDiffType;
-// TODO: remove dummy
-pub type StateTypeDiff = sgx_ext_mock::SgxExternalitiesDiffType;
-// TODO: remove dummy
-#[cfg(feature = "sgx")]
-// TODO: remove dummy
-//pub type State = sgx_externalities::SgxExternalities;
-pub type State = sgx_ext_mock::SgxExternalities;
+pub type StateTypeDiff = sgx_externalities::SgxExternalitiesDiffType;
 
 #[derive(Encode, Decode, Clone, core::fmt::Debug)]
 #[allow(non_camel_case_types)]
@@ -299,7 +280,6 @@ pub struct TrustedReturnValue<T> {
     pub value: T,
     pub signer: AccountId
 }
-
 impl TrustedReturnValue
 */
 
