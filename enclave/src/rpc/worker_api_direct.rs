@@ -42,6 +42,7 @@ use crate::rpc::{
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
     rpc_place_order::RpcPlaceOrder
+    io_handler_extensions,
 };
 
 use crate::top_pool::pool::Options as PoolOptions;
@@ -60,9 +61,11 @@ use substratee_node_primitives::Request;
 use substratee_worker_primitives::RpcReturnValue;
 use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
 
+use crate::rpc::return_value_encoding::{
+    compute_encoded_return_error, compute_encoded_return_value,
+};
 use crate::rsa3072;
 use crate::utils::write_slice_and_whitespace_pad;
-use crate::rpc::return_value_encoding::{compute_encoded_return_error, compute_encoded_return_value};
 
 static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -108,18 +111,6 @@ pub fn load_top_pool() -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
-fn convert_vec_to_string(vec_methods: Vec<&str>) -> String {
-    let mut method_string = String::new();
-    for i in 0..vec_methods.len() {
-        method_string.push_str(vec_methods[i]);
-        if vec_methods.len() > (i + 1) {
-            method_string.push_str(", ");
-        }
-    }
-    format!("methods: [{}]", method_string)
-}
-
-// converts the rpc methods vector to a string and adds commas and brackets for readability
 fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, String> {
     let shard_vec = match shard_base58.from_base58() {
         Ok(vec) => vec,
@@ -134,7 +125,6 @@ fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, Str
 
 fn init_io_handler() -> IoHandler {
     let mut io = IoHandler::new();
-    let mut rpc_methods_vec: Vec<&str> = Vec::new();
 
     // Add rpc methods
 
@@ -143,7 +133,6 @@ fn init_io_handler() -> IoHandler {
 
     // author_submitAndWatchExtrinsic
     let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";
-    rpc_methods_vec.push(author_submit_and_watch_extrinsic_name);
     io.add_sync_method(
         author_submit_and_watch_extrinsic_name,
         move |params: Params| {
@@ -166,14 +155,20 @@ fn init_io_handler() -> IoHandler {
                             };
                             let response: Result<Hash, RpcError> = executor::block_on(result);
                             let json_value = match response {
-                                Ok(hash_value) => compute_encoded_return_value(hash_value, true,
-                                                                               DirectRequestStatus::TrustedOperationStatus(
-                                    TrustedOperationStatus::Submitted)),
+                                Ok(hash_value) => compute_encoded_return_value(
+                                    hash_value,
+                                    true,
+                                    DirectRequestStatus::TrustedOperationStatus(
+                                        TrustedOperationStatus::Submitted,
+                                    ),
+                                ),
                                 Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
                             };
                             Ok(json!(json_value))
                         }
-                        Err(_) => Ok(json!(compute_encoded_return_error("Could not decode request"))),
+                        Err(_) => Ok(json!(compute_encoded_return_error(
+                            "Could not decode request"
+                        ))),
                     }
                 }
                 Err(e) => {
@@ -186,7 +181,6 @@ fn init_io_handler() -> IoHandler {
 
     // author_submitExtrinsic
     let author_submit_extrinsic_name: &str = "author_submitExtrinsic";
-    rpc_methods_vec.push(author_submit_extrinsic_name);
     io.add_sync_method(author_submit_extrinsic_name, move |params: Params| {
         match params.parse::<Vec<u8>>() {
             Ok(encoded_params) => {
@@ -230,7 +224,6 @@ fn init_io_handler() -> IoHandler {
 
     // author_pendingExtrinsics
     let author_pending_extrinsic_name: &str = "author_pendingExtrinsics";
-    rpc_methods_vec.push(author_pending_extrinsic_name);
     io.add_sync_method(author_pending_extrinsic_name, move |params: Params| {
         match params.parse::<Vec<String>>() {
             Ok(shards) => {
@@ -266,7 +259,6 @@ fn init_io_handler() -> IoHandler {
 
     // author_getShieldingKey
     let rsa_pubkey_name: &str = "author_getShieldingKey";
-    rpc_methods_vec.push(rsa_pubkey_name);
     io.add_sync_method(rsa_pubkey_name, move |_: Params| {
         let rsa_pubkey = match rsa3072::unseal_pubkey() {
             Ok(key) => key,
@@ -293,7 +285,6 @@ fn init_io_handler() -> IoHandler {
 
     // chain_subscribeAllHeads
     let chain_subscribe_all_heads_name: &str = "chain_subscribeAllHeads";
-    rpc_methods_vec.push(chain_subscribe_all_heads_name);
     io.add_sync_method(chain_subscribe_all_heads_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
@@ -301,7 +292,6 @@ fn init_io_handler() -> IoHandler {
 
     // state_getMetadata
     let state_get_metadata_name: &str = "state_getMetadata";
-    rpc_methods_vec.push(state_get_metadata_name);
     io.add_sync_method(state_get_metadata_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
@@ -309,7 +299,6 @@ fn init_io_handler() -> IoHandler {
 
     // state_getRuntimeVersion
     let state_get_runtime_version_name: &str = "state_getRuntimeVersion";
-    rpc_methods_vec.push(state_get_runtime_version_name);
     io.add_sync_method(state_get_runtime_version_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
@@ -317,7 +306,6 @@ fn init_io_handler() -> IoHandler {
 
     // state_get
     let state_get_name: &str = "state_get";
-    rpc_methods_vec.push(state_get_name);
     io.add_sync_method(state_get_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
@@ -325,7 +313,6 @@ fn init_io_handler() -> IoHandler {
 
     // system_health
     let state_health_name: &str = "system_health";
-    rpc_methods_vec.push(state_health_name);
     io.add_sync_method(state_health_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
@@ -333,7 +320,6 @@ fn init_io_handler() -> IoHandler {
 
     // system_name
     let state_name_name: &str = "system_name";
-    rpc_methods_vec.push(state_name_name);
     io.add_sync_method(state_name_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
@@ -341,14 +327,13 @@ fn init_io_handler() -> IoHandler {
 
     // system_version
     let state_version_name: &str = "system_version";
-    rpc_methods_vec.push(state_version_name);
     io.add_sync_method(state_version_name, |_: Params| {
         let parsed = "world";
         Ok(Value::String(format!("hello, {}", parsed)))
     });
 
     // returns all rpcs methods
-    let rpc_methods_string: String = convert_vec_to_string(rpc_methods_vec);
+    let rpc_methods_string: String = io_handler_extensions::get_all_rpc_methods_string(&io);
     io.add_sync_method("rpc_methods", move |_: Params| {
         Ok(Value::String(rpc_methods_string.to_owned()))
     });
