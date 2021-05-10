@@ -41,8 +41,8 @@ use crate::rpc::{
     api::SideChainApi,
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
-    rpc_place_order::RpcPlaceOrder
     io_handler_extensions,
+    rpc_place_order::RpcPlaceOrder,
 };
 
 use crate::top_pool::pool::Options as PoolOptions;

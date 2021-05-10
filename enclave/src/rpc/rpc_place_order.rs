@@ -16,27 +16,23 @@
 */
 
 pub extern crate alloc;
-use alloc::{
-    str,
-    string::String,
-    vec::Vec,
-};
+use alloc::{str, string::String, vec::Vec};
 
-use codec::{Decode};
+use codec::Decode;
 
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_core::*;
 use serde_json::*;
 
 use substratee_node_primitives::Request;
-use substratee_worker_primitives::{DirectRequestStatus};
+use substratee_worker_primitives::DirectRequestStatus;
 
-use crate::rpc::return_value_encoding::{compute_encoded_return_error, compute_encoded_return_value};
+use crate::rpc::return_value_encoding::{
+    compute_encoded_return_error, compute_encoded_return_value,
+};
 
 /// RPC call structure for 'place order'
-pub struct RpcPlaceOrder {
-
-}
+pub struct RpcPlaceOrder {}
 
 impl RpcPlaceOrder {
     pub fn method_name() -> &'static str {
@@ -47,21 +43,38 @@ impl RpcPlaceOrder {
 impl RpcMethodSync for RpcPlaceOrder {
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
         match params.parse::<Vec<u8>>() {
-            Ok(encoded_params) => {
-                match Request::decode(&mut encoded_params.as_slice()) {
-                    Ok(_) =>
-                        Ok(json!(compute_encoded_return_value(
-                            "decoded request successfully", true, DirectRequestStatus::Ok))).into_future(),
+            Ok(encoded_params) => match Request::decode(&mut encoded_params.as_slice()) {
+                Ok(_) => Ok(json!(compute_encoded_return_value(
+                    "decoded request successfully",
+                    true,
+                    DirectRequestStatus::Ok
+                )))
+                .into_future(),
 
-                    Err(_) =>
-                        Ok(json!(compute_encoded_return_error(
-                            "Could not decode request"))).into_future(),
-                }
-            }
+                Err(_) => Ok(json!(compute_encoded_return_error(
+                    "Could not decode request"
+                )))
+                .into_future(),
+            },
             Err(e) => {
                 let error_msg: String = format!("Could not submit trusted call due to: {}", e);
                 Ok(json!(compute_encoded_return_error(&error_msg))).into_future()
             }
         }
+    }
+}
+
+pub mod tests {
+
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    pub fn test_method_name_should_not_be_empty() {
+        assert_eq!(RpcPlaceOrder::method_name().is_empty(), false);
+    }
+
+    pub fn test_given_incorrect_encoded_request_then_return_error() {
+
+        // TODO construct a Params object to pass into the test
     }
 }
