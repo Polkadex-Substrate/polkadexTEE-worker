@@ -20,6 +20,12 @@ impl PolkadexBalanceStorage {
         }
     }
 
+    pub fn from_hashmap(hashmap: HashMap<(AssetId, [u8; 32]), (u128, u128)>) -> Self{
+        Self{
+            storage: hashmap
+        }
+    }
+
     pub fn read_balance(&self, token: AssetId, acc: [u8; 32]) -> Option<&(u128, u128)> {
         self.storage.get(&(token, acc))
     }

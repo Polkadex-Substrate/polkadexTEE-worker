@@ -124,7 +124,11 @@ pub extern "C" fn test_main_entrance() -> size_t {
 
         // Polkadex Balance Storage Unit Tests
         test_create_balance_storage,
-        test_balance_struct
+        test_balance_struct,
+        test_deposit,
+        test_withdraw,
+        test_set_free_balance,
+        test_set_reserve_balance
     )
 }
 

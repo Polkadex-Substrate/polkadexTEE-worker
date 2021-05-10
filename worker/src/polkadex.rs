@@ -27,7 +27,7 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
 }
 
 pub fn get_storage_and_proof(
-    acc: &[u8;32],
+    acc: &[u8; 32],
     header: &Header,
     api: &Api<sr25519::Pair>,
 ) -> PolkadexAccount {
