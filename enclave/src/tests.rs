@@ -68,6 +68,13 @@ use crate::test_polkadex_balance_storage::*;
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
+        // Polkadex Balance Storage Unit Tests
+        //test_create_balance_storage,
+        //test_balance_struct,
+        test_deposit,
+        // test_withdraw,
+        // test_set_free_balance,
+        // test_set_reserve_balance
         top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
         top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,
@@ -121,14 +128,6 @@ pub extern "C" fn test_main_entrance() -> size_t {
         //ipfs::test_verification_ok_for_correct_content,
         //ipfs::test_verification_fails_for_incorrect_content,
         //test_ocall_read_write_ipfs,
-
-        // Polkadex Balance Storage Unit Tests
-        test_create_balance_storage,
-        test_balance_struct,
-        test_deposit,
-        test_withdraw,
-        test_set_free_balance,
-        test_set_reserve_balance
     )
 }
 
