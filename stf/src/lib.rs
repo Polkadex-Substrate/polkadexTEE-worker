@@ -40,6 +40,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 //use sp_core::{Encode, Decode};
+
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
 // TODO: use MultiAddress instead of AccountId32?
@@ -93,6 +94,13 @@ pub mod sgx;
 
 #[cfg(feature = "std")]
 pub mod cli;
+
+
+#[cfg(feature = "std")]
+pub mod commands;
+
+#[cfg(feature = "std")]
+pub mod cli_utils;
 
 #[cfg(feature = "sgx")]
 //pub type State = sp_io::SgxExternalitiesType;

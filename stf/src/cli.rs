@@ -15,22 +15,18 @@
 
 */
 
-use crate::{
-    AccountId, Index, KeyPair, ShardIdentifier, TrustedCall, TrustedGetter, TrustedOperation,
-};
-use base58::{FromBase58, ToBase58};
+use crate::{Index, KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander, MultiCommand};
-use codec::{Decode, Encode};
+use codec::Decode;
 use log::*;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
-use sp_runtime::traits::IdentifyAccount;
-use std::path::PathBuf;
 use substrate_client_keystore::LocalKeystore;
 
+use crate::cli_utils::account_parsing::*;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const KEYSTORE_PATH: &str = "my_trusted_keystore";
 
 pub fn cmd<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
@@ -374,70 +370,4 @@ pub fn cmd<'a>(
                 }),
         )
         .into_cmd("trusted")
-}
-
-fn get_keystore_path(matches: &ArgMatches<'_>) -> PathBuf {
-    let (_mrenclave, shard) = get_identifiers(matches);
-    PathBuf::from(&format!("{}/{}", KEYSTORE_PATH, shard.encode().to_base58()))
-}
-
-pub fn get_identifiers(matches: &ArgMatches<'_>) -> ([u8; 32], ShardIdentifier) {
-    let mut mrenclave = [0u8; 32];
-    if !matches.is_present("mrenclave") {
-        panic!("--mrenclave must be provided");
-    };
-    mrenclave.copy_from_slice(
-        &matches
-            .value_of("mrenclave")
-            .unwrap()
-            .from_base58()
-            .expect("mrenclave has to be base58 encoded"),
-    );
-    let shard = match matches.value_of("shard") {
-        Some(val) => {
-            ShardIdentifier::from_slice(&val.from_base58().expect("shard has to be base58 encoded"))
-        }
-        None => ShardIdentifier::from_slice(&mrenclave),
-    };
-    (mrenclave, shard)
-}
-
-// TODO this function is redundant with client::main
-fn get_accountid_from_str(account: &str) -> AccountId {
-    match &account[..2] {
-        "//" => sr25519::Pair::from_string(account, None)
-            .unwrap()
-            .public()
-            .into_account()
-            .into(),
-        _ => sr25519::Public::from_ss58check(account)
-            .unwrap()
-            .into_account()
-            .into(),
-    }
-}
-
-// TODO this function is redundant with client::main
-// get a pair either form keyring (well known keys) or from the store
-fn get_pair_from_str(matches: &ArgMatches<'_>, account: &str) -> sr25519::AppPair {
-    info!("getting pair for {}", account);
-    match &account[..2] {
-        "//" => sr25519::AppPair::from_string(account, None).unwrap(),
-        _ => {
-            info!("fetching from keystore at {}", &KEYSTORE_PATH);
-            // open store without password protection
-            let store =
-                LocalKeystore::open(get_keystore_path(matches), None).expect("store should exist");
-            info!("store opened");
-            let _pair = store
-                .key_pair::<sr25519::AppPair>(
-                    &sr25519::Public::from_ss58check(account).unwrap().into(),
-                )
-                .unwrap()
-                .unwrap();
-            info!("key pair fetched");
-            drop(store);
-            _pair
-        }
-    }
 }

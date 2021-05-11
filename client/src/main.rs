@@ -31,7 +31,6 @@ use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 
 use sp_application_crypto::{ed25519, sr25519};
 use sp_keyring::AccountKeyring;
-use std::path::PathBuf;
 
 use base58::{FromBase58, ToBase58};
 
@@ -44,10 +43,7 @@ use my_node_runtime::{
     AccountId, BalancesCall, Call, Event, Hash, Signature,
 };
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
-use sp_runtime::{
-    traits::{IdentifyAccount, Verify},
-    MultiSignature,
-};
+use sp_runtime::MultiSignature;
 use std::convert::TryFrom;
 use std::result::Result as StdResult;
 use std::sync::mpsc::channel;
@@ -62,12 +58,11 @@ use substrate_api_client::{
 };
 
 use substrate_client_keystore::LocalKeystore;
+use substratee_stf::cli_utils::account_parsing::*;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 
-type AccountPublic = <Signature as Verify>::Signer;
-const KEYSTORE_PATH: &str = "my_keystore";
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -127,8 +122,8 @@ fn main() {
         .add_cmd(
             Command::new("new-account")
                 .description("generates a new account for the substraTEE chain")
-                .runner(|_args: &str, _matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None).unwrap();
+                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
                     println!("{}", key.public().to_ss58check());
@@ -138,8 +133,8 @@ fn main() {
         .add_cmd(
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
-                .runner(|_args: &str, _matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None).unwrap();
+                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
                     println!("sr25519 keys:");
                     for pubkey in store
                         .public_keys::<sr25519::AppPublic>()
@@ -273,7 +268,7 @@ fn main() {
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(arg_from);
+                    let from = get_pair_from_str(matches,arg_from);
                     let to = get_accountid_from_str(arg_to);
                     info!("from ss58 is {}", from.public().to_ss58check());
                     info!("to ss58 is {}", to.to_ss58check());
@@ -391,7 +386,7 @@ fn main() {
 
                     // get the sender
                     let arg_from = matches.value_of("from").unwrap();
-                    let from = get_pair_from_str(arg_from);
+                    let from = get_pair_from_str(matches, arg_from);
                     let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
                     // get the recipient
@@ -532,7 +527,7 @@ fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec
     let shard = read_shard(matches).unwrap();
 
     let arg_signer = matches.value_of("xt-signer").unwrap();
-    let signer = get_pair_from_str(arg_signer);
+    let signer = get_pair_from_str(matches, arg_signer);
     let _chain_api = chain_api.set_signer(sr25519_core::Pair::from(signer));
 
     let request = Request {
@@ -832,37 +827,6 @@ where
                     }
                 }
             }
-        }
-    }
-}
-
-fn get_accountid_from_str(account: &str) -> AccountId {
-    match &account[..2] {
-        "//" => AccountPublic::from(sr25519::Pair::from_string(account, None).unwrap().public())
-            .into_account(),
-        _ => AccountPublic::from(sr25519::Public::from_ss58check(account).unwrap()).into_account(),
-    }
-}
-
-// get a pair either form keyring (well known keys) or from the store
-fn get_pair_from_str(account: &str) -> sr25519::AppPair {
-    info!("getting pair for {}", account);
-    match &account[..2] {
-        "//" => sr25519::AppPair::from_string(account, None).unwrap(),
-        _ => {
-            info!("fetching from keystore at {}", &KEYSTORE_PATH);
-            // open store without password protection
-            let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None)
-                .expect("store should exist");
-            info!("store opened");
-            let _pair = store
-                .key_pair::<sr25519::AppPair>(
-                    &sr25519::Public::from_ss58check(account).unwrap().into(),
-                )
-                .unwrap()
-                .unwrap();
-            drop(store);
-            _pair
         }
     }
 }
