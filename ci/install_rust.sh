@@ -20,8 +20,8 @@ source $HOME/.cargo/env
 rustup toolchain add $TOOLCHAIN
 
 # Install aux components, clippy for linter, rustfmt for formatting
-rustup component add clippy --toolchain $TOOLCHAIN
-rustup component add rustfmt --toolchain $TOOLCHAIN
+# rustup component add clippy --toolchain $TOOLCHAIN
+# rustup component add rustfmt --toolchain $TOOLCHAIN
 
 # Install WASM toolchain
 rustup target add wasm32-unknown-unknown --toolchain $TOOLCHAIN
