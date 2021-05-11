@@ -11,14 +11,15 @@ use std::{
     sync::atomic::{AtomicPtr, Ordering},
     sync::{Arc, SgxMutex},
 };
+use polkadex_primitives::AccountId;
 
 pub fn get_dummy_map(storage: &mut SgxMutexGuard<PolkadexAccountsStorage>) {
-    let main_account_one: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let main_account_two: [u8; 32] = Vec::from("second_account").using_encoded(blake2_256);
-    let main_account_three: [u8; 32] = Vec::from("third_account").using_encoded(blake2_256);
-    let dummy_account_one: [u8; 32] = Vec::from("first_dummy_account").using_encoded(blake2_256);
-    let dummy_account_two: [u8; 32] = Vec::from("second_dummy_account").using_encoded(blake2_256);
-    let dummy_account_three: [u8; 32] = Vec::from("third_dummy_account").using_encoded(blake2_256);
+    let main_account_one: AccountId = Vec::from("first_account").using_encoded(blake2_256);
+    let main_account_two: AccountId = Vec::from("second_account").using_encoded(blake2_256);
+    let main_account_three: AccountId = Vec::from("third_account").using_encoded(blake2_256);
+    let dummy_account_one: AccountId = Vec::from("first_dummy_account").using_encoded(blake2_256);
+    let dummy_account_two: AccountId = Vec::from("second_dummy_account").using_encoded(blake2_256);
+    let dummy_account_three: AccountId = Vec::from("third_dummy_account").using_encoded(blake2_256);
 
     storage
         .accounts
@@ -42,8 +43,8 @@ pub fn initialize_dummy() {
 #[allow(unused)]
 pub fn test_check_main_account() {
     initialize_dummy();
-    let account_to_find_real: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let account_to_find_false: [u8; 32] = Vec::from("false_account").using_encoded(blake2_256);
+    let account_to_find_real: AccountId = Vec::from("first_account").using_encoded(blake2_256);
+    let account_to_find_false: AccountId = Vec::from("false_account").using_encoded(blake2_256);
     assert_eq!(polkadex::check_main_account(account_to_find_real), Ok(true));
     assert_eq!(
         polkadex::check_main_account(account_to_find_false),
@@ -53,10 +54,10 @@ pub fn test_check_main_account() {
 
 #[allow(unused)]
 pub fn test_check_proxy_account() {
-    let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let main_account_false: [u8; 32] = Vec::from("false_account").using_encoded(blake2_256);
-    let dummy_account_one: [u8; 32] = Vec::from("first_dummy_account").using_encoded(blake2_256);
-    let dummy_account_false: [u8; 32] = Vec::from("false_dummy_account").using_encoded(blake2_256);
+    let main_account: AccountId = Vec::from("first_account").using_encoded(blake2_256);
+    let main_account_false: AccountId = Vec::from("false_account").using_encoded(blake2_256);
+    let dummy_account_one: AccountId = Vec::from("first_dummy_account").using_encoded(blake2_256);
+    let dummy_account_false: AccountId = Vec::from("false_dummy_account").using_encoded(blake2_256);
     assert_eq!(
         polkadex::check_proxy_account(main_account, dummy_account_one),
         Ok(true)
@@ -73,14 +74,14 @@ pub fn test_check_proxy_account() {
 
 #[allow(unsued)]
 pub fn test_add_main_account() {
-    let main_account: [u8; 32] = Vec::from("new_account").using_encoded(blake2_256);
+    let main_account: AccountId = Vec::from("new_account").using_encoded(blake2_256);
     polkadex::add_main_account(main_account);
     assert_eq!(polkadex::check_main_account(main_account), Ok(true));
 }
 
 #[allow(unsued)]
 pub fn test_remove_main_account() {
-    let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
+    let main_account: AccountId = Vec::from("first_account").using_encoded(blake2_256);
     assert_eq!(polkadex::check_main_account(main_account), Ok(true));
     polkadex::remove_main_account(main_account);
     assert_eq!(polkadex::check_main_account(main_account), Ok(false));
@@ -88,8 +89,8 @@ pub fn test_remove_main_account() {
 
 #[allow(unsued)]
 pub fn test_add_proxy_account() {
-    let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let new_proxy_account: [u8; 32] = Vec::from("new_account").using_encoded(blake2_256);
+    let main_account: AccountId = Vec::from("first_account").using_encoded(blake2_256);
+    let new_proxy_account: AccountId = Vec::from("new_account").using_encoded(blake2_256);
     polkadex::add_proxy(main_account, new_proxy_account);
     assert_eq!(
         polkadex::check_proxy_account(main_account, new_proxy_account),
@@ -99,8 +100,8 @@ pub fn test_add_proxy_account() {
 
 #[allow(unsued)]
 pub fn test_remove_proxy_account() {
-    let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let dummy_account_one: [u8; 32] = Vec::from("first_dummy_account").using_encoded(blake2_256);
+    let main_account: AccountId = Vec::from("first_account").using_encoded(blake2_256);
+    let dummy_account_one: AccountId = Vec::from("first_dummy_account").using_encoded(blake2_256);
     assert_eq!(
         polkadex::check_proxy_account(main_account, dummy_account_one),
         Ok(true)
