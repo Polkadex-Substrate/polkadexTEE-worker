@@ -87,7 +87,7 @@ impl PolkadexAccountsStorage {
 
     pub fn add_main_account(&mut self, acc: AccountId) {
         if self.accounts.contains_key(&acc) {
-            error!("Given account is registered");
+            warn!("Given account is registered");
             return;
         };
         let vec: Vec<AccountId> = Vec::new();
@@ -96,7 +96,7 @@ impl PolkadexAccountsStorage {
 
     pub fn remove_main_account(&mut self, acc: AccountId) {
         if !self.accounts.contains_key(&acc) {
-            error!("Given account is not registered");
+            warn!("Given account is not registered");
             return;
         };
         self.accounts.remove(&acc);
@@ -108,9 +108,9 @@ impl PolkadexAccountsStorage {
                 proxies.push(proxy);
                 return;
             }
-            error!("Given Proxy is already registered");
+            warn!("Given Proxy is already registered");
         };
-        error!("Given Account is not registered");
+        warn!("Given Account is not registered");
     }
 
     pub fn remove_proxy(&mut self, main: AccountId, proxy: AccountId) {
@@ -120,9 +120,9 @@ impl PolkadexAccountsStorage {
                 proxies.remove(index);
                 return;
             }
-            error!("Given Proxy is not registered");
+            warn!("Given Proxy is not registered");
         };
-        error!("Given Account is not registered");
+        warn!("Given Account is not registered");
     }
 }
 
@@ -141,7 +141,7 @@ pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> SgxResult<b
     if let Some(list_of_proxies) = proxy_storage.accounts.get(&main_acc) {
         Ok(list_of_proxies.contains(&proxy))
     } else {
-        error!("Main account not present");
+        warn!("Main account not present");
         Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
     }
 }

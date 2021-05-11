@@ -75,19 +75,15 @@ pub fn test_check_proxy_account() {
 pub fn test_add_main_account() {
     let main_account: [u8; 32] = Vec::from("new_account").using_encoded(blake2_256);
     polkadex::add_main_account(main_account);
-    let mutex = polkadex::load_proxy_registry().unwrap();
-    let mut proxy_storage = mutex.lock().unwrap();
-    assert_eq!(proxy_storage.accounts.contains_key(&main_account), true);
+    assert_eq!(polkadex::check_main_account(main_account), Ok(true));
 }
 
 #[allow(unsued)]
 pub fn test_remove_main_account() {
     let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let mutex = polkadex::load_proxy_registry().unwrap();
-    let mut proxy_storage = mutex.lock().unwrap();
-    assert_eq!(proxy_storage.accounts.contains_key(&main_account), true);
+    assert_eq!(polkadex::check_main_account(main_account), Ok(true));
     polkadex::remove_main_account(main_account);
-    assert_eq!(proxy_storage.accounts.contains_key(&main_account), false);
+    assert_eq!(polkadex::check_main_account(main_account), Ok(false));
 }
 
 #[allow(unsued)]
@@ -95,23 +91,23 @@ pub fn test_add_proxy_account() {
     let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
     let new_proxy_account: [u8; 32] = Vec::from("new_account").using_encoded(blake2_256);
     polkadex::add_proxy(main_account, new_proxy_account);
-    let mutex = polkadex::load_proxy_registry().unwrap();
-    let mut proxy_storage = mutex.lock().unwrap();
-    let proxies = proxy_storage.accounts.get(&main_account).unwrap();
-    assert_eq!(proxies.contains(&new_proxy_account), true);
+    assert_eq!(
+        polkadex::check_proxy_account(main_account, new_proxy_account),
+        Ok(true)
+    );
 }
 
 #[allow(unsued)]
 pub fn test_remove_proxy_account() {
-    let main_account: [u8; 32] = Vec::from("first_account")
-        .encode()
-        .using_encoded(blake2_256);
+    let main_account: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
     let dummy_account_one: [u8; 32] = Vec::from("first_dummy_account").using_encoded(blake2_256);
-    let mutex = polkadex::load_proxy_registry().unwrap();
-    let mut proxy_storage = mutex.lock().unwrap();
-    let proxies = proxy_storage.accounts.get(&main_account).unwrap();
-    assert_eq!(proxies.contains(&dummy_account_one), true);
+    assert_eq!(
+        polkadex::check_proxy_account(main_account, dummy_account_one),
+        Ok(true)
+    );
     polkadex::remove_proxy(main_account, dummy_account_one);
-    let proxies = proxy_storage.accounts.get(&main_account).unwrap();
-    assert_eq!(proxies.contains(&dummy_account_one), false);
+    assert_eq!(
+        polkadex::check_proxy_account(main_account, dummy_account_one),
+        Ok(false)
+    );
 }

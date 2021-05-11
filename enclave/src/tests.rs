@@ -66,13 +66,12 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
-        test_proxy::test_remove_proxy_account,
         test_proxy::test_check_main_account,
         test_proxy::test_check_proxy_account,
         test_proxy::test_add_main_account,
-        //test_proxy::test_remove_main_account,
         test_proxy::test_add_proxy_account,
-        //test_proxy::test_remove_proxy_account,
+        test_proxy::test_remove_proxy_account,
+        test_proxy::test_remove_main_account,
         top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
         top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,
