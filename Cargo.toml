@@ -9,6 +9,6 @@ members = [
 #	 "enclave",
 ]
 
-[patch."https://github.com/scs/substrate-api-client"]
-substrate-api-client = { path = "../substrate-api-client" }
-substrate-client-keystore = { path = "../substrate-api-client/client-keystore" }
+#[patch."https://github.com/scs/substrate-api-client"]
+#substrate-api-client = { path = "../substrate-api-client" }
+#substrate-client-keystore = { path = "../substrate-api-client/client-keystore" }

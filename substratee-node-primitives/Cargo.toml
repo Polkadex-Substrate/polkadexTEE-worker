@@ -24,7 +24,7 @@ optional = true
 default-features = false
 
 [dependencies.substrate-api-client]
-git = "https://github.com/scs/substrate-api-client"
+git = "https://github.com/Polkadex-Substrate/substrate-api-client"
 optional = true
 
 [dependencies.sp-core]
