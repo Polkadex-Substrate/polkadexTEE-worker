@@ -53,7 +53,7 @@ impl Hash for AssetId {
 #[cfg(feature = "std")]
 pub mod calls {
     pub use my_node_runtime::{
-        substratee_registry::{Enclave, ShardIdentifier},
+        pallet_substratee_registry::{Enclave, ShardIdentifier},
         AccountId,
     };
     use sp_core::crypto::Pair;

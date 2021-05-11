@@ -35,9 +35,8 @@ use chain_relay::{
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_DEPOSIT,
-    OCEX_MODULE, OCEX_REGISTER, OCEX_RELEASE, OCEX_REMOVE_PROXY, OCEX_WITHDRAW,
-    RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
+    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
@@ -75,7 +74,7 @@ use substratee_worker_primitives::block::{
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
-use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
+use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 
 mod aes;
@@ -89,6 +88,7 @@ mod polkadex_balance_storage;
 mod rsa3072;
 mod state;
 mod test_polkadex_balance_storage;
+mod test_proxy;
 mod utils;
 
 pub mod cert;
@@ -306,8 +306,6 @@ pub unsafe extern "C" fn init_chain_relay(
     authority_list_size: usize,
     authority_proof: *const u8,
     authority_proof_size: usize,
-    linked_accounts: *const u8,
-    linked_accounts_size: usize,
     latest_header: *mut u8,
     latest_header_size: usize,
 ) -> sgx_status_t {
@@ -317,7 +315,6 @@ pub unsafe extern "C" fn init_chain_relay(
     let latest_header_slice = slice::from_raw_parts_mut(latest_header, latest_header_size);
     let mut auth = slice::from_raw_parts(authority_list, authority_list_size);
     let mut proof = slice::from_raw_parts(authority_proof, authority_proof_size);
-    let mut linked_accounts_slice = slice::from_raw_parts(linked_accounts, linked_accounts_size);
 
     let header = match Header::decode(&mut header) {
         Ok(h) => h,
@@ -370,26 +367,20 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         Ok(v) => v,
         Err(e) => return e,
     };
-
     let latest_header = validator
         .latest_finalized_header(validator.num_relays)
         .unwrap();
 
-    // Verify the proofs
-    match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone()) {
-        Ok(()) => {}
-        Err(e) => {
-            return e;
-        }
+    if let Err(status) =
+        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
+    {
+        return status;
+    }
+
+    if let Err(status) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+        return status;
     };
 
-    // Create the atomic pointer
-    match polkadex::create_in_memory_account_storage(polkadex_accounts) {
-        Ok(()) => {}
-        Err(e) => {
-            return e;
-        }
-    };
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -425,7 +416,7 @@ pub unsafe extern "C" fn produce_blocks(
             if let Err(e) = validator.submit_simple_header(
                 validator.num_relays,
                 signed_block.block.header.clone(),
-                signed_block.justification.clone(),
+                signed_block.justifications.clone(),
             ) {
                 error!("Block verification failed. Error : {:?}", e);
                 return sgx_status_t::SGX_ERROR_UNEXPECTED;
@@ -836,62 +827,6 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         };
 
         // Polkadex OCEX Register
-        if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
-        {
-            // confirm call decodes successfully as well
-            if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
-                if let Err(e) = handle_ocex_register(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
-                }
-            }
-        }
-        // Polkadex OCEX Add Proxy
-        if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
-        {
-            // confirm call decodes successfully as well
-            if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
-                if let Err(e) = handle_ocex_add_proxy(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
-                }
-            }
-        }
-        // Polkadex OCEX Remove Proxy
-        if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
-        {
-            // confirm call decodes successfully as well
-            if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
-                if let Err(e) = handle_ocex_remove_proxy(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
-                }
-            }
-        }
-
-        // Polkadex OCEX Deposit
-        if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
-        {
-            // confirm call decodes successfully as well
-            if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
-                if let Err(e) = handle_ocex_deposit(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
-                }
-            }
-        }
-        // Polkadex OCEX Withdraw
-        if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
-        {
-            // confirm call decodes successfully as well
-            if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
-                if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
-                }
-            }
-        }
-
         if let Ok(xt) =
             UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
         {
