@@ -403,6 +403,7 @@ impl Stf {
 
         // get all shards that are currently registered
         key_hashes.push(shards_key_hash());
+        // TODO: Add our main account and proxy reading logic here
         key_hashes
     }
 }

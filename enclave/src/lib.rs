@@ -24,63 +24,55 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 #![allow(clippy::missing_safety_doc)]
 
-use log::*;
-
 #[cfg(not(target_env = "sgx"))]
 #[macro_use]
 extern crate sgx_tstd as std;
 
 use base58::ToBase58;
-
-use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
-
-use substrate_api_client::compose_extrinsic_offline;
-use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
-use substratee_worker_primitives::block::{
-    Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
-};
-use substratee_worker_primitives::BlockHash;
-
-use codec::{Decode, Encode};
-use sp_core::{blake2_256, crypto::Pair, H256};
-use sp_finality_grandpa::VersionedAuthorityList;
-
-use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
-};
-
-use std::slice;
-use std::vec::Vec;
-
-use core::ops::Deref;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::{SgxMutex, SgxMutexGuard};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::untrusted::time::SystemTimeEx;
-use utils::write_slice_and_whitespace_pad;
-
-use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
-use crate::utils::UnwrapOrSgxErrorUnexpected;
 use chain_relay::{
     storage_proof::{StorageProof, StorageProofChecker},
     Block, Header, LightValidation,
 };
+use codec::{Decode, Encode};
+use constants::{
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
+    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
+};
+use core::ops::Deref;
+use log::*;
+use polkadex_primitives::{LinkedAccount, PolkadexAccount};
+use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
+use rpc::worker_api_direct;
+use rpc::{api::SideChainApi, basic_pool::BasicPool};
+use sgx_externalities::SgxExternalitiesTypeTrait;
+use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
+use sp_core::{blake2_256, crypto::Pair, H256};
+use sp_finality_grandpa::VersionedAuthorityList;
 use sp_runtime::OpaqueExtrinsic;
 use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT};
+use std::collections::HashMap;
+use std::slice;
+use std::sync::Arc;
+use std::sync::{SgxMutex, SgxMutexGuard};
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::untrusted::time::SystemTimeEx;
+use std::vec::Vec;
+use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
-
-use sgx_externalities::SgxExternalitiesTypeTrait;
+use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{
     AccountId, Getter, ShardIdentifier, Stf, TrustedCall, TrustedCallSigned, TrustedGetterSigned,
 };
+use substratee_worker_primitives::block::{
+    Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
+};
+use substratee_worker_primitives::BlockHash;
+use utils::write_slice_and_whitespace_pad;
 
-use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
-use rpc::worker_api_direct;
-use rpc::{api::SideChainApi, basic_pool::BasicPool};
+use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
+use crate::utils::UnwrapOrSgxErrorUnexpected;
 
 mod aes;
 mod attestation;
@@ -88,8 +80,10 @@ mod constants;
 mod ed25519;
 mod io;
 mod ipfs;
+mod polkadex;
 mod rsa3072;
 mod state;
+mod test_proxy;
 mod utils;
 
 pub mod cert;
@@ -345,6 +339,44 @@ pub unsafe extern "C" fn init_chain_relay(
         Ok(header) => write_slice_and_whitespace_pad(latest_header_slice, header.encode()),
         Err(e) => return e,
     }
+
+    sgx_status_t::SGX_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn accept_pdex_accounts(
+    pdex_accounts: *const u8,
+    pdex_accounts_size: usize,
+) -> sgx_status_t {
+    let mut pdex_accounts_slice = slice::from_raw_parts(pdex_accounts, pdex_accounts_size);
+
+    let polkadex_accounts: Vec<PolkadexAccount> = match Decode::decode(&mut pdex_accounts_slice) {
+        Ok(b) => b,
+        Err(e) => {
+            error!("Decoding signed blocks failed. Error: {:?}", e);
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    };
+
+    let mut validator = match io::light_validation::unseal() {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+
+    let latest_header = validator
+        .latest_finalized_header(validator.num_relays)
+        .unwrap();
+
+    if let Err(status) =
+        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
+    {
+        return status;
+    }
+
+    if let Err(status) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+        return status;
+    };
+
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -829,7 +861,7 @@ fn handle_shield_funds_xt(
 ) -> SgxResult<()> {
     let (call, account_encrypted, amount, shard) = xt.function.clone();
     info!("Found ShieldFunds extrinsic in block: \nCall: {:?} \nAccount Encrypted {:?} \nAmount: {} \nShard: {}",
-        call, account_encrypted, amount, shard.encode().to_base58(),
+          call, account_encrypted, amount, shard.encode().to_base58(),
     );
 
     let mut state = if state::exists(&shard) {
@@ -877,9 +909,9 @@ fn decrypt_unchecked_extrinsic(
     let (call, request) = xt.function;
     let (shard, cyphertext) = (request.shard, request.cyphertext);
     debug!("Found CallWorker extrinsic in block: \nCall: {:?} \nRequest: \nshard: {}\ncyphertext: {:?}",
-        call,
-        shard.encode().to_base58(),
-        cyphertext
+           call,
+           shard.encode().to_base58(),
+           cyphertext
     );
 
     debug!("decrypt the call");
@@ -1047,8 +1079,8 @@ extern "C" {
         signed_blocks: *const u8,
         signed_blocks_size: u32,
     ) -> sgx_status_t;
-
 }
+
 // TODO: this is redundantly defined in worker/src/main.rs
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub enum WorkerRequest {
