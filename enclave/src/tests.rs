@@ -20,8 +20,8 @@ use crate::ed25519;
 use crate::rpc;
 use crate::rsa3072;
 use crate::state;
-use crate::top_pool;
 use crate::test_proxy;
+use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
 use log::*;
@@ -66,6 +66,13 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
+        test_proxy::test_remove_proxy_account,
+        test_proxy::test_check_main_account,
+        test_proxy::test_check_proxy_account,
+        test_proxy::test_add_main_account,
+        //test_proxy::test_remove_main_account,
+        test_proxy::test_add_proxy_account,
+        //test_proxy::test_remove_proxy_account,
         top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
         top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,
@@ -109,20 +116,18 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_submit_trusted_getter_to_top_pool,
         test_differentiate_getter_and_call_works,
         test_create_block_and_confirmation_works,
-
         // needs node to be running.. unit tests?
         test_ocall_worker_request,
         test_create_state_diff,
         test_executing_call_updates_account_nonce,
         test_invalid_nonce_call_is_not_executed,
-
         // Proxies test Cases
-        test_proxy::test_check_main_account,
-        test_proxy::test_check_proxy_account,
-        test_proxy::test_add_main_account,
-        test_proxy::test_remove_main_account,
-        test_proxy::test_add_proxy_account,
-        test_proxy::test_remove_proxy_account
+        // test_proxy::test_check_main_account,
+        // test_proxy::test_check_proxy_account,
+        // test_proxy::test_add_main_account,
+        // test_proxy::test_remove_main_account,
+        // test_proxy::test_add_proxy_account,
+        // test_proxy::test_remove_proxy_account
 
         // these unit tests (?) need an ipfs node running..
         //ipfs::test_creates_ipfs_content_struct_works,
