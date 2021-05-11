@@ -35,9 +35,8 @@ use chain_relay::{
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_MODULE,
-    OCEX_REGISTER, OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
-    SUBSRATEE_REGISTRY_MODULE,
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
+    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
@@ -60,9 +59,7 @@ use std::untrusted::time::SystemTimeEx;
 use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
-use substratee_node_primitives::{
-    CallWorkerFn, OCEXAddProxyFn, OCEXRegisterFn, OCEXRemoveProxyFn, ShieldFundsFn,
-};
+use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{
@@ -86,6 +83,7 @@ mod ipfs;
 mod polkadex;
 mod rsa3072;
 mod state;
+mod test_proxy;
 mod utils;
 
 pub mod cert;
@@ -303,8 +301,6 @@ pub unsafe extern "C" fn init_chain_relay(
     authority_list_size: usize,
     authority_proof: *const u8,
     authority_proof_size: usize,
-    linked_accounts: *const u8,
-    linked_accounts_size: usize,
     latest_header: *mut u8,
     latest_header_size: usize,
 ) -> sgx_status_t {
@@ -314,7 +310,6 @@ pub unsafe extern "C" fn init_chain_relay(
     let latest_header_slice = slice::from_raw_parts_mut(latest_header, latest_header_size);
     let mut auth = slice::from_raw_parts(authority_list, authority_list_size);
     let mut proof = slice::from_raw_parts(authority_proof, authority_proof_size);
-    let mut linked_accounts_slice = slice::from_raw_parts(linked_accounts, linked_accounts_size);
 
     let header = match Header::decode(&mut header) {
         Ok(h) => h,
@@ -372,21 +367,16 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .latest_finalized_header(validator.num_relays)
         .unwrap();
 
-    // Verify the proofs
-    match polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone()) {
-        Ok(()) => {}
-        Err(e) => {
-            return e;
-        }
+    if let Err(status) =
+        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
+    {
+        return status;
+    }
+
+    if let Err(status) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+        return status;
     };
 
-    // Create the atomic pointer
-    match polkadex::create_in_memory_account_storage(polkadex_accounts) {
-        Ok(()) => {}
-        Err(e) => {
-            return e;
-        }
-    };
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -422,7 +412,7 @@ pub unsafe extern "C" fn produce_blocks(
             if let Err(e) = validator.submit_simple_header(
                 validator.num_relays,
                 signed_block.block.header.clone(),
-                signed_block.justification.clone(),
+                signed_block.justifications.clone(),
             ) {
                 error!("Block verification failed. Error : {:?}", e);
                 return sgx_status_t::SGX_ERROR_UNEXPECTED;

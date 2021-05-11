@@ -28,12 +28,12 @@ use std::thread;
 use std::time::{Duration, SystemTime};
 
 use base58::{FromBase58, ToBase58};
-use clap::{load_yaml, App};
+use clap::{App, load_yaml};
 use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
+    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
 };
 use sgx_types::*;
 use sp_core::{
@@ -42,9 +42,9 @@ use sp_core::{
     storage::StorageKey,
     Pair,
 };
-use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
+use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
 use sp_keyring::AccountKeyring;
-use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
+use substrate_api_client::{Api, GenericAddress, utils::FromHexString, XtStatus};
 
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
@@ -54,16 +54,14 @@ use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisio
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
-use crate::enclave::api::{
-    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_produce_blocks,
-};
-use polkadex_primitives::PolkadexAccount;
+use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks, enclave_accept_pdex_accounts};
+use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 
 mod constants;
 mod enclave;
 mod ipfs;
-mod polkadex;
 mod tests;
+mod polkadex;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -246,7 +244,7 @@ fn main() {
                 sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
                 &format!("localhost:{}", mu_ra_port),
             )
-            .unwrap();
+                .unwrap();
             println!("[+] Done!");
             enclave.destroy();
         } else {
@@ -425,7 +423,7 @@ fn request_keys(provider_url: &str, _shard: &ShardIdentifier) {
         sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
         &provider_url,
     )
-    .unwrap();
+        .unwrap();
     println!("key provisioning successfully performed");
 }
 
@@ -455,10 +453,10 @@ fn print_events(events: Events, _sender: Sender<String>) {
                     }
                 }
             }
-            Event::substratee_registry(re) => {
+            Event::pallet_substratee_registry(re) => {
                 debug!("{:?}", re);
                 match &re {
-                    my_node_runtime::substratee_registry::RawEvent::AddedEnclave(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::AddedEnclave(
                         sender,
                         worker_url,
                     ) => {
@@ -469,13 +467,13 @@ fn print_events(events: Events, _sender: Sender<String>) {
                             str::from_utf8(worker_url).unwrap()
                         );
                     }
-                    my_node_runtime::substratee_registry::RawEvent::Forwarded(shard) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::Forwarded(shard) => {
                         println!(
                             "[+] Received trusted call for shard {}",
                             shard.encode().to_base58()
                         );
                     }
-                    my_node_runtime::substratee_registry::RawEvent::CallConfirmed(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::CallConfirmed(
                         sender,
                         payload,
                     ) => {
@@ -483,7 +481,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
-                    my_node_runtime::substratee_registry::RawEvent::BlockConfirmed(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::BlockConfirmed(
                         sender,
                         payload,
                     ) => {
@@ -491,20 +489,20 @@ fn print_events(events: Events, _sender: Sender<String>) {
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
-                    my_node_runtime::substratee_registry::RawEvent::ShieldFunds(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::ShieldFunds(
                         incognito_account,
                     ) => {
                         info!("[+] Received ShieldFunds event");
                         debug!("    For:    {:?}", incognito_account);
                     }
-                    my_node_runtime::substratee_registry::RawEvent::UnshieldedFunds(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::UnshieldedFunds(
                         incognito_account,
                     ) => {
                         info!("[+] Received UnshieldedFunds event");
                         debug!("    For:    {:?}", incognito_account);
                     }
                     _ => {
-                        trace!("Ignoring unsupported substratee_registry event");
+                        trace!("Ignoring unsupported pallet_substratee_registry event");
                     }
                 }
             }

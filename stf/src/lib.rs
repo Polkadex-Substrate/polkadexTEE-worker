@@ -280,7 +280,6 @@ pub struct TrustedReturnValue<T> {
     pub value: T,
     pub signer: AccountId
 }
-
 impl TrustedReturnValue
 */
 
