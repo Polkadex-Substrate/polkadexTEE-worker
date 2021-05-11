@@ -9,7 +9,7 @@ use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use sp_runtime::traits::{AccountIdConversion, Header as HeaderT};
-use sp_runtime::ModuleId;
+use frame_support::{PalletId, metadata::StorageHasher};
 use sp_std::prelude::*;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -25,15 +25,15 @@ pub fn verify_pdex_account_read_proofs(
     header: Header,
     accounts: Vec<PolkadexAccount>,
 ) -> SgxResult<()> {
-    let mut last_account: AccountId = ModuleId(*b"polka/ga").into_account();
+    let mut last_account: AccountId = PalletId(*b"polka/ga").into_account();
     for account in accounts.iter() {
         if account.account.prev == last_account.as_ref() {
             if let Some(actual) = StorageProofChecker::<<Header as HeaderT>::Hashing>::check_proof(
                 header.state_root,
-                storage_map_key(
+                &storage_map_key(
                     "OCEX",
                     "MainAccounts",
-                    account.account.current.as_ref(),
+                    &account.account.current,
                     &StorageHasher::Blake2_128Concat,
                 ),
                 account.proof.to_vec(),
@@ -68,6 +68,28 @@ pub fn storage_map_key<K: Encode>(
     bytes.extend(&sp_core::twox_128(storage_prefix.as_bytes())[..]);
     bytes.extend(key_hash(mapkey1, hasher1));
     bytes
+}
+
+/// generates the key's hash depending on the StorageHasher selected
+fn key_hash<K: Encode>(key: &K, hasher: &StorageHasher) -> Vec<u8> {
+    let encoded_key = key.encode();
+    match hasher {
+        StorageHasher::Identity => encoded_key.to_vec(),
+        StorageHasher::Blake2_128 => sp_core::blake2_128(&encoded_key).to_vec(),
+        StorageHasher::Blake2_128Concat => {
+            // copied from substrate Blake2_128Concat::hash since StorageHasher is not public
+            let x: &[u8] = encoded_key.as_slice();
+            sp_core::blake2_128(x)
+                .iter()
+                .chain(x.iter())
+                .cloned()
+                .collect::<Vec<_>>()
+        }
+        StorageHasher::Blake2_256 => sp_core::blake2_256(&encoded_key).to_vec(),
+        StorageHasher::Twox128 => sp_core::twox_128(&encoded_key).to_vec(),
+        StorageHasher::Twox256 => sp_core::twox_256(&encoded_key).to_vec(),
+        StorageHasher::Twox64Concat => sp_core::twox_64(&encoded_key).to_vec(),
+    }
 }
 
 pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> SgxResult<()> {
