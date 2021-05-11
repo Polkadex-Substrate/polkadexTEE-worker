@@ -36,7 +36,7 @@ sgx_types 				= { rev = "v1.1.3", git = "https://github.com/apache/teaclave-sgx-
 sgx_crypto_helper 		= { rev = "v1.1.3", git = "https://github.com/apache/teaclave-sgx-sdk.git" }
 
 [dependencies.substrate-api-client]
-git = "https://github.com/scs/substrate-api-client"
+git = "https://github.com/Polkadex-Substrate/substrate-api-client"
 
 [dependencies.substratee-node-primitives]
 path = "../substratee-node-primitives"
@@ -48,8 +48,9 @@ path = "../substratee-worker-primitives"
 path = "worker-api"
 
 [dependencies.my-node-runtime]
-git = "https://github.com/scs/substraTEE-node"
-package = "substratee-node-runtime"
+git = "https://github.com/Polkadex-Substrate/Polkadex"
+package = "node-polkadex-runtime"
+branch = "develop"
 
 [dependencies.sp-finality-grandpa]
 git = "https://github.com/paritytech/substrate.git"
