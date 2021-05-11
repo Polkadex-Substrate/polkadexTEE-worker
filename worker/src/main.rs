@@ -25,7 +25,7 @@ use std::sync::{
     Mutex,
 };
 use std::thread;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration};
 
 use base58::{FromBase58, ToBase58};
 use clap::{App, load_yaml};
@@ -66,8 +66,6 @@ mod polkadex;
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// start block production every ... ms
-const BLOCK_PRODUCTION_INTERVAL: u64 = 1000;
 
 fn main() {
     // Setup logging
