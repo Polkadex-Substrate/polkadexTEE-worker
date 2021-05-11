@@ -12,17 +12,17 @@ jobs:
     container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
       - uses: actions/checkout@v2
-      - name: Cache Rust Dependecies
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-            enclave/target
-            bin
-            bin2
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+#      - name: Cache Rust Dependecies
+#        uses: actions/cache@v2
+#        with:
+#          path: |
+#            ~/.cargo/registry
+#            ~/.cargo/git
+#            target
+#            enclave/target
+#            bin
+#            bin2
+#          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Rust and WASM Environment
         run: ./ci/install_rust.sh
       - name: Information
@@ -34,7 +34,7 @@ jobs:
       - name: Test Worker
         run: cd worker && cargo test
       - name: Test Enclave
-        run: cd enclave && ./substratee-worker test --unit
+        run: cd bin && ./substratee-worker test --unit
       - name: Clippy Client
         run: cd client  && cargo clippy
       - name: Clippy Worker
