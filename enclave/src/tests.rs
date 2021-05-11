@@ -67,8 +67,8 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
         // Polkadex Proxy Storage Test Cases
-        test_proxy::test_check_main_account,
-        test_proxy::test_check_proxy_account,
+        test_proxy::test_check_if_main_account_registered,
+        test_proxy::test_check_if_proxy_registered,
         test_proxy::test_add_main_account,
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,

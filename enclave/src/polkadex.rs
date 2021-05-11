@@ -4,7 +4,7 @@ use core::hash::Hasher;
 use core::ops::Deref;
 use log::*;
 use multibase::Base;
-use polkadex_primitives::PolkadexAccount;
+use polkadex_primitives::{PolkadexAccount, AccountId};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
@@ -100,8 +100,6 @@ pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> SgxRe
     Ok(())
 }
 
-pub type AccountId = [u8; 32];
-
 /// Access that pointer
 pub struct PolkadexAccountsStorage {
     pub(crate) accounts: HashMap<AccountId, Vec<AccountId>>,
@@ -165,14 +163,14 @@ impl PolkadexAccountsStorage {
     }
 }
 
-pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
+pub fn check_if_main_account_registered(acc: AccountId) -> SgxResult<bool> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.accounts.contains_key(&acc))
 }
 
-pub fn check_proxy_account(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
+pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();

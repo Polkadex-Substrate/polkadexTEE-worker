@@ -10,6 +10,7 @@ codec           = { package = "parity-scale-codec", version = "2.0.0", default-f
 primitive-types = { version = "0.9", default-features = false, features = ["codec"] }
 base58 			= { version = "0.1", optional = true }
 
+
 [dependencies.sgx_tstd]
 git = "https://github.com/apache/teaclave-sgx-sdk.git"
 features = ["untrusted_fs","net","backtrace"]
@@ -45,5 +46,6 @@ std = [ 'substrate-api-client',
         'sp-core/std',
         'sp-runtime',
         'base58',
-        'log']
+        'log',
+        ]
 sgx = [ 'sgx_tstd' ]
