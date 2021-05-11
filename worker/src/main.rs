@@ -523,10 +523,9 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finished initializing chain relay, syncing....");
 
-    //FIXME: These are currently failing. There seems to be a problem with the OCEX pallet
-    /* let polkadex_accounts: Vec<PolkadexAccount> = polkadex::get_main_accounts(latest.clone(), api);
+    let polkadex_accounts: Vec<PolkadexAccount> = polkadex::get_main_accounts(latest.clone(), api);
 
-    enclave_accept_pdex_accounts(eid,polkadex_accounts).unwrap(); */
+    enclave_accept_pdex_accounts(eid,polkadex_accounts).unwrap();
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
