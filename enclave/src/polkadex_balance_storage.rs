@@ -70,7 +70,7 @@ impl PolkadexBalanceStorage {
                 Ok(())
             }
             None => {
-                error!("Account Id or Asset Id not available");
+                error!("Account Id or Asset Id not available [here]");
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
             }
         }
