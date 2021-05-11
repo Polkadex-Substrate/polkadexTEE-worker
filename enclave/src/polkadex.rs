@@ -30,7 +30,12 @@ pub fn verify_pdex_account_read_proofs(
         if account.account.prev == last_account.as_ref() {
             if let Some(actual) = StorageProofChecker::<<Header as HeaderT>::Hashing>::check_proof(
                 header.state_root,
-                account.account.current.as_ref(), // QUESTION: How is this key defined? What about storage prefix?
+                storage_map_key(
+                    "OCEX",
+                    "MainAccounts",
+                    account.account.current.as_ref(),
+                    &StorageHasher::Blake2_128Concat,
+                ),
                 account.proof.to_vec(),
             )
             .sgx_error_with_log("Erroneous Storage Proof")?
@@ -51,6 +56,18 @@ pub fn verify_pdex_account_read_proofs(
     }
 
     Ok(())
+}
+
+pub fn storage_map_key<K: Encode>(
+    module_prefix: &str,
+    storage_prefix: &str,
+    mapkey1: &K,
+    hasher1: &StorageHasher,
+) -> Vec<u8> {
+    let mut bytes = sp_core::twox_128(module_prefix.as_bytes()).to_vec();
+    bytes.extend(&sp_core::twox_128(storage_prefix.as_bytes())[..]);
+    bytes.extend(key_hash(mapkey1, hasher1));
+    bytes
 }
 
 pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> SgxResult<()> {
