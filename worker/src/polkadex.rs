@@ -38,16 +38,14 @@ pub fn get_storage_and_proof(
         .map(|account: LinkedAccount| account.into())
         .unwrap();
 
-    let last_acc_proof: Vec<Vec<u8>> = vec![];
-
-    // let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof(
-    //     "OCEX",
-    //     "MainAccounts",
-    //     acc,
-    //     Some(header.hash()))
-    //     .unwrap()
-    //     .map(|read_proof| read_proof.proof.into_iter().map(|bytes| bytes.0).collect())
-    //     .unwrap();
+    let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof::<AccountId,LinkedAccount>(
+        "OCEX",
+        "MainAccounts",
+        acc,
+        Some(header.hash()))
+        .unwrap()
+        .map(|read_proof| read_proof.proof.into_iter().map(|bytes| bytes.0).collect())
+        .unwrap();
 
     PolkadexAccount {
         account: last_acc.clone(),
