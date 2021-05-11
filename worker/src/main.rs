@@ -54,7 +54,7 @@ use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisio
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks, enclave_accept_pdex_accounts};
+use crate::enclave::api::{enclave_init_chain_relay, enclave_sync_chain, enclave_accept_pdex_accounts};
 use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 
 mod constants;
@@ -391,7 +391,7 @@ fn start_interval_block_production(
             if elapsed >= block_production_interval {
                 // update interval time
                 interval_start = SystemTime::now();
-                latest_head = produce_blocks(eid, api, latest_head)
+                latest_head = sync_chain(eid, api, latest_head)
             } else {
                 // sleep for the rest of the interval
                 let sleep_time = block_production_interval - elapsed;
@@ -553,13 +553,13 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
-    produce_blocks(eid, api, latest)
+    sync_chain(eid, api, latest)
 }
 
 /// Starts block production
 ///
 /// Returns the last synced header of layer one
-pub fn produce_blocks(
+pub fn sync_chain(
     eid: sgx_enclave_id_t,
     api: &Api<sr25519::Pair>,
     last_synced_head: Header,
@@ -621,7 +621,7 @@ pub fn produce_blocks(
     for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
         let tee_nonce = get_nonce(&api, &tee_accountid);
         // Produce blocks
-        if let Err(e) = enclave_produce_blocks(eid, chunk.to_vec(), tee_nonce) {
+        if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
             error!("{}", e);
             // enclave might not have synced
             return last_synced_head;

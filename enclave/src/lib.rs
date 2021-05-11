@@ -381,7 +381,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn produce_blocks(
+pub unsafe extern "C" fn sync_chain(
     blocks_to_sync: *const u8,
     blocks_to_sync_size: usize,
     nonce: *const u32,
