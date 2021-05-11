@@ -34,7 +34,7 @@ jobs:
       - name: Test Worker
         run: cd worker && cargo test
       - name: Test Enclave
-        run: cd enclave && ./substratee-worker test --unit
+        run: cd bin && ./substratee-worker test --unit
       - name: Clippy Client
         run: cd client  && cargo clippy
       - name: Clippy Worker
