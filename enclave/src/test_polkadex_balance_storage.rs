@@ -164,8 +164,8 @@ pub fn dummy_map(balance_storage: &mut SgxMutexGuard<PolkadexBalanceStorage>) {
 pub fn initialize_dummy() {
     create_in_memory_balance_storage();
     let mutex = load_balance_storage().unwrap();
-    let mut balance_storage = mutex.lock().unwrap();
-    dummy_map(&mut balance_storage);
+    // let mut balance_storage = mutex.lock().unwrap();
+    // dummy_map(&mut balance_storage);
 }
 
 #[allow(unused)]
@@ -175,7 +175,7 @@ pub fn test_deposit() {
     }
     let main_account_one: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
 
-    //assert_eq!(deposit(main_account_one, AssetId::POLKADEX, 50u128), Ok(()));
+    assert_eq!(deposit(main_account_one, AssetId::POLKADEX, 50u128), Ok(()));
 
     //let balance = get_balances(main_account_one, AssetId::POLKADEX);
     //assert_eq!(balance, Ok((150u128, 0u128)))

@@ -73,6 +73,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         //test_create_balance_storage,
         //test_balance_struct,
         //test_create_balance_storage,
+        test_create_balance_storage,
         test_deposit,
         // test_withdraw,
         // test_set_free_balance,
