@@ -40,7 +40,7 @@ use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
     pallet_substratee_registry::{Enclave, Request},
-    AccountId, BalancesCall, Call, Event, Hash, Signature,
+    AccountId, BalancesCall, Call, Event, Hash,
 };
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
 use sp_runtime::MultiSignature;

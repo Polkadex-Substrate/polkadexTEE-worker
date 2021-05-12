@@ -17,12 +17,12 @@
 
 use clap::{Arg, ArgMatches};
 use clap_nested::Command;
-use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
+use sp_core::{sr25519 as sr25519_core, Pair};
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::order::Order;
-use crate::{KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use crate::{KeyPair, TrustedCall, TrustedOperation};
 
 pub fn place_order_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,

@@ -58,6 +58,7 @@ pub fn get_pair_from_str(matches: &ArgMatches<'_>, account: &str) -> sr25519::Ap
                 .key_pair::<sr25519::AppPair>(
                     &sr25519::Public::from_ss58check(account).unwrap().into(),
                 )
+                .unwrap()
                 .unwrap();
             info!("key pair fetched");
             drop(store);
