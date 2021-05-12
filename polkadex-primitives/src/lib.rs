@@ -19,6 +19,7 @@ pub struct LinkedAccount {
     pub proxies: Vec<AccountId>
 }
 
+
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct PolkadexAccount {
     pub account: LinkedAccount,

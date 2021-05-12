@@ -32,13 +32,13 @@ pub fn get_storage_and_proof(
     api: &Api<sr25519::Pair>,
 ) -> PolkadexAccount {
     let last_acc: LinkedAccount = api
-        .get_storage_map("OCEX", "MainAccounts", acc.clone(), Some(header.hash()))
+        .get_storage_map("PolkadexOcex", "MainAccounts", acc.clone(), Some(header.hash()))
         .unwrap()
         .map(|account: LinkedAccount| account)
         .unwrap();
 
     let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof::<AccountId,LinkedAccount>(
-        "OCEX",
+        "PolkadexOcex",
         "MainAccounts",
         acc,
         Some(header.hash()))
