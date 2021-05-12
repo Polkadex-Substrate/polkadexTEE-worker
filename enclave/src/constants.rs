@@ -43,6 +43,12 @@ pub static CALL_CONFIRMED: u8 = 3u8;
 pub static BLOCK_CONFIRMED: u8 = 4u8;
 pub static SHIELD_FUNDS: u8 = 5u8;
 
+// Polkadex Module Constants ( this should be updated if order of modules in the runtime is changed
+pub static OCEX_MODULE: u8 = 14u8;
+pub static OCEX_REGISTER: u8 = 3u8;
+pub static OCEX_ADD_PROXY: u8 = 4u8;
+pub static OCEX_REMOVE_PROXY: u8 = 5u8;
+
 // bump this to be consistent with SubstraTEE-node runtime
 pub static RUNTIME_SPEC_VERSION: u32 = 100;
 pub static RUNTIME_TRANSACTION_VERSION: u32 = 1;

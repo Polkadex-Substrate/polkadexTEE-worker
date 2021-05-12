@@ -3,7 +3,6 @@ use frame_support::PalletId;
 // TODO: Fix this import
 use my_node_runtime::{AccountId, Header};
 use sp_core::sr25519;
-use sp_core::storage::StorageKey;
 use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
 use sp_runtime::MultiSignature;
 use substrate_api_client::Api;
@@ -35,7 +34,7 @@ pub fn get_storage_and_proof(
     let last_acc: LinkedAccount = api
         .get_storage_map("OCEX", "MainAccounts", acc.clone(), Some(header.hash()))
         .unwrap()
-        .map(|account: LinkedAccount| account.into())
+        .map(|account: LinkedAccount| account)
         .unwrap();
 
     let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof::<AccountId,LinkedAccount>(
@@ -48,7 +47,7 @@ pub fn get_storage_and_proof(
         .unwrap();
 
     PolkadexAccount {
-        account: last_acc.clone(),
-        proof: last_acc_proof.clone(),
+        account: last_acc,
+        proof: last_acc_proof,
     }
 }

@@ -38,9 +38,9 @@ use my_node_runtime::{
 use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
-    Pair,
     sr25519,
     storage::StorageKey,
+    Pair,
 };
 use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
 use sp_keyring::AccountKeyring;
@@ -543,13 +543,13 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
         VersionedAuthorityList::from(grandpas),
         grandpa_proof,
     )
-        .unwrap();
+    .unwrap();
 
     info!("Finished initializing chain relay, syncing....");
 
     let polkadex_accounts: Vec<PolkadexAccount> = polkadex::get_main_accounts(latest.clone(), api);
 
-    enclave_accept_pdex_accounts(eid,polkadex_accounts).unwrap();
+    enclave_accept_pdex_accounts(eid, polkadex_accounts).unwrap();
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
@@ -780,7 +780,6 @@ pub unsafe extern "C" fn ocall_worker_request(
     write_slice_and_whitespace_pad(resp_slice, resp.encode());
     sgx_status_t::SGX_SUCCESS
 }
-
 
 /// # Safety
 ///

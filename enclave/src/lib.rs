@@ -36,7 +36,8 @@ use chain_relay::{
 use codec::{Decode, Encode};
 use constants::{
     BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
+    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE, OCEX_MODULE,OCEX_REGISTER,
+    OCEX_ADD_PROXY,OCEX_REMOVE_PROXY
 };
 use core::ops::Deref;
 use log::*;
@@ -59,7 +60,7 @@ use std::untrusted::time::SystemTimeEx;
 use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
-use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
+use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn,OCEXAddProxyFn,OCEXRegisterFn,OCEXRemoveProxyFn};
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{
@@ -822,6 +823,40 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             }
         };
 
+        // Polkadex OCEX Register
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
+                if let Err(e) = handle_ocex_register(&mut opaque_calls, xt) {
+                    error!("Error performing shieldfunds. Error: {:?}", e);
+                }
+            }
+        }
+        // Polkadex OCEX Add Proxy
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
+                if let Err(e) = handle_ocex_add_proxy(&mut opaque_calls, xt) {
+                    error!("Error performing shieldfunds. Error: {:?}", e);
+                }
+            }
+        }
+        // Polkadex OCEX Remove Proxy
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
+                if let Err(e) = handle_ocex_remove_proxy(&mut opaque_calls, xt) {
+                    error!("Error performing shieldfunds. Error: {:?}", e);
+                }
+            }
+        }
+
         if let Ok(xt) =
             UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
         {
@@ -853,6 +888,47 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     }
 
     Ok(opaque_calls)
+}
+
+fn handle_ocex_register(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXRegisterFn>,
+) -> SgxResult<()> {
+    let (call, main_acc) = xt.function.clone(); // TODO: what to do in this case
+    info!(
+        "Found OCEX Register extrinsic in block: \nCall: {:?} \nMain: {:?} ",
+        call,
+        main_acc.encode().to_base58(),
+    );
+    polkadex::add_main_account(main_acc.into())
+}
+
+fn handle_ocex_add_proxy(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXAddProxyFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, proxy) = xt.function.clone();
+    info!(
+        "Found OCEX Add Proxy extrinsic in block: \nCall: {:?} \nMain: {:?}  \nProxy Acc: {}",
+        call,
+        main_acc.encode().to_base58(),
+        proxy.encode().to_base58()
+    );
+    polkadex::add_proxy(main_acc.into(), proxy.into())
+}
+
+fn handle_ocex_remove_proxy(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXRemoveProxyFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, proxy) = xt.function.clone();
+    info!(
+        "Found OCEX Remove Proxy extrinsic in block: \nCall: {:?} \nMain: {:?}  \nProxy Acc: {}",
+        call,
+        main_acc.encode().to_base58(),
+        proxy.encode().to_base58()
+    );
+    polkadex::remove_proxy(main_acc.into(), proxy.into())
 }
 
 fn handle_shield_funds_xt(
