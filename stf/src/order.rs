@@ -15,6 +15,23 @@
 
 */
 
-pub mod account_parsing;
-pub mod common_operations;
-pub mod common_types;
+use codec::{Decode, Encode};
+
+#[derive(Encode, Decode, Clone, Debug)]
+pub struct Order {
+    pub min_amount: u128,
+    pub max_amount: u128,
+    pub currency_id: u8,
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    // #[test]
+    // fn verify_signature_works() {
+    //
+    //     assert!(signed_call.verify_signature(&mrenclave, &shard));
+    // }
+}

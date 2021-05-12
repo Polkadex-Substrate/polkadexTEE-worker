@@ -95,6 +95,7 @@ pub mod sgx;
 #[cfg(feature = "std")]
 pub mod cli;
 
+pub mod order;
 
 #[cfg(feature = "std")]
 pub mod commands;
@@ -174,6 +175,7 @@ pub enum TrustedCall {
     balance_transfer(AccountId, AccountId, Balance),
     balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
+    place_order(AccountId, order::Order, AccountId), // (MainAccount, Order, ProxyAccount)
 }
 
 impl TrustedCall {
@@ -183,6 +185,7 @@ impl TrustedCall {
             TrustedCall::balance_transfer(account, _, _) => account,
             TrustedCall::balance_unshield(account, _, _, _) => account,
             TrustedCall::balance_shield(account, _) => account,
+            TrustedCall::place_order(account, _, _) => account,
         }
     }
 

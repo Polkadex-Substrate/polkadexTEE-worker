@@ -15,6 +15,7 @@
 
 */
 
-pub mod account_parsing;
-pub mod common_operations;
-pub mod common_types;
+use crate::TrustedOperation;
+use clap::ArgMatches;
+
+pub type OperationRunner<'a> = &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>;

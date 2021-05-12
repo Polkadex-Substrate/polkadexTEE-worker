@@ -265,6 +265,10 @@ impl Stf {
                     Self::shield_funds(who, value)?;
                     Ok(())
                 }
+                TrustedCall::place_order(_main_account, _order, _proxy_account) => {
+                    // TODO implement and call into SGX runtime
+                    Ok(())
+                }
             }?;
             increment_nonce(&sender);
             Ok(())
@@ -386,6 +390,7 @@ impl Stf {
             TrustedCall::balance_transfer(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::balance_unshield(_, _, _, _) => debug!("No storage updates needed..."),
             TrustedCall::balance_shield(_, _) => debug!("No storage updates needed..."),
+            TrustedCall::place_order(_, _, _) => debug!("No storage updates needed..."),
         };
         key_hashes
     }

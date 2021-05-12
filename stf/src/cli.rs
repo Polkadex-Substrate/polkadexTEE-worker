@@ -15,7 +15,7 @@
 
 */
 
-use crate::{Index, KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use crate::{KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander, MultiCommand};
 use codec::Decode;
@@ -25,10 +25,11 @@ use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
 use substrate_client_keystore::LocalKeystore;
 
 use crate::cli_utils::account_parsing::*;
+use crate::cli_utils::common_operations::get_trusted_nonce;
+use crate::cli_utils::common_types::OperationRunner;
+use crate::commands::place_order::place_order_cli_command;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-type OperationRunner<'a> = &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>;
 
 pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
     Commander::new()
@@ -257,6 +258,7 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                     Ok(())
                 }),
         )
+        .add_cmd(place_order_cli_command(perform_operation))
         .add_cmd(
             Command::new("unshield-funds")
                 .description("Transfer funds from an incognito account to an on-chain account")
@@ -325,29 +327,4 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                 }),
         )
         .into_cmd("trusted")
-}
-
-fn get_trusted_nonce(
-    perform_operation: OperationRunner<'_>,
-    matches: &ArgMatches,
-    who: &sr25519::AppPair,
-    key_pair: &sr25519_core::Pair,
-) -> u32 {
-    let top: TrustedOperation =
-        TrustedGetter::nonce(sr25519_core::Public::from(who.public()).into())
-            .sign(&KeyPair::Sr25519(key_pair.clone()))
-            .into();
-    let res = perform_operation(matches, &top);
-    let nonce: Index = if let Some(n) = res {
-        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-            nonce
-        } else {
-            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-            0
-        }
-    } else {
-        0
-    };
-    debug!("got nonce: {:?}", nonce);
-    nonce
 }
