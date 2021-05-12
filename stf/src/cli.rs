@@ -28,9 +28,9 @@ use crate::cli_utils::account_parsing::*;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub fn cmd<'a>(
-    perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
-) -> MultiCommand<'a, str, str> {
+type OperationRunner<'a> = &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>;
+
+pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
     Commander::new()
         .options(|app| {
             app.setting(AppSettings::ColoredHelp)
@@ -156,24 +156,9 @@ pub fn cmd<'a>(
                         amount
                     );
                     let (mrenclave, shard) = get_identifiers(matches);
-                    // get nonce
                     let key_pair = sr25519_core::Pair::from(from.clone());
-                    let top: TrustedOperation =
-                        TrustedGetter::nonce(sr25519_core::Public::from(from.public()).into())
-                            .sign(&KeyPair::Sr25519(key_pair.clone()))
-                            .into();
-                    let res = perform_operation(matches, &top);
-                    let nonce: Index = if let Some(n) = res {
-                        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-                            nonce
-                        } else {
-                            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    debug!("got nonce: {:?}", nonce);
+                    let nonce = get_trusted_nonce(perform_operation, matches, &from, &key_pair);
+
                     let top: TrustedOperation = TrustedCall::balance_transfer(
                         sr25519_core::Public::from(from.public()).into(),
                         to,
@@ -220,24 +205,9 @@ pub fn cmd<'a>(
                     );
 
                     let (mrenclave, shard) = get_identifiers(matches);
-                    // get nonce
                     let key_pair = sr25519_core::Pair::from(who.clone());
-                    let top: TrustedOperation =
-                        TrustedGetter::nonce(sr25519_core::Public::from(who.public()).into())
-                            .sign(&KeyPair::Sr25519(key_pair.clone()))
-                            .into();
-                    let res = perform_operation(matches, &top);
-                    let nonce: Index = if let Some(n) = res {
-                        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-                            nonce
-                        } else {
-                            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    debug!("got nonce: {:?}", nonce);
+                    let nonce = get_trusted_nonce(perform_operation, matches, &who, &key_pair);
+
                     let top: TrustedOperation = TrustedCall::balance_set_balance(
                         sr25519_core::Public::from(signer.public()).into(),
                         sr25519_core::Public::from(who.public()).into(),
@@ -339,24 +309,9 @@ pub fn cmd<'a>(
                     );
 
                     let (mrenclave, shard) = get_identifiers(matches);
-                    // get nonce
                     let key_pair = sr25519_core::Pair::from(from.clone());
-                    let top: TrustedOperation =
-                        TrustedGetter::nonce(sr25519_core::Public::from(from.public()).into())
-                            .sign(&KeyPair::Sr25519(key_pair.clone()))
-                            .into();
-                    let res = perform_operation(matches, &top);
-                    let nonce: Index = if let Some(n) = res {
-                        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-                            nonce
-                        } else {
-                            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    debug!("got nonce: {:?}", nonce);
+                    let nonce = get_trusted_nonce(perform_operation, matches, &from, &key_pair);
+
                     let top: TrustedOperation = TrustedCall::balance_unshield(
                         sr25519_core::Public::from(from.public()).into(),
                         to,
@@ -370,4 +325,29 @@ pub fn cmd<'a>(
                 }),
         )
         .into_cmd("trusted")
+}
+
+fn get_trusted_nonce(
+    perform_operation: OperationRunner<'_>,
+    matches: &ArgMatches,
+    who: &sr25519::AppPair,
+    key_pair: &sr25519_core::Pair,
+) -> u32 {
+    let top: TrustedOperation =
+        TrustedGetter::nonce(sr25519_core::Public::from(who.public()).into())
+            .sign(&KeyPair::Sr25519(key_pair.clone()))
+            .into();
+    let res = perform_operation(matches, &top);
+    let nonce: Index = if let Some(n) = res {
+        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
+            nonce
+        } else {
+            info!("could not decode value. maybe hasn't been set? {:x?}", n);
+            0
+        }
+    } else {
+        0
+    };
+    debug!("got nonce: {:?}", nonce);
+    nonce
 }
