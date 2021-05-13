@@ -61,6 +61,7 @@ mod constants;
 mod enclave;
 mod ipfs;
 mod tests;
+mod polkadex_db;
 mod polkadex;
 
 /// how many blocks will be synced before storing the chain db to disk

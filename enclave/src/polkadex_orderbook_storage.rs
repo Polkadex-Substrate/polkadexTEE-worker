@@ -9,6 +9,7 @@ use std::sync::{
 use polkadex_primitives::types::Order;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+
 pub struct OrderbookStorage {
     storage: HashMap<String, Order>,
 }
