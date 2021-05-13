@@ -20,6 +20,7 @@ use crate::ed25519;
 use crate::rpc;
 use crate::rsa3072;
 use crate::state;
+use crate::test_polkadex_balance_storage;
 use crate::test_proxy;
 use crate::top_pool;
 
@@ -63,9 +64,6 @@ use sp_core::ed25519 as spEd25519;
 use rpc::author::{Author, AuthorApi};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 
-// Polkadex Imports
-use crate::test_polkadex_balance_storage::*;
-
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
@@ -73,8 +71,8 @@ pub extern "C" fn test_main_entrance() -> size_t {
         //test_create_balance_storage,
         //test_balance_struct,
         //test_create_balance_storage,
-        test_create_balance_storage,
-        test_deposit,
+        //test_polkadex_balance_storage::test_create_balance_storage,
+        test_polkadex_balance_storage::test_deposit,
         // test_withdraw,
         // test_set_free_balance,
         // test_set_reserve_balance

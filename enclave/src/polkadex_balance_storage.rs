@@ -1,20 +1,56 @@
+use codec::{Decode, Encode};
+use log::*;
 use sgx_tstd::collections::HashMap;
+use sgx_tstd::hash::Hash;
+use sgx_tstd::hash::Hasher;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
+use sp_core::blake2_256;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
-
-use log::*;
 use substratee_node_primitives::AssetId;
+
 static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub type AccountId = [u8; 32];
-pub type Balances = (u128, u128);
+
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub struct Balances {
+    pub free: u128,
+    pub reserved: u128,
+}
+
+impl Balances {
+    pub fn from(free: u128, reserved: u128) -> Self {
+        Self { free, reserved }
+    }
+}
+
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub struct PolkadexBalanceKey {
+    pub asset_id: AssetId,
+    pub account_id: AccountId,
+}
+
+impl Hash for PolkadexBalanceKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.hash(state);
+    }
+}
+
+impl PolkadexBalanceKey {
+    pub fn from(asset_id: AssetId, account_id: AccountId) -> Self {
+        Self {
+            asset_id,
+            account_id,
+        }
+    }
+}
 
 pub struct PolkadexBalanceStorage {
     /// map (tokenID, AccountID) -> (balance free, balance reserved)
-    pub storage: HashMap<(AssetId, AccountId), Balances>,
+    pub storage: HashMap<PolkadexBalanceKey, Balances>,
 }
 
 impl PolkadexBalanceStorage {
@@ -24,18 +60,14 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn from_hashmap(hashmap: HashMap<(AssetId, AccountId), Balances>) -> Self {
-        Self { storage: hashmap }
-    }
-
     pub fn read_balance(&self, token: AssetId, acc: AccountId) -> Option<&Balances> {
-        self.storage.get(&(token, acc))
+        self.storage.get(&PolkadexBalanceKey::from(token, acc))
     }
 
     pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
-        match self.storage.get_mut(&(token, acc)) {
+        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
             Some(balance) => {
-                balance.0 = amt;
+                balance.free = amt;
                 Ok(())
             }
             None => {
@@ -51,9 +83,9 @@ impl PolkadexBalanceStorage {
         acc: AccountId,
         amt: u128,
     ) -> SgxResult<()> {
-        match self.storage.get_mut(&(token, acc)) {
+        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
             Some(balance) => {
-                balance.1 = amt;
+                balance.reserved = amt;
                 Ok(())
             }
             None => {
@@ -64,9 +96,9 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn deposit(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
-        match self.storage.get_mut(&(token, acc)) {
+        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
             Some(balance) => {
-                balance.0 = balance.0.saturating_add(amt);
+                balance.free = balance.free.saturating_add(amt);
                 Ok(())
             }
             None => {
@@ -77,9 +109,9 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn withdraw(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
-        match self.storage.get_mut(&(token, acc)) {
+        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
             Some(balance) => {
-                balance.0 = balance.0.saturating_sub(amt);
+                balance.free = balance.free.saturating_sub(amt);
                 Ok(())
             }
             None => {
@@ -123,7 +155,7 @@ pub fn withdraw(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()>
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     match balance_storage.read_balance(token.clone(), main_acc) {
         Some(balance) => {
-            if balance.0 >= amt {
+            if balance.free >= amt {
                 balance_storage.withdraw(token, main_acc, amt)
             } else {
                 error!("Balance is low");
