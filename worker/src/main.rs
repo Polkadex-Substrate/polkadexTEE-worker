@@ -28,7 +28,7 @@ use std::thread;
 use std::time::{Duration};
 
 use base58::{FromBase58, ToBase58};
-use clap::{App, load_yaml};
+use clap::{load_yaml, App};
 use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
@@ -42,9 +42,9 @@ use sp_core::{
     storage::StorageKey,
     Pair,
 };
-use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
+use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
 use sp_keyring::AccountKeyring;
-use substrate_api_client::{Api, GenericAddress, utils::FromHexString, XtStatus};
+use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
 
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
@@ -60,8 +60,8 @@ use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 mod constants;
 mod enclave;
 mod ipfs;
-mod tests;
 mod polkadex;
+mod tests;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -242,7 +242,7 @@ fn main() {
                 sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
                 &format!("localhost:{}", mu_ra_port),
             )
-                .unwrap();
+            .unwrap();
             println!("[+] Done!");
             enclave.destroy();
         } else {
@@ -392,7 +392,7 @@ fn request_keys(provider_url: &str, _shard: &ShardIdentifier) {
         sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
         &provider_url,
     )
-        .unwrap();
+    .unwrap();
     println!("key provisioning successfully performed");
 }
 

@@ -30,15 +30,14 @@ extern crate sgx_tstd as std;
 
 use base58::ToBase58;
 use chain_relay::{
-    Block,
-    Header, LightValidation, storage_proof::{StorageProof, StorageProofChecker},
+    storage_proof::{StorageProof, StorageProofChecker},
+    Block, Header, LightValidation,
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_MODULE,
-    OCEX_REGISTER, OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
-    SUBSRATEE_REGISTRY_MODULE, OCEX_MODULE,OCEX_REGISTER,
-    OCEX_ADD_PROXY,OCEX_REMOVE_PROXY
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_DEPOSIT,
+    OCEX_MODULE, OCEX_REGISTER, OCEX_RELEASE, OCEX_REMOVE_PROXY, OCEX_WITHDRAW,
+    RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
@@ -61,7 +60,10 @@ use std::untrusted::time::SystemTimeEx;
 use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
-use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn,OCEXAddProxyFn,OCEXRegisterFn,OCEXRemoveProxyFn};
+use substratee_node_primitives::{
+    AssetId, CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn,
+    OCEXWithdrawFn, ShieldFundsFn,
+};
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{
@@ -86,6 +88,7 @@ mod polkadex;
 mod polkadex_balance_storage;
 mod rsa3072;
 mod state;
+mod test_polkadex_balance_storage;
 mod test_proxy;
 mod utils;
 
@@ -822,7 +825,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
                 if let Err(e) = handle_shield_funds_xt(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing shield funds. Error: {:?}", e);
                 }
             }
         };
