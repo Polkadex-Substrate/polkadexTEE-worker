@@ -82,9 +82,11 @@ mod ed25519;
 mod io;
 mod ipfs;
 mod polkadex;
+mod polkadex_orderbook_storage;
 mod rsa3072;
 mod state;
 mod test_proxy;
+mod test_orderbook_storage;
 mod utils;
 
 pub mod cert;

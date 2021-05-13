@@ -1,6 +1,8 @@
 #![cfg_attr(all(not(target_env = "sgx"), not(feature = "std")), no_std)]
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
+mod types;
+
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
 
