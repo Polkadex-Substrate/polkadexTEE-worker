@@ -81,6 +81,7 @@ mod constants;
 mod ed25519;
 mod io;
 mod ipfs;
+mod openfinex_api;
 mod polkadex;
 mod rsa3072;
 mod state;

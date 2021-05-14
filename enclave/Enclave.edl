@@ -50,6 +50,10 @@ enclave {
             [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size
         );
 
+		public sgx_status_t run_openfinex_client(
+            [in, size=finex_url_size] uint8_t* finex_url, size_t finex_url_size
+        );
+
         public sgx_status_t sync_chain(
             [in, size=blocks_size] uint8_t* blocks, size_t blocks_size,
             [in] uint32_t* nonce

@@ -54,7 +54,7 @@ use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisio
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_sync_chain, enclave_accept_pdex_accounts};
+use crate::enclave::api::{enclave_init_chain_relay, enclave_sync_chain, enclave_accept_pdex_accounts, enclave_run_openfinex_client};
 use polkadex_primitives::{LinkedAccount,PolkadexAccount};
 
 mod constants;
@@ -123,7 +123,7 @@ fn main() {
         worker(
             w_ip,
             mu_ra_port,
-            &finex_url,
+            finex_url,
             &shard,
             &ext_api_url,
             worker_rpc_port,
@@ -261,7 +261,7 @@ fn main() {
 fn worker(
     w_ip: &str,
     mu_ra_port: &str,
-    finex_url: &str,
+    finex_url: String,
     shard: &ShardIdentifier,
     ext_api_url: &str,
     worker_rpc_port: &str,
@@ -297,12 +297,12 @@ fn worker(
 
     // ------------------------------------------------------------------------
     // start open finex client
-    println!("OpenFinex Client listening {}", finex_url);
+    println!("OpenFinex Client listening on {}", finex_url);
     thread::spawn(move || {
-        /* enclave_run_openfinex_client(
+        enclave_run_openfinex_client(
             eid,
             &finex_url,
-        ) */
+        )
     });
 
     // ------------------------------------------------------------------------

@@ -65,6 +65,13 @@ extern "C" {
         pdex_accounts_size: usize,
     ) -> sgx_status_t;
 
+    fn run_openfinex_client(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        finex_url: *const u8,
+        finex_url_size: usize,
+    ) -> sgx_status_t;
+
     fn sync_chain(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,
@@ -263,6 +270,32 @@ pub fn enclave_accept_pdex_accounts(
     }
     Ok(())
 }
+
+pub fn enclave_run_openfinex_client(
+    eid: sgx_enclave_id_t,
+    finex_url: &str,
+) -> SgxResult<()> {
+    let mut status = sgx_status_t::SGX_SUCCESS;
+
+    let result = unsafe {
+        run_openfinex_client(
+            eid,
+            &mut status,
+            finex_url.encode().as_ptr(),
+            finex_url.encode().len(),
+        )
+    };
+
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
+    Ok(())
+}
+
 
 /// Starts block production within enclave
 ///
