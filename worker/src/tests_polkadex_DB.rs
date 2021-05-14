@@ -12,6 +12,9 @@ fn test_db_initialization() {
 
 #[test]
 fn test_write() {
+
+    // Since Cargo tests run parallel, we need to wait for DB to finish initialization
+    thread::sleep(time::Duration::new(2,0));
     let first_order = SignedOrder {
         order_id: "FIRST_ORDER".to_string(),
         order: Order {
@@ -38,5 +41,7 @@ fn test_write() {
     assert!(order_read.is_some());
     assert_eq!(order_read.unwrap(), first_order);
 
-    assert!(RocksDB::find("SECOND_ORDER").is_err());
+    let second_result = RocksDB::find("SECOND_ORDER");
+    assert!(second_result.is_ok());
+    assert!(second_result.ok().unwrap().is_none())
 }

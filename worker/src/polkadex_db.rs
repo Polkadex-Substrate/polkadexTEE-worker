@@ -1,10 +1,11 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::thread;
+use std::thread::JoinHandle;
 
 use codec::Encode;
 use log::error;
-use rocksdb::{DB, DBWithThreadMode, Error as RocksDBError, IteratorMode, Options, SingleThreaded};
+use rocksdb::{DB, DBWithThreadMode, Error as RocksDBError, Error, IteratorMode, Options, SingleThreaded};
 
 use polkadex_primitives::types::{Order, SignedOrder};
 
@@ -19,7 +20,6 @@ use polkadex_primitives::types::{Order, SignedOrder};
 ///
 
 use crate::constants::ORDERBOOK_DB_FILE;
-use std::thread::JoinHandle;
 
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -30,6 +30,8 @@ pub struct RocksDB {
 pub enum PolkadexDBError {
     UnableToLoadPointer,
     UnableToRetrieveValue,
+    ErrorWritingToDB,
+    UnableToDeseralizeValue,
 }
 
 pub trait KVStore {
@@ -38,7 +40,7 @@ pub trait KVStore {
     fn load_orderbook_mirror() -> Result<&'static Mutex<RocksDB>, PolkadexDBError>;
     fn write(order_uid: &'static str, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>>;
     fn find(k: &str) -> Result<Option<SignedOrder>, PolkadexDBError>;
-    fn delete(k: &'static str)  -> JoinHandle<Result<(), PolkadexDBError>>;
+    fn delete(k: &'static str) -> JoinHandle<Result<(), PolkadexDBError>>;
 }
 
 impl KVStore for RocksDB {
@@ -65,23 +67,32 @@ impl KVStore for RocksDB {
     }
     fn write(order_uid: &'static str, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>> {
         thread::spawn(move || -> Result<(), PolkadexDBError> {
-            println!("Reached here!");
             let mutex = RocksDB::load_orderbook_mirror()?;
-            println!("Reached here!");
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-            println!("Reached here!");
-            orderbook_mirror.db.put(order_uid.as_bytes(), signed_order.encode()).is_ok();
-            Ok(())
+            match orderbook_mirror.db.put(order_uid.encode(), signed_order.encode()) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    println!(" Error {} writing to DB", e);
+                    Err(PolkadexDBError::ErrorWritingToDB)
+                }
+            }
         })
     }
 
     fn find(k: &str) -> Result<Option<SignedOrder>, PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        match orderbook_mirror.db.get(k.as_bytes()) {
-            Ok(Some(v)) => {
-                let result = SignedOrder::from_vec(v.to_vec());
-                Ok(Some(result))
+        println!("Searching for {}", k);
+        match orderbook_mirror.db.get(k.encode()) {
+            Ok(Some(mut v)) => {
+                match SignedOrder::from_vec(&mut v.as_mut()) {
+                    Ok(order) => {
+                        Ok(Some(order))
+                    }
+                    Err(e) => {
+                        Err(PolkadexDBError::UnableToDeseralizeValue)
+                    }
+                }
             }
             Ok(None) => {
                 println!("Finding '{}' returns None", k);
@@ -94,7 +105,7 @@ impl KVStore for RocksDB {
         }
     }
 
-    fn delete(k: &'static str)  -> JoinHandle<Result<(), PolkadexDBError>> {
+    fn delete(k: &'static str) -> JoinHandle<Result<(), PolkadexDBError>> {
         thread::spawn(move || -> Result<(), PolkadexDBError> {
             let mutex = RocksDB::load_orderbook_mirror()?;
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();

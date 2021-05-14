@@ -1,4 +1,5 @@
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, Error};
+
 #[cfg(feature = "sgx")]
 use sgx_tstd::string::String;
 #[cfg(feature = "sgx")]
@@ -61,9 +62,9 @@ impl Default for SignedOrder{
     }
 }
 impl SignedOrder {
-    pub fn from_vec(k: Vec<u8>) -> SignedOrder {
+    pub fn from_vec(mut k: &[u8]) -> Result<SignedOrder, Error> {
         // TODO: Implement this
-        SignedOrder::default()
+        SignedOrder::decode(&mut k)
     }
 }
 #[derive(Debug)]

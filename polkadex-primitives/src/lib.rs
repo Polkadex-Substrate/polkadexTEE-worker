@@ -8,7 +8,7 @@ use sgx_tstd as std;
 
 use std::vec::Vec;
 
-use codec::{Decode, Encode};
+use codec::{Encode, Decode};
 use sp_core::crypto::AccountId32;
 
 pub type AccountId = [u8; 32];
