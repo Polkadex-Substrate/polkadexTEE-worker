@@ -1,6 +1,7 @@
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
 use polkadex_primitives::types::{Order, OrderSide, OrderType};
+use sgx_tstd::string::String;
 
 #[allow(unused)]
 pub fn test_create_orderbook_storage() {
@@ -11,22 +12,18 @@ pub fn test_create_orderbook_storage() {
 #[allow(unused)]
 pub fn test_orderbook() {
     let order: Order = Order {
-        user_uid: "14dQ6XGcrk4njhYB7ihcjHyyKbFKUVCXt5vffTV9yAWcgrbu"
-            .parse()
-            .unwrap(),
-        market_id: "btcusd".parse().unwrap(),
-        market_type: "trusted".parse().unwrap(),
+        user_uid: String::from("14dQ6XGcrk4njhYB7ihcjHyyKbFKUVCXt5vffTV9yAWcgrbu").into_bytes(),
+        market_id: String::from("btcusd").into_bytes(),
+        market_type: String::from("trusted").into_bytes(),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: 10,
         price: Some(10000u128),
     };
     let second_order: Order = Order {
-        user_uid: "14dQ6XGcrk4njhYB7ihcjHyyKbFKUVCXt5vffTV9yAWcgrbu"
-            .parse()
-            .unwrap(),
-        market_id: "btcusd".parse().unwrap(),
-        market_type: "trusted".parse().unwrap(),
+        user_uid: String::from("14dQ6XGcrk4njhYB7ihcjHyyKbFKUVCXt5vffTV9yAWcgrbu").into_bytes(),
+        market_id: String::from("btcusd").into_bytes(),
+        market_type: String::from("trusted").into_bytes(),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: 10,

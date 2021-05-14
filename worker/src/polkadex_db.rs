@@ -32,6 +32,7 @@ pub enum PolkadexDBError {
     UnableToRetrieveValue,
     ErrorWritingToDB,
     UnableToDeseralizeValue,
+    ErrorDeleteingKey,
 }
 
 pub trait KVStore {
@@ -41,6 +42,7 @@ pub trait KVStore {
     fn write(order_uid: &'static str, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>>;
     fn find(k: &str) -> Result<Option<SignedOrder>, PolkadexDBError>;
     fn delete(k: &'static str) -> JoinHandle<Result<(), PolkadexDBError>>;
+    fn read_all() -> Result<Vec<SignedOrder>,PolkadexDBError>;
 }
 
 impl KVStore for RocksDB {
@@ -85,11 +87,14 @@ impl KVStore for RocksDB {
         println!("Searching for {}", k);
         match orderbook_mirror.db.get(k.encode()) {
             Ok(Some(mut v)) => {
+
                 match SignedOrder::from_vec(&mut v.as_mut()) {
                     Ok(order) => {
+                        println!("Found '{}' ", k);
                         Ok(Some(order))
                     }
                     Err(e) => {
+                        println!("Found '{}' but Unable to Deserialize ", k);
                         Err(PolkadexDBError::UnableToDeseralizeValue)
                     }
                 }
@@ -109,9 +114,31 @@ impl KVStore for RocksDB {
         thread::spawn(move || -> Result<(), PolkadexDBError> {
             let mutex = RocksDB::load_orderbook_mirror()?;
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-            orderbook_mirror.db.delete(k.as_bytes()).is_ok();
-            Ok(())
+            match orderbook_mirror.db.delete(k.encode()){
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    println!("Error Deleteing Key, {}, {}",k,e);
+                    Err(PolkadexDBError::ErrorDeleteingKey)
+                }
+            }
         })
+    }
+
+    fn read_all() -> Result<Vec<SignedOrder>, PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let iterator = orderbook_mirror.db.iterator(IteratorMode::Start);
+        let mut orders: Vec<SignedOrder> = vec![];
+        for (_,value) in iterator.take(1000){
+            match SignedOrder::from_vec(&*value){
+                Ok(order) => {orders.push(order)}
+                Err(e) => {
+                    println!("Unable to deserialize ");
+                    return Err(PolkadexDBError::UnableToDeseralizeValue);
+                }
+            }
+        }
+        Ok(orders)
     }
 }
 
