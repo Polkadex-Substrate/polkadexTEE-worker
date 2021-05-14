@@ -29,10 +29,10 @@ pub struct RocksDB {
 pub trait KVStore {
     /// Loads the DB from file on disk
     fn initialize_db(create_if_missing_db: bool) -> Result<(), Error>;
-    fn load_orderbook_mirror() -> Result<&Mutex<RocksDB>, ()>;
-    fn write(order_uid: &str, signed_order: SignedOrder);
+    fn load_orderbook_mirror() -> Result<&'static Mutex<RocksDB>, ()>;
+    fn write(order_uid: &'static str, signed_order: SignedOrder);
     fn find(&self, k: &str) -> Option<SignedOrder>;
-    fn delete(k: &str);
+    fn delete(k: &'static str);
 }
 
 impl KVStore for RocksDB {
@@ -48,7 +48,7 @@ impl KVStore for RocksDB {
         Ok(())
     }
 
-    fn load_orderbook_mirror() -> Result<&Mutex<RocksDB>, ()> {
+    fn load_orderbook_mirror() -> Result<&'static Mutex<RocksDB>, ()> {
         let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<RocksDB>;
         if ptr.is_null() {
             error!(" Unable to load the pointer");
@@ -57,8 +57,8 @@ impl KVStore for RocksDB {
             Ok(unsafe { &*ptr })
         }
     }
-    fn write(order_uid: &str, signed_order: SignedOrder) {
-        thread::spawn(||-> Result<(),()> {
+    fn write(order_uid: &'static str, signed_order: SignedOrder) {
+        thread::spawn(move ||-> Result<(),()> {
             let mutex = RocksDB::load_orderbook_mirror()?;
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
             orderbook_mirror.db.put(order_uid.as_bytes(), signed_order.encode()).is_ok();
@@ -83,8 +83,8 @@ impl KVStore for RocksDB {
         }
     }
 
-    fn delete(k: &str) {
-        thread::spawn(||->Result<(),()> {
+    fn delete(k: &'static str) {
+        thread::spawn(move ||->Result<(),()> {
             let mutex = RocksDB::load_orderbook_mirror()?;
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
             orderbook_mirror.db.delete(k.as_bytes()).is_ok();
