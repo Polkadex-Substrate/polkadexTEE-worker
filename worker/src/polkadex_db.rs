@@ -39,9 +39,9 @@ pub trait KVStore {
     /// Loads the DB from file on disk
     fn initialize_db(create_if_missing_db: bool) -> Result<(), RocksDBError>;
     fn load_orderbook_mirror() -> Result<&'static Mutex<RocksDB>, PolkadexDBError>;
-    fn write(order_uid: &'static str, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>>;
-    fn find(k: &str) -> Result<Option<SignedOrder>, PolkadexDBError>;
-    fn delete(k: &'static str) -> JoinHandle<Result<(), PolkadexDBError>>;
+    fn write(order_uid: Vec<u8>, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>>;
+    fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError>;
+    fn delete(k: Vec<u8>) -> JoinHandle<Result<(), PolkadexDBError>>;
     fn read_all() -> Result<Vec<SignedOrder>,PolkadexDBError>;
 }
 
@@ -67,11 +67,11 @@ impl KVStore for RocksDB {
             Ok(unsafe { &*ptr })
         }
     }
-    fn write(order_uid: &'static str, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>> {
+    fn write(order_uid: Vec<u8>, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>> {
         thread::spawn(move || -> Result<(), PolkadexDBError> {
             let mutex = RocksDB::load_orderbook_mirror()?;
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-            match orderbook_mirror.db.put(order_uid.encode(), signed_order.encode()) {
+            match orderbook_mirror.db.put(order_uid, signed_order.encode()) {
                 Ok(_) => Ok(()),
                 Err(e) => {
                     println!(" Error {} writing to DB", e);
@@ -81,43 +81,43 @@ impl KVStore for RocksDB {
         })
     }
 
-    fn find(k: &str) -> Result<Option<SignedOrder>, PolkadexDBError> {
+    fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        println!("Searching for {}", k);
-        match orderbook_mirror.db.get(k.encode()) {
+        println!("Searching for Key");
+        match orderbook_mirror.db.get(k) {
             Ok(Some(mut v)) => {
 
                 match SignedOrder::from_vec(&mut v.as_mut()) {
                     Ok(order) => {
-                        println!("Found '{}' ", k);
+                        println!("Found Key");
                         Ok(Some(order))
                     }
                     Err(e) => {
-                        println!("Found '{}' but Unable to Deserialize ", k);
+                        println!("Unable to Deserialize ");
                         Err(PolkadexDBError::UnableToDeseralizeValue)
                     }
                 }
             }
             Ok(None) => {
-                println!("Finding '{}' returns None", k);
+                println!("Key returns None");
                 Ok(None)
             }
             Err(e) => {
-                println!("Error retrieving value for {}: {}", k, e);
+                println!("Error retrieving value: {}", e);
                 Err(PolkadexDBError::UnableToRetrieveValue)
             }
         }
     }
 
-    fn delete(k: &'static str) -> JoinHandle<Result<(), PolkadexDBError>> {
+    fn delete(k: Vec<u8>) -> JoinHandle<Result<(), PolkadexDBError>> {
         thread::spawn(move || -> Result<(), PolkadexDBError> {
             let mutex = RocksDB::load_orderbook_mirror()?;
             let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-            match orderbook_mirror.db.delete(k.encode()){
+            match orderbook_mirror.db.delete(k){
                 Ok(_) => Ok(()),
                 Err(e) => {
-                    println!("Error Deleteing Key, {}, {}",k,e);
+                    println!("Error Deleteing Key, {}",e);
                     Err(PolkadexDBError::ErrorDeleteingKey)
                 }
             }

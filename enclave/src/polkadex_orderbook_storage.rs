@@ -6,7 +6,7 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 
-use polkadex_primitives::types::Order;
+use polkadex_primitives::types::{Order,SignedOrder};
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -46,8 +46,9 @@ impl OrderbookStorage {
         self.storage.get(order_uid)
     }
 
-    pub fn write_orderbook_to_db() -> SgxResult<()> {
-        // TODO: Checkpoints and asynchronously writes the Orderbook via ocall to Permanent DB
+    pub fn write_orderbook_to_db(order: Order) -> SgxResult<()> {
+        // TODO: Implement the signing part
+        crate::write_order_to_disk(SignedOrder::default());
         Ok(())
     }
 

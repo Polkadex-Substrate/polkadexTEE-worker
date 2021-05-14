@@ -56,6 +56,8 @@ use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
 use crate::enclave::api::{enclave_init_chain_relay, enclave_sync_chain, enclave_accept_pdex_accounts};
 use polkadex_primitives::{LinkedAccount,PolkadexAccount};
+use polkadex_primitives::types::SignedOrder;
+use crate::polkadex_db::{KVStore, RocksDB};
 
 mod constants;
 mod enclave;
@@ -531,6 +533,10 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
+    info!("Initializing Polkadex Orderbook Mirror");
+
+    RocksDB::initialize_db(true).unwrap();
+
     sync_chain(eid, api, latest)
 }
 
@@ -758,6 +764,36 @@ pub unsafe extern "C" fn ocall_worker_request(
     write_slice_and_whitespace_pad(resp_slice, resp.encode());
     sgx_status_t::SGX_SUCCESS
 }
+
+/// # Safety
+///
+/// FFI are always unsafe
+#[no_mangle]
+pub unsafe extern "C" fn ocall_write_order_to_db(
+    order: *const u8,
+    order_size: u32,
+) -> sgx_status_t {
+    debug!("    Entering ocall_write_order_to_db");
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let mut order_slice = slice::from_raw_parts(order, order_size as usize);
+
+    let signed_order: SignedOrder =  match Decode::decode(&mut order_slice) {
+        Ok(order) => order,
+        Err(_) => {
+            error!("Could not decode SignedOrder");
+            status = sgx_status_t::SGX_ERROR_UNEXPECTED;
+            SignedOrder::default()
+        }
+    };
+    if status == sgx_status_t::SGX_ERROR_UNEXPECTED{
+        return status;
+    }
+    // TODO: Do we need error handling here?
+    let order_id = signed_order.order_id.clone();
+    polkadex_db::RocksDB::write(order_id, signed_order.clone());
+    status
+}
+
 
 /// # Safety
 ///

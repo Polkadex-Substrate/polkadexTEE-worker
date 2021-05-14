@@ -71,9 +71,10 @@ use substratee_worker_primitives::block::{
 };
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
-
+use polkadex_primitives::types::SignedOrder;
 use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
+
 
 mod aes;
 mod attestation;
@@ -1122,6 +1123,12 @@ fn verify_worker_responses(
 }
 
 extern "C" {
+    pub fn ocall_write_order_to_db(
+        ret_val: *mut sgx_status_t,
+        order: *const u8,
+        order_size: u32,
+    ) -> sgx_status_t;
+
     pub fn ocall_read_ipfs(
         ret_val: *mut sgx_status_t,
         cid: *const u8,
@@ -1194,4 +1201,25 @@ fn worker_request<V: Encode + Decode>(
         return Err(res);
     }
     Ok(Decode::decode(&mut resp.as_slice()).unwrap())
+}
+
+fn write_order_to_disk(order: SignedOrder) -> SgxResult<()>{
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+    let res = unsafe {
+        ocall_write_order_to_db(
+            &mut rt as *mut sgx_status_t,
+            order.encode().as_ptr(),
+            order.encode().len() as u32,
+        )
+    };
+
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(rt);
+    }
+
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(res);
+    }
+    Ok(())
 }
