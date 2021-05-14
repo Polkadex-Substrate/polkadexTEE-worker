@@ -89,7 +89,7 @@ fn main() {
 
     let worker_rpc_port = matches.value_of("worker-rpc-port").unwrap_or("2000");
 
-    let finex_ip = matches.value_of("openfinex-server").unwrap_or("ws://127.0.0.1");
+    let finex_ip = matches.value_of("openfinex-server").unwrap_or("127.0.0.1");
     let finex_port = matches.value_of("openfinex-port").unwrap_or("4000");
     let finex_url = format!("{}:{}", finex_ip, finex_port);
 
@@ -297,7 +297,7 @@ fn worker(
 
     // ------------------------------------------------------------------------
     // start open finex client
-    println!("OpenFinex Client listening on {}", finex_url);
+    println!("OpenFinex Client listening on ws://{}", finex_url);
     thread::spawn(move || {
         enclave_run_openfinex_client(
             eid,

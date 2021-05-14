@@ -924,6 +924,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "iovec"
+version = "0.1.4"
+source = "git+https://github.com/mesalock-linux/iovec-sgx#5c2f8e81925b4c06c556d856f3237461b00e27c9"
+dependencies = [
+ "sgx_libc",
+]
+
+[[package]]
 name = "ipfs-unixfs"
 version = "0.0.1"
 source = "git+https://github.com/whalelephant/rust-ipfs?branch=w-nstd#52f84dceea7065bb4ee2c24da53b3bedf162241a"
@@ -1068,6 +1076,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mio"
+version = "0.6.21"
+source = "git+https://github.com/mesalock-linux/mio-sgx?rev=sgx_1.1.3#5b0e56a3066231c7a8d1876c7be3a19b08ffdfd5"
+dependencies = [
+ "iovec",
+ "log",
+ "net2",
+ "sgx_libc",
+ "sgx_trts",
+ "sgx_tstd",
+ "slab 0.4.2",
+]
+
+[[package]]
 name = "multibase"
 version = "0.8.0"
 source = "git+https://github.com/whalelephant/rust-multibase?branch=nstd#df67fb30e86998f7c10d4eea16a1cd480d2448c0"
@@ -1089,6 +1111,16 @@ dependencies = [
  "sha2 0.9.4",
  "sha3",
  "unsigned-varint",
+]
+
+[[package]]
+name = "net2"
+version = "0.2.33"
+source = "git+https://github.com/mesalock-linux/net2-rs-sgx#554583d15f3c9dff5d862a6ae64e227bb38fa729"
+dependencies = [
+ "cfg-if 0.1.10",
+ "sgx_libc",
+ "sgx_tstd",
 ]
 
 [[package]]
@@ -2579,6 +2611,7 @@ dependencies = [
  "lazy_static",
  "linked-hash-map",
  "log",
+ "mio",
  "multibase",
  "num-bigint",
  "ofb",
