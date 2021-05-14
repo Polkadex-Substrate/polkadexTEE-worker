@@ -5,7 +5,7 @@ use sgx_tstd::string::String;
 
 #[allow(unused)]
 pub fn test_create_orderbook_storage() {
-    assert_eq!(create_in_memory_orderbook_storage().is_ok(), true);
+    assert_eq!(create_in_memory_orderbook_storage(vec![]).is_ok(), true);
     assert_eq!(load_orderbook().is_ok(), true);
 }
 

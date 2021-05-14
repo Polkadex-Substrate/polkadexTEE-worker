@@ -1,5 +1,6 @@
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use std::collections::HashMap;
+use std::vec::Vec;
 use std::string::String;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -51,15 +52,11 @@ impl OrderbookStorage {
         crate::write_order_to_disk(SignedOrder::default());
         Ok(())
     }
-
-    pub fn load_in_memory_orderbook_from_db() -> SgxResult<()> {
-        // TODO: This functions loads the in memory orderbook storage from permanent storage
-        Ok(())
-    }
 }
 
 /// Creates a Static Atomic Pointer for Orderbook Storage
-pub fn create_in_memory_orderbook_storage() -> SgxResult<()> {
+pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> SgxResult<()> {
+    // TODO: Do Order Signature Check Logic here
     let orderbook = OrderbookStorage::create();
     let storage_ptr = Arc::new(SgxMutex::<OrderbookStorage>::new(orderbook));
     let ptr = Arc::into_raw(storage_ptr);
