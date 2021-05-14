@@ -89,6 +89,10 @@ fn main() {
 
     let worker_rpc_port = matches.value_of("worker-rpc-port").unwrap_or("2000");
 
+    let finex_ip = matches.value_of("openfinex-server").unwrap_or("ws://127.0.0.1");
+    let finex_port = matches.value_of("openfinex-port").unwrap_or("4000");
+    let finex_url = format!("{}:{}", finex_ip, finex_port);
+
     if let Some(smatches) = matches.subcommand_matches("run") {
         println!("*** Starting substraTEE-worker");
         let shard: ShardIdentifier = match smatches.value_of("shard") {
@@ -119,6 +123,7 @@ fn main() {
         worker(
             w_ip,
             mu_ra_port,
+            &finex_url,
             &shard,
             &ext_api_url,
             worker_rpc_port,
@@ -256,6 +261,7 @@ fn main() {
 fn worker(
     w_ip: &str,
     mu_ra_port: &str,
+    finex_url: &str,
     shard: &ShardIdentifier,
     ext_api_url: &str,
     worker_rpc_port: &str,
@@ -287,6 +293,16 @@ fn worker(
             sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
             &ra_url,
         )
+    });
+
+    // ------------------------------------------------------------------------
+    // start open finex client
+    println!("OpenFinex Client listening {}", finex_url);
+    thread::spawn(move || {
+        /* enclave_run_openfinex_client(
+            eid,
+            &finex_url,
+        ) */
     });
 
     // ------------------------------------------------------------------------
