@@ -1,16 +1,16 @@
+use codec::{Decode, Encode};
 #[cfg(feature = "sgx")]
 use sgx_tstd::string::String;
 #[cfg(feature = "sgx")]
 use sgx_tstd::vec::Vec;
-use codec::{Encode, Decode};
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum OrderType {
     LIMIT,
     MARKET,
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum OrderSide {
     BID,
     ASK,
@@ -25,7 +25,7 @@ pub enum OrderState {
 }
 
 // Create Order
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct Order {
     pub user_uid: String,
     pub market_id: String,
@@ -37,17 +37,15 @@ pub struct Order {
 }
 
 // SignedOrder is used by enclave to store in Orderbook Mirror
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct SignedOrder {
     pub order_id: String,
     pub order: Order,
     pub signature: Vec<u8>, // FIXME: Replace with enclave's signature here
 }
-
-impl SignedOrder{
-    pub fn from_vec(k: Vec<u8>)->SignedOrder{
-        // TODO: Implement this
-        SignedOrder{
+impl Default for SignedOrder{
+    fn default() -> Self {
+        SignedOrder {
             order_id: "".to_string(),
             order: Order {
                 user_uid: "".to_string(),
@@ -56,10 +54,16 @@ impl SignedOrder{
                 order_type: OrderType::LIMIT,
                 side: OrderSide::BID,
                 quantity: 0,
-                price: None
+                price: None,
             },
-            signature: vec![]
+            signature: vec![],
         }
+    }
+}
+impl SignedOrder {
+    pub fn from_vec(k: Vec<u8>) -> SignedOrder {
+        // TODO: Implement this
+        SignedOrder::default()
     }
 }
 #[derive(Debug)]

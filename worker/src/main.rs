@@ -65,7 +65,7 @@ mod polkadex_db;
 mod polkadex;
 
 #[cfg(test)]
-mod test_polkadex_db;
+mod tests_polkadex_DB;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
