@@ -21,6 +21,8 @@ pub static ENCLAVE_TOKEN: &str = "../bin/enclave.token";
 pub static ENCLAVE_FILE: &str = "../bin/enclave.signed.so";
 pub static SHIELDING_KEY_FILE: &str = "enclave-shielding-pubkey.json";
 pub static SIGNING_KEY_FILE: &str = "enclave-signing-pubkey.bin";
+pub static ORDERBOOK_DB_FILE: &str = "polkadex-orderbook-mirror.bin";
+pub static ORDERBOOK_LAST_COUNTER: &str = "LAST_ORDER_COUNTER";
 
 #[cfg(feature = "production")]
 pub static RA_SPID_FILE: &str = "../bin/spid_production.txt";
@@ -36,3 +38,5 @@ pub static RA_API_KEY_FILE: &str = "../bin/key.txt";
 pub static EXTRINSIC_MAX_SIZE: usize = 4196;
 // the maximum size of a value that will be queried from the state in B
 pub static STATE_VALUE_MAX_SIZE: usize = 1024;
+// Iterator for RocksDB returns these many elements in a single yield
+pub static ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT: usize = 1000;

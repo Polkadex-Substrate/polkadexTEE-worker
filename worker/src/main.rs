@@ -20,12 +20,9 @@ use std::io::Write;
 use std::path::Path;
 use std::slice;
 use std::str;
-use std::sync::{
-    mpsc::{channel, Sender},
-    Mutex,
-};
+use std::sync::{mpsc::{channel, Sender}, Mutex, MutexGuard};
 use std::thread;
-use std::time::{Duration};
+use std::time::Duration;
 
 use base58::{FromBase58, ToBase58};
 use clap::{App, load_yaml};
@@ -33,14 +30,14 @@ use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
+    Event, Hash, Header, pallet_substratee_registry::ShardIdentifier, SignedBlock, UncheckedExtrinsic,
 };
 use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
+    Pair,
     sr25519,
     storage::StorageKey,
-    Pair,
 };
 use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
 use sp_keyring::AccountKeyring;
@@ -52,16 +49,22 @@ use enclave::api::{
 };
 use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server};
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
+use polkadex_primitives::{LinkedAccount, PolkadexAccount};
+use polkadex_primitives::types::SignedOrder;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_sync_chain, enclave_accept_pdex_accounts};
-use polkadex_primitives::{LinkedAccount,PolkadexAccount};
+use crate::enclave::api::{enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory, enclave_sync_chain};
+use crate::polkadex_db::{KVStore, RocksDB, PolkadexDBError};
 
 mod constants;
 mod enclave;
 mod ipfs;
 mod tests;
+mod polkadex_db;
 mod polkadex;
+
+#[cfg(test)]
+mod tests_polkadex_DB;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -517,7 +520,7 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
         VersionedAuthorityList::from(grandpas),
         grandpa_proof,
     )
-    .unwrap();
+        .unwrap();
 
     info!("Finished initializing chain relay, syncing....");
 
@@ -527,6 +530,16 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
+    info!("Initializing Polkadex Orderbook Mirror");
+
+    RocksDB::initialize_db(true).unwrap();
+
+    info!("Loading Orders from Orderbook Storage");
+    let signed_orders = RocksDB::read_all().ok().unwrap();
+
+    enclave_load_orders_to_memory(eid, signed_orders).unwrap();
+
+    info!("Finished loading Orderbook Storage ...");
     sync_chain(eid, api, latest)
 }
 
@@ -547,68 +560,68 @@ pub fn sync_chain(
         .unwrap()
         .unwrap();
 
-        if curr_head.block.header.hash() == last_synced_head.hash() {
-            // we are already up to date, do nothing
-            return curr_head.block.header;
-        }
+    if curr_head.block.header.hash() == last_synced_head.hash() {
+        // we are already up to date, do nothing
+        return curr_head.block.header;
+    }
 
-        let mut blocks_to_sync = Vec::<SignedBlock>::new();
-        blocks_to_sync.push(curr_head.clone());
+    let mut blocks_to_sync = Vec::<SignedBlock>::new();
+    blocks_to_sync.push(curr_head.clone());
 
-        // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
-        let mut head = curr_head.clone();
+    // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
+    let mut head = curr_head.clone();
 
-        let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
-        if no_blocks_to_sync > 1 {
+    let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
+    if no_blocks_to_sync > 1 {
+        println!(
+            "Chain Relay is synced until block: {:?}",
+            last_synced_head.number
+        );
+        println!(
+            "Last finalized block number: {:?}\n",
+            head.block.header.number
+        );
+    }
+
+    while head.block.header.parent_hash != last_synced_head.hash() {
+        head = api
+            .get_signed_block(Some(head.block.header.parent_hash))
+            .unwrap()
+            .unwrap();
+        blocks_to_sync.push(head.clone());
+
+        if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
             println!(
-                "Chain Relay is synced until block: {:?}",
-                last_synced_head.number
-            );
-            println!(
-                "Last finalized block number: {:?}\n",
-                head.block.header.number
-            );
-        }
-
-        while head.block.header.parent_hash != last_synced_head.hash() {
-            head = api
-                .get_signed_block(Some(head.block.header.parent_hash))
-                .unwrap()
-                .unwrap();
-            blocks_to_sync.push(head.clone());
-
-            if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
-                println!(
-                    "Remaining blocks to fetch until last synced header: {:?}",
-                    head.block.header.number - last_synced_head.number
-                )
-            }
-        }
-        blocks_to_sync.reverse();
-
-        let tee_accountid = enclave_account(eid);
-
-        // only feed BLOCK_SYNC_BATCH_SIZE blocks at a time into the enclave to save enclave state regularly
-        let mut i = blocks_to_sync[0].block.header.number as usize;
-        for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
-            let tee_nonce = get_nonce(&api, &tee_accountid);
-
-            // sync enclave with chain
-            if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
-                error!("{}", e);
-                // enclave might not have synced
-                return last_synced_head;
-            };
-
-            i += chunk.len();
-            println!(
-                "Synced {} blocks out of {} finalized blocks",
-                i,
-                blocks_to_sync[0].block.header.number as usize + blocks_to_sync.len()
+                "Remaining blocks to fetch until last synced header: {:?}",
+                head.block.header.number - last_synced_head.number
             )
         }
+    }
+    blocks_to_sync.reverse();
 
-        curr_head.block.header
+    let tee_accountid = enclave_account(eid);
+
+    // only feed BLOCK_SYNC_BATCH_SIZE blocks at a time into the enclave to save enclave state regularly
+    let mut i = blocks_to_sync[0].block.header.number as usize;
+    for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
+        let tee_nonce = get_nonce(&api, &tee_accountid);
+
+        // sync enclave with chain
+        if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
+            error!("{}", e);
+            // enclave might not have synced
+            return last_synced_head;
+        };
+
+        i += chunk.len();
+        println!(
+            "Synced {} blocks out of {} finalized blocks",
+            i,
+            blocks_to_sync[0].block.header.number as usize + blocks_to_sync.len()
+        )
+    }
+
+    curr_head.block.header
 }
 
 fn hex_encode(data: Vec<u8>) -> String {
@@ -754,6 +767,40 @@ pub unsafe extern "C" fn ocall_worker_request(
     write_slice_and_whitespace_pad(resp_slice, resp.encode());
     sgx_status_t::SGX_SUCCESS
 }
+
+/// # Safety
+///
+/// FFI are always unsafe
+#[no_mangle]
+pub unsafe extern "C" fn ocall_write_order_to_db(
+    order: *const u8,
+    order_size: u32,
+) -> sgx_status_t {
+    debug!("    Entering ocall_write_order_to_db");
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let mut order_slice = slice::from_raw_parts(order, order_size as usize);
+
+    let signed_order: SignedOrder = match Decode::decode(&mut order_slice) {
+        Ok(order) => order,
+        Err(_) => {
+            error!("Could not decode SignedOrder");
+            status = sgx_status_t::SGX_ERROR_UNEXPECTED;
+            SignedOrder::default()
+        }
+    };
+    if status == sgx_status_t::SGX_ERROR_UNEXPECTED {
+        return status;
+    }
+    // TODO: Do we need error handling here?
+    let order_id = signed_order.order_id.clone();
+    thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        polkadex_db::RocksDB::write(&orderbook_mirror, order_id, &signed_order)
+    });
+    status
+}
+
 
 /// # Safety
 ///

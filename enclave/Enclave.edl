@@ -50,6 +50,10 @@ enclave {
             [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size
         );
 
+        public sgx_status_t load_orders_to_memory(
+            [in ,size=orders_size] uint8_t* orders, size_t orders_size
+        );
+
         public sgx_status_t sync_chain(
             [in, size=blocks_size] uint8_t* blocks, size_t blocks_size,
             [in] uint32_t* nonce
@@ -87,6 +91,7 @@ enclave {
 	};
 
 	untrusted {
+	    sgx_status_t ocall_write_order_to_db([out, size = order_size] uint8_t * order, uint32_t order_size);
 		sgx_status_t ocall_sgx_init_quote(
 			[out] sgx_target_info_t *ret_ti,
 			[out] sgx_epid_group_id_t *ret_gid

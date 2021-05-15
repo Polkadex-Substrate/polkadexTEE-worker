@@ -21,6 +21,8 @@ use crate::rpc;
 use crate::rsa3072;
 use crate::state;
 use crate::test_proxy;
+use crate::test_orderbook_storage;
+
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -73,8 +75,12 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,
         test_proxy::test_remove_main_account,
-
-
+        // Polkadex Orderbook Storage Test Cases
+        test_orderbook_storage::test_create_orderbook_storage,
+        test_orderbook_storage::test_read_orderbook,
+        test_orderbook_storage::test_add_orderbook,
+        test_orderbook_storage::test_remove_orderbook,
+        // Substratee Tests
         top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
         top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,
