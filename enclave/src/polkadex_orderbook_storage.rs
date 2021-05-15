@@ -1,16 +1,15 @@
-use polkadex_primitives::types::{Order, OrderUUID, SignedOrder};
+use crate::ed25519;
+use log::error;
+use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
+use sp_core::{ed25519::Signature, Pair};
 use std::collections::HashMap;
 use std::string::String;
 use std::sync::{
-    Arc,
-    atomic::{AtomicPtr, Ordering}, SgxMutex, SgxMutexGuard,
+    atomic::{AtomicPtr, Ordering},
+    Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
-use sp_core::{ed25519::Signature, Pair};
-use crate::ed25519;
-use log::error;
-
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -23,12 +22,10 @@ impl OrderbookStorage {
         let mut storage: HashMap<OrderUUID, Order> = HashMap::new();
 
         for order in verified_orders {
-            storage.insert(order.order_id,order.order);
+            storage.insert(order.order_id, order.order);
         }
 
-        OrderbookStorage {
-            storage
-        }
+        OrderbookStorage { storage }
     }
 
     /// Inserts a order_uid-order pair into the orderbook.
@@ -54,7 +51,7 @@ impl OrderbookStorage {
         let mut signed_order = SignedOrder {
             order_id,
             order,
-            signature: Signature::default()
+            signature: Signature::default(),
         };
         signed_order.sign(&signer_pair);
         crate::write_order_to_disk(signed_order);
@@ -66,10 +63,10 @@ impl OrderbookStorage {
 pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> SgxResult<()> {
     let mut verified_orders: Vec<SignedOrder> = vec![];
     let signer_pair = ed25519::unseal_pair()?;
-    for order in signed_orders{
-        if !order.verify_signature(&signer_pair){
+    for order in signed_orders {
+        if !order.verify_signature(&signer_pair) {
             error!("Signature Verification Failed");
-            continue
+            continue;
         }
         verified_orders.push(order)
     }

@@ -1,13 +1,13 @@
-use polkadex_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
-use sgx_tstd::{thread, time};
+use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
 use sgx_tstd::string::String;
 use sgx_tstd::sync::SgxMutexGuard;
 use sgx_tstd::vec::Vec;
+use sgx_tstd::{thread, time};
 use sp_core::ed25519::Signature;
 
 use crate::ed25519;
-use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
+use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
 
 pub fn get_dummy_orders() -> Vec<Order> {
     let order: Order = Order {
@@ -46,7 +46,10 @@ pub fn test_create_orderbook_storage() {
         signed_orders.push(signed_order);
         counter += 1;
     }
-    assert_eq!(create_in_memory_orderbook_storage(signed_orders).is_ok(), true);
+    assert_eq!(
+        create_in_memory_orderbook_storage(signed_orders).is_ok(),
+        true
+    );
     assert_eq!(load_orderbook().is_ok(), true);
 }
 
@@ -102,12 +105,7 @@ pub fn test_read_orderbook() {
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
 
     for counter in 0..get_dummy_orders().len() as u8 {
-        assert_eq!(
-            orderbook
-                .read_order(&vec![counter])
-                .is_some(),
-            true
-        );
+        assert_eq!(orderbook.read_order(&vec![counter]).is_some(), true);
     }
     assert_eq!(
         orderbook
