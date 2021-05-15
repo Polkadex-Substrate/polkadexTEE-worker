@@ -7,7 +7,7 @@ use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
 use sp_runtime::MultiSignature;
 use substrate_api_client::Api;
 
-use polkadex_primitives::{LinkedAccount, PolkadexAccount};
+use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
 
 pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<PolkadexAccount> {
     // Read the genesis account
@@ -19,8 +19,11 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
     accounts.push(last_account.clone());
 
     while last_account.account.next != None {
-        last_account =
-            get_storage_and_proof(last_account.account.next.clone().unwrap().into(), &header, api);
+        last_account = get_storage_and_proof(
+            last_account.account.next.clone().unwrap().into(),
+            &header,
+            api,
+        );
         accounts.push(last_account.clone());
     }
     accounts
@@ -32,16 +35,23 @@ pub fn get_storage_and_proof(
     api: &Api<sr25519::Pair>,
 ) -> PolkadexAccount {
     let last_acc: LinkedAccount = api
-        .get_storage_map("PolkadexOcex", "MainAccounts", acc.clone(), Some(header.hash()))
+        .get_storage_map(
+            "PolkadexOcex",
+            "MainAccounts",
+            acc.clone(),
+            Some(header.hash()),
+        )
         .unwrap()
         .map(|account: LinkedAccount| account)
         .unwrap();
 
-    let last_acc_proof: Vec<Vec<u8>> = api.get_storage_map_proof::<AccountId,LinkedAccount>(
-        "PolkadexOcex",
-        "MainAccounts",
-        acc,
-        Some(header.hash()))
+    let last_acc_proof: Vec<Vec<u8>> = api
+        .get_storage_map_proof::<AccountId, LinkedAccount>(
+            "PolkadexOcex",
+            "MainAccounts",
+            acc,
+            Some(header.hash()),
+        )
         .unwrap()
         .map(|read_proof| read_proof.proof.into_iter().map(|bytes| bytes.0).collect())
         .unwrap();

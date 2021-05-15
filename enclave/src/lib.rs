@@ -35,13 +35,13 @@ use chain_relay::{
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE, OCEX_MODULE,OCEX_REGISTER,
-    OCEX_ADD_PROXY,OCEX_REMOVE_PROXY
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_MODULE,
+    OCEX_REGISTER, OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
-use polkadex_primitives::{LinkedAccount, PolkadexAccount};
+use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
 use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
@@ -60,7 +60,9 @@ use std::untrusted::time::SystemTimeEx;
 use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
-use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn,OCEXAddProxyFn,OCEXRegisterFn,OCEXRemoveProxyFn};
+use substratee_node_primitives::{
+    CallWorkerFn, OCEXAddProxyFn, OCEXRegisterFn, OCEXRemoveProxyFn, ShieldFundsFn,
+};
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{

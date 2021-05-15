@@ -2,7 +2,7 @@ use crate::polkadex;
 use crate::polkadex::EncodedAccountId;
 use crate::polkadex::PolkadexAccountsStorage;
 use codec::Encode;
-use polkadex_primitives::AccountId;
+use polkadex_sgx_primitives::AccountId;
 use sgx_rand::{Rng, SeedableRng, StdRng};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::sync::SgxMutexGuard;

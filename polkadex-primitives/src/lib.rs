@@ -7,9 +7,7 @@ use sgx_tstd as std;
 use std::vec::Vec;
 
 use codec::{Decode, Encode};
-use sp_core::crypto::AccountId32;
-
-pub type AccountId = AccountId32;
+pub use polkadex_primitives::common_types::AccountId;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {

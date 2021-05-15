@@ -5,7 +5,7 @@ use core::ops::Deref;
 use frame_support::{metadata::StorageHasher, PalletId};
 use log::*;
 use multibase::Base;
-use polkadex_primitives::{AccountId, PolkadexAccount};
+use polkadex_sgx_primitives::{AccountId, PolkadexAccount};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};

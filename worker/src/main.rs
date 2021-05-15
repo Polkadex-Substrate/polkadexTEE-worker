@@ -25,15 +25,16 @@ use std::sync::{
     Mutex,
 };
 use std::thread;
-use std::time::{Duration};
+use std::time::Duration;
 
 use base58::{FromBase58, ToBase58};
-use clap::{App, load_yaml};
+use clap::{load_yaml, App};
 use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
+    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock,
+    UncheckedExtrinsic,
 };
 use sgx_types::*;
 use sp_core::{
@@ -42,9 +43,9 @@ use sp_core::{
     storage::StorageKey,
     Pair,
 };
-use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
+use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
 use sp_keyring::AccountKeyring;
-use substrate_api_client::{Api, GenericAddress, utils::FromHexString, XtStatus};
+use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
 
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
@@ -54,14 +55,16 @@ use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisio
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_sync_chain, enclave_accept_pdex_accounts};
-use polkadex_primitives::{LinkedAccount,PolkadexAccount};
+use crate::enclave::api::{
+    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_sync_chain,
+};
+use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
 
 mod constants;
 mod enclave;
 mod ipfs;
-mod tests;
 mod polkadex;
+mod tests;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -242,7 +245,7 @@ fn main() {
                 sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
                 &format!("localhost:{}", mu_ra_port),
             )
-                .unwrap();
+            .unwrap();
             println!("[+] Done!");
             enclave.destroy();
         } else {
@@ -392,7 +395,7 @@ fn request_keys(provider_url: &str, _shard: &ShardIdentifier) {
         sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
         &provider_url,
     )
-        .unwrap();
+    .unwrap();
     println!("key provisioning successfully performed");
 }
 
@@ -547,68 +550,68 @@ pub fn sync_chain(
         .unwrap()
         .unwrap();
 
-        if curr_head.block.header.hash() == last_synced_head.hash() {
-            // we are already up to date, do nothing
-            return curr_head.block.header;
-        }
+    if curr_head.block.header.hash() == last_synced_head.hash() {
+        // we are already up to date, do nothing
+        return curr_head.block.header;
+    }
 
-        let mut blocks_to_sync = Vec::<SignedBlock>::new();
-        blocks_to_sync.push(curr_head.clone());
+    let mut blocks_to_sync = Vec::<SignedBlock>::new();
+    blocks_to_sync.push(curr_head.clone());
 
-        // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
-        let mut head = curr_head.clone();
+    // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
+    let mut head = curr_head.clone();
 
-        let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
-        if no_blocks_to_sync > 1 {
+    let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
+    if no_blocks_to_sync > 1 {
+        println!(
+            "Chain Relay is synced until block: {:?}",
+            last_synced_head.number
+        );
+        println!(
+            "Last finalized block number: {:?}\n",
+            head.block.header.number
+        );
+    }
+
+    while head.block.header.parent_hash != last_synced_head.hash() {
+        head = api
+            .get_signed_block(Some(head.block.header.parent_hash))
+            .unwrap()
+            .unwrap();
+        blocks_to_sync.push(head.clone());
+
+        if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
             println!(
-                "Chain Relay is synced until block: {:?}",
-                last_synced_head.number
-            );
-            println!(
-                "Last finalized block number: {:?}\n",
-                head.block.header.number
-            );
-        }
-
-        while head.block.header.parent_hash != last_synced_head.hash() {
-            head = api
-                .get_signed_block(Some(head.block.header.parent_hash))
-                .unwrap()
-                .unwrap();
-            blocks_to_sync.push(head.clone());
-
-            if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
-                println!(
-                    "Remaining blocks to fetch until last synced header: {:?}",
-                    head.block.header.number - last_synced_head.number
-                )
-            }
-        }
-        blocks_to_sync.reverse();
-
-        let tee_accountid = enclave_account(eid);
-
-        // only feed BLOCK_SYNC_BATCH_SIZE blocks at a time into the enclave to save enclave state regularly
-        let mut i = blocks_to_sync[0].block.header.number as usize;
-        for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
-            let tee_nonce = get_nonce(&api, &tee_accountid);
-
-            // sync enclave with chain
-            if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
-                error!("{}", e);
-                // enclave might not have synced
-                return last_synced_head;
-            };
-
-            i += chunk.len();
-            println!(
-                "Synced {} blocks out of {} finalized blocks",
-                i,
-                blocks_to_sync[0].block.header.number as usize + blocks_to_sync.len()
+                "Remaining blocks to fetch until last synced header: {:?}",
+                head.block.header.number - last_synced_head.number
             )
         }
+    }
+    blocks_to_sync.reverse();
 
-        curr_head.block.header
+    let tee_accountid = enclave_account(eid);
+
+    // only feed BLOCK_SYNC_BATCH_SIZE blocks at a time into the enclave to save enclave state regularly
+    let mut i = blocks_to_sync[0].block.header.number as usize;
+    for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
+        let tee_nonce = get_nonce(&api, &tee_accountid);
+
+        // sync enclave with chain
+        if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
+            error!("{}", e);
+            // enclave might not have synced
+            return last_synced_head;
+        };
+
+        i += chunk.len();
+        println!(
+            "Synced {} blocks out of {} finalized blocks",
+            i,
+            blocks_to_sync[0].block.header.number as usize + blocks_to_sync.len()
+        )
+    }
+
+    curr_head.block.header
 }
 
 fn hex_encode(data: Vec<u8>) -> String {
