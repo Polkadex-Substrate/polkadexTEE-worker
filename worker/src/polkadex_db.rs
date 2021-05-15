@@ -12,11 +12,8 @@ use polkadex_primitives::types::{Order, SignedOrder};
 ///
 /// Polkadex Orderbook Mirror Documentation
 /// The backend DB is RocksDb
-/// Orders are stored as (counter,SignedOrder)
+/// Orders are stored as (OrderUUID,SignedOrder)
 /// where SignedOrder contains Order, counter and signature of enclave
-///
-///
-///
 ///
 
 use crate::constants::{ORDERBOOK_DB_FILE, ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT};
