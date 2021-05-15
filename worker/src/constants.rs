@@ -38,3 +38,5 @@ pub static RA_API_KEY_FILE: &str = "../bin/key.txt";
 pub static EXTRINSIC_MAX_SIZE: usize = 4196;
 // the maximum size of a value that will be queried from the state in B
 pub static STATE_VALUE_MAX_SIZE: usize = 1024;
+// Iterator for RocksDB returns these many elements in a single yield
+pub static ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT: usize = 1000;

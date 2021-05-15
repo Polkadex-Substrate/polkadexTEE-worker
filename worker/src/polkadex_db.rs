@@ -19,12 +19,12 @@ use polkadex_primitives::types::{Order, SignedOrder};
 ///
 ///
 
-use crate::constants::ORDERBOOK_DB_FILE;
+use crate::constants::{ORDERBOOK_DB_FILE, ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT};
 
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub struct RocksDB {
-    db: DBWithThreadMode<SingleThreaded>,
+    pub(crate) db: DBWithThreadMode<SingleThreaded>,
 }
 
 pub enum PolkadexDBError {
@@ -39,10 +39,10 @@ pub trait KVStore {
     /// Loads the DB from file on disk
     fn initialize_db(create_if_missing_db: bool) -> Result<(), RocksDBError>;
     fn load_orderbook_mirror() -> Result<&'static Mutex<RocksDB>, PolkadexDBError>;
-    fn write(order_uid: Vec<u8>, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>>;
+    fn write(db: &MutexGuard<RocksDB>, order_uid: Vec<u8>, signed_order: &SignedOrder) -> Result<(), PolkadexDBError>;
     fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError>;
-    fn delete(k: Vec<u8>) -> JoinHandle<Result<(), PolkadexDBError>>;
-    fn read_all() -> Result<Vec<SignedOrder>,PolkadexDBError>;
+    fn delete(db: &MutexGuard<RocksDB>,k: Vec<u8>) -> Result<(), PolkadexDBError>;
+    fn read_all() -> Result<Vec<SignedOrder>, PolkadexDBError>;
 }
 
 impl KVStore for RocksDB {
@@ -67,18 +67,14 @@ impl KVStore for RocksDB {
             Ok(unsafe { &*ptr })
         }
     }
-    fn write(order_uid: Vec<u8>, signed_order: SignedOrder) -> JoinHandle<Result<(), PolkadexDBError>> {
-        thread::spawn(move || -> Result<(), PolkadexDBError> {
-            let mutex = RocksDB::load_orderbook_mirror()?;
-            let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-            match orderbook_mirror.db.put(order_uid, signed_order.encode()) {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    println!(" Error {} writing to DB", e);
-                    Err(PolkadexDBError::ErrorWritingToDB)
-                }
+    fn write(db: &MutexGuard<RocksDB>, order_uid: Vec<u8>, signed_order: &SignedOrder) -> Result<(), PolkadexDBError>{
+        match db.db.put(order_uid, signed_order.encode()) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                println!(" Error {} writing to DB", e);
+                Err(PolkadexDBError::ErrorWritingToDB)
             }
-        })
+        }
     }
 
     fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError> {
@@ -87,7 +83,6 @@ impl KVStore for RocksDB {
         println!("Searching for Key");
         match orderbook_mirror.db.get(k) {
             Ok(Some(mut v)) => {
-
                 match SignedOrder::from_vec(&mut v.as_mut()) {
                     Ok(order) => {
                         println!("Found Key");
@@ -110,18 +105,14 @@ impl KVStore for RocksDB {
         }
     }
 
-    fn delete(k: Vec<u8>) -> JoinHandle<Result<(), PolkadexDBError>> {
-        thread::spawn(move || -> Result<(), PolkadexDBError> {
-            let mutex = RocksDB::load_orderbook_mirror()?;
-            let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-            match orderbook_mirror.db.delete(k){
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    println!("Error Deleteing Key, {}",e);
-                    Err(PolkadexDBError::ErrorDeleteingKey)
-                }
+    fn delete(db: &MutexGuard<RocksDB>,k: Vec<u8>) -> Result<(), PolkadexDBError> {
+        match db.db.delete(k) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                println!("Error Deleteing Key, {}", e);
+                Err(PolkadexDBError::ErrorDeleteingKey)
             }
-        })
+        }
     }
 
     fn read_all() -> Result<Vec<SignedOrder>, PolkadexDBError> {
@@ -129,9 +120,9 @@ impl KVStore for RocksDB {
         let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         let iterator = orderbook_mirror.db.iterator(IteratorMode::Start);
         let mut orders: Vec<SignedOrder> = vec![];
-        for (_,value) in iterator.take(1000){
-            match SignedOrder::from_vec(&*value){
-                Ok(order) => {orders.push(order)}
+        for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
+            match SignedOrder::from_vec(&*value) {
+                Ok(order) => { orders.push(order) }
                 Err(e) => {
                     println!("Unable to deserialize ");
                     return Err(PolkadexDBError::UnableToDeseralizeValue);

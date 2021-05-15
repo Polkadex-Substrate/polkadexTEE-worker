@@ -1,16 +1,40 @@
 use codec::{Decode, Encode, Error};
 #[cfg(feature = "sgx")]
 use sgx_tstd::vec;
-
 #[cfg(feature = "sgx")]
 use sgx_tstd::vec::Vec;
 
+/// User UID or nickname to identify the user (Wallet Address in our case)
+pub type UserId = Vec<u8>;
+/// Unique order ID
+pub type OrderId = Vec<u8>;
+/// Unique order uuid
+pub type OrderUUID = Vec<u8>;
+/// Market identifier for order ex: "btcusd"
+pub type MarketId = Vec<u8>;
+/// Unique trade ID
+pub type TradeId = Vec<u8>;
+/// Date type for Price and Volume
+pub type PriceAndQuantityType = u128;
+/// Market type ex: "trusted"
+pub type MarketType = Vec<u8>;
+/// Currency identifier
+pub type CurrencyId = Vec<u8>;
+
+/// The different Order Types
+/// - market: "m"
+/// - limit: "l"
+/// - Post only (Must not fill at all or is canceled): "p"
+/// - Fill or kill (Must fully match at a given price or iscanceled): "f"
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum OrderType {
     LIMIT,
     MARKET,
+    PostOnly,
+    FillOrKill,
 }
 
+/// Used to specify order side, "buy" or "sell"
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum OrderSide {
     BID,
@@ -28,23 +52,26 @@ pub enum OrderState {
 // Create Order
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct Order {
-    pub user_uid: Vec<u8>,
-    pub market_id: Vec<u8>,
-    pub market_type: Vec<u8>,
+    pub user_uid: UserId,
+    pub market_id: MarketId,
+    pub market_type: MarketType,
     pub order_type: OrderType,
     pub side: OrderSide,
-    pub quantity: u128,
-    pub price: Option<u128>,
+    // An amount that placed within the order
+    pub quantity: PriceAndQuantityType,
+    // Main (limit) price of the order (optional)
+    pub price: Option<PriceAndQuantityType>,
 }
 
 // SignedOrder is used by enclave to store in Orderbook Mirror
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct SignedOrder {
-    pub order_id: Vec<u8>,
+    pub order_id: OrderId,
     pub order: Order,
     pub signature: Vec<u8>, // FIXME: Replace with enclave's signature here
 }
-impl Default for SignedOrder{
+
+impl Default for SignedOrder {
     fn default() -> Self {
         SignedOrder {
             order_id: vec![],
@@ -61,85 +88,124 @@ impl Default for SignedOrder{
         }
     }
 }
+
 impl SignedOrder {
     pub fn from_vec(mut k: &[u8]) -> Result<SignedOrder, Error> {
         SignedOrder::decode(&mut k)
     }
 }
-#[derive(Debug)]
+
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct CreateOrderResponse {
-    pub(crate) order_uid: Vec<u8>,
+    pub(crate) order_uid: OrderUUID,
 }
 
 // Cancel Orders
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct CancelOrder {
-    user_uid: Vec<u8>,
-    market_id: Vec<u8>,
-    order_id: Vec<Vec<u8>>,
+    // User UID or nickname to identify the user
+    user_uid: UserId,
+    // Market identifier for order ex: "btcusd"
+    market_id: MarketId,
+    // List of order IDs or UUIDs to cancel
+    order_id: Vec<OrderId>,
 }
 
 // Deposit Funds
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct DepositFund {
-    user_uid: Vec<u8>,
-    currency_id: Vec<u8>,
-    amount: u128,
+    // User UID or nickname to identify the user
+    user_uid: UserId,
+    // Currency identifier of the deposit
+    currency_id: CurrencyId,
+    // Amount to deposit
+    amount: PriceAndQuantityType,
+    // Transaction ID (optional)
     tx_id: Option<Vec<u8>>,
 }
 
 // Withdraw Funds
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct WithdrawFund {
-    user_id: Vec<u8>,
-    currency_id: Vec<u8>,
-    amount: u128,
+    // User UID or nickname to identify the user
+    user_id: UserId,
+    // Currency identifier of the deposit
+    currency_id: CurrencyId,
+    // Amount to deposit
+    amount: PriceAndQuantityType,
+    // Transaction ID (optional)
     tx_id: Option<Vec<u8>>,
 }
 
 // Error
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct ErrorMessage {
     message: Vec<u8>,
 }
 
 // Status Response
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct Response {
-    pub(crate) code: usize,
+    pub(crate) code: u32,
 }
 
 // Order Update Events
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct OrderUpdate {
-    market_id: Vec<u8>,
-    order_id: Vec<u8>,
-    unique_order_id: Vec<u8>, // Why is there two order ids??
+    // Market unique identifier
+    market_id: MarketId,
+    // Unique order ID
+    order_id: OrderId,
+    // Unique order uuid
+    unique_order_id: OrderUUID,
+    // Why is there two order ids??
+    // "buy" or "sell"
     side: OrderSide,
+    // "bid" or "ask"
     kind: OrderSide,
+    // Current state of the order
     state: OrderState,
+    // Order type
     order_type: OrderType,
-    price: u128,
-    avg_price: u128,
-    current_volume: u128,
-    original_volume: u128,
-    executed_volume: u128,
-    trade_count_order: u128,
+    // Order price
+    price: PriceAndQuantityType,
+    // Average execution price
+    avg_price: PriceAndQuantityType,
+    // Order volume
+    current_volume: PriceAndQuantityType,
+    // Origin Volume
+    original_volume: PriceAndQuantityType,
+    // Executed Volume
+    executed_volume: PriceAndQuantityType,
+    // Trade Count
+    trade_count_order: PriceAndQuantityType,
+    // Order Creation Timestamp
     timestamp: Vec<u8>,
 }
 
 // Trade Events
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct TradeEvent {
-    market_id: Vec<u8>,
-    trade_id: Vec<u8>,
-    price: u128,
-    amount: u128,
-    funds: u128, // price*amount
-    maker_order_id: Vec<u8>,
-    maker_order_uuid: Vec<u8>,
-    taker_order_id: Vec<u8>,
-    taker_order_uuid: Vec<u8>,
+    // Market Unique Identifier
+    market_id: MarketId,
+    // Unique Trade ID
+    trade_id: TradeId,
+    // Trade execution price
+    price: PriceAndQuantityType,
+    // Trade execution amount
+    amount: PriceAndQuantityType,
+    // Trade Funds (amount*price)
+    funds: PriceAndQuantityType,
+    // Maker's trade Order Id
+    maker_order_id: OrderId,
+    // Maker's trade Order UUID
+    maker_order_uuid: OrderUUID,
+    // Taker's trade Order Id
+    taker_order_id: OrderId,
+    // Taker's trade Order UUID
+    taker_order_uuid: OrderUUID,
+    // Maker Order Side
     maker_side: OrderSide,
+    // Trade Timestamp
     timestamp: Vec<u8>,
 }

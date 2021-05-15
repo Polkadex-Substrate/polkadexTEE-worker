@@ -2,7 +2,8 @@ use std::{thread, time};
 
 use polkadex_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
 
-use crate::polkadex_db::{KVStore, RocksDB};
+use crate::polkadex_db::{KVStore, RocksDB, PolkadexDBError};
+use std::sync::MutexGuard;
 
 #[test]
 fn test_db_initialization() {
@@ -28,9 +29,13 @@ fn test_write_and_delete() {
         },
         signature: vec![],
     };
+    let first_order_clone = first_order.clone();
 
-    let handler = RocksDB::write(
-        "FIRST_ORDER".to_string().into_bytes(), first_order.clone());
+    let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        RocksDB::write(&orderbook_mirror, "FIRST_ORDER".to_string().into_bytes(), &first_order)
+    });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
@@ -39,13 +44,18 @@ fn test_write_and_delete() {
         .unwrap_or(Some(SignedOrder::default()));
 
     assert!(order_read.is_some());
-    assert_eq!(order_read.unwrap(), first_order);
+    assert_eq!(order_read.unwrap(), first_order_clone);
 
     let second_result = RocksDB::find("SECOND_ORDER".to_string().into_bytes());
     assert!(second_result.is_ok());
     assert!(second_result.ok().unwrap().is_none());
 
-    let delete_handler = RocksDB::delete("FIRST_ORDER".to_string().into_bytes());
+    let delete_handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        RocksDB::delete(&orderbook_mirror, "FIRST_ORDER".to_string().into_bytes())
+    });
+
     let result = delete_handler.join().unwrap();
     assert!(result.is_ok());
 
@@ -97,19 +107,31 @@ fn test_read_all(){
         },
         signature: vec![],
     };
-    let handler = RocksDB::write(
-        "FIRST_ORDER1".to_string().into_bytes(), first_order.clone());
+
+    let first_order_clone = first_order.clone();
+    let second_order_clone = second_order.clone();
+
+
+    let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        RocksDB::write(&orderbook_mirror, "FIRST_ORDER1".to_string().into_bytes(), &first_order)
+    });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
-    let handler = RocksDB::write(
-        "SECOND_ORDER1".to_string().into_bytes(), second_order.clone());
+
+    let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        RocksDB::write(&orderbook_mirror, "SECOND_ORDER1".to_string().into_bytes(), &second_order)
+    });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
     let orders = RocksDB::read_all().ok().unwrap();
-    assert!(orders.contains(&first_order));
-    assert!(orders.contains(&second_order));
+    assert!(orders.contains(&first_order_clone));
+    assert!(orders.contains(&second_order_clone));
     assert!(!orders.contains(&third_order));
 }

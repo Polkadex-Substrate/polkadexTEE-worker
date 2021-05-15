@@ -20,10 +20,7 @@ use std::io::Write;
 use std::path::Path;
 use std::slice;
 use std::str;
-use std::sync::{
-    mpsc::{channel, Sender},
-    Mutex,
-};
+use std::sync::{mpsc::{channel, Sender}, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
@@ -57,7 +54,7 @@ use polkadex_primitives::types::SignedOrder;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 
 use crate::enclave::api::{enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory, enclave_sync_chain};
-use crate::polkadex_db::{KVStore, RocksDB};
+use crate::polkadex_db::{KVStore, RocksDB, PolkadexDBError};
 
 mod constants;
 mod enclave;
@@ -796,7 +793,11 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     }
     // TODO: Do we need error handling here?
     let order_id = signed_order.order_id.clone();
-    polkadex_db::RocksDB::write(order_id, signed_order.clone());
+    thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        polkadex_db::RocksDB::write(&orderbook_mirror, order_id, &signed_order)
+    });
     status
 }
 
