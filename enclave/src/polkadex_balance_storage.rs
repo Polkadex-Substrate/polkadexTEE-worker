@@ -3,6 +3,7 @@ use log::*;
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_tstd::hash::Hasher;
+use sgx_tstd::vec::Vec;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use sp_core::blake2_256;
 use std::sync::{
@@ -14,6 +15,7 @@ use substratee_node_primitives::AssetId;
 static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub type AccountId = [u8; 32];
+pub type EncodedKey = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct Balances {
@@ -33,12 +35,6 @@ pub struct PolkadexBalanceKey {
     pub account_id: AccountId,
 }
 
-impl Hash for PolkadexBalanceKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.hash(state);
-    }
-}
-
 impl PolkadexBalanceKey {
     pub fn from(asset_id: AssetId, account_id: AccountId) -> Self {
         Self {
@@ -50,7 +46,7 @@ impl PolkadexBalanceKey {
 
 pub struct PolkadexBalanceStorage {
     /// map (tokenID, AccountID) -> (balance free, balance reserved)
-    pub storage: HashMap<PolkadexBalanceKey, Balances>,
+    pub storage: HashMap<EncodedKey, Balances>,
 }
 
 impl PolkadexBalanceStorage {
@@ -61,11 +57,15 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn read_balance(&self, token: AssetId, acc: AccountId) -> Option<&Balances> {
-        self.storage.get(&PolkadexBalanceKey::from(token, acc))
+        self.storage
+            .get(&PolkadexBalanceKey::from(token, acc).encode())
     }
 
     pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
-        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
             Some(balance) => {
                 balance.free = amt;
                 Ok(())
@@ -83,7 +83,10 @@ impl PolkadexBalanceStorage {
         acc: AccountId,
         amt: u128,
     ) -> SgxResult<()> {
-        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
             Some(balance) => {
                 balance.reserved = amt;
                 Ok(())
@@ -96,7 +99,10 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn deposit(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
-        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
             Some(balance) => {
                 balance.free = balance.free.saturating_add(amt);
                 Ok(())
@@ -109,7 +115,10 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn withdraw(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
-        match self.storage.get_mut(&PolkadexBalanceKey::from(token, acc)) {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
             Some(balance) => {
                 balance.free = balance.free.saturating_sub(amt);
                 Ok(())

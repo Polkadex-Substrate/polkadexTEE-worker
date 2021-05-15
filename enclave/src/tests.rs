@@ -67,17 +67,10 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
-        // Polkadex Balance Storage Unit Tests
-        //test_create_balance_storage,
-        //test_balance_struct,
-        //test_create_balance_storage,
-        //test_polkadex_balance_storage::test_create_balance_storage,
         test_polkadex_balance_storage::test_deposit,
-        // test_withdraw,
-        // test_set_free_balance,
-        // test_set_reserve_balance
-
-        // Polkadex Proxy Storage Test Cases
+        test_polkadex_balance_storage::test_withdraw,
+        test_polkadex_balance_storage::test_set_free_balance,
+        test_polkadex_balance_storage::test_set_reserve_balance,
         test_proxy::test_check_main_account,
         test_proxy::test_check_proxy_account,
         test_proxy::test_add_main_account,
