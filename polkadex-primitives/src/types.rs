@@ -3,6 +3,8 @@ use codec::{Decode, Encode, Error};
 use sgx_tstd::vec;
 #[cfg(feature = "sgx")]
 use sgx_tstd::vec::Vec;
+use sp_core::{ed25519, Pair};
+use sp_core::ed25519::Signature;
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = Vec<u8>;
@@ -66,9 +68,16 @@ pub struct Order {
 // SignedOrder is used by enclave to store in Orderbook Mirror
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct SignedOrder {
-    pub order_id: OrderId,
+    pub order_id: OrderUUID,
     pub order: Order,
-    pub signature: Vec<u8>, // FIXME: Replace with enclave's signature here
+    pub signature: Signature, // FIXME: Replace with enclave's signature here
+}
+
+impl SignedOrder {
+    pub fn sign(&mut self, key_pair: &ed25519::Pair) {
+        let payload = self.encode();
+        self.signature = key_pair.sign(payload.as_slice()).into();
+    }
 }
 
 impl Default for SignedOrder {
@@ -84,7 +93,7 @@ impl Default for SignedOrder {
                 quantity: 0,
                 price: None,
             },
-            signature: vec![],
+            signature: Signature::default(),
         }
     }
 }
