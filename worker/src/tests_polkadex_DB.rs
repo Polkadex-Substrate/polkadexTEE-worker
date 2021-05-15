@@ -4,6 +4,7 @@ use polkadex_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
 
 use crate::polkadex_db::{KVStore, RocksDB, PolkadexDBError};
 use std::sync::MutexGuard;
+use sp_core::ed25519::Signature;
 
 #[test]
 fn test_db_initialization() {
@@ -27,7 +28,7 @@ fn test_write_and_delete() {
             quantity: 0,
             price: Some(100u128),
         },
-        signature: vec![],
+        signature: Signature::default(),
     };
     let first_order_clone = first_order.clone();
 
@@ -79,7 +80,7 @@ fn test_read_all(){
             quantity: 0,
             price: Some(100u128),
         },
-        signature: vec![],
+        signature: Signature::default(),
     };
     let second_order = SignedOrder {
         order_id: "SECOND_ORDER1".to_string().into_bytes(),
@@ -92,7 +93,7 @@ fn test_read_all(){
             quantity: 0,
             price: Some(100u128),
         },
-        signature: vec![],
+        signature: Signature::default(),
     };
     let third_order = SignedOrder {
         order_id: "THIRD_ORDER".to_string().into_bytes(),
@@ -105,7 +106,7 @@ fn test_read_all(){
             quantity: 0,
             price: Some(100u128),
         },
-        signature: vec![],
+        signature: Signature::default(),
     };
 
     let first_order_clone = first_order.clone();

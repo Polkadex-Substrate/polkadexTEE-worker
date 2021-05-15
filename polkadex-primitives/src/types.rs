@@ -89,7 +89,7 @@ impl SignedOrder {
         };
 
         let payload = order.encode();
-        self.signature.verify(payload, &key_pair.public())
+        self.signature.verify(payload.as_slice(), &key_pair.public())
     }
 }
 
