@@ -9,6 +9,7 @@ use std::sync::{
 use std::vec::Vec;
 use sp_core::{ed25519::Signature, Pair};
 use crate::ed25519;
+use log::error;
 
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
@@ -34,13 +35,6 @@ impl OrderbookStorage {
     /// If the orderbook did not have this order_uid present, [None] is returned.
     /// If the orderbook did have this order_uid present, the order is updated, and the old order is returned.
     pub fn add_order(&mut self, order_uid: OrderUUID, order: Order) -> Option<Order> {
-        self.storage.insert(order_uid, order)
-    }
-
-    /// Inserts a order_uid-order pair into the orderbook.
-    /// If the orderbook did not have this order_uid present, [None] is returned.
-    /// If the orderbook did have this order_uid present, the order is updated, and the old order is returned.
-    pub fn set_order(&mut self, order_uid: OrderUUID, order: Order) -> Option<Order> {
         self.storage.insert(order_uid, order)
     }
 
@@ -73,9 +67,11 @@ pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> Sg
     let mut verified_orders: Vec<SignedOrder> = vec![];
     let signer_pair = ed25519::unseal_pair()?;
     for order in signed_orders{
-        if order.verify_signature(&signer_pair){
-            verified_orders.push(order)
+        if !order.verify_signature(&signer_pair){
+            error!("Signature Verification Failed");
+            continue
         }
+        verified_orders.push(order)
     }
     let orderbook = OrderbookStorage::create(verified_orders);
     let storage_ptr = Arc::new(SgxMutex::<OrderbookStorage>::new(orderbook));
