@@ -20,10 +20,7 @@ use std::io::Write;
 use std::path::Path;
 use std::slice;
 use std::str;
-use std::sync::{
-    mpsc::{channel, Sender},
-    Mutex,
-};
+use std::sync::{mpsc::{channel, Sender}, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
@@ -35,13 +32,14 @@ use log::*;
 use my_node_runtime::{
     pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock,
     UncheckedExtrinsic,
+
 };
 use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
+    Pair,
     sr25519,
     storage::StorageKey,
-    Pair,
 };
 use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
 use sp_keyring::AccountKeyring;
@@ -53,18 +51,25 @@ use enclave::api::{
 };
 use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server};
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
+use polkadex_primitives::{LinkedAccount, PolkadexAccount};
+use polkadex_primitives::types::SignedOrder;
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
+
 
 use crate::enclave::api::{
     enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_sync_chain,
 };
 use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
 
+
 mod constants;
 mod enclave;
 mod ipfs;
 mod polkadex;
 mod tests;
+
+#[cfg(test)]
+mod tests_polkadex_DB;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -520,7 +525,7 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
         VersionedAuthorityList::from(grandpas),
         grandpa_proof,
     )
-    .unwrap();
+        .unwrap();
 
     info!("Finished initializing chain relay, syncing....");
 
@@ -530,6 +535,16 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
+    info!("Initializing Polkadex Orderbook Mirror");
+
+    RocksDB::initialize_db(true).unwrap();
+
+    info!("Loading Orders from Orderbook Storage");
+    let signed_orders = RocksDB::read_all().ok().unwrap();
+
+    enclave_load_orders_to_memory(eid, signed_orders).unwrap();
+
+    info!("Finished loading Orderbook Storage ...");
     sync_chain(eid, api, latest)
 }
 
@@ -757,6 +772,40 @@ pub unsafe extern "C" fn ocall_worker_request(
     write_slice_and_whitespace_pad(resp_slice, resp.encode());
     sgx_status_t::SGX_SUCCESS
 }
+
+/// # Safety
+///
+/// FFI are always unsafe
+#[no_mangle]
+pub unsafe extern "C" fn ocall_write_order_to_db(
+    order: *const u8,
+    order_size: u32,
+) -> sgx_status_t {
+    debug!("    Entering ocall_write_order_to_db");
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let mut order_slice = slice::from_raw_parts(order, order_size as usize);
+
+    let signed_order: SignedOrder = match Decode::decode(&mut order_slice) {
+        Ok(order) => order,
+        Err(_) => {
+            error!("Could not decode SignedOrder");
+            status = sgx_status_t::SGX_ERROR_UNEXPECTED;
+            SignedOrder::default()
+        }
+    };
+    if status == sgx_status_t::SGX_ERROR_UNEXPECTED {
+        return status;
+    }
+    // TODO: Do we need error handling here?
+    let order_id = signed_order.order_id.clone();
+    thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = RocksDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        polkadex_db::RocksDB::write(&orderbook_mirror, order_id, &signed_order)
+    });
+    status
+}
+
 
 /// # Safety
 ///

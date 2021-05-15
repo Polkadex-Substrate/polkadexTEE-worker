@@ -31,6 +31,7 @@ use sp_finality_grandpa::VersionedAuthorityList;
 use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
 use polkadex_sgx_primitives::PolkadexAccount;
 
+
 extern "C" {
     fn init(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
 
@@ -63,6 +64,13 @@ extern "C" {
         retval: *mut sgx_status_t,
         pdex_accounts: *const u8,
         pdex_accounts_size: usize,
+    ) -> sgx_status_t;
+
+    fn load_orders_to_memory(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        orders: *const u8,
+        orders_size: usize,
     ) -> sgx_status_t;
 
     fn sync_chain(
@@ -251,6 +259,31 @@ pub fn enclave_accept_pdex_accounts(
             &mut status,
             pdex_accounts.encode().as_ptr(),
             pdex_accounts.encode().len(),
+        )
+    };
+
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
+    Ok(())
+}
+
+pub fn enclave_load_orders_to_memory(
+    eid: sgx_enclave_id_t,
+    orders: Vec<SignedOrder>,
+) -> SgxResult<()> {
+    let mut status = sgx_status_t::SGX_SUCCESS;
+
+    let result = unsafe {
+        load_orders_to_memory(
+            eid,
+            &mut status,
+            orders.encode().as_ptr(),
+            orders.encode().len(),
         )
     };
 

@@ -1,10 +1,13 @@
 #![cfg_attr(all(not(target_env = "sgx"), not(feature = "std")), no_std)]
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
+pub mod types;
+
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
 
 use std::vec::Vec;
+
 
 use codec::{Decode, Encode};
 pub use polkadex_primitives::common_types::AccountId;

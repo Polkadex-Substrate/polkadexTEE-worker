@@ -30,8 +30,8 @@ extern crate sgx_tstd as std;
 
 use base58::ToBase58;
 use chain_relay::{
-    storage_proof::{StorageProof, StorageProofChecker},
-    Block, Header, LightValidation,
+    Block,
+    Header, LightValidation, storage_proof::{StorageProof, StorageProofChecker},
 };
 use codec::{Decode, Encode};
 use constants::{
@@ -45,16 +45,18 @@ use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
 use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
+use rpc::author::{Author, AuthorApi, hash::TrustedOperationOrHash};
+use rpc::worker_api_direct;
 use sgx_externalities::SgxExternalitiesTypeTrait;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use sp_core::{blake2_256, crypto::Pair, H256};
 use sp_finality_grandpa::VersionedAuthorityList;
-use sp_runtime::OpaqueExtrinsic;
 use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT};
+use sp_runtime::OpaqueExtrinsic;
 use std::collections::HashMap;
 use std::slice;
-use std::sync::Arc;
 use std::sync::{SgxMutex, SgxMutexGuard};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::untrusted::time::SystemTimeEx;
 use std::vec::Vec;
@@ -68,6 +70,8 @@ use substratee_stf::State as StfState;
 use substratee_stf::{
     AccountId, Getter, ShardIdentifier, Stf, TrustedCall, TrustedCallSigned, TrustedGetterSigned,
 };
+use substratee_stf::sgx::{OpaqueCall, shards_key_hash, storage_hashes_to_update_per_shard};
+use substratee_stf::State as StfState;
 use substratee_worker_primitives::block::{
     Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
 };
@@ -84,9 +88,11 @@ mod ed25519;
 mod io;
 mod ipfs;
 mod polkadex;
+mod polkadex_orderbook_storage;
 mod rsa3072;
 mod state;
 mod test_proxy;
+mod test_orderbook_storage;
 mod utils;
 
 pub mod cert;
@@ -213,7 +219,7 @@ fn create_extrinsics(
                 RUNTIME_SPEC_VERSION,
                 RUNTIME_TRANSACTION_VERSION
             )
-            .encode();
+                .encode();
             nonce += 1;
             xt
         })
@@ -356,7 +362,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
     let polkadex_accounts: Vec<PolkadexAccount> = match Decode::decode(&mut pdex_accounts_slice) {
         Ok(b) => b,
         Err(e) => {
-            error!("Decoding signed blocks failed. Error: {:?}", e);
+            error!("Decoding signed accounts failed. Error: {:?}", e);
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         }
     };
@@ -371,7 +377,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .unwrap();
 
     if let Err(status) =
-        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
+    polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
     {
         return status;
     }
@@ -382,6 +388,30 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 
     sgx_status_t::SGX_SUCCESS
 }
+
+
+#[no_mangle]
+pub unsafe extern "C" fn load_orders_to_memory(
+    orders: *const u8,
+    orders_size: usize,
+) -> sgx_status_t {
+    let mut orders_slice = slice::from_raw_parts(orders, orders_size);
+
+    let signed_orders: Vec<SignedOrder> = match Decode::decode(&mut orders_slice) {
+        Ok(b) => b,
+        Err(e) => {
+            error!("Decoding signed orders failed. Error: {:?}", e);
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    };
+
+    if let Err(status) = polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders) {
+        return status;
+    };
+
+    sgx_status_t::SGX_SUCCESS
+}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn sync_chain(
@@ -815,7 +845,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     let mut opaque_calls = Vec::<OpaqueCall>::new();
     for xt_opaque in block.extrinsics.iter() {
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
@@ -827,7 +857,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Register
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
@@ -838,7 +868,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
         // Polkadex OCEX Add Proxy
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
@@ -849,7 +879,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
         // Polkadex OCEX Remove Proxy
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
@@ -860,7 +890,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
 
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, CALL_WORKER] {
                 if let Ok((decrypted_trusted_call, shard)) = decrypt_unchecked_extrinsic(xt) {
@@ -1107,7 +1137,7 @@ fn verify_worker_responses(
                     key,
                     proof.to_vec(),
                 )
-                .sgx_error_with_log("Erroneous StorageProof")?;
+                    .sgx_error_with_log("Erroneous StorageProof")?;
 
                 // Todo: Why do they do it like that, we could supply the proof only and get the value from the proof directly??
                 if &actual != value {
@@ -1122,6 +1152,12 @@ fn verify_worker_responses(
 }
 
 extern "C" {
+    pub fn ocall_write_order_to_db(
+        ret_val: *mut sgx_status_t,
+        order: *const u8,
+        order_size: u32,
+    ) -> sgx_status_t;
+
     pub fn ocall_read_ipfs(
         ret_val: *mut sgx_status_t,
         cid: *const u8,
@@ -1194,4 +1230,25 @@ fn worker_request<V: Encode + Decode>(
         return Err(res);
     }
     Ok(Decode::decode(&mut resp.as_slice()).unwrap())
+}
+
+fn write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+    let res = unsafe {
+        ocall_write_order_to_db(
+            &mut rt as *mut sgx_status_t,
+            order.encode().as_ptr(),
+            order.encode().len() as u32,
+        )
+    };
+
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(rt);
+    }
+
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(res);
+    }
+    Ok(())
 }

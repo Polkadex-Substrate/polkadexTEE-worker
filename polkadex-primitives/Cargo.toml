@@ -12,6 +12,7 @@ frame-support = { version = "3.0.0", default-features = false, git = "https://gi
 sp-std = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git" }
 polkadex-primitives = {default-features = false, git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop"}
 
+
 [dependencies.sp-core]
 git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
