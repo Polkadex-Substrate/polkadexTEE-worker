@@ -5,6 +5,7 @@ use sgx_tstd::vec;
 use sgx_tstd::vec::Vec;
 use sp_core::{ed25519, Pair};
 use sp_core::ed25519::Signature;
+use frame_support::sp_runtime::traits::Verify;
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = Vec<u8>;
@@ -70,13 +71,25 @@ pub struct Order {
 pub struct SignedOrder {
     pub order_id: OrderUUID,
     pub order: Order,
-    pub signature: Signature, // FIXME: Replace with enclave's signature here
+    pub signature: Signature,
 }
 
 impl SignedOrder {
     pub fn sign(&mut self, key_pair: &ed25519::Pair) {
         let payload = self.encode();
         self.signature = key_pair.sign(payload.as_slice()).into();
+    }
+
+    pub fn verify_signature(&self, key_pair: &ed25519::Pair) -> bool {
+        // TODO: We can do better here, no need of unnecessary clones
+        let order = SignedOrder{
+            order_id: self.order_id.clone(),
+            order: self.order.clone(),
+            signature: Signature::default()
+        };
+
+        let payload = order.encode();
+        self.signature.verify(payload, &key_pair.public())
     }
 }
 

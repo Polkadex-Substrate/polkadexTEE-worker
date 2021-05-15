@@ -70,8 +70,14 @@ impl OrderbookStorage {
 
 /// Creates a Static Atomic Pointer for Orderbook Storage
 pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> SgxResult<()> {
-    // TODO: Do Order Signature Check Logic here
-    let orderbook = OrderbookStorage::create(signed_orders);
+    let mut verified_orders: Vec<SignedOrder> = vec![];
+    let signer_pair = ed25519::unseal_pair()?;
+    for order in signed_orders{
+        if order.verify_signature(&signer_pair){
+            verified_orders.push(order)
+        }
+    }
+    let orderbook = OrderbookStorage::create(verified_orders);
     let storage_ptr = Arc::new(SgxMutex::<OrderbookStorage>::new(orderbook));
     let ptr = Arc::into_raw(storage_ptr);
     GLOBAL_ORDERBOOK_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
