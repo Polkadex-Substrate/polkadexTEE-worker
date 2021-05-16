@@ -3,6 +3,8 @@ use crate::polkadex::PolkadexAccountsStorage;
 use crate::polkadex_balance_storage::*;
 use codec::Encode;
 use log::*;
+use polkadex_sgx_primitives::accounts::get_account;
+use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount};
 use sgx_rand::{Rng, SeedableRng, StdRng};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::sync::SgxMutexGuard;
@@ -13,12 +15,11 @@ use std::{
     sync::atomic::{AtomicPtr, Ordering},
     sync::{Arc, SgxMutex},
 };
-use substratee_node_primitives::AssetId;
 
 #[allow(unused)]
 pub fn dummy_map(balance_storage: &mut SgxMutexGuard<PolkadexBalanceStorage>) {
-    let main_account_one: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
-    let main_account_two: [u8; 32] = Vec::from("second_account").using_encoded(blake2_256);
+    let main_account_one: AccountId = get_account("first_account");
+    let main_account_two: AccountId = get_account("second_account");
     let key_one = PolkadexBalanceKey::from(AssetId::POLKADEX, main_account_one);
     let value_one = Balances::from(100u128, 0u128);
     let key_two = PolkadexBalanceKey::from(AssetId::POLKADEX, main_account_two);
@@ -42,9 +43,9 @@ pub fn test_deposit() {
     {
         initialize_dummy();
     }
-    let main_account_one: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
+    let main_account_one: AccountId = get_account("first_account");
 
-    deposit(main_account_one, AssetId::POLKADEX, 50u128);
+    deposit(main_account_one.clone(), AssetId::POLKADEX, 50u128);
 
     let balance = get_balances(main_account_one, AssetId::POLKADEX);
     assert_eq!(balance, Ok(Balances::from(150u128, 0u128)))
@@ -53,12 +54,12 @@ pub fn test_deposit() {
 #[allow(unused)]
 pub fn test_withdraw() {
     initialize_dummy();
-    let main_account_one: [u8; 32] = Vec::from("first_account").using_encoded(blake2_256);
+    let main_account_one: AccountId = get_account("first_account");
     assert_eq!(
-        withdraw(main_account_one, AssetId::POLKADEX, 50u128),
+        withdraw(main_account_one.clone(), AssetId::POLKADEX, 50u128),
         Ok(())
     );
-    let balance = get_balances(main_account_one, AssetId::POLKADEX);
+    let balance = get_balances(main_account_one.clone(), AssetId::POLKADEX);
     assert_eq!(balance, Ok(Balances::from(50u128, 0u128)));
 
     //Test Error
@@ -71,8 +72,8 @@ pub fn test_withdraw() {
 //Test PolkadexBalanceStorage implemented Methods
 #[allow(unused)]
 pub fn test_set_free_balance() {
-    let new_account_one: [u8; 32] = Vec::from("new_account").using_encoded(blake2_256);
-    let key_new = PolkadexBalanceKey::from(AssetId::POLKADEX, new_account_one);
+    let new_account_one: AccountId = get_account("first_account");
+    let key_new = PolkadexBalanceKey::from(AssetId::POLKADEX, new_account_one.clone());
     let mut polkadex_balance_storage = PolkadexBalanceStorage::create();
     polkadex_balance_storage
         .storage
@@ -91,8 +92,8 @@ pub fn test_set_free_balance() {
 
 #[allow(unused)]
 pub fn test_set_reserve_balance() {
-    let new_account_one: [u8; 32] = Vec::from("new_account").using_encoded(blake2_256);
-    let key_new = PolkadexBalanceKey::from(AssetId::POLKADEX, new_account_one);
+    let new_account_one: AccountId = get_account("new_account");
+    let key_new = PolkadexBalanceKey::from(AssetId::POLKADEX, new_account_one.clone());
     let mut polkadex_balance_storage = PolkadexBalanceStorage::create();
     polkadex_balance_storage
         .storage

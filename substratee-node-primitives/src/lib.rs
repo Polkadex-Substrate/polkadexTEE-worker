@@ -4,11 +4,9 @@
 use codec::{Decode, Encode};
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
-use sp_core::{H160, H256};
-use std::hash::Hash;
-use std::hash::Hasher;
+use sp_core::H256;
 use std::vec::Vec;
-
+//use polkadex_sgx_primitives::A
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 
@@ -29,26 +27,6 @@ pub type OCEXAddProxyFn = ([u8; 2], [u8; 32], [u8; 32]);
 pub type OCEXRemoveProxyFn = ([u8; 2], [u8; 32], [u8; 32]);
 pub type OCEXDepositFn = ([u8; 2], [u8; 32], AssetId, u128);
 pub type OCEXWithdrawFn = ([u8; 2], [u8; 32], AssetId, u128);
-
-#[derive(Eq, Clone, Encode, Decode, Debug)]
-pub enum AssetId {
-    POLKADEX,
-    DOT, // TODO: Enabled in Parachain upgrade
-    CHAINSAFE(H160),
-    TOKEN(H160),
-    // PARACHAIN(para_id, network, palletInstance, assetID),
-}
-
-impl PartialEq for AssetId {
-    fn eq(&self, other: &Self) -> bool {
-        self == other
-    }
-}
-impl Hash for AssetId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.hash(state);
-    }
-}
 
 #[cfg(feature = "std")]
 pub mod calls {

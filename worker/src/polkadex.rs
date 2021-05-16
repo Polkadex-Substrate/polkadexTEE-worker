@@ -1,13 +1,12 @@
 use codec::{Decode, Encode};
 use frame_support::PalletId;
 // TODO: Fix this import
-use my_node_runtime::{AccountId, Header};
+use my_node_runtime::Header;
+use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
 use sp_core::sr25519;
 use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
 use sp_runtime::MultiSignature;
 use substrate_api_client::Api;
-
-use polkadex_primitives::{LinkedAccount, PolkadexAccount};
 
 pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<PolkadexAccount> {
     // Read the genesis account
@@ -35,14 +34,19 @@ pub fn get_storage_and_proof(
     api: &Api<sr25519::Pair>,
 ) -> PolkadexAccount {
     let last_acc: LinkedAccount = api
-        .get_storage_map("OCEX", "MainAccounts", acc.clone(), Some(header.hash()))
+        .get_storage_map(
+            "PolkadexOcex",
+            "MainAccounts",
+            acc.clone(),
+            Some(header.hash()),
+        )
         .unwrap()
         .map(|account: LinkedAccount| account)
         .unwrap();
 
     let last_acc_proof: Vec<Vec<u8>> = api
         .get_storage_map_proof::<AccountId, LinkedAccount>(
-            "OCEX",
+            "PolkadexOcex",
             "MainAccounts",
             acc,
             Some(header.hash()),

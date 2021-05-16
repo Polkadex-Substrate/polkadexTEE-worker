@@ -1,5 +1,6 @@
 use codec::{Decode, Encode};
 use log::*;
+use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_tstd::hash::Hasher;
@@ -10,11 +11,9 @@ use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
-use substratee_node_primitives::AssetId;
 
 static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
-pub type AccountId = [u8; 32];
 pub type EncodedKey = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]

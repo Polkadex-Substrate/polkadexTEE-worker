@@ -20,7 +20,7 @@ use crate::ed25519;
 use crate::rpc;
 use crate::rsa3072;
 use crate::state;
-use crate::test_polkadex_balance_storage;
+use crate::test_orderbook_storage;
 use crate::test_proxy;
 use crate::top_pool;
 
@@ -30,6 +30,7 @@ use log::*;
 use sgx_tunittest::*;
 use sgx_types::{sgx_status_t, size_t};
 
+use crate::test_polkadex_balance_storage;
 use substrate_api_client::utils::storage_key;
 use substratee_worker_primitives::block::StatePayload;
 
@@ -71,12 +72,19 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_polkadex_balance_storage::test_withdraw,
         test_polkadex_balance_storage::test_set_free_balance,
         test_polkadex_balance_storage::test_set_reserve_balance,
-        test_proxy::test_check_main_account,
-        test_proxy::test_check_proxy_account,
+        // Polkadex Proxy Storage Test Cases
+        test_proxy::test_check_if_main_account_registered,
+        test_proxy::test_check_if_proxy_registered,
         test_proxy::test_add_main_account,
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,
         test_proxy::test_remove_main_account,
+        // Polkadex Orderbook Storage Test Cases
+        test_orderbook_storage::test_create_orderbook_storage,
+        test_orderbook_storage::test_read_orderbook,
+        test_orderbook_storage::test_add_orderbook,
+        test_orderbook_storage::test_remove_orderbook,
+        // Substratee Tests
         top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
         top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,

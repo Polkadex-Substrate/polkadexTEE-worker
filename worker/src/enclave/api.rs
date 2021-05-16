@@ -19,17 +19,17 @@
 use std::io::{Read, Write};
 use std::{fs::File, path::PathBuf};
 
+use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{Header, SignedBlock};
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::PolkadexAccount;
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
 use sp_core::ed25519;
 use sp_finality_grandpa::VersionedAuthorityList;
-
-use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
-use polkadex_primitives::PolkadexAccount;
 
 extern "C" {
     fn init(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
@@ -65,7 +65,14 @@ extern "C" {
         pdex_accounts_size: usize,
     ) -> sgx_status_t;
 
-    fn produce_blocks(
+    fn load_orders_to_memory(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        orders: *const u8,
+        orders_size: usize,
+    ) -> sgx_status_t;
+
+    fn sync_chain(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,
         blocks: *const u8,
@@ -264,10 +271,35 @@ pub fn enclave_accept_pdex_accounts(
     Ok(())
 }
 
+pub fn enclave_load_orders_to_memory(
+    eid: sgx_enclave_id_t,
+    orders: Vec<SignedOrder>,
+) -> SgxResult<()> {
+    let mut status = sgx_status_t::SGX_SUCCESS;
+
+    let result = unsafe {
+        load_orders_to_memory(
+            eid,
+            &mut status,
+            orders.encode().as_ptr(),
+            orders.encode().len(),
+        )
+    };
+
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
+    Ok(())
+}
+
 /// Starts block production within enclave
 ///
 /// Returns the produced blocks
-pub fn enclave_produce_blocks(
+pub fn enclave_sync_chain(
     eid: sgx_enclave_id_t,
     blocks_to_sync: Vec<SignedBlock>,
     tee_nonce: u32,
@@ -276,7 +308,7 @@ pub fn enclave_produce_blocks(
 
     let result = unsafe {
         blocks_to_sync
-            .using_encoded(|b| produce_blocks(eid, &mut status, b.as_ptr(), b.len(), &tee_nonce))
+            .using_encoded(|b| sync_chain(eid, &mut status, b.as_ptr(), b.len(), &tee_nonce))
     };
 
     if status != sgx_status_t::SGX_SUCCESS {
