@@ -1,10 +1,10 @@
 use std::{thread, time};
 
-use polkadex_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
+use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
 
-use crate::polkadex_db::{KVStore, RocksDB, PolkadexDBError};
-use std::sync::MutexGuard;
+use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
 use sp_core::ed25519::Signature;
+use std::sync::MutexGuard;
 
 #[test]
 fn test_db_initialization() {
@@ -14,9 +14,8 @@ fn test_db_initialization() {
 
 #[test]
 fn test_write_and_delete() {
-
     // Since Cargo tests run parallel, we need to wait for DB to finish initialization
-    thread::sleep(time::Duration::new(2,0));
+    thread::sleep(time::Duration::new(2, 0));
     let first_order = SignedOrder {
         order_id: "FIRST_ORDER".to_string().into_bytes(),
         order: Order {
@@ -35,7 +34,11 @@ fn test_write_and_delete() {
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::write(&orderbook_mirror, "FIRST_ORDER".to_string().into_bytes(), &first_order)
+        RocksDB::write(
+            &orderbook_mirror,
+            "FIRST_ORDER".to_string().into_bytes(),
+            &first_order,
+        )
     });
 
     let result = handler.join().unwrap();
@@ -66,9 +69,9 @@ fn test_write_and_delete() {
 }
 
 #[test]
-fn test_read_all(){
+fn test_read_all() {
     // Since Cargo tests run parallel, we need to wait for DB to finish initialization
-    thread::sleep(time::Duration::new(2,0));
+    thread::sleep(time::Duration::new(2, 0));
     let first_order = SignedOrder {
         order_id: "FIRST_ORDER1".to_string().into_bytes(),
         order: Order {
@@ -112,11 +115,14 @@ fn test_read_all(){
     let first_order_clone = first_order.clone();
     let second_order_clone = second_order.clone();
 
-
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::write(&orderbook_mirror, "FIRST_ORDER1".to_string().into_bytes(), &first_order)
+        RocksDB::write(
+            &orderbook_mirror,
+            "FIRST_ORDER1".to_string().into_bytes(),
+            &first_order,
+        )
     });
 
     let result = handler.join().unwrap();
@@ -125,7 +131,11 @@ fn test_read_all(){
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::write(&orderbook_mirror, "SECOND_ORDER1".to_string().into_bytes(), &second_order)
+        RocksDB::write(
+            &orderbook_mirror,
+            "SECOND_ORDER1".to_string().into_bytes(),
+            &second_order,
+        )
     });
 
     let result = handler.join().unwrap();

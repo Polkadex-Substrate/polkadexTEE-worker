@@ -20,48 +20,53 @@ use std::io::Write;
 use std::path::Path;
 use std::slice;
 use std::str;
-use std::sync::{mpsc::{channel, Sender}, Mutex, MutexGuard};
+use std::sync::{
+    mpsc::{channel, Sender},
+    Mutex, MutexGuard,
+};
 use std::thread;
 use std::time::Duration;
 
 use base58::{FromBase58, ToBase58};
-use clap::{App, load_yaml};
+use clap::{load_yaml, App};
 use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    Event, Hash, Header, pallet_substratee_registry::ShardIdentifier, SignedBlock, UncheckedExtrinsic,
+    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock,
+    UncheckedExtrinsic,
 };
 use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
-    Pair,
     sr25519,
     storage::StorageKey,
+    Pair,
 };
-use sp_finality_grandpa::{AuthorityList, GRANDPA_AUTHORITIES_KEY, VersionedAuthorityList};
+use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
 use sp_keyring::AccountKeyring;
-use substrate_api_client::{Api, GenericAddress, utils::FromHexString, XtStatus};
+use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
 
+use crate::enclave::api::{
+    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory,
+    enclave_sync_chain,
+};
+use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
 };
 use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server};
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
-use polkadex_primitives::{LinkedAccount, PolkadexAccount};
-use polkadex_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
-
-use crate::enclave::api::{enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory, enclave_sync_chain};
-use crate::polkadex_db::{KVStore, RocksDB, PolkadexDBError};
-
 mod constants;
 mod enclave;
 mod ipfs;
-mod tests;
-mod polkadex_db;
 mod polkadex;
+mod polkadex_db;
+mod tests;
 
 #[cfg(test)]
 mod tests_polkadex_DB;
@@ -245,7 +250,7 @@ fn main() {
                 sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
                 &format!("localhost:{}", mu_ra_port),
             )
-                .unwrap();
+            .unwrap();
             println!("[+] Done!");
             enclave.destroy();
         } else {
@@ -395,7 +400,7 @@ fn request_keys(provider_url: &str, _shard: &ShardIdentifier) {
         sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
         &provider_url,
     )
-        .unwrap();
+    .unwrap();
     println!("key provisioning successfully performed");
 }
 
@@ -520,7 +525,7 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
         VersionedAuthorityList::from(grandpas),
         grandpa_proof,
     )
-        .unwrap();
+    .unwrap();
 
     info!("Finished initializing chain relay, syncing....");
 
@@ -800,7 +805,6 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     });
     status
 }
-
 
 /// # Safety
 ///

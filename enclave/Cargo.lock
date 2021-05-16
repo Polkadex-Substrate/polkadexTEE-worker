@@ -1464,9 +1464,20 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "polkadex-primitives"
 version = "0.1.0"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#fde718befb591d0a97a5a70c5422a8ed71f2b9bc"
+dependencies = [
+ "parity-scale-codec",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
+name = "polkadex-sgx-primitives"
+version = "0.1.0"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
+ "polkadex-primitives",
  "sgx_tstd",
  "sp-core",
  "sp-std",
@@ -2583,7 +2594,7 @@ dependencies = [
  "num-bigint",
  "ofb",
  "parity-scale-codec",
- "polkadex-primitives",
+ "polkadex-sgx-primitives",
  "primitive-types",
  "retain_mut",
  "rust-base58",
