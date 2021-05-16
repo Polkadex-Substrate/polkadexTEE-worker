@@ -2,6 +2,7 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
 pub mod types;
+pub mod accounts;
 
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
@@ -10,7 +11,7 @@ use std::vec::Vec;
 
 
 use codec::{Decode, Encode};
-pub use polkadex_primitives::common_types::AccountId;
+pub use polkadex_primitives::common_types::{AccountId, Signature};
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
