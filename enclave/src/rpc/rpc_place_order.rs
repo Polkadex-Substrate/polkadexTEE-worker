@@ -35,7 +35,7 @@ pub struct RpcPlaceOrder<E> {
 
 impl<E: RpcCallEncoder + Send + Sync + 'static> RpcPlaceOrder<E> {
     pub fn method_name() -> &'static str {
-        "author_placeOrder"
+        "place_order"
     }
 
     // FIXME: this produces a warning, because we're not using the call encoder as field,
