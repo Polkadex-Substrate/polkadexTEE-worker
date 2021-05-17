@@ -29,7 +29,7 @@ use substratee_worker_primitives::DirectRequestStatus;
 use crate::rpc::rpc_call_encoder::RpcCallEncoder;
 
 /// RPC call structure for 'place order'
-pub struct RpcPlaceOrder<E: RpcCallEncoder + Send + Sync + 'static> {
+pub struct RpcPlaceOrder<E> {
     call_encoder: E,
 }
 
@@ -38,6 +38,9 @@ impl<E: RpcCallEncoder + Send + Sync + 'static> RpcPlaceOrder<E> {
         "author_placeOrder"
     }
 
+    // FIXME: this produces a warning, because we're not using the call encoder as field,
+    // but merely as associated function in the implementation. However, if we don't have a field,
+    // the compiler gives an error that type parameter 'E' is not used, even though it clearly is
     pub fn new(encoder: E) -> Self {
         RpcPlaceOrder {
             call_encoder: encoder,
@@ -56,9 +59,10 @@ impl<E: RpcCallEncoder + Send + Sync + 'static> RpcMethodSync for RpcPlaceOrder<
 }
 
 pub mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
+
     use super::*;
     use crate::rpc::rpc_call_encoder::tests::RpcCallEncoderMock;
+    use jsonrpc_core::futures::executor::block_on;
 
     pub fn test_method_name_should_not_be_empty() {
         assert_eq!(
@@ -67,10 +71,12 @@ pub mod tests {
         );
     }
 
-    pub fn test_given_incorrect_encoded_request_then_return_error() {
-        // TODO construct a Params object to pass into the test
-        // let rpc_place_order = RpcPlaceOrder {};
-        //
-        // rpc_place_order.call()
+    pub fn test_given_none_params_return_ok_result() {
+        let rpc_place_order = RpcPlaceOrder::new(RpcCallEncoderMock {});
+
+        let result = block_on(rpc_place_order.call(Params::None));
+        let result_value = result.unwrap();
+
+        assert!(!result_value.is_null());
     }
 }

@@ -129,12 +129,10 @@ fn init_io_handler() -> IoHandler {
 
     // Add rpc methods
 
-    let place_order_rpc = RpcPlaceOrder::new(JsonRpcCallEncoder {});
-
     // place order
     io.add_sync_method(
         RpcPlaceOrder::<JsonRpcCallEncoder>::method_name(),
-        place_order_rpc,
+        RpcPlaceOrder::new(JsonRpcCallEncoder {}),
     );
 
     // author_submitAndWatchExtrinsic
