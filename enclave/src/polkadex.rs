@@ -46,7 +46,11 @@ pub fn verify_pdex_account_read_proofs(
                     error!("Wrong storage value supplied");
                     return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
                 }
-                last_account = account.account.next.clone().unwrap();
+                if account.account.next.is_some(){
+                    last_account = account.account.next.clone().unwrap();
+                }else{
+                    break;
+                }
             } else {
                 error!("StorageProofChecker returned None");
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
