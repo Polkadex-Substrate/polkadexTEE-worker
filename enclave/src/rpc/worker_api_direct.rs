@@ -42,6 +42,7 @@ use crate::rpc::{
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
     io_handler_extensions,
+    rpc_call_encoder::JsonRpcCallEncoder,
     rpc_place_order::RpcPlaceOrder,
 };
 
@@ -128,8 +129,13 @@ fn init_io_handler() -> IoHandler {
 
     // Add rpc methods
 
+    let place_order_rpc = RpcPlaceOrder::new(JsonRpcCallEncoder {});
+
     // place order
-    io.add_sync_method(RpcPlaceOrder::method_name(), RpcPlaceOrder {});
+    io.add_sync_method(
+        RpcPlaceOrder::<JsonRpcCallEncoder>::method_name(),
+        place_order_rpc,
+    );
 
     // author_submitAndWatchExtrinsic
     let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";

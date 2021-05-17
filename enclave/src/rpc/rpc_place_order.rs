@@ -16,65 +16,61 @@
 */
 
 pub extern crate alloc;
-use alloc::{str, string::String, vec::Vec};
 
-use codec::Decode;
+use alloc::str;
 
+use core::marker::{Send, Sync};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_core::*;
-use serde_json::*;
 
 use substratee_node_primitives::Request;
 use substratee_worker_primitives::DirectRequestStatus;
 
-use crate::rpc::return_value_encoding::{
-    compute_encoded_return_error, compute_encoded_return_value,
-};
+use crate::rpc::rpc_call_encoder::RpcCallEncoder;
 
 /// RPC call structure for 'place order'
-pub struct RpcPlaceOrder {}
+pub struct RpcPlaceOrder<E: RpcCallEncoder + Send + Sync + 'static> {
+    call_encoder: E,
+}
 
-impl RpcPlaceOrder {
+impl<E: RpcCallEncoder + Send + Sync + 'static> RpcPlaceOrder<E> {
     pub fn method_name() -> &'static str {
         "author_placeOrder"
     }
+
+    pub fn new(encoder: E) -> Self {
+        RpcPlaceOrder {
+            call_encoder: encoder,
+        }
+    }
+
+    fn place_order(&self, _request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
+        Ok(("ok", true, DirectRequestStatus::Ok))
+    }
 }
 
-impl RpcMethodSync for RpcPlaceOrder {
+impl<E: RpcCallEncoder + Send + Sync + 'static> RpcMethodSync for RpcPlaceOrder<E> {
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
-        match params.parse::<Vec<u8>>() {
-            Ok(encoded_params) => match Request::decode(&mut encoded_params.as_slice()) {
-                Ok(_) => Ok(json!(compute_encoded_return_value(
-                    "decoded request successfully",
-                    true,
-                    DirectRequestStatus::Ok
-                )))
-                .into_future(),
-
-                Err(_) => Ok(json!(compute_encoded_return_error(
-                    "Could not decode request"
-                )))
-                .into_future(),
-            },
-            Err(e) => {
-                let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                Ok(json!(compute_encoded_return_error(&error_msg))).into_future()
-            }
-        }
+        E::call(params, &|r: Request| self.place_order(r))
     }
 }
 
 pub mod tests {
-
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
+    use crate::rpc::rpc_call_encoder::tests::RpcCallEncoderMock;
 
     pub fn test_method_name_should_not_be_empty() {
-        assert_eq!(RpcPlaceOrder::method_name().is_empty(), false);
+        assert_eq!(
+            RpcPlaceOrder::<RpcCallEncoderMock>::method_name().is_empty(),
+            false
+        );
     }
 
     pub fn test_given_incorrect_encoded_request_then_return_error() {
-
         // TODO construct a Params object to pass into the test
+        // let rpc_place_order = RpcPlaceOrder {};
+        //
+        // rpc_place_order.call()
     }
 }
