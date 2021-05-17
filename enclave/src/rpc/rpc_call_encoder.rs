@@ -25,7 +25,7 @@ use log::*;
 use serde_json::*;
 
 use substratee_node_primitives::Request;
-use substratee_worker_primitives::DirectRequestStatus;
+use substratee_worker_primitives::{DirectRequestStatus, RpcReturnValue};
 
 use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
@@ -86,6 +86,7 @@ impl RpcCallEncoder for JsonRpcCallEncoder {
 pub mod tests {
 
     use super::*;
+    use alloc::str;
     use jsonrpc_core::futures::executor::block_on;
 
     pub struct RpcCallEncoderMock {}
@@ -100,13 +101,31 @@ pub mod tests {
     }
 
     pub fn test_encoding_none_params_returns_ok() {
+        let expected_do_watch = true;
+
         let result = block_on(JsonRpcCallEncoder::call(
             Params::None,
-            &|request: Request| Ok(("message", true, DirectRequestStatus::Ok)),
+            &|request: Request| Ok(("message", expected_do_watch, DirectRequestStatus::Ok)),
         ))
         .unwrap();
 
-        //debug!("{:#?}", Decode::decode(&mut result).unwrap());
+        if let Value::Array(values) = result {
+            assert!(!values.is_empty());
+        } else {
+            assert!(false, "result did not match a Value::Array as expected");
+        }
+
+        //let outer_message = str::from_utf8(&result).unwrap();
+        //debug!("{:#?}", outer_message)
+
+        // let rpc_return_value = RpcReturnValue::decode(&mut result).unwrap();
+        // let inner_message = str::from_utf8(&rpc_return_value.value).unwrap();
+
+        // assert_eq!(rpc_return_value.status, request_status);
+        //assert_eq!(rpc_return_value.do_watch, expected_do_watch);
+
+        //debug!("{:#?}", result);
+        //debug!("{:#?}", inner_message);
         //debug!(result.decode());
     }
 }
