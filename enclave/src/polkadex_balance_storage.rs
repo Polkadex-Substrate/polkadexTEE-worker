@@ -161,7 +161,7 @@ pub fn withdraw(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()>
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    match balance_storage.read_balance(token.clone(), main_acc) {
+    match balance_storage.read_balance(token.clone(), main_acc.clone()) {
         Some(balance) => {
             if balance.free >= amt {
                 balance_storage.withdraw(token, main_acc, amt)

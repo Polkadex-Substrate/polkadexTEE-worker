@@ -3,17 +3,11 @@
 
 pub mod accounts;
 pub mod types;
-pub extern crate alloc;
-
+//use alloc::vec::Vec;
 use codec::{Decode, Encode};
-use core::hash::Hash;
-use core::hash::Hasher;
 pub use polkadex_primitives::common_types::{AccountId, Signature};
-
-
-use alloc::vec::Vec;
 use sp_core::{H160, H256};
-
+use sp_std::vec::Vec;
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 
@@ -43,10 +37,5 @@ pub enum AssetId {
 impl PartialEq for AssetId {
     fn eq(&self, other: &Self) -> bool {
         self == other
-    }
-}
-impl Hash for AssetId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.hash(state);
     }
 }

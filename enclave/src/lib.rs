@@ -968,7 +968,7 @@ fn handle_ocex_deposit(
     info!(
         "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
-        main_acc.encode().to_base58(),
+        main_acc,
         token,
         amount
     );
@@ -983,16 +983,16 @@ fn handle_ocex_withdraw(
     info!(
         "Found OCEX Withdraw extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
-        main_acc.encode().to_base58(),
+        main_acc.clone().encode().to_base58(), //FIXME @gautham please look into it
         token,
         amount
     );
 
-    match polkadex::check_main_account(main_acc.into()) {
+    match polkadex::check_main_account(main_acc.clone().into()) {
         Ok(exists) => {
             if exists == true {
-                match polkadex_balance_storage::withdraw(main_acc, token.clone(), amount) {
-                    Ok(()) => execute_ocex_release_extrinsic(main_acc, token, amount, 0), // TODO: How to get nonce?
+                match polkadex_balance_storage::withdraw(main_acc.clone(), token.clone(), amount) {
+                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount, 0), // TODO: How to get nonce?
                     Err(e) => return Err(e),
                 }
             } else {
@@ -1004,7 +1004,7 @@ fn handle_ocex_withdraw(
 }
 
 fn execute_ocex_release_extrinsic(
-    acc: [u8; 32],
+    acc: AccountId,
     token: AssetId,
     amount: u128,
     mut nonce: u32,
