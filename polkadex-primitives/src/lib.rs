@@ -5,9 +5,10 @@ pub mod accounts;
 pub mod types;
 //use alloc::vec::Vec;
 use codec::{Decode, Encode};
-pub use polkadex_primitives::common_types::{AccountId, Signature};
+pub use polkadex_primitives::common_types::{AccountId, Signature, Balance};
 use sp_core::{H160, H256};
 use sp_std::vec::Vec;
+
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 
