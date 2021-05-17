@@ -21,8 +21,8 @@ use sp_core::{sr25519 as sr25519_core, Pair};
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::order::Order;
 use crate::{KeyPair, TrustedCall, TrustedOperation};
+use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, SignedOrder};
 
 pub fn place_order_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,

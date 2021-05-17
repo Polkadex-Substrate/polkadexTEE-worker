@@ -40,6 +40,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 //use sp_core::{Encode, Decode};
+use polkadex_sgx_primitives::types::Order;
 
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
@@ -94,8 +95,6 @@ pub mod sgx;
 
 #[cfg(feature = "std")]
 pub mod cli;
-
-pub mod order;
 
 #[cfg(feature = "std")]
 pub mod commands;
@@ -175,7 +174,7 @@ pub enum TrustedCall {
     balance_transfer(AccountId, AccountId, Balance),
     balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
-    place_order(AccountId, order::Order, AccountId), // (MainAccount, Order, ProxyAccount)
+    place_order(AccountId, Order, AccountId), // (MainAccount, Order, ProxyAccount)
 }
 
 impl TrustedCall {
