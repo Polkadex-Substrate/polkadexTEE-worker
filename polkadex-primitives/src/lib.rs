@@ -3,14 +3,15 @@
 
 pub mod accounts;
 pub mod types;
+pub extern crate alloc;
 
 use codec::{Decode, Encode};
 use core::hash::Hash;
 use core::hash::Hasher;
 pub use polkadex_primitives::common_types::{AccountId, Signature};
-#[cfg(feature = "sgx")]
-use sgx_tstd as std;
-use sgx_tstd::vec::Vec;
+
+
+use alloc::vec::Vec;
 use sp_core::{H160, H256};
 
 pub type ShardIdentifier = H256;

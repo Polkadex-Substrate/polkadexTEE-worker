@@ -1,9 +1,10 @@
+pub extern crate alloc;
+
 use codec::{Decode, Encode, Error};
 use frame_support::sp_runtime::traits::Verify;
-#[cfg(feature = "sgx")]
-use sgx_tstd::vec;
-#[cfg(feature = "sgx")]
-use sgx_tstd::vec::Vec;
+use alloc::vec;
+use alloc::vec::Vec;
+
 use sp_core::ed25519::Signature;
 use sp_core::{ed25519, Pair};
 

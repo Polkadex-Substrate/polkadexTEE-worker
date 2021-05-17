@@ -1,9 +1,8 @@
 use polkadex_primitives::common_types::{AccountId, Signature};
 
-#[cfg(feature = "sgx")]
-use sgx_tstd as std;
 
-use ::std::vec::Vec;
+pub extern crate alloc;
+use alloc::vec::Vec;
 
 use codec::Encode;
 use sp_core::blake2_256;

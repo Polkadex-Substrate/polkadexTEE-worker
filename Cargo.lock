@@ -3412,7 +3412,6 @@ dependencies = [
  "polkadex-primitives",
  "sgx_tstd",
  "sp-core",
- "sp-std",
 ]
 
 [[package]]
