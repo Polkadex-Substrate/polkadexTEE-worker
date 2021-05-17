@@ -65,6 +65,7 @@ use sp_core::ed25519 as spEd25519;
 
 use rpc::author::{Author, AuthorApi};
 use rpc::io_handler_extensions;
+use rpc::rpc_call_encoder;
 use rpc::rpc_place_order;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 
@@ -92,11 +93,13 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,
         test_proxy::test_remove_main_account,
+
         // Polkadex Orderbook Storage Test Cases
         test_orderbook_storage::test_create_orderbook_storage,
         test_orderbook_storage::test_read_orderbook,
         test_orderbook_storage::test_add_orderbook,
         test_orderbook_storage::test_remove_orderbook,
+
         // Substratee Tests
         top_pool::base_pool::test_should_import_transaction_to_ready,
         top_pool::base_pool::test_should_not_import_same_transaction_twice,
@@ -142,6 +145,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_submit_trusted_call_to_top_pool,
         test_submit_trusted_getter_to_top_pool,
         test_differentiate_getter_and_call_works,
+        rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         // needs node to be running.. unit tests?
         // test_create_block_and_confirmation_works,
         // test_ocall_worker_request,
