@@ -15,8 +15,8 @@ pub type BlockNumber = u32;
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
     pub prev: AccountId,
-    pub next: Option<AccountId>,
     pub current: AccountId,
+    pub next: Option<AccountId>,
     pub proxies: Vec<AccountId>,
 }
 
