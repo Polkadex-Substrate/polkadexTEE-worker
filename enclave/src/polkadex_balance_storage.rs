@@ -150,14 +150,14 @@ pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStor
     }
 }
 
-pub fn deposit(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()> {
+pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     balance_storage.deposit(token, main_acc, amt)
 }
 
-pub fn withdraw(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()> {
+pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
@@ -177,7 +177,7 @@ pub fn withdraw(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()>
     }
 }
 
-pub fn get_balances(main_acc: AccountId, token: AssetId) -> SgxResult<Balances> {
+pub fn lock_storage_and_get_balances(main_acc: AccountId, token: AssetId) -> SgxResult<Balances> {
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     if let Some(balance) = balance_storage.read_balance(token, main_acc).cloned() {

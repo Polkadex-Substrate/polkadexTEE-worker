@@ -972,7 +972,7 @@ fn handle_ocex_deposit(
         token,
         amount
     );
-    polkadex_balance_storage::deposit(main_acc, token, amount)
+    polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount)
 }
 
 fn handle_ocex_withdraw(
@@ -991,7 +991,11 @@ fn handle_ocex_withdraw(
     match polkadex::check_main_account(main_acc.clone().into()) {
         Ok(exists) => {
             if exists == true {
-                match polkadex_balance_storage::withdraw(main_acc.clone(), token.clone(), amount) {
+                match polkadex_balance_storage::lock_storage_and_withdraw(
+                    main_acc.clone(),
+                    token.clone(),
+                    amount,
+                ) {
                     Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount, 0), // TODO: How to get nonce?
                     Err(e) => return Err(e),
                 }

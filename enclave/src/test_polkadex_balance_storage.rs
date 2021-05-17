@@ -1,10 +1,5 @@
-use crate::polkadex;
-use crate::polkadex::PolkadexAccountsStorage;
-use crate::polkadex_balance_storage::*;
 use codec::Encode;
 use log::*;
-use polkadex_sgx_primitives::accounts::get_account;
-use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount};
 use sgx_rand::{Rng, SeedableRng, StdRng};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::sync::SgxMutexGuard;
@@ -15,6 +10,13 @@ use std::{
     sync::atomic::{AtomicPtr, Ordering},
     sync::{Arc, SgxMutex},
 };
+
+use polkadex_sgx_primitives::accounts::get_account;
+use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount};
+
+use crate::polkadex;
+use crate::polkadex::PolkadexAccountsStorage;
+use crate::polkadex_balance_storage::*;
 
 #[allow(unused)]
 pub fn dummy_map(balance_storage: &mut SgxMutexGuard<PolkadexBalanceStorage>) {
@@ -30,9 +32,7 @@ pub fn dummy_map(balance_storage: &mut SgxMutexGuard<PolkadexBalanceStorage>) {
 
 #[allow(unused)]
 pub fn initialize_dummy() {
-    {
-        create_in_memory_balance_storage();
-    }
+    create_in_memory_balance_storage();
     let mutex = load_balance_storage().unwrap();
     let mut balance_storage = mutex.lock().unwrap();
     dummy_map(&mut balance_storage);
@@ -40,14 +40,10 @@ pub fn initialize_dummy() {
 
 #[allow(unused)]
 pub fn test_deposit() {
-    {
-        initialize_dummy();
-    }
+    initialize_dummy();
     let main_account_one: AccountId = get_account("first_account");
-
-    deposit(main_account_one.clone(), AssetId::POLKADEX, 50u128);
-
-    let balance = get_balances(main_account_one, AssetId::POLKADEX);
+    lock_storage_and_deposit(main_account_one.clone(), AssetId::POLKADEX, 50u128);
+    let balance = lock_storage_and_get_balances(main_account_one, AssetId::POLKADEX);
     assert_eq!(balance, Ok(Balances::from(150u128, 0u128)))
 }
 
@@ -56,15 +52,15 @@ pub fn test_withdraw() {
     initialize_dummy();
     let main_account_one: AccountId = get_account("first_account");
     assert_eq!(
-        withdraw(main_account_one.clone(), AssetId::POLKADEX, 50u128),
+        lock_storage_and_withdraw(main_account_one.clone(), AssetId::POLKADEX, 50u128),
         Ok(())
     );
-    let balance = get_balances(main_account_one.clone(), AssetId::POLKADEX);
+    let balance = lock_storage_and_get_balances(main_account_one.clone(), AssetId::POLKADEX);
     assert_eq!(balance, Ok(Balances::from(50u128, 0u128)));
 
     //Test Error
     assert_eq!(
-        withdraw(main_account_one, AssetId::POLKADEX, 200u128),
+        lock_storage_and_withdraw(main_account_one, AssetId::POLKADEX, 200u128),
         Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
     );
 }
