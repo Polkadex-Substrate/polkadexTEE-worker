@@ -28,7 +28,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, SHIELD_FUNDS};
+use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -859,7 +859,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
                 if let Err(e) = handle_ocex_register(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing ocex register. Error: {:?}", e);
                 }
             }
         }
@@ -870,7 +870,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
                 if let Err(e) = handle_ocex_add_proxy(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing ocex add proxy. Error: {:?}", e);
                 }
             }
         }
@@ -881,7 +881,19 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
                 if let Err(e) = handle_ocex_remove_proxy(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing ocex remove proxy. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Withdraw
+        if let Ok(xt) =
+        UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
+                if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
+                    error!("Error performing ocex withdraw. Error: {:?}", e);
                 }
             }
         }
@@ -988,7 +1000,7 @@ fn handle_ocex_withdraw(
         amount
     );
 
-    match polkadex::check_main_account(main_acc.clone().into()) {
+    match polkadex::check_main_account(main_acc.clone().into()) { // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists == true {
                 match polkadex_balance_storage::withdraw(main_acc.clone(), token.clone(), amount) {
