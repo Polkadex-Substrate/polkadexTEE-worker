@@ -28,7 +28,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS};
+use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, OCEX_DEPOSIT, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -894,6 +894,18 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
                 if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
                     error!("Error performing ocex withdraw. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Deposit
+        if let Ok(xt) =
+        UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
+                if let Err(e) = handle_ocex_deposit(&mut opaque_calls, xt) {
+                    error!("Error performing ocex deposit. Error: {:?}", e);
                 }
             }
         }
