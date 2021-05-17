@@ -67,7 +67,6 @@ mod ipfs;
 mod polkadex;
 mod polkadex_db;
 mod tests;
-
 #[cfg(test)]
 mod tests_polkadex_DB;
 
@@ -462,6 +461,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
+
                     //FIXME: BlockConfirmed still necessary for Polkadex?
                     my_node_runtime::pallet_substratee_registry::RawEvent::BlockConfirmed(
                         sender,

@@ -1,4 +1,4 @@
-use chain_relay::{Header, storage_proof::StorageProofChecker};
+use chain_relay::{storage_proof::StorageProofChecker, Header};
 use codec::Encode;
 use core::hash::Hasher;
 use core::ops::Deref;
@@ -13,8 +13,8 @@ use sp_core::blake2_256;
 use sp_runtime::traits::{AccountIdConversion, Header as HeaderT};
 use sp_std::prelude::*;
 use std::sync::{
-    Arc,
-    atomic::{AtomicPtr, Ordering}, SgxMutex, SgxMutexGuard,
+    atomic::{AtomicPtr, Ordering},
+    Arc, SgxMutex, SgxMutexGuard,
 };
 
 //use std::collections::HashMap;
@@ -40,7 +40,7 @@ pub fn verify_pdex_account_read_proofs(
                 ),
                 account.proof.to_vec(),
             )
-                .sgx_error_with_log("Erroneous Storage Proof")?
+            .sgx_error_with_log("Erroneous Storage Proof")?
             {
                 if &actual != &account.account.encode() {
                     error!("Wrong storage value supplied");
@@ -119,10 +119,9 @@ impl PolkadexAccountsStorage {
             accounts: HashMap::new(),
         };
         for account in accounts {
-            in_memory_map.accounts.insert(
-                account.account.current.encode(),
-                account.account.proxies,
-            );
+            in_memory_map
+                .accounts
+                .insert(account.account.current.encode(), account.account.proxies);
         }
         in_memory_map
     }
@@ -172,9 +171,7 @@ pub fn check_if_main_account_registered(acc: AccountId) -> SgxResult<bool> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
-    Ok(proxy_storage
-        .accounts
-        .contains_key(&acc.encode()))
+    Ok(proxy_storage.accounts.contains_key(&acc.encode()))
 }
 
 pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
@@ -182,10 +179,7 @@ pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> SgxRe
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
 
-    if let Some(list_of_proxies) = proxy_storage
-        .accounts
-        .get(&main_acc.encode())
-    {
+    if let Some(list_of_proxies) = proxy_storage.accounts.get(&main_acc.encode()) {
         Ok(list_of_proxies.contains(&proxy))
     } else {
         warn!("Main account not present");
@@ -212,6 +206,13 @@ pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> SgxResult<()> {
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.add_proxy(main_acc, proxy))
+}
+
+pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
+    // Aquire lock on proxy_registry
+    let mutex = load_proxy_registry()?;
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    Ok(proxy_storage.accounts.contains_key(&acc.encode()))
 }
 
 pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> SgxResult<()> {

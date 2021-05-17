@@ -1,4 +1,4 @@
-name: PolkadexTEE Worker 
+name: PolkadexTEE Worker
 
 on:
   push:

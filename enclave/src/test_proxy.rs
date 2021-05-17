@@ -1,13 +1,13 @@
 use codec::Encode;
-use polkadex_sgx_primitives::{AccountId, accounts::get_account};
+use polkadex_sgx_primitives::{accounts::get_account, AccountId};
 use sgx_rand::{Rng, SeedableRng, StdRng};
 use sgx_tstd::collections::HashMap;
+use sgx_tstd::format;
 use sgx_tstd::sync::SgxMutexGuard;
 use sgx_types::{sgx_status_t, SgxResult};
-use sgx_tstd::format;
 use std::{
-    sync::{Arc, SgxMutex},
     sync::atomic::{AtomicPtr, Ordering},
+    sync::{Arc, SgxMutex},
 };
 
 use crate::polkadex;
@@ -22,10 +22,9 @@ pub fn get_dummy_map(storage: &mut SgxMutexGuard<PolkadexAccountsStorage>) {
     let dummy_account_two: AccountId = get_account("second_dummy_account");
     let dummy_account_three: AccountId = get_account("third_dummy_account");
 
-    storage.accounts.insert(
-        main_account_one.encode(),
-        vec![dummy_account_one.clone()],
-    );
+    storage
+        .accounts
+        .insert(main_account_one.encode(), vec![dummy_account_one.clone()]);
     storage.accounts.insert(
         main_account_two.encode(),
         vec![dummy_account_one.clone(), dummy_account_two.clone()],

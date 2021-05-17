@@ -28,7 +28,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
+use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -37,14 +37,14 @@ use chain_relay::{
 };
 use codec::{Decode, Encode};
 use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_MODULE,
-    OCEX_REGISTER, OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_REGISTER,
+    OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
     SUBSRATEE_REGISTRY_MODULE,
 };
 use core::ops::Deref;
 use log::*;
 use polkadex_sgx_primitives::types::SignedOrder;
-use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
+use polkadex_sgx_primitives::{AssetId, LinkedAccount, PolkadexAccount};
 use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
@@ -64,7 +64,8 @@ use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
 use substratee_node_primitives::{
-    CallWorkerFn, OCEXAddProxyFn, OCEXRegisterFn, OCEXRemoveProxyFn, ShieldFundsFn,
+    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn, OCEXWithdrawFn,
+    ShieldFundsFn,
 };
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
@@ -83,10 +84,12 @@ mod ed25519;
 mod io;
 mod ipfs;
 mod polkadex;
+mod polkadex_balance_storage;
 mod polkadex_orderbook_storage;
 mod rsa3072;
 mod state;
 mod test_orderbook_storage;
+mod test_polkadex_balance_storage;
 mod test_proxy;
 mod utils;
 
@@ -366,7 +369,6 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         Ok(v) => v,
         Err(e) => return e,
     };
-
     let latest_header = validator
         .latest_finalized_header(validator.num_relays)
         .unwrap();
@@ -845,7 +847,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
                 if let Err(e) = handle_shield_funds_xt(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing shield funds. Error: {:?}", e);
                 }
             }
         };
@@ -857,7 +859,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
                 if let Err(e) = handle_ocex_register(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing ocex register. Error: {:?}", e);
                 }
             }
         }
@@ -868,7 +870,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
                 if let Err(e) = handle_ocex_add_proxy(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing ocex add proxy. Error: {:?}", e);
                 }
             }
         }
@@ -879,7 +881,19 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
                 if let Err(e) = handle_ocex_remove_proxy(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing ocex remove proxy. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Withdraw
+        if let Ok(xt) =
+        UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
+                if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
+                    error!("Error performing ocex withdraw. Error: {:?}", e);
                 }
             }
         }
@@ -956,6 +970,90 @@ fn handle_ocex_remove_proxy(
         proxy.encode().to_base58()
     );
     polkadex::remove_proxy(main_acc.into(), proxy.into())
+}
+
+fn handle_ocex_deposit(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXDepositFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, token, amount) = xt.function.clone();
+    info!(
+        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
+        call,
+        main_acc,
+        token,
+        amount
+    );
+    polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount)
+}
+
+fn handle_ocex_withdraw(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, token, amount) = xt.function.clone();
+    info!(
+        "Found OCEX Withdraw extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
+        call,
+        main_acc.clone().encode().to_base58(), //FIXME @gautham please look into it
+        token,
+        amount
+    );
+
+    match polkadex::check_main_account(main_acc.clone().into()) { // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
+        Ok(exists) => {
+            if exists == true {
+                match polkadex_balance_storage::lock_storage_and_withdraw(
+                    main_acc.clone(),
+                    token.clone(),
+                    amount,
+                ) {
+                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount, 0), // TODO: How to get nonce?
+                    Err(e) => return Err(e),
+                }
+            } else {
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
+        Err(e) => return Err(e),
+    }
+}
+
+fn execute_ocex_release_extrinsic(
+    acc: AccountId,
+    token: AssetId,
+    amount: u128,
+    mut nonce: u32,
+) -> SgxResult<()> {
+    // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
+    let mut validator = match io::light_validation::unseal() {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    };
+    // Compose the release extrinsic
+    let xt_block = [OCEX_MODULE, OCEX_RELEASE];
+    let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
+    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
+
+    // Load the enclave's key pair
+    let signer = ed25519::unseal_pair()?;
+    debug!("Restored ECC pubkey: {:?}", signer.public());
+
+    let xt: Vec<u8> = compose_extrinsic_offline!(
+        signer.clone(),
+        call,
+        nonce, // TODO: Where is this?
+        Era::Immortal,
+        genesis_hash,
+        genesis_hash, // FIXME: Shouldn't this be the latest head?
+        RUNTIME_SPEC_VERSION,
+        RUNTIME_TRANSACTION_VERSION
+    )
+    .encode();
+    nonce += 1;
+
+    // TODO: We need to send this using ocall to Polkadex network
+    Ok(())
 }
 
 fn handle_shield_funds_xt(

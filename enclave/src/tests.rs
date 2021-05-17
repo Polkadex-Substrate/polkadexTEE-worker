@@ -20,9 +20,8 @@ use crate::ed25519;
 use crate::rpc;
 use crate::rsa3072;
 use crate::state;
-use crate::test_proxy;
 use crate::test_orderbook_storage;
-
+use crate::test_proxy;
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -31,6 +30,7 @@ use log::*;
 use sgx_tunittest::*;
 use sgx_types::{sgx_status_t, size_t};
 
+use crate::test_polkadex_balance_storage;
 use substrate_api_client::utils::storage_key;
 use substratee_worker_primitives::block::StatePayload;
 
@@ -68,6 +68,10 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
+        test_polkadex_balance_storage::test_deposit,
+        test_polkadex_balance_storage::test_withdraw,
+        test_polkadex_balance_storage::test_set_free_balance,
+        test_polkadex_balance_storage::test_set_reserve_balance,
         // Polkadex Proxy Storage Test Cases
         test_proxy::test_check_if_main_account_registered,
         test_proxy::test_check_if_proxy_registered,
@@ -129,7 +133,6 @@ pub extern "C" fn test_main_entrance() -> size_t {
         // test_create_state_diff,
         // test_executing_call_updates_account_nonce,
         // test_invalid_nonce_call_is_not_executed,
-
 
         // these unit tests (?) need an ipfs node running..
         //ipfs::test_creates_ipfs_content_struct_works,

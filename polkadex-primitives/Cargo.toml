@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 frame-support = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-std = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-std = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git"}
 polkadex-primitives = {default-features = false, git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop"}
 
 
@@ -27,5 +27,5 @@ optional = true
 
 [features]
 default = ['std']
-std = []
+std = ['polkadex-primitives/std']
 sgx = ['sgx_tstd']

@@ -2543,6 +2543,7 @@ name = "substratee-node-primitives"
 version = "0.8.0"
 dependencies = [
  "parity-scale-codec",
+ "polkadex-sgx-primitives",
  "primitive-types",
  "sgx_tstd",
  "sp-core",

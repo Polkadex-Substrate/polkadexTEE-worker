@@ -1,11 +1,12 @@
+pub extern crate alloc;
+
 use codec::{Decode, Encode, Error};
-#[cfg(feature = "sgx")]
-use sgx_tstd::vec;
-#[cfg(feature = "sgx")]
-use sgx_tstd::vec::Vec;
-use sp_core::{ed25519, Pair};
-use sp_core::ed25519::Signature;
 use frame_support::sp_runtime::traits::Verify;
+use alloc::vec;
+use alloc::vec::Vec;
+
+use sp_core::ed25519::Signature;
+use sp_core::{ed25519, Pair};
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = Vec<u8>;
@@ -82,14 +83,15 @@ impl SignedOrder {
 
     pub fn verify_signature(&self, key_pair: &ed25519::Pair) -> bool {
         // TODO: We can do better here, no need of unnecessary clones
-        let order = SignedOrder{
+        let order = SignedOrder {
             order_id: self.order_id.clone(),
             order: self.order.clone(),
-            signature: Signature::default()
+            signature: Signature::default(),
         };
 
         let payload = order.encode();
-        self.signature.verify(payload.as_slice(), &key_pair.public())
+        self.signature
+            .verify(payload.as_slice(), &key_pair.public())
     }
 }
 
