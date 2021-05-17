@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount};
+use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount, Balance};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_tstd::hash::Hasher;
@@ -18,12 +18,12 @@ pub type EncodedKey = Vec<u8>;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct Balances {
-    pub free: u128,
-    pub reserved: u128,
+    pub free: Balance,
+    pub reserved: Balance,
 }
 
 impl Balances {
-    pub fn from(free: u128, reserved: u128) -> Self {
+    pub fn from(free: Balance, reserved: Balance) -> Self {
         Self { free, reserved }
     }
 }
@@ -60,7 +60,7 @@ impl PolkadexBalanceStorage {
             .get(&PolkadexBalanceKey::from(token, acc).encode())
     }
 
-    pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
+    pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -80,7 +80,7 @@ impl PolkadexBalanceStorage {
         &mut self,
         token: AssetId,
         acc: AccountId,
-        amt: u128,
+        amt: Balance,
     ) -> SgxResult<()> {
         match self
             .storage
@@ -97,7 +97,7 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn deposit(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
+    pub fn deposit(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -113,7 +113,7 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn withdraw(&mut self, token: AssetId, acc: AccountId, amt: u128) -> SgxResult<()> {
+    pub fn withdraw(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -150,14 +150,14 @@ pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStor
     }
 }
 
-pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()> {
+pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     balance_storage.deposit(token, main_acc, amt)
 }
 
-pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: u128) -> SgxResult<()> {
+pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();

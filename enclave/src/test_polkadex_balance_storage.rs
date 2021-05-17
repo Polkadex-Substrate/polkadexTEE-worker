@@ -12,7 +12,7 @@ use std::{
 };
 
 use polkadex_sgx_primitives::accounts::get_account;
-use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount};
+use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount, Balance};
 
 use crate::polkadex;
 use crate::polkadex::PolkadexAccountsStorage;

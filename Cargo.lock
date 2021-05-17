@@ -2575,7 +2575,7 @@ dependencies = [
 [[package]]
 name = "node-polkadex-runtime"
 version = "3.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#fde718befb591d0a97a5a70c5422a8ed71f2b9bc"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#dab5521a7ae485af4fbce015a3d38c39bdb9e622"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -3351,7 +3351,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "polkadex-fungible-assets"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#fde718befb591d0a97a5a70c5422a8ed71f2b9bc"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#dab5521a7ae485af4fbce015a3d38c39bdb9e622"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3372,7 +3372,7 @@ dependencies = [
 [[package]]
 name = "polkadex-ocex"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#fde718befb591d0a97a5a70c5422a8ed71f2b9bc"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#dab5521a7ae485af4fbce015a3d38c39bdb9e622"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3395,7 +3395,7 @@ dependencies = [
 [[package]]
 name = "polkadex-primitives"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#fde718befb591d0a97a5a70c5422a8ed71f2b9bc"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#dab5521a7ae485af4fbce015a3d38c39bdb9e622"
 dependencies = [
  "parity-scale-codec 2.1.1",
  "serde",
@@ -5985,7 +5985,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.6.5",
  "static_assertions",
 ]
 
