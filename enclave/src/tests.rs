@@ -137,7 +137,9 @@ pub extern "C" fn test_main_entrance() -> size_t {
         state::test_write_and_load_state_works,
         state::test_sgx_state_decode_encode_works,
         state::test_encrypt_decrypt_state_type_works,
+        rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         rpc_place_order::tests::test_method_name_should_not_be_empty,
+        rpc_place_order::tests::test_given_none_params_return_ok_result,
         io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
         test_time_is_overdue,
         test_time_is_not_overdue,
@@ -145,7 +147,6 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_submit_trusted_call_to_top_pool,
         test_submit_trusted_getter_to_top_pool,
         test_differentiate_getter_and_call_works,
-        rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         // needs node to be running.. unit tests?
         // test_create_block_and_confirmation_works,
         // test_ocall_worker_request,
