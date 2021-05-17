@@ -3,10 +3,11 @@
 
 use codec::{Decode, Encode};
 #[cfg(feature = "sgx")]
+use polkadex_sgx_primitives::AssetId;
+#[cfg(feature = "sgx")]
 use sgx_tstd as std;
 use sp_core::H256;
 use std::vec::Vec;
-//use polkadex_sgx_primitives::A
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 

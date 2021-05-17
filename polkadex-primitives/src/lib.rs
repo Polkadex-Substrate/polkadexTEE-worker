@@ -5,13 +5,13 @@ pub mod accounts;
 pub mod types;
 
 use codec::{Decode, Encode};
+use core::hash::Hash;
+use core::hash::Hasher;
 pub use polkadex_primitives::common_types::{AccountId, Signature};
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
+use sgx_tstd::vec::Vec;
 use sp_core::{H160, H256};
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::vec::Vec;
 
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
