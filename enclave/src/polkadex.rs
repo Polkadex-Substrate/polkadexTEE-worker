@@ -46,9 +46,9 @@ pub fn verify_pdex_account_read_proofs(
                     error!("Wrong storage value supplied");
                     return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
                 }
-                if account.account.next.is_some(){
+                if account.account.next.is_some() {
                     last_account = account.account.next.clone().unwrap();
-                }else{
+                } else {
                     break;
                 }
             } else {
@@ -172,7 +172,7 @@ impl PolkadexAccountsStorage {
 }
 
 pub fn check_if_main_account_registered(acc: AccountId) -> SgxResult<bool> {
-    // Aquire lock on proxy_registry
+    // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.accounts.contains_key(&acc.encode()))

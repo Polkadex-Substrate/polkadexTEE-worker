@@ -5468,6 +5468,7 @@ dependencies = [
  "node-polkadex-runtime",
  "pallet-balances",
  "parity-scale-codec 2.1.1",
+ "polkadex-sgx-primitives",
  "sc-keystore",
  "sgx-externalities",
  "sgx-runtime",
