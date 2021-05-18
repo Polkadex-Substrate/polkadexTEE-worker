@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount, Balance};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance, PolkadexAccount};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_tstd::hash::Hasher;
@@ -19,12 +19,17 @@ pub type EncodedKey = Vec<u8>;
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct Balances {
     pub free: Balance,
+    pub unconfirmed: Balance,
     pub reserved: Balance,
 }
 
 impl Balances {
-    pub fn from(free: Balance, reserved: Balance) -> Self {
-        Self { free, reserved }
+    pub fn from(free: Balance, unconfirmed: Balance, reserved: Balance) -> Self {
+        Self {
+            free,
+            unconfirmed,
+            reserved,
+        }
     }
 }
 
@@ -60,7 +65,12 @@ impl PolkadexBalanceStorage {
             .get(&PolkadexBalanceKey::from(token, acc).encode())
     }
 
-    pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
+    pub fn set_free_balance(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        amt: Balance,
+    ) -> SgxResult<()> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -92,6 +102,44 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
+    }
+    //TODO KSR
+    pub fn unconfirmed_deposit(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        amt: Balance,
+    ) -> SgxResult<()> {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
+            Some(balance) => {
+                balance.unconfirmed = balance.unconfirmed.saturating_add(amt);
+                Ok(())
+            }
+            None => {
+                error!("Account Id or Asset Id not available [here]");
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
+    }
+
+    pub fn move_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
+            Some(balance) => {
+                balance.unconfirmed = balance.unconfirmed.saturating_sub(amt);
+                balance.free = balance.free.saturating_add(amt);
+                Ok(())
+            }
+            None => {
+                error!("Account Id or Asset Id not available [here]");
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
             }
         }
@@ -150,14 +198,22 @@ pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStor
     }
 }
 
-pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
+pub fn lock_storage_and_deposit(
+    main_acc: AccountId,
+    token: AssetId,
+    amt: Balance,
+) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    balance_storage.deposit(token, main_acc, amt)
+    balance_storage.unconfirmed_deposit(token, main_acc, amt)
 }
 
-pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
+pub fn lock_storage_and_withdraw(
+    main_acc: AccountId,
+    token: AssetId,
+    amt: Balance,
+) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
@@ -165,6 +221,30 @@ pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balan
         Some(balance) => {
             if balance.free >= amt {
                 balance_storage.withdraw(token, main_acc, amt)
+            } else {
+                error!("Balance is low");
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
+        None => {
+            error!("Account Id or Asset Id is not available");
+            return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        }
+    }
+}
+
+pub fn lock_storage_and_move_balance(
+    main_acc: AccountId,
+    token: AssetId,
+    amt: Balance,
+) -> SgxResult<()> {
+    // Acquire lock on balance_storage
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    match balance_storage.read_balance(token.clone(), main_acc.clone()) {
+        Some(balance) => {
+            if balance.unconfirmed >= amt {
+                balance_storage.move_balance(token, main_acc, amt)
             } else {
                 error!("Balance is low");
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);

@@ -28,26 +28,11 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, OCEX_DEPOSIT, SHIELD_FUNDS};
-use crate::utils::UnwrapOrSgxErrorUnexpected;
-use base58::ToBase58;
-use chain_relay::{
-    storage_proof::{StorageProof, StorageProofChecker},
-    Block, Header, LightValidation,
-};
-use codec::{Decode, Encode};
-use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_REGISTER,
-    OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
-    SUBSRATEE_REGISTRY_MODULE,
-};
 use core::ops::Deref;
+
+use base58::ToBase58;
+use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::types::SignedOrder;
-use polkadex_sgx_primitives::{AssetId, LinkedAccount, PolkadexAccount};
-use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
-use rpc::worker_api_direct;
-use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use sgx_externalities::SgxExternalitiesTypeTrait;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use sp_core::{blake2_256, crypto::Pair, H256};
@@ -63,9 +48,24 @@ use std::untrusted::time::SystemTimeEx;
 use std::vec::Vec;
 use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
+
+use chain_relay::{
+    storage_proof::{StorageProof, StorageProofChecker},
+    Block, Header, LightValidation,
+};
+use constants::{
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_REGISTER,
+    OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    SUBSRATEE_REGISTRY_MODULE,
+};
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::{AssetId, LinkedAccount, PolkadexAccount};
+use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
+use rpc::worker_api_direct;
+use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use substratee_node_primitives::{
-    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn, OCEXWithdrawFn,
-    ShieldFundsFn,
+    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRe, OCEXRegisterFn, OCEXReleaseFn,
+    OCEXRemoveProxyFn, OCEXWithdrawFn, ShieldFundsFn,
 };
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
@@ -77,28 +77,34 @@ use substratee_worker_primitives::block::{
 };
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
+
+use crate::constants::{
+    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
+};
+use crate::utils::UnwrapOrSgxErrorUnexpected;
+
 mod aes;
 mod attestation;
+pub mod cert;
 mod constants;
 mod ed25519;
+mod extrinsic_deposit;
+pub mod hex;
 mod io;
 mod ipfs;
 mod polkadex;
 mod polkadex_balance_storage;
 mod polkadex_orderbook_storage;
+pub mod rpc;
 mod rsa3072;
 mod state;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
 mod test_proxy;
-mod utils;
-
-pub mod cert;
-pub mod hex;
-pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
+mod utils;
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 
@@ -840,6 +846,9 @@ pub fn update_states(header: Header) -> SgxResult<()> {
 pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     debug!("Scanning block {} for relevant xt", block.header.number());
     let mut opaque_calls = Vec::<OpaqueCall>::new();
+    /* TODO
+    -> Load object of DepositExtrinsicHelper
+     */
     for xt_opaque in block.extrinsics.iter() {
         if let Ok(xt) =
             UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
@@ -888,10 +897,11 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Withdraw
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
+                // TODO Pass refrence of DepositExtrinsicHelper object.
                 if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
                     error!("Error performing ocex withdraw. Error: {:?}", e);
                 }
@@ -900,12 +910,23 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Deposit
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
                 if let Err(e) = handle_ocex_deposit(&mut opaque_calls, xt) {
                     error!("Error performing ocex deposit. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Release
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXReleaseFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            if xt.function.0 == [OCEX_MODULE, OCEX_RELEASE] {
+                if let Err(e) = handle_ocex_release(&mut opaque_calls, xt) {
+                    error!("Error performing ocex release. Error: {:?}", e);
                 }
             }
         }
@@ -939,6 +960,14 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             }
         }
     }
+    // TODO KSR :- Create Failed extrinsic management mechanism
+    // Intial Idea:-
+    // O1-Check content of pending set.
+    // It should have nothing in ideal case.
+    // But if there is any elemnt left
+    //
+    // then send it again and move it to active  set
+    // Move everthing from active set to pending set.
 
     Ok(opaque_calls)
 }
@@ -999,6 +1028,20 @@ fn handle_ocex_deposit(
     polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount)
 }
 
+fn handle_ocex_release(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXReleaseFn>,
+) -> SgxResult<()> {
+    let (call, asset_id, amount, to) = xt.function.clone();
+    // info!(
+    // TODO KSR
+    // );
+    // TODO KSR Remove element from DepositExtrinsicHelper.active_set
+    // TODO KSR Move balance
+    //
+    polkadex_balance_storage::lock_storage_and_move_balance(main_acc, token, amount)
+}
+
 fn handle_ocex_withdraw(
     calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
@@ -1012,7 +1055,8 @@ fn handle_ocex_withdraw(
         amount
     );
 
-    match polkadex::check_main_account(main_acc.clone().into()) { // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
+    match polkadex::check_main_account(main_acc.clone().into()) {
+        // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists == true {
                 match polkadex_balance_storage::lock_storage_and_withdraw(
@@ -1020,7 +1064,12 @@ fn handle_ocex_withdraw(
                     token.clone(),
                     amount,
                 ) {
-                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount, 0), // TODO: How to get nonce?
+                    Ok(()) => {
+                        //TODO KSR Add to active set of DepositExtrinsicHelper
+                        //TODO KSR Get unapproved nonce from DepositExtrinsicHelper
+                        //TODO Pass DepositExtrinsicHelper Object
+                        execute_ocex_release_extrinsic(main_acc.clone(), token, amount, 0)
+                    } // TODO: How to get nonce?
                     Err(e) => return Err(e),
                 }
             } else {
@@ -1063,6 +1112,7 @@ fn execute_ocex_release_extrinsic(
     )
     .encode();
     nonce += 1;
+    // TODO: KSR : call increase_unapproved_nonce
 
     // TODO: We need to send this using ocall to Polkadex network
     Ok(())

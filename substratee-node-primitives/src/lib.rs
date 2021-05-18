@@ -2,11 +2,13 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
 use codec::{Decode, Encode};
-use polkadex_sgx_primitives::{AccountId, AssetId};
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
 use sp_core::H256;
 use std::vec::Vec;
+
+use polkadex_sgx_primitives::{AccountId, AssetId};
+
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 
@@ -27,6 +29,7 @@ pub type OCEXAddProxyFn = ([u8; 2], AccountId, AccountId);
 pub type OCEXRemoveProxyFn = ([u8; 2], AccountId, AccountId);
 pub type OCEXDepositFn = ([u8; 2], AccountId, AssetId, u128);
 pub type OCEXWithdrawFn = ([u8; 2], AccountId, AssetId, u128);
+pub type OCEXReleaseFn = ([u8; 2], AssetId, u128, AccountId);
 
 #[cfg(feature = "std")]
 pub mod calls {
