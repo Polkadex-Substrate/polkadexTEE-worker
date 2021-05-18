@@ -17,9 +17,8 @@
 
 use core::option::Option;
 
-use clap::{Arg, ArgMatches};
+use clap::ArgMatches;
 use clap_nested::Command;
-use codec::Encode;
 
 use sp_core::{sr25519 as sr25519_core, Pair};
 
@@ -28,77 +27,21 @@ use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::{KeyPair, TrustedCall, TrustedOperation};
 use std::error::Error;
 
-use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType};
+use crate::commands::common_args::*;
+use crate::commands::common_args_processing::get_order_from_matches;
 
 pub fn place_order_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
 ) -> Command<'a, str> {
-    const ACCOUNT_ID_ARG_NAME: &str = "accountid";
-    const PROXY_ACCOUNT_ID_ARG_NAME: &str = "proxyaccountid";
-    const MARKET_ID_ARG_NAME: &str = "marketid";
-    const MARKET_TYPE_ARG_NAME: &str = "markettype";
-    const ORDER_TYPE_ARG_NAME: &str = "ordertype";
-    const ORDER_SIDE_ARG_NAME: &str = "orderside";
-    const QUANTITY_ARG_NAME: &str = "quantity";
-    const PRICE_ARG_NAME: &str = "price";
-
     Command::new("place_order")
         .description("Place order")
         .options(|app| {
-            app.arg(
-                Arg::with_name(ACCOUNT_ID_ARG_NAME)
-                    .takes_value(true)
-                    .required(true)
-                    .value_name("STRING")
-                    .help("Account/User ID"),
-            )
-            .arg(
-                Arg::with_name(PROXY_ACCOUNT_ID_ARG_NAME)
-                    .takes_value(true)
-                    .required(true)
-                    .value_name("STRING")
-                    .help("Proxy Account ID"),
-            )
-            .arg(
-                Arg::with_name(MARKET_ID_ARG_NAME)
-                    .takes_value(true)
-                    .required(true)
-                    .value_name("STRING")
-                    .help("Market ID, e.g.: 'btcusd'"),
-            )
-            .arg(
-                Arg::with_name(MARKET_TYPE_ARG_NAME)
-                    .takes_value(true)
-                    .required(true)
-                    .value_name("STRING")
-                    .help("Market type, e.g. 'trusted'"),
-            )
-            .arg(
-                Arg::with_name(ORDER_TYPE_ARG_NAME)
-                    .takes_value(true)
-                    .required(true)
-                    .value_name("STRING")
-                    .help("Order type: one of [market, limit, postonly, fillorkill]"),
-            )
-            .arg(
-                Arg::with_name(QUANTITY_ARG_NAME)
-                    .takes_value(true)
-                    .required(true)
-                    .value_name("u128")
-                    .help("An amount that placed within the order"),
-            )
-            .arg(
-                Arg::with_name(PRICE_ARG_NAME)
-                    .takes_value(true)
-                    .required(false)
-                    .value_name("u128")
-                    .help("Main (limit) price of the order (optional)"),
-            )
+            let app_with_main_account = add_main_account_args(app);
+            let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+            add_order_args(app_with_proxy_account)
         })
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME).unwrap();
-            let arg_market_id = matches.value_of(MARKET_ID_ARG_NAME).unwrap();
-            let arg_market_type = matches.value_of(MARKET_TYPE_ARG_NAME).unwrap();
 
             let main_account_pair = get_pair_from_str(matches, arg_account);
             let main_account_key_pair = sr25519_core::Pair::from(main_account_pair.clone());
@@ -119,26 +62,8 @@ pub fn place_order_cli_command<'a>(
                 &main_account_key_pair,
             );
 
-            let arg_order_type =
-                get_order_type_from_str(matches.value_of(ORDER_TYPE_ARG_NAME).unwrap()).expect("");
-
-            let arg_order_side =
-                get_order_side_from_str(matches.value_of(ORDER_SIDE_ARG_NAME).unwrap()).expect("");
-
-            let arg_quantity = get_amount_from_matches(matches, QUANTITY_ARG_NAME);
-            let arg_price = matches
-                .value_of(PRICE_ARG_NAME)
-                .map(|v| get_amount_from_str(v));
-
-            let order = Order {
-                user_uid: arg_account.encode(),
-                market_id: arg_market_id.encode(),
-                market_type: arg_market_type.encode(),
-                order_type: arg_order_type,
-                side: arg_order_side,
-                quantity: arg_quantity,
-                price: arg_price,
-            };
+            let order = get_order_from_matches(arg_account, matches)
+                .expect("failed to build order from command line arguments");
 
             let direct: bool = matches.is_present("direct");
 
@@ -159,30 +84,4 @@ pub fn place_order_cli_command<'a>(
 
             Ok(())
         })
-}
-
-fn get_amount_from_matches(matches: &ArgMatches<'_>, arg_name: &str) -> u128 {
-    get_amount_from_str(matches.value_of(arg_name).unwrap())
-}
-
-fn get_amount_from_str(arg: &str) -> u128 {
-    u128::from_str_radix(arg, 10).expect(&format!("failed to convert {} into an integer", arg))
-}
-
-fn get_order_type_from_str(arg: &str) -> Result<OrderType, &str> {
-    match arg.to_ascii_lowercase().as_ref() {
-        "limit" => Ok(OrderType::LIMIT),
-        "market" => Ok(OrderType::MARKET),
-        "postonly" => Ok(OrderType::PostOnly),
-        "fillorkill" => Ok(OrderType::FillOrKill),
-        _ => Err("invalid order type argument"),
-    }
-}
-
-fn get_order_side_from_str(arg: &str) -> Result<OrderSide, &str> {
-    match arg.to_ascii_lowercase().as_ref() {
-        "bid" => Ok(OrderSide::BID),
-        "ask" => Ok(OrderSide::ASK),
-        _ => Err("invalid order side argument"),
-    }
 }
