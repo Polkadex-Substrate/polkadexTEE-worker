@@ -269,6 +269,22 @@ impl Stf {
                     // TODO implement and call into SGX runtime
                     Ok(())
                 }
+                TrustedCall::cancel_order(_order, _main_account) => {
+                    // TODO implement and call into SGX runtime
+                    Ok(())
+                }
+                TrustedCall::withdraw(_main_account, _currency_id, _balance, _proxy_account) => {
+                    // TODO implement and call into SGX runtime
+                    Ok(())
+                }
+                TrustedCall::get_balance(_main_account, _currency_id, _proxy_account) => {
+                    // TODO implement and call into SGX runtime
+                    Ok(())
+                }
+                TrustedCall::subscribe_matches(_main_account) => {
+                    // TODO implement and call into SGX runtime
+                    Ok(())
+                }
             }?;
             increment_nonce(&sender);
             Ok(())
@@ -391,6 +407,10 @@ impl Stf {
             TrustedCall::balance_unshield(_, _, _, _) => debug!("No storage updates needed..."),
             TrustedCall::balance_shield(_, _) => debug!("No storage updates needed..."),
             TrustedCall::place_order(_, _, _) => debug!("No storage updates needed..."),
+            TrustedCall::cancel_order(_, _) => debug!("No storage updates needed..."),
+            TrustedCall::withdraw(_, _, _, _) => debug!("No storage updates needed..."),
+            TrustedCall::get_balance(_, _, _) => debug!("No storage updates needed..."),
+            TrustedCall::subscribe_matches(_) => debug!("No storage updates needed..."),
         };
         key_hashes
     }

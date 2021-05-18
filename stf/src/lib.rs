@@ -40,7 +40,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 
-use polkadex_sgx_primitives::types::Order;
+use polkadex_sgx_primitives::types::{CurrencyId, Order};
 
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
@@ -175,6 +175,10 @@ pub enum TrustedCall {
     balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
     place_order(AccountId, Order, AccountId), // (MainAccount, Order, ProxyAccount)
+    cancel_order(Order, AccountId),           // (Order, ProxyAccount)
+    withdraw(AccountId, CurrencyId, Balance, AccountId), // (MainAccount, TokenId, Amount, ProxyAccount)
+    get_balance(AccountId, CurrencyId, AccountId),       // main account, tokenid, signer
+    subscribe_matches(AccountId),
 }
 
 impl TrustedCall {
@@ -185,6 +189,10 @@ impl TrustedCall {
             TrustedCall::balance_unshield(account, _, _, _) => account,
             TrustedCall::balance_shield(account, _) => account,
             TrustedCall::place_order(account, _, _) => account,
+            TrustedCall::cancel_order(_, account) => account,
+            TrustedCall::withdraw(account, _, _, _) => account,
+            TrustedCall::get_balance(account, _, _) => account,
+            TrustedCall::subscribe_matches(account) => account,
         }
     }
 
