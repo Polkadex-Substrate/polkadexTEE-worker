@@ -43,7 +43,7 @@ use crate::rpc::{
     basic_pool::BasicPool,
     io_handler_extensions,
     rpc_call_encoder::JsonRpcCallEncoder,
-    rpc_place_order::RpcPlaceOrder,
+    rpc_call::RpcCall,
 };
 
 use crate::top_pool::pool::Options as PoolOptions;
@@ -130,9 +130,13 @@ fn init_io_handler() -> IoHandler {
     // Add rpc methods
 
     // place order
+    let rpc_call_place_order = RpcCall::new("place_order",
+                                            |r: Request| { Ok(("called place_order", false, DirectRequestStatus::Ok)) }
+                                            JsonRpcCallEncoder {});
+
     io.add_sync_method(
-        RpcPlaceOrder::<JsonRpcCallEncoder>::method_name(),
-        RpcPlaceOrder::new(JsonRpcCallEncoder {}),
+        rpc_call_place_order.method_name(),
+        rpc_call_place_order
     );
 
     // author_submitAndWatchExtrinsic

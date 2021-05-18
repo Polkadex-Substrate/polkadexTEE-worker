@@ -28,33 +28,43 @@ use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::rpc::rpc_call_encoder::RpcCallEncoder;
 
-/// RPC call structure for 'place order'
-pub struct RpcPlaceOrder<E> {
+/// RPC call structure
+pub struct RpcCall<'a, E, F> {
+    method_name: &'a str,
+    method_impl: F,
     call_encoder: E,
 }
 
-impl<E: RpcCallEncoder + Send + Sync + 'static> RpcPlaceOrder<E> {
-    pub fn method_name() -> &'static str {
-        "place_order"
+impl<
+        'a,
+        E: RpcCallEncoder + Send + Sync + 'static,
+        F: Fn(Request) -> RpcResult<(&str, bool, DirectRequestStatus)>,
+    > RpcCall<'a, E, F>
+{
+    pub fn method_name(&self) -> &'static str {
+        self.method_name
     }
 
     // FIXME: this produces a warning, because we're not using the call encoder as field,
     // but merely as associated function in the implementation. However, if we don't have a field,
     // the compiler gives an error that type parameter 'E' is not used, even though it clearly is
-    pub fn new(encoder: E) -> Self {
-        RpcPlaceOrder {
+    pub fn new(name: &'a str, method: F, encoder: E) -> Self {
+        RpcCall {
+            method_name: name,
+            method_impl: method,
             call_encoder: encoder,
         }
     }
-
-    fn place_order(&self, _request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
-        Ok(("ok", true, DirectRequestStatus::Ok))
-    }
 }
 
-impl<E: RpcCallEncoder + Send + Sync + 'static> RpcMethodSync for RpcPlaceOrder<E> {
+impl<
+        'a,
+        E: RpcCallEncoder + Send + Sync + 'static,
+        F: Fn(Request) -> RpcResult<(&str, bool, DirectRequestStatus)>,
+    > RpcMethodSync for RpcCall<'a, E, F>
+{
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
-        E::call(params, &|r: Request| self.place_order(r))
+        E::call(params, &|r: Request| self.method_impl(r))
     }
 }
 
@@ -65,18 +75,25 @@ pub mod tests {
     use jsonrpc_core::futures::executor::block_on;
 
     pub fn test_method_name_should_not_be_empty() {
-        assert_eq!(
-            RpcPlaceOrder::<RpcCallEncoderMock>::method_name().is_empty(),
-            false
-        );
+        let rpc_call = create_test_rpc_call();
+
+        assert_eq!(rpc_call.method_name().is_empty(), false);
     }
 
     pub fn test_given_none_params_return_ok_result() {
-        let rpc_place_order = RpcPlaceOrder::new(RpcCallEncoderMock {});
+        let rpc_call = create_test_rpc_call();
 
         let result = block_on(rpc_place_order.call(Params::None));
         let result_value = result.unwrap();
 
         assert!(!result_value.is_null());
+    }
+
+    fn create_test_rpc_call() -> RpcCall<RpcCallEncoderMock, _> {
+        RpcCall::new(
+            "test_call",
+            |r: Request| Ok(("called", false, DirectRequestStatus::Ok)),
+            RpcCallEncoderMock {},
+        )
     }
 }
