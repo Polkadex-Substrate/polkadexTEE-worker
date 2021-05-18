@@ -281,10 +281,6 @@ impl Stf {
                     // TODO implement and call into SGX runtime
                     Ok(())
                 }
-                TrustedCall::subscribe_matches(_main_account) => {
-                    // TODO implement and call into SGX runtime
-                    Ok(())
-                }
             }?;
             increment_nonce(&sender);
             Ok(())
@@ -410,7 +406,6 @@ impl Stf {
             TrustedCall::cancel_order(_, _) => debug!("No storage updates needed..."),
             TrustedCall::withdraw(_, _, _, _) => debug!("No storage updates needed..."),
             TrustedCall::get_balance(_, _, _) => debug!("No storage updates needed..."),
-            TrustedCall::subscribe_matches(_) => debug!("No storage updates needed..."),
         };
         key_hashes
     }

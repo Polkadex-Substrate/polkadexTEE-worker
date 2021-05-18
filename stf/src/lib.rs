@@ -178,7 +178,6 @@ pub enum TrustedCall {
     cancel_order(Order, AccountId),           // (Order, ProxyAccount)
     withdraw(AccountId, CurrencyId, Balance, AccountId), // (MainAccount, TokenId, Amount, ProxyAccount)
     get_balance(AccountId, CurrencyId, AccountId),       // main account, tokenid, signer
-    subscribe_matches(AccountId),
 }
 
 impl TrustedCall {
@@ -192,7 +191,6 @@ impl TrustedCall {
             TrustedCall::cancel_order(_, account) => account,
             TrustedCall::withdraw(account, _, _, _) => account,
             TrustedCall::get_balance(account, _, _) => account,
-            TrustedCall::subscribe_matches(account) => account,
         }
     }
 

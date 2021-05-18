@@ -32,11 +32,6 @@ pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
         RpcCall::new("cancel_order", &cancel_order, JsonRpcCallEncoder {}),
         RpcCall::new("withdraw", &withdraw, JsonRpcCallEncoder {}),
         RpcCall::new("get_balance", &get_balance, JsonRpcCallEncoder {}),
-        RpcCall::new(
-            "subscribe_matches",
-            &subscribe_matches,
-            JsonRpcCallEncoder {},
-        ),
     ]
 }
 
@@ -54,8 +49,4 @@ fn withdraw(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestSt
 
 pub fn get_balance(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
     Ok(("called get_balance", false, DirectRequestStatus::Ok))
-}
-
-fn subscribe_matches(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
-    Ok(("called subscribe_matches", false, DirectRequestStatus::Ok))
 }
