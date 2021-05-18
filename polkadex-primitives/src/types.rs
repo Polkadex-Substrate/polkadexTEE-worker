@@ -7,6 +7,9 @@ use alloc::vec::Vec;
 
 use sp_core::ed25519::Signature;
 use sp_core::{ed25519, Pair};
+use polkadex_primitives::common_types::Balance;
+use polkadex_primitives::assets::AssetId;
+
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = Vec<u8>;
@@ -14,16 +17,22 @@ pub type UserId = Vec<u8>;
 pub type OrderId = Vec<u8>;
 /// Unique order uuid
 pub type OrderUUID = Vec<u8>;
-/// Market identifier for order ex: "btcusd"
-pub type MarketId = Vec<u8>;
 /// Unique trade ID
 pub type TradeId = Vec<u8>;
 /// Date type for Price and Volume
-pub type PriceAndQuantityType = u128;
+pub type PriceAndQuantityType = Balance;
 /// Market type ex: "trusted"
 pub type MarketType = Vec<u8>;
 /// Currency identifier
-pub type CurrencyId = Vec<u8>;
+pub type CurrencyId = AssetId;
+
+/// Market identifier for order
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+pub struct MarketId {
+    pub base: AssetId,
+    pub quote: AssetId
+}
+
 
 /// The different Order Types
 /// - market: "m"
@@ -62,8 +71,13 @@ pub struct Order {
     pub order_type: OrderType,
     pub side: OrderSide,
     // An amount that placed within the order
+    // Note quantity is defined in base currency,
+    // for example qty = 1 means, 1 BTC for BTC/USD pair
     pub quantity: PriceAndQuantityType,
     // Main (limit) price of the order (optional)
+    // Note price is defined in quote currency for example,
+    // if base currency is BTC and quote currency is USD,
+    // then price = 50000 means 1 BTC = 50000 USD
     pub price: Option<PriceAndQuantityType>,
 }
 
@@ -101,7 +115,10 @@ impl Default for SignedOrder {
             order_id: vec![],
             order: Order {
                 user_uid: vec![],
-                market_id: vec![],
+                market_id: MarketId{
+                    base: AssetId::POLKADEX,
+                    quote: AssetId::DOT,
+                },
                 market_type: vec![],
                 order_type: OrderType::LIMIT,
                 side: OrderSide::BID,
