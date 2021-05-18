@@ -2539,6 +2539,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-fixed"
+version = "0.5.6"
+source = "git+https://github.com/encointer/substrate-fixed#b33d186888c60f38adafcfc0ec3a21aab263aef1"
+dependencies = [
+ "parity-scale-codec",
+ "typenum",
+]
+
+[[package]]
 name = "substratee-node-primitives"
 version = "0.8.0"
 dependencies = [
@@ -2624,6 +2633,7 @@ dependencies = [
  "sp-utils",
  "sp-version",
  "substrate-api-client",
+ "substrate-fixed",
  "substratee-node-primitives",
  "substratee-stf",
  "substratee-worker-primitives",
