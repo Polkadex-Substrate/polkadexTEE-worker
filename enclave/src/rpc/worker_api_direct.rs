@@ -42,8 +42,8 @@ use crate::rpc::{
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
     io_handler_extensions,
-    rpc_call_encoder::JsonRpcCallEncoder,
     rpc_call::RpcCall,
+    rpc_call_encoder::JsonRpcCallEncoder,
 };
 
 use crate::top_pool::pool::Options as PoolOptions;
@@ -65,6 +65,7 @@ use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
 use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
 };
+use crate::rpc::rpc_api_calls::get_all_rpc_calls;
 use crate::rsa3072;
 use crate::utils::write_slice_and_whitespace_pad;
 
@@ -128,16 +129,9 @@ fn init_io_handler() -> IoHandler {
     let mut io = IoHandler::new();
 
     // Add rpc methods
-
-    // place order
-    let rpc_call_place_order = RpcCall::new("place_order",
-                                            |r: Request| { Ok(("called place_order", false, DirectRequestStatus::Ok)) }
-                                            JsonRpcCallEncoder {});
-
-    io.add_sync_method(
-        rpc_call_place_order.method_name(),
-        rpc_call_place_order
-    );
+    for api_call in get_all_rpc_calls() {
+        io.add_sync_method(api_call.method_name(), api_call);
+    }
 
     // author_submitAndWatchExtrinsic
     let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";
