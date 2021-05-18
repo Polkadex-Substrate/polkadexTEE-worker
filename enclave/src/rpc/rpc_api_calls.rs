@@ -19,55 +19,43 @@ pub extern crate alloc;
 use alloc::vec::Vec;
 
 use jsonrpc_core::Result as RpcResult;
-use jsonrpc_core::*;
 
 use substratee_node_primitives::Request;
 
-use crate::rpc::rpc_call::RpcCall;
+use crate::rpc::rpc_call::{RpcCall, RpcMethodImpl};
 use crate::rpc::rpc_call_encoder::JsonRpcCallEncoder;
 use substratee_worker_primitives::DirectRequestStatus;
 
-pub fn get_all_rpc_calls(
-) -> Vec<RpcCall<JsonRpcCallEncoder, Fn(Request) -> RpcResult<(&str, bool, DirectRequestStatus)>>> {
-    let rpc_place_order = RpcCall::new("place_order", place_order, JsonRpcCallEncoder {});
-
-    let rpc_cancel_order = RpcCall::new("cancel_order", cancel_order, JsonRpcCallEncoder {});
-
-    let rpc_withdraw = RpcCall::new("withdraw", withdraw, JsonRpcCallEncoder {});
-
-    let rpc_get_balance = RpcCall::new("get_balance", get_balance, JsonRpcCallEncoder {});
-
-    let rpc_subscribe_matches = RpcCall::new(
-        "subscribe_matches",
-        subscribe_matches,
-        JsonRpcCallEncoder {},
-    );
-
+pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
     vec![
-        rpc_place_order,
-        rpc_cancel_order,
-        rpc_withdraw,
-        rpc_get_balance,
-        rpc_subscribe_matches,
+        RpcCall::new("place_order", &place_order, JsonRpcCallEncoder {}),
+        RpcCall::new("cancel_order", &cancel_order, JsonRpcCallEncoder {}),
+        RpcCall::new("withdraw", &withdraw, JsonRpcCallEncoder {}),
+        RpcCall::new("get_balance", &get_balance, JsonRpcCallEncoder {}),
+        RpcCall::new(
+            "subscribe_matches",
+            &subscribe_matches,
+            JsonRpcCallEncoder {},
+        ),
     ]
 }
 
-fn place_order(_request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
+fn place_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
     Ok(("called place_order", false, DirectRequestStatus::Ok))
 }
 
-fn cancel_order(_request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
+fn cancel_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
     Ok(("called cancel_order", false, DirectRequestStatus::Ok))
 }
 
-fn withdraw(_request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
+fn withdraw(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
     Ok(("called withdraw", false, DirectRequestStatus::Ok))
 }
 
-fn get_balance(_request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
+pub fn get_balance(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
     Ok(("called get_balance", false, DirectRequestStatus::Ok))
 }
 
-fn subscribe_matches(_request: Request) -> RpcResult<(&str, bool, DirectRequestStatus)> {
+fn subscribe_matches(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
     Ok(("called subscribe_matches", false, DirectRequestStatus::Ok))
 }

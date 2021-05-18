@@ -42,8 +42,6 @@ use crate::rpc::{
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
     io_handler_extensions,
-    rpc_call::RpcCall,
-    rpc_call_encoder::JsonRpcCallEncoder,
 };
 
 use crate::top_pool::pool::Options as PoolOptions;
@@ -65,6 +63,7 @@ use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
 use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
 };
+
 use crate::rpc::rpc_api_calls::get_all_rpc_calls;
 use crate::rsa3072;
 use crate::utils::write_slice_and_whitespace_pad;

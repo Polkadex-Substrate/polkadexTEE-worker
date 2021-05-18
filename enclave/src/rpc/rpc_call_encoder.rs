@@ -21,11 +21,10 @@ use alloc::{string::String, vec::Vec};
 use codec::{Decode, Encode};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_core::*;
-use log::*;
 use serde_json::*;
 
 use substratee_node_primitives::Request;
-use substratee_worker_primitives::{DirectRequestStatus, RpcReturnValue};
+use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
@@ -86,7 +85,6 @@ impl RpcCallEncoder for JsonRpcCallEncoder {
 pub mod tests {
 
     use super::*;
-    use alloc::str;
     use jsonrpc_core::futures::executor::block_on;
 
     pub struct RpcCallEncoderMock {}
@@ -105,7 +103,7 @@ pub mod tests {
 
         let result = block_on(JsonRpcCallEncoder::call(
             Params::None,
-            &|request: Request| Ok(("message", expected_do_watch, DirectRequestStatus::Ok)),
+            &|_request: Request| Ok(("message", expected_do_watch, DirectRequestStatus::Ok)),
         ))
         .unwrap();
 
