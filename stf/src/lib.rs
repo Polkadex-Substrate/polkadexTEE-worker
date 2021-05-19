@@ -175,24 +175,59 @@ pub enum TrustedCall {
     balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
 
-    place_order(AccountId, Order, Option<AccountId>), // (MainAccount, Order, ProxyAccount)
-    cancel_order(AccountId, Order, Option<AccountId>), // (MainAccount, Order, ProxyAccount)
-    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (MainAccount, TokenId, Amount, ProxyAccount)
-    get_balance(AccountId, CurrencyId, Option<AccountId>), // main account, tokenid, ProxyAccount
+    place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+    cancel_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Amount, MainAccount (if signer is proxy))
+    get_balance(AccountId, CurrencyId, Option<AccountId>), // (SignerAccount, tokenid, MainAccount (if signer is proxy))
 }
 
 impl TrustedCall {
-    pub fn account(&self) -> &AccountId {
+    /// Return the signer account (may be proxy or main account)
+    pub fn signer(&self) -> &AccountId {
         match self {
-            TrustedCall::balance_set_balance(account, _, _, _) => account,
-            TrustedCall::balance_transfer(account, _, _) => account,
-            TrustedCall::balance_unshield(account, _, _, _) => account,
-            TrustedCall::balance_shield(account, _) => account,
+            TrustedCall::balance_set_balance(signer, _, _, _) => signer,
+            TrustedCall::balance_transfer(signer, _, _) => signer,
+            TrustedCall::balance_unshield(signer, _, _, _) => signer,
+            TrustedCall::balance_shield(signer, _) => signer,
 
-            TrustedCall::place_order(account, _, _) => account,
-            TrustedCall::cancel_order(account, _, _) => account,
-            TrustedCall::withdraw(account, _, _, _) => account,
-            TrustedCall::get_balance(account, _, _) => account,
+            TrustedCall::place_order(signer, _, _) => signer,
+            TrustedCall::cancel_order(signer, _, _) => signer,
+            TrustedCall::withdraw(signer, _, _, _) => signer,
+            TrustedCall::get_balance(signer, _, _) => signer,
+        }
+    }
+
+    /// Get the main account ID. For the polkadex orders, the first argument is always the signer.
+    /// A signer may either be a proxy account or a main account. If the signer is a proxy account,
+    /// the main account will be provided as Option
+    pub fn main_account(&self) -> &AccountId {
+        match self {
+            TrustedCall::balance_set_balance(main_account, _, _, _) => main_account,
+            TrustedCall::balance_transfer(main_account, _, _) => main_account,
+            TrustedCall::balance_unshield(main_account, _, _, _) => main_account,
+            TrustedCall::balance_shield(main_account, _) => main_account,
+
+            TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
+                Some(main_account) => main_account,
+                None => signer,
+            },
+
+            TrustedCall::cancel_order(signer, _, main_account_option) => {
+                match main_account_option {
+                    Some(main_account) => main_account,
+                    None => signer,
+                }
+            }
+
+            TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
+                Some(main_account) => main_account,
+                None => signer,
+            },
+
+            TrustedCall::get_balance(signer, _, main_account_option) => match main_account_option {
+                Some(main_account) => main_account,
+                None => signer,
+            },
         }
     }
 
@@ -281,7 +316,7 @@ impl TrustedCallSigned {
         payload.append(&mut mrenclave.encode());
         payload.append(&mut shard.encode());
         self.signature
-            .verify(payload.as_slice(), self.call.account())
+            .verify(payload.as_slice(), self.call.signer())
     }
 
     pub fn into_trusted_operation(self, direct: bool) -> TrustedOperation {

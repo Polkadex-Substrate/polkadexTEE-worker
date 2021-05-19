@@ -86,7 +86,7 @@ where
     ) -> Self::ValidationFuture {
         let operation = match uxt {
             StfTrustedOperation::direct_call(signed_call) => {
-                let from = signed_call.call.account();
+                let from = signed_call.call.signer();
                 let requires = vec![];
                 let provides = vec![from.encode()];
 
