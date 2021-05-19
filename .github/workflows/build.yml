@@ -22,6 +22,8 @@ jobs:
         run: cd client && cargo test
       - name: Test Worker
         run: cd worker && cargo test
+      - name: Test STF
+        run: cd stf && cargo test
       - name: Test Enclave
         run: cd bin && ./substratee-worker test --unit
       - name: Clippy Client
