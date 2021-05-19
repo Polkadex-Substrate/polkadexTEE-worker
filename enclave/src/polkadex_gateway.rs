@@ -67,11 +67,9 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
         OrderType::MARKET => {
             match order.side {
                 OrderSide::BID => {
-                    // TODO: Is it safe to use saturating_mul here?
-                    // TODO: How do we reserve trade amount for Market Buy since it is not possible to define price before
-                    // TODO: order has been matched in the orderbook.
-                    // let amount = price.saturating_mul(order.quantity);
-                    // polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, amount)?;
+                    // TODO: We don't need to reserve balance here since Openfinex is tracking balance via deposit and withdrawal events
+                    // If Openfinex is keeping track of balances and then market order executed in Openfinex will execute when it comes back to
+                    // Enclave for settlement
                     error!("Market Buy is not implemented");
                     return Err(GatewayError::NotImplementedYet);
                 }
