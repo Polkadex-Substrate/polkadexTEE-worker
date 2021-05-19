@@ -27,6 +27,9 @@ pub struct AccountDetails {
     proxy_account: Option<sr25519::AppPair>,
 }
 
+/// Account details parsed from the command line arguments
+/// Provides methods to get the signer account, depending on whether an optional
+/// proxy account was provided, or just a main account
 impl AccountDetails {
     pub fn new(matches: &ArgMatches<'_>) -> Self {
         let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME).expect(&format!(
@@ -75,6 +78,8 @@ mod tests {
         PROXY_ACCOUNT_ID_ARG_NAME,
     };
     use clap::{App, AppSettings};
+    use sp_application_crypto::sr25519;
+    use sp_core::{sr25519 as sr25519_core, Pair};
 
     #[test]
     fn given_proxy_account_argument_then_account_details_has_some() {
@@ -88,6 +93,16 @@ mod tests {
         let account_details = AccountDetails::new(&matches);
 
         assert!(account_details.proxy_account.is_some());
+
+        assert_eq!(
+            account_details.proxy_account_public_key().unwrap(),
+            sr25519_core::Public::from(account_details.signer_key_pair().public())
+        );
+
+        assert_ne!(
+            account_details.main_account_public_key(),
+            sr25519_core::Public::from(account_details.signer_key_pair().public())
+        );
     }
 
     #[test]
@@ -101,6 +116,11 @@ mod tests {
         let account_details = AccountDetails::new(&matches);
 
         assert!(account_details.proxy_account.is_none());
+
+        assert_eq!(
+            account_details.main_account_public_key(),
+            sr25519_core::Public::from(account_details.signer_key_pair().public())
+        );
     }
 
     fn create_test_app<'a, 'b>() -> App<'a, 'b> {
