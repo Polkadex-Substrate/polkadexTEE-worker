@@ -106,27 +106,6 @@ impl PolkadexBalanceStorage {
             }
         }
     }
-    //TODO KSR
-    pub fn unconfirmed_deposit(
-        &mut self,
-        token: AssetId,
-        acc: AccountId,
-        amt: Balance,
-    ) -> SgxResult<()> {
-        match self
-            .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
-        {
-            Some(balance) => {
-                balance.unconfirmed = balance.unconfirmed.saturating_add(amt);
-                Ok(())
-            }
-            None => {
-                error!("Account Id or Asset Id not available [here]");
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-            }
-        }
-    }
 
     pub fn move_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
         match self
@@ -135,7 +114,6 @@ impl PolkadexBalanceStorage {
         {
             Some(balance) => {
                 balance.unconfirmed = balance.unconfirmed.saturating_sub(amt);
-                balance.free = balance.free.saturating_add(amt);
                 Ok(())
             }
             None => {
@@ -176,6 +154,28 @@ impl PolkadexBalanceStorage {
             }
         }
     }
+
+    pub fn unconfirmed_withdraw(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        amt: Balance,
+    ) -> SgxResult<()> {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
+            Some(balance) => {
+                balance.free = balance.free.saturating_sub(amt);
+                balance.unconfirmed = balance.unconfirmed.saturating_add(amt);
+                Ok(())
+            }
+            None => {
+                error!("Account Id or Asset id not avalaible");
+                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            }
+        }
+    }
     // We can write functions which settle balances for two trades but we need to know the trade structure for it
 }
 
@@ -206,7 +206,7 @@ pub fn lock_storage_and_deposit(
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    balance_storage.unconfirmed_deposit(token, main_acc, amt)
+    balance_storage.deposit(token, main_acc, amt)
 }
 
 pub fn lock_storage_and_withdraw(
@@ -220,7 +220,7 @@ pub fn lock_storage_and_withdraw(
     match balance_storage.read_balance(token.clone(), main_acc.clone()) {
         Some(balance) => {
             if balance.free >= amt {
-                balance_storage.withdraw(token, main_acc, amt)
+                balance_storage.unconfirmed_withdraw(token, main_acc, amt)
             } else {
                 error!("Balance is low");
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
