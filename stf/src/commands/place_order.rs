@@ -20,13 +20,11 @@ use core::option::Option;
 use clap::ArgMatches;
 use clap_nested::Command;
 
-use sp_core::{sr25519 as sr25519_core, Pair};
-
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::{KeyPair, TrustedCall, TrustedOperation};
-use std::error::Error;
 
+use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::*;
 use crate::commands::common_args_processing::get_order_from_matches;
 
@@ -41,39 +39,29 @@ pub fn place_order_cli_command<'a>(
             add_order_args(app_with_proxy_account)
         })
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
-            let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME).unwrap();
+            let account_details = AccountDetails::new(matches);
 
-            let main_account_pair = get_pair_from_str(matches, arg_account);
-            let main_account_key_pair = sr25519_core::Pair::from(main_account_pair.clone());
-            let main_account_public_key = sr25519_core::Public::from(main_account_pair.public());
-
-            let proxy_account_pair = get_pair_from_str(
-                matches,
-                matches.value_of(PROXY_ACCOUNT_ID_ARG_NAME).unwrap(),
-            );
-            //let proxy_account_key_pair = sr25519_core::Pair::from(proxy_account_pair.clone());
-            let proxy_account_public_key = sr25519_core::Public::from(proxy_account_pair.public());
+            let signer_pair = account_details.signer_pair();
+            let signer_key_pair = account_details.signer_key_pair();
 
             let (mrenclave, shard) = get_identifiers(matches);
-            let nonce = get_trusted_nonce(
-                perform_operation,
-                matches,
-                &main_account_pair,
-                &main_account_key_pair,
-            );
+            let nonce =
+                get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
-            let order = get_order_from_matches(arg_account, matches)
+            let order = get_order_from_matches(matches)
                 .expect("failed to build order from command line arguments");
 
             let direct: bool = matches.is_present("direct");
 
             let place_order_top: TrustedOperation = TrustedCall::place_order(
-                main_account_public_key.into(),
+                account_details.main_account_public_key().into(),
                 order,
-                proxy_account_public_key.into(),
+                account_details
+                    .proxy_account_public_key()
+                    .map(|pk| pk.into()),
             )
             .sign(
-                &KeyPair::Sr25519(main_account_key_pair),
+                &KeyPair::Sr25519(signer_key_pair),
                 nonce,
                 &mrenclave,
                 &shard,

@@ -174,10 +174,11 @@ pub enum TrustedCall {
     balance_transfer(AccountId, AccountId, Balance),
     balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
-    place_order(AccountId, Order, AccountId), // (MainAccount, Order, ProxyAccount)
-    cancel_order(Order, AccountId),           // (Order, ProxyAccount)
-    withdraw(AccountId, CurrencyId, Balance, AccountId), // (MainAccount, TokenId, Amount, ProxyAccount)
-    get_balance(AccountId, CurrencyId, AccountId),       // main account, tokenid, signer
+
+    place_order(AccountId, Order, Option<AccountId>), // (MainAccount, Order, ProxyAccount)
+    cancel_order(AccountId, Order, Option<AccountId>), // (MainAccount, Order, ProxyAccount)
+    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (MainAccount, TokenId, Amount, ProxyAccount)
+    get_balance(AccountId, CurrencyId, Option<AccountId>), // main account, tokenid, ProxyAccount
 }
 
 impl TrustedCall {
@@ -187,8 +188,9 @@ impl TrustedCall {
             TrustedCall::balance_transfer(account, _, _) => account,
             TrustedCall::balance_unshield(account, _, _, _) => account,
             TrustedCall::balance_shield(account, _) => account,
+
             TrustedCall::place_order(account, _, _) => account,
-            TrustedCall::cancel_order(_, account) => account,
+            TrustedCall::cancel_order(account, _, _) => account,
             TrustedCall::withdraw(account, _, _, _) => account,
             TrustedCall::get_balance(account, _, _) => account,
         }

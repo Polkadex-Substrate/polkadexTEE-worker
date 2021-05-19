@@ -40,7 +40,7 @@ pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
         Arg::with_name(PROXY_ACCOUNT_ID_ARG_NAME)
             .takes_value(true)
-            .required(true)
+            .required(false) // proxy account is optional
             .value_name("STRING")
             .help("Proxy Account ID"),
     )

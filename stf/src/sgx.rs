@@ -265,11 +265,12 @@ impl Stf {
                     Self::shield_funds(who, value)?;
                     Ok(())
                 }
+
                 TrustedCall::place_order(_main_account, _order, _proxy_account) => {
                     // TODO implement and call into SGX runtime
                     Ok(())
                 }
-                TrustedCall::cancel_order(_order, _main_account) => {
+                TrustedCall::cancel_order(_main_account, _order, _proxy_account) => {
                     // TODO implement and call into SGX runtime
                     Ok(())
                 }
@@ -403,7 +404,7 @@ impl Stf {
             TrustedCall::balance_unshield(_, _, _, _) => debug!("No storage updates needed..."),
             TrustedCall::balance_shield(_, _) => debug!("No storage updates needed..."),
             TrustedCall::place_order(_, _, _) => debug!("No storage updates needed..."),
-            TrustedCall::cancel_order(_, _) => debug!("No storage updates needed..."),
+            TrustedCall::cancel_order(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::withdraw(_, _, _, _) => debug!("No storage updates needed..."),
             TrustedCall::get_balance(_, _, _) => debug!("No storage updates needed..."),
         };

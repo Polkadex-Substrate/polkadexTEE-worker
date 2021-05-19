@@ -16,17 +16,15 @@
 */
 
 use crate::commands::common_args::{
-    MARKET_ID_ARG_NAME, MARKET_TYPE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
-    PRICE_ARG_NAME, QUANTITY_ARG_NAME,
+    ACCOUNT_ID_ARG_NAME, MARKET_ID_ARG_NAME, MARKET_TYPE_ARG_NAME, ORDER_SIDE_ARG_NAME,
+    ORDER_TYPE_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME,
 };
 use clap::ArgMatches;
 use codec::Encode;
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType};
 
-pub fn get_order_from_matches<'a>(
-    account: &str,
-    matches: &ArgMatches<'a>,
-) -> Result<Order, &'a str> {
+pub fn get_order_from_matches<'a>(matches: &ArgMatches<'a>) -> Result<Order, &'a str> {
+    let account = matches.value_of(ACCOUNT_ID_ARG_NAME).unwrap();
     let arg_market_id = matches.value_of(MARKET_ID_ARG_NAME).unwrap();
     let arg_market_type = matches.value_of(MARKET_TYPE_ARG_NAME).unwrap();
 
