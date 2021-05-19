@@ -29,6 +29,7 @@ pub const PRICE_ARG_NAME: &str = "price";
 pub fn add_main_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
         Arg::with_name(ACCOUNT_ID_ARG_NAME)
+            .long(ACCOUNT_ID_ARG_NAME)
             .takes_value(true)
             .required(true)
             .value_name("STRING")
@@ -39,6 +40,7 @@ pub fn add_main_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
 pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
         Arg::with_name(PROXY_ACCOUNT_ID_ARG_NAME)
+            .long(PROXY_ACCOUNT_ID_ARG_NAME)
             .takes_value(true)
             .required(false) // proxy account is optional
             .value_name("STRING")
@@ -49,6 +51,7 @@ pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
 pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
         Arg::with_name(MARKET_ID_ARG_NAME)
+            .long(MARKET_ID_ARG_NAME)
             .takes_value(true)
             .required(true)
             .value_name("STRING")
@@ -56,6 +59,7 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     )
     .arg(
         Arg::with_name(MARKET_TYPE_ARG_NAME)
+            .long(MARKET_TYPE_ARG_NAME)
             .takes_value(true)
             .required(true)
             .value_name("STRING")
@@ -63,6 +67,7 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     )
     .arg(
         Arg::with_name(ORDER_TYPE_ARG_NAME)
+            .long(ORDER_TYPE_ARG_NAME)
             .takes_value(true)
             .required(true)
             .value_name("STRING")
@@ -70,6 +75,7 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     )
     .arg(
         Arg::with_name(QUANTITY_ARG_NAME)
+            .long(QUANTITY_ARG_NAME)
             .takes_value(true)
             .required(true)
             .value_name("u128")
@@ -77,6 +83,7 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     )
     .arg(
         Arg::with_name(PRICE_ARG_NAME)
+            .long(PRICE_ARG_NAME)
             .takes_value(true)
             .required(false)
             .value_name("u128")

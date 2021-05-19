@@ -66,3 +66,49 @@ impl AccountDetails {
             .map(|pa| sr25519_core::Public::from(pa.public()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::commands::account_details::AccountDetails;
+    use crate::commands::common_args::{
+        add_main_account_args, add_proxy_account_args, ACCOUNT_ID_ARG_NAME,
+        PROXY_ACCOUNT_ID_ARG_NAME,
+    };
+    use clap::{App, AppSettings};
+
+    #[test]
+    fn given_proxy_account_argument_then_account_details_has_some() {
+        let main_account_arg = format!("--{}=//main_ojwf8a", ACCOUNT_ID_ARG_NAME);
+        let proxy_account_arg = format!("--{}=//proxy_awf43t", PROXY_ACCOUNT_ID_ARG_NAME);
+
+        let test_app = create_test_app();
+
+        let matches = test_app.get_matches_from(vec![main_account_arg, proxy_account_arg]);
+
+        let account_details = AccountDetails::new(&matches);
+
+        assert!(account_details.proxy_account.is_some());
+    }
+
+    #[test]
+    fn given_no_proxy_account_argument_then_account_details_has_none() {
+        let main_account_arg = format!("--{}=//main_ojwf8a", ACCOUNT_ID_ARG_NAME);
+
+        let test_app = create_test_app();
+
+        let matches = test_app.get_matches_from(vec![main_account_arg]);
+
+        let account_details = AccountDetails::new(&matches);
+
+        assert!(account_details.proxy_account.is_none());
+    }
+
+    fn create_test_app<'a, 'b>() -> App<'a, 'b> {
+        let test_app = App::new("test_account_details").setting(AppSettings::NoBinaryName);
+
+        let app_with_main_account = add_main_account_args(test_app);
+        let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+
+        app_with_proxy_account
+    }
+}
