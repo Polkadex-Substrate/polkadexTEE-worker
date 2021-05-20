@@ -17,7 +17,7 @@
 
 use crate::commands::common_args::{
     ACCOUNT_ID_ARG_NAME, MARKET_ID_ARG_NAME, MARKET_TYPE_ARG_NAME, ORDER_SIDE_ARG_NAME,
-    ORDER_TYPE_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME,
+    ORDER_TYPE_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME, TOKEN_ID_ARG_NAME,
 };
 use clap::ArgMatches;
 use codec::Encode;
@@ -54,6 +54,24 @@ pub fn get_order_from_matches<'a>(matches: &ArgMatches<'a>) -> Result<Order, &'a
     };
 
     return Ok(order);
+}
+
+pub fn get_token_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<&'a str, String> {
+    let token_id_option = matches.value_of(TOKEN_ID_ARG_NAME);
+
+    match token_id_option {
+        Some(token_id) => Ok(token_id),
+        None => Err(format!("missing {} argument", TOKEN_ID_ARG_NAME)),
+    }
+}
+
+pub fn get_quantity_from_matches(matches: &ArgMatches) -> Result<u128, String> {
+    let quantity_option = matches.value_of(QUANTITY_ARG_NAME);
+
+    match quantity_option {
+        Some(quantity_str) => Ok(get_amount_from_str(quantity_str)),
+        None => Err(format!("missing {} argument", QUANTITY_ARG_NAME)),
+    }
 }
 
 fn get_amount_from_matches(matches: &ArgMatches<'_>, arg_name: &str) -> u128 {

@@ -177,7 +177,7 @@ pub enum TrustedCall {
 
     place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
     cancel_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
-    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Amount, MainAccount (if signer is proxy))
+    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
     get_balance(AccountId, CurrencyId, Option<AccountId>), // (SignerAccount, tokenid, MainAccount (if signer is proxy))
 }
 

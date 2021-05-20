@@ -17,8 +17,9 @@
 
 use core::option::Option;
 
-use clap::ArgMatches;
+use clap::{App, ArgMatches};
 use clap_nested::Command;
+use codec::Encode;
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
@@ -27,17 +28,23 @@ use crate::{KeyPair, TrustedCall, TrustedOperation};
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::*;
-use crate::commands::common_args_processing::get_order_from_matches;
+use crate::commands::common_args_processing::get_token_id_from_matches;
 
-pub fn place_order_cli_command<'a>(
+pub fn get_balance_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
 ) -> Command<'a, str> {
-    Command::new("place_order")
-        .description("Place order")
-        .options(|app| add_common_order_command_args(app))
+    Command::new("get_balance")
+        .description("Get the balance")
+        .options(|app| add_command_args(app))
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             command_runner(matches, perform_operation)
         })
+}
+
+pub fn add_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    let app_with_main_account = add_main_account_args(app);
+    let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+    add_token_id_args(app_with_proxy_account)
 }
 
 fn command_runner<'a>(
@@ -52,14 +59,13 @@ fn command_runner<'a>(
     let (mrenclave, shard) = get_identifiers(matches);
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
-    let order =
-        get_order_from_matches(matches).expect("failed to build order from command line arguments");
-
     let direct: bool = matches.is_present("direct");
 
-    let place_order_top: TrustedOperation = TrustedCall::place_order(
+    let currency_id = get_token_id_from_matches(matches).unwrap();
+
+    let get_balance_top: TrustedOperation = TrustedCall::get_balance(
         account_details.signer_public_key().into(),
-        order,
+        currency_id.encode(),
         account_details
             .main_account_public_key_if_not_signer()
             .map(|pk| pk.into()),
@@ -72,7 +78,7 @@ fn command_runner<'a>(
     )
     .into_trusted_operation(direct);
 
-    let _ = perform_operation(matches, &place_order_top);
+    let _ = perform_operation(matches, &get_balance_top);
 
     Ok(())
 }

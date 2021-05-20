@@ -22,7 +22,7 @@ pub mod utils {
         ACCOUNT_ID_ARG_NAME, MARKET_ID_ARG_NAME, MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME,
         ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
     };
-    use crate::{Getter, Index, TrustedGetter, TrustedGetterSigned, TrustedOperation};
+    use crate::{Getter, Index, TrustedGetter, TrustedOperation};
     use clap::{App, Arg, ArgMatches};
     use codec::Encode;
 
@@ -84,7 +84,7 @@ pub mod utils {
 
         pub fn perform_operation_mock(
             &self,
-            arg_matches: &ArgMatches<'_>,
+            _arg_matches: &ArgMatches<'_>,
             trusted_operation: &TrustedOperation,
         ) -> Option<Vec<u8>> {
             match trusted_operation {

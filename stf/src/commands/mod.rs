@@ -16,7 +16,9 @@
 */
 
 pub mod cancel_order;
+pub mod get_balance;
 pub mod place_order;
+pub mod withdraw;
 
 mod account_details;
 mod common_args;

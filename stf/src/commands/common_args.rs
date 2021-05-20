@@ -25,6 +25,7 @@ pub const ORDER_TYPE_ARG_NAME: &str = "ordertype";
 pub const ORDER_SIDE_ARG_NAME: &str = "orderside";
 pub const QUANTITY_ARG_NAME: &str = "quantity";
 pub const PRICE_ARG_NAME: &str = "price";
+pub const TOKEN_ID_ARG_NAME: &str = "tokenid";
 pub const MRENCLAVE_ARG_NAME: &str = "mrenclave";
 pub const SHARD_ARG_NAME: &str = "shard";
 
@@ -32,6 +33,28 @@ pub fn add_common_order_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     let app_with_main_account = add_main_account_args(app);
     let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
     add_order_args(app_with_proxy_account)
+}
+
+pub fn add_token_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    app.arg(
+        Arg::with_name(TOKEN_ID_ARG_NAME)
+            .long(TOKEN_ID_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Token (i.e. currency) ID, e.g. "),
+    )
+}
+
+pub fn add_quantity_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    app.arg(
+        Arg::with_name(QUANTITY_ARG_NAME)
+            .long(QUANTITY_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("u128")
+            .help("specifies the amount of funds/tokens"),
+    )
 }
 
 pub fn add_main_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {

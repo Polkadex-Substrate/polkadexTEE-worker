@@ -71,10 +71,12 @@ impl AccountDetails {
         }
     }
 
+    #[cfg(test)]
     pub fn main_account_public_key(&self) -> sr25519_core::Public {
         sr25519_core::Public::from(self.main_account.public())
     }
 
+    #[cfg(test)]
     pub fn proxy_account_public_key(&self) -> Option<sr25519_core::Public> {
         self.proxy_account
             .clone()

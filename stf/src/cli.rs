@@ -28,7 +28,9 @@ use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::cancel_order::cancel_order_cli_command;
+use crate::commands::get_balance::get_balance_cli_command;
 use crate::commands::place_order::place_order_cli_command;
+use crate::commands::withdraw::withdraw_cli_command;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -79,6 +81,8 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
         })
         .add_cmd(place_order_cli_command(perform_operation))
         .add_cmd(cancel_order_cli_command(perform_operation))
+        .add_cmd(get_balance_cli_command(perform_operation))
+        .add_cmd(withdraw_cli_command(perform_operation))
         .add_cmd(
             Command::new("new-account")
                 .description("generates a new incognito account for the given substraTEE shard")
