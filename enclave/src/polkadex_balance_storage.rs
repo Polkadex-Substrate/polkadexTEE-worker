@@ -107,7 +107,12 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn move_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
+    pub fn move_unconfirmed_balance(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        amt: Balance,
+    ) -> SgxResult<()> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -244,7 +249,7 @@ pub fn lock_storage_and_move_balance(
     match balance_storage.read_balance(token.clone(), main_acc.clone()) {
         Some(balance) => {
             if balance.unconfirmed >= amt {
-                balance_storage.move_balance(token, main_acc, amt)
+                balance_storage.move_unconfirmed_balance(token, main_acc, amt)
             } else {
                 error!("Balance is low");
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
