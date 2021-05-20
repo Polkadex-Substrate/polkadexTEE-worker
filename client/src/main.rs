@@ -59,6 +59,7 @@ use substrate_api_client::{
 
 use substrate_client_keystore::LocalKeystore;
 use substratee_stf::cli_utils::account_parsing::*;
+use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
@@ -438,7 +439,7 @@ fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -
     match top {
         TrustedOperation::indirect_call(call) => send_request(matches, call.clone()),
         TrustedOperation::direct_call(call) => {
-            send_direct_request(matches, TrustedOperation::direct_call(call.clone()))
+            send_direct_request_encoded(matches, TrustedOperation::direct_call(call.clone()))
         }
         TrustedOperation::get(getter) => get_state(matches, TrustedOperation::get(getter.clone())),
     }
@@ -595,8 +596,44 @@ fn read_shard(matches: &ArgMatches<'_>) -> StdResult<ShardIdentifier, codec::Err
         },
     }
 }
+
+fn send_direct_request_encoded(
+    matches: &ArgMatches<'_>,
+    operation_call: TrustedOperation,
+) -> Option<Vec<u8>> {
+    let operation_call_encoded = operation_call.encode();
+
+    let shard = read_shard(matches).unwrap();
+
+    // compose jsonrpc call
+    let data = Request {
+        shard,
+        cyphertext: operation_call_encoded,
+    };
+
+    let rpc_method_str_option = get_rpc_function_name_from_top(&operation_call);
+    if let None = rpc_method_str_option {
+        println!("[Error]: This type of TrustedOperation is not supported")
+    }
+
+    let rpc_method_str = rpc_method_str_option.unwrap();
+
+    debug!("Got trusted operation for RPC method {}", rpc_method_str);
+
+    let direct_invocation_call = RpcRequest {
+        jsonrpc: "2.0".to_owned(),
+        method: rpc_method_str,
+        params: data.encode(),
+        id: 1,
+    };
+
+    let direct_api = get_worker_api_direct(matches);
+
+    send_direct_request(direct_invocation_call, direct_api)
+}
+
 /// sends a rpc watch request to the worker api server
-fn send_direct_request(
+fn send_direct_request_encrypted(
     matches: &ArgMatches<'_>,
     operation_call: TrustedOperation,
 ) -> Option<Vec<u8>> {
@@ -621,11 +658,17 @@ fn send_direct_request(
         params: data.encode(),
         id: 1,
     };
-    let jsonrpc_call: String = serde_json::to_string(&direct_invocation_call).unwrap();
 
     let direct_api = get_worker_api_direct(matches);
+
+    send_direct_request(direct_invocation_call, direct_api)
+}
+
+fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> Option<Vec<u8>> {
+    let jsonrpc_call: String = serde_json::to_string(&rpc_request).unwrap();
+
     let (sender, receiver) = channel();
-    match direct_api.watch(jsonrpc_call, sender) {
+    match worker_api.watch(jsonrpc_call, sender) {
         Ok(_) => {}
         Err(_) => panic!("Error when sending direct invocation call"),
     }

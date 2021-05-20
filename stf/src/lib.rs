@@ -102,6 +102,9 @@ pub mod commands;
 #[cfg(feature = "std")]
 pub mod cli_utils;
 
+#[cfg(feature = "std")]
+pub mod top;
+
 #[cfg(feature = "sgx")]
 //pub type State = sp_io::SgxExternalitiesType;
 pub type StateType = sgx_externalities::SgxExternalitiesType;
