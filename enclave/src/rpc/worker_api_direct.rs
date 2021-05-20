@@ -132,131 +132,132 @@ fn init_io_handler() -> IoHandler {
         io.add_sync_method(api_call.method_name(), api_call);
     }
 
-    // author_submitAndWatchExtrinsic
-    let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";
-    io.add_sync_method(
-        author_submit_and_watch_extrinsic_name,
-        move |params: Params| {
-            match params.parse::<Vec<u8>>() {
-                Ok(encoded_params) => {
-                    // Acquire lock
-                    let tx_pool_mutex = load_top_pool().unwrap();
-                    let tx_pool_guard = tx_pool_mutex.lock().unwrap();
-                    let tx_pool = Arc::new(tx_pool_guard.deref());
-                    let author = Author::new(tx_pool);
-
-                    match Request::decode(&mut encoded_params.as_slice()) {
-                        Ok(request) => {
-                            let shard: ShardIdentifier = request.shard;
-                            let encrypted_trusted_call: Vec<u8> = request.cyphertext;
-                            let result = async {
-                                author
-                                    .watch_top(encrypted_trusted_call.clone(), shard)
-                                    .await
-                            };
-                            let response: Result<Hash, RpcError> = executor::block_on(result);
-                            let json_value = match response {
-                                Ok(hash_value) => compute_encoded_return_value(
-                                    hash_value,
-                                    true,
-                                    DirectRequestStatus::TrustedOperationStatus(
-                                        TrustedOperationStatus::Submitted,
-                                    ),
-                                ),
-                                Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
-                            };
-                            Ok(json!(json_value))
-                        }
-                        Err(_) => Ok(json!(compute_encoded_return_error(
-                            "Could not decode request"
-                        ))),
-                    }
-                }
-                Err(e) => {
-                    let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                    Ok(json!(compute_encoded_return_error(&error_msg)))
-                }
-            }
-        },
-    );
-
-    // author_submitExtrinsic
-    let author_submit_extrinsic_name: &str = "author_submitExtrinsic";
-    io.add_sync_method(author_submit_extrinsic_name, move |params: Params| {
-        match params.parse::<Vec<u8>>() {
-            Ok(encoded_params) => {
-                // Aquire lock
-                let tx_pool_mutex = load_top_pool().unwrap();
-                let tx_pool_guard = tx_pool_mutex.lock().unwrap();
-                let tx_pool = Arc::new(tx_pool_guard.deref());
-                let author = Author::new(tx_pool);
-
-                match Request::decode(&mut encoded_params.as_slice()) {
-                    Ok(request) => {
-                        let shard: ShardIdentifier = request.shard;
-                        let encrypted_trusted_op: Vec<u8> = request.cyphertext;
-                        let result =
-                            async { author.submit_top(encrypted_trusted_op.clone(), shard).await };
-                        let response: Result<Hash, RpcError> = executor::block_on(result);
-                        let json_value = match response {
-                            Ok(hash_value) => RpcReturnValue {
-                                do_watch: false,
-                                value: hash_value.encode(),
-                                status: DirectRequestStatus::TrustedOperationStatus(
-                                    TrustedOperationStatus::Submitted,
-                                ),
-                            }
-                            .encode(),
-                            Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
-                        };
-                        Ok(json!(json_value))
-                    }
-                    Err(_) => Ok(json!(compute_encoded_return_error(
-                        "Could not decode request"
-                    ))),
-                }
-            }
-            Err(e) => {
-                let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                Ok(json!(compute_encoded_return_error(&error_msg)))
-            }
-        }
-    });
-
-    // author_pendingExtrinsics
-    let author_pending_extrinsic_name: &str = "author_pendingExtrinsics";
-    io.add_sync_method(author_pending_extrinsic_name, move |params: Params| {
-        match params.parse::<Vec<String>>() {
-            Ok(shards) => {
-                // Aquire tx_pool lock
-                let tx_pool_mutex = load_top_pool().unwrap();
-                let tx_pool_guard = tx_pool_mutex.lock().unwrap();
-                let tx_pool = Arc::new(tx_pool_guard.deref());
-                let author = Author::new(tx_pool);
-
-                let mut retrieved_operations = vec![];
-                for shard_base58 in shards.iter() {
-                    let shard = match decode_shard_from_base58(shard_base58.clone()) {
-                        Ok(id) => id,
-                        Err(msg) => return Ok(Value::String(msg)),
-                    };
-                    if let Ok(vec_of_operations) = author.pending_tops(shard) {
-                        retrieved_operations.push(vec_of_operations);
-                    }
-                }
-                let json_value = RpcReturnValue {
-                    do_watch: false,
-                    value: retrieved_operations.encode(),
-                    status: DirectRequestStatus::Ok,
-                };
-                Ok(json!(json_value.encode()))
-            }
-            Err(e) => {
-                let error_msg: String = format!("Could not retrieve pending calls due to: {}", e);
-                Ok(json!(compute_encoded_return_error(&error_msg)))
-            }
-        }
-    });
+    // // author_submitAndWatchExtrinsic
+    // let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";
+    // io.add_sync_method(
+    //     author_submit_and_watch_extrinsic_name,
+    //     move |params: Params| {
+    //         match params.parse::<Vec<u8>>() {
+    //             Ok(encoded_params) => {
+    //                 // Acquire lock
+    //                 let tx_pool_mutex = load_top_pool().unwrap();
+    //                 let tx_pool_guard = tx_pool_mutex.lock().unwrap();
+    //                 let tx_pool = Arc::new(tx_pool_guard.deref());
+    //                 let author = Author::new(tx_pool);
+    //
+    //                 match Request::decode(&mut encoded_params.as_slice()) {
+    //                     Ok(request) => {
+    //                         let shard: ShardIdentifier = request.shard;
+    //                         let encrypted_trusted_call: Vec<u8> = request.cyphertext;
+    //                         let result = async {
+    //                             author
+    //                                 .watch_top(encrypted_trusted_call.clone(), shard)
+    //                                 .await
+    //                         };
+    //                         let response: Result<Hash, RpcError> = executor::block_on(result);
+    //                         let json_value = match response {
+    //                             Ok(hash_value) => compute_encoded_return_value(
+    //                                 hash_value,
+    //                                 true,
+    //                                 DirectRequestStatus::TrustedOperationStatus(
+    //                                     TrustedOperationStatus::Submitted,
+    //                                 ),
+    //                             ),
+    //                             Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
+    //                         };
+    //                         Ok(json!(json_value))
+    //                     }
+    //                     Err(_) => Ok(json!(compute_encoded_return_error(
+    //                         "Could not decode request"
+    //                     ))),
+    //                 }
+    //             }
+    //             Err(e) => {
+    //                 let error_msg: String = format!("Could not submit trusted call due to: {}", e);
+    //                 Ok(json!(compute_encoded_return_error(&error_msg)))
+    //             }
+    //         }
+    //     },
+    // );
+    //
+    // // author_submitExtrinsic
+    // let author_submit_extrinsic_name: &str = "author_submitExtrinsic";
+    // io.add_sync_method(author_submit_extrinsic_name, move |params: Params| {
+    //     match params.parse::<Vec<u8>>() {
+    //         Ok(encoded_params) => {
+    //             // Aquire lock
+    //             let tx_pool_mutex = load_top_pool().unwrap();
+    //             let tx_pool_guard = tx_pool_mutex.lock().unwrap();
+    //             let tx_pool = Arc::new(tx_pool_guard.deref());
+    //             let author = Author::new(tx_pool);
+    //
+    //             match Request::decode(&mut encoded_params.as_slice()) {
+    //                 Ok(request) => {
+    //                     let shard: ShardIdentifier = request.shard;
+    //                     let encrypted_trusted_op: Vec<u8> = request.cyphertext;
+    //                     let result =
+    //                         async { author.submit_top(encrypted_trusted_op.clone(), shard).await };
+    //                     let response: Result<Hash, RpcError> = executor::block_on(result);
+    //                     let json_value = match response {
+    //                         Ok(hash_value) => RpcReturnValue {
+    //                             do_watch: false,
+    //                             value: hash_value.encode(),
+    //                             status: DirectRequestStatus::TrustedOperationStatus(
+    //                                 TrustedOperationStatus::Submitted,
+    //                             ),
+    //                         }
+    //                         .encode(),
+    //                         Err(rpc_error) => compute_encoded_return_error(&rpc_error.message),
+    //                     };
+    //                     Ok(json!(json_value))
+    //                 }
+    //                 Err(_) => Ok(json!(compute_encoded_return_error(
+    //                     "Could not decode request"
+    //                 ))),
+    //             }
+    //         }
+    //         Err(e) => {
+    //             let error_msg: String = format!("Could not submit trusted call due to: {}", e);
+    //             Ok(json!(compute_encoded_return_error(&error_msg)))
+    //         }
+    //     }
+    // });
+    //
+    // // author_pendingExtrinsics
+    // let author_pending_extrinsic_name: &str = "author_pendingExtrinsics";
+    // io.add_sync_method(author_pending_extrinsic_name, move |params: Params| {
+    //     match params.parse::<Vec<String>>() {
+    //         Ok(shards) => {
+    //             // Aquire tx_pool lock
+    //             let tx_pool_mutex = load_top_pool().unwrap();
+    //             let tx_pool_guard = tx_pool_mutex.lock().unwrap();
+    //             let tx_pool = Arc::new(tx_pool_guard.deref());
+    //             let author = Author::new(tx_pool);
+    //
+    //             let mut retrieved_operations = vec![];
+    //             for shard_base58 in shards.iter() {
+    //                 let shard = match decode_shard_from_base58(shard_base58.clone()) {
+    //                     Ok(id) => id,
+    //                     Err(msg) => return Ok(Value::String(msg)),
+    //                 };
+    //                 if let Ok(vec_of_operations) = author.pending_tops(shard) {
+    //                     retrieved_operations.push(vec_of_operations);
+    //                 }
+    //             }
+    //             let json_value = RpcReturnValue {
+    //                 do_watch: false,
+    //                 value: retrieved_operations.encode(),
+    //                 status: DirectRequestStatus::Ok,
+    //             };
+    //             Ok(json!(json_value.encode()))
+    //         }
+    //         Err(e) => {
+    //             let error_msg: String = format!("Could not retrieve pending calls due to: {}", e);
+    //             Ok(json!(compute_encoded_return_error(&error_msg)))
+    //         }
+    //     }
+    // });
+    //
 
     // author_getShieldingKey
     let rsa_pubkey_name: &str = "author_getShieldingKey";
@@ -284,54 +285,55 @@ fn init_io_handler() -> IoHandler {
         Ok(json!(json_value.encode()))
     });
 
-    // chain_subscribeAllHeads
-    let chain_subscribe_all_heads_name: &str = "chain_subscribeAllHeads";
-    io.add_sync_method(chain_subscribe_all_heads_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // state_getMetadata
-    let state_get_metadata_name: &str = "state_getMetadata";
-    io.add_sync_method(state_get_metadata_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // state_getRuntimeVersion
-    let state_get_runtime_version_name: &str = "state_getRuntimeVersion";
-    io.add_sync_method(state_get_runtime_version_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // state_get
-    let state_get_name: &str = "state_get";
-    io.add_sync_method(state_get_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // system_health
-    let state_health_name: &str = "system_health";
-    io.add_sync_method(state_health_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // system_name
-    let state_name_name: &str = "system_name";
-    io.add_sync_method(state_name_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // system_version
-    let state_version_name: &str = "system_version";
-    io.add_sync_method(state_version_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
+    //
+    // // chain_subscribeAllHeads
+    // let chain_subscribe_all_heads_name: &str = "chain_subscribeAllHeads";
+    // io.add_sync_method(chain_subscribe_all_heads_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
+    //
+    // // state_getMetadata
+    // let state_get_metadata_name: &str = "state_getMetadata";
+    // io.add_sync_method(state_get_metadata_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
+    //
+    // // state_getRuntimeVersion
+    // let state_get_runtime_version_name: &str = "state_getRuntimeVersion";
+    // io.add_sync_method(state_get_runtime_version_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
+    //
+    // // state_get
+    // let state_get_name: &str = "state_get";
+    // io.add_sync_method(state_get_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
+    //
+    // // system_health
+    // let state_health_name: &str = "system_health";
+    // io.add_sync_method(state_health_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
+    //
+    // // system_name
+    // let state_name_name: &str = "system_name";
+    // io.add_sync_method(state_name_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
+    //
+    // // system_version
+    // let state_version_name: &str = "system_version";
+    // io.add_sync_method(state_version_name, |_: Params| {
+    //     let parsed = "world";
+    //     Ok(Value::String(format!("hello, {}", parsed)))
+    // });
 
     // returns all rpcs methods
     let rpc_methods_string: String = io_handler_extensions::get_all_rpc_methods_string(&io);
