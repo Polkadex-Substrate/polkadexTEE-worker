@@ -16,22 +16,22 @@
 */
 
 pub extern crate alloc;
-use alloc::{
-    str,
-    vec::Vec,
-};
+use alloc::{str, string::String, vec::Vec};
 
-use codec::{Encode};
+use codec::Encode;
 
+use substratee_worker_primitives::DirectRequestStatus;
 use substratee_worker_primitives::RpcReturnValue;
-use substratee_worker_primitives::{DirectRequestStatus};
-
 
 pub fn compute_encoded_return_error(error_msg: &str) -> Vec<u8> {
     compute_encoded_return_value(error_msg, false, DirectRequestStatus::Error)
 }
 
-pub fn compute_encoded_return_value<T:Encode>(value: T, do_watch : bool, status: DirectRequestStatus) -> Vec<u8> {
+pub fn compute_encoded_return_value<T: Encode>(
+    value: T,
+    do_watch: bool,
+    status: DirectRequestStatus,
+) -> Vec<u8> {
     let return_value = RpcReturnValue {
         value: value.encode(),
         do_watch,

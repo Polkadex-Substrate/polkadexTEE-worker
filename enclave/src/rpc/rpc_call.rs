@@ -17,7 +17,7 @@
 
 pub extern crate alloc;
 
-use alloc::str;
+use alloc::{str, string::String};
 
 use core::marker::{Send, Sync};
 use jsonrpc_core::Result as RpcResult;
@@ -27,18 +27,15 @@ use substratee_node_primitives::Request;
 use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::rpc::rpc_call_encoder::RpcCallEncoder;
+use crate::rpc::rpc_info::RpcInfo;
 
-pub type RpcMethodImpl =
-    dyn Fn(Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> + Sync;
+pub type RpcMethodImpl = dyn Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync;
 
 /// RPC call structure
 pub struct RpcCall<E, F>
 where
     E: RpcCallEncoder + Send + Sync + 'static,
-    F: Fn(Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)>
-        + Sync
-        + ?Sized
-        + 'static,
+    F: Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync + ?Sized + 'static,
 {
     method_name: &'static str,
     method_impl: &'static F,
@@ -48,10 +45,7 @@ where
 impl<E, F> RpcCall<E, F>
 where
     E: RpcCallEncoder + Send + Sync + 'static,
-    F: Fn(Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)>
-        + Sync
-        + ?Sized
-        + 'static,
+    F: Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync + ?Sized + 'static,
 {
     pub fn method_name(&self) -> &'static str {
         self.method_name
@@ -72,10 +66,7 @@ where
 impl<E, F> RpcMethodSync for RpcCall<E, F>
 where
     E: RpcCallEncoder + Send + Sync + 'static,
-    F: Fn(Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)>
-        + Sync
-        + ?Sized
-        + 'static,
+    F: Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync + ?Sized + 'static,
 {
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
         E::call(params, &|r: Request| (self.method_impl)(r))
@@ -86,6 +77,7 @@ pub mod tests {
 
     use super::*;
     use crate::rpc::rpc_call_encoder::tests::RpcCallEncoderMock;
+    use crate::rpc::rpc_info::RpcCallStatus;
     use jsonrpc_core::futures::executor::block_on;
 
     pub fn test_method_name_should_not_be_empty() {
@@ -106,7 +98,13 @@ pub mod tests {
     fn create_test_rpc_call() -> RpcCall<RpcCallEncoderMock, RpcMethodImpl> {
         RpcCall::new(
             "test_call",
-            &|_r: Request| Ok(("called", false, DirectRequestStatus::Ok)),
+            &|_r: Request| {
+                Ok((
+                    RpcInfo::from(RpcCallStatus::operation_success),
+                    false,
+                    DirectRequestStatus::Ok,
+                ))
+            },
             RpcCallEncoderMock {},
         )
     }

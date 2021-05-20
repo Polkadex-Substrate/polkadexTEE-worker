@@ -16,15 +16,23 @@
 */
 
 pub extern crate alloc;
-use alloc::vec::Vec;
+use alloc::{str, string::String, string::ToString, vec::Vec};
+use base58::ToBase58;
+use codec::{Decode, Encode};
 use jsonrpc_core::Result as RpcResult;
 use log::*;
+use sgx_types::sgx_measurement_t;
 use substratee_node_primitives::Request;
+use substratee_stf::{Getter, ShardIdentifier, TrustedCall, TrustedCallSigned, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
+use crate::attestation;
 use crate::rpc::rpc_call::{RpcCall, RpcMethodImpl};
 use crate::rpc::rpc_call_encoder::JsonRpcCallEncoder;
 
+use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
+
+/// Get a list of all RPC calls - can be used to insert into the IO handler
 pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
     vec![
         RpcCall::new("place_order", &place_order, JsonRpcCallEncoder {}),
@@ -34,37 +42,193 @@ pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
     ]
 }
 
-fn place_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+fn place_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     println!("entering place_order RPC");
 
+    // TODO the functionality of verifying the request and extracting the parameters is duplicated
+    // in each function. Generalize it and share it among all calls
+    let verified_trusted_operation = get_verified_trusted_operation(request);
+    if let Err(s) = verified_trusted_operation {
+        return Ok((RpcInfo::from(s), false, DirectRequestStatus::Error));
+    }
+
+    let place_order_call_args = match verified_trusted_operation.unwrap() {
+        TrustedOperation::direct_call(tcs) => match tcs.call {
+            TrustedCall::place_order(a, o, p) => Ok((a, o, p)),
+            _ => Err(RpcCallStatus::operation_type_mismatch),
+        },
+        _ => Err(RpcCallStatus::operation_type_mismatch),
+    };
+
+    if let Err(e) = place_order_call_args {
+        return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
+    }
+
     // TODO call implementation here
 
-    // TODO decode request and verify it's the correct TrustedOperation
-    // and then verify signature on the TrustedCallSigned
-
-    Ok(("called place_order", false, DirectRequestStatus::Ok))
+    Ok((
+        RpcInfo::from(RpcCallStatus::operation_success),
+        false,
+        DirectRequestStatus::Ok,
+    ))
 }
 
-fn cancel_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+fn cancel_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     println!("entering cancel_order RPC");
 
+    let verified_trusted_operation = get_verified_trusted_operation(request);
+    if let Err(s) = verified_trusted_operation {
+        return Ok((RpcInfo::from(s), false, DirectRequestStatus::Error));
+    }
+
+    let cancel_order_call_args = match verified_trusted_operation.unwrap() {
+        TrustedOperation::direct_call(tcs) => match tcs.call {
+            TrustedCall::cancel_order(a, o, p) => Ok((a, o, p)),
+            _ => Err(RpcCallStatus::operation_type_mismatch),
+        },
+        _ => Err(RpcCallStatus::operation_type_mismatch),
+    };
+
+    if let Err(e) = cancel_order_call_args {
+        return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
+    }
+
     // TODO call implementation here
 
-    Ok(("called cancel_order", false, DirectRequestStatus::Ok))
+    Ok((
+        RpcInfo::from(RpcCallStatus::operation_success),
+        false,
+        DirectRequestStatus::Ok,
+    ))
 }
 
-fn withdraw(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+fn withdraw(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     println!("entering withdraw RPC");
 
+    let verified_trusted_operation = get_verified_trusted_operation(request);
+    if let Err(s) = verified_trusted_operation {
+        return Ok((RpcInfo::from(s), false, DirectRequestStatus::Error));
+    }
+
+    let withdraw_call_args = match verified_trusted_operation.unwrap() {
+        TrustedOperation::direct_call(tcs) => match tcs.call {
+            TrustedCall::withdraw(a, c, b, p) => Ok((a, c, b, p)),
+            _ => Err(RpcCallStatus::operation_type_mismatch),
+        },
+        _ => Err(RpcCallStatus::operation_type_mismatch),
+    };
+
+    if let Err(e) = withdraw_call_args {
+        return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
+    }
+
     // TODO call implementation here
 
-    Ok(("called withdraw", false, DirectRequestStatus::Ok))
+    Ok((
+        RpcInfo::from(RpcCallStatus::operation_success),
+        false,
+        DirectRequestStatus::Ok,
+    ))
 }
 
-pub fn get_balance(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+fn get_balance(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     println!("entering get_balance RPC");
+
+    let verified_trusted_operation = get_verified_trusted_operation(request);
+    if let Err(s) = verified_trusted_operation {
+        return Ok((RpcInfo::from(s), false, DirectRequestStatus::Error));
+    }
+
+    let get_balance_call_args = match verified_trusted_operation.unwrap() {
+        TrustedOperation::direct_call(tcs) => match tcs.call {
+            TrustedCall::get_balance(a, c, p) => Ok((a, c, p)),
+            _ => Err(RpcCallStatus::operation_type_mismatch),
+        },
+        _ => Err(RpcCallStatus::operation_type_mismatch),
+    };
+
+    if let Err(e) = get_balance_call_args {
+        return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
+    }
 
     // TODO call implementation here
 
-    Ok(("called get_balance", false, DirectRequestStatus::Ok))
+    Ok((
+        RpcInfo::from(RpcCallStatus::operation_success),
+        false,
+        DirectRequestStatus::Ok,
+    ))
+}
+
+fn get_verified_trusted_operation(request: Request) -> Result<TrustedOperation, RpcCallStatus> {
+    // decode call
+    let shard_id = request.shard;
+    let decode_result = decode_request(request);
+    if let Err(e) = decode_result {
+        return Err(e);
+    }
+
+    let trusted_operation = decode_result.unwrap();
+    match verify_signature(&trusted_operation, &shard_id) {
+        Ok(()) => {
+            debug!("successfully verified signature")
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(trusted_operation)
+}
+
+fn decode_request(request: Request) -> Result<TrustedOperation, RpcCallStatus> {
+    debug!("decode Request -> TrustedOperation");
+    match TrustedOperation::decode(&mut request.cyphertext.as_slice()) {
+        Ok(trusted_operation) => Ok(trusted_operation),
+        Err(e) => Err(RpcCallStatus::decoding_failure),
+    }
+}
+
+fn verify_signature(
+    top: &TrustedOperation,
+    shard_id: &ShardIdentifier,
+) -> Result<(), RpcCallStatus> {
+    debug!("verify signature of TrustedOperation");
+    debug!("query mrenclave of self");
+    let mrenclave = match attestation::get_mrenclave_of_self() {
+        Ok(m) => m,
+        Err(_) => return Err(RpcCallStatus::mrenclave_failure),
+    };
+
+    debug!("MRENCLAVE of self is {}", mrenclave.m.to_base58());
+
+    match top {
+        TrustedOperation::direct_call(tcs) => {
+            verify_signature_of_signed_call(tcs, &mrenclave, shard_id)
+        }
+        TrustedOperation::indirect_call(tcs) => {
+            verify_signature_of_signed_call(tcs, &mrenclave, shard_id)
+        }
+        TrustedOperation::get(getter) => {
+            match getter {
+                Getter::public(_) => Ok(()), // no need to verify signature on public getter
+                Getter::trusted(tgs) => {
+                    if let true = tgs.verify_signature() {
+                        return Ok(());
+                    }
+                    return Err(RpcCallStatus::signature_verification_failure);
+                }
+            }
+        }
+    }
+}
+
+fn verify_signature_of_signed_call(
+    trusted_call: &TrustedCallSigned,
+    mrenclave: &sgx_measurement_t,
+    shard_id: &ShardIdentifier,
+) -> Result<(), RpcCallStatus> {
+    if trusted_call.verify_signature(&mrenclave.m, shard_id) {
+        return Ok(());
+    }
+
+    Err(RpcCallStatus::signature_verification_failure)
 }

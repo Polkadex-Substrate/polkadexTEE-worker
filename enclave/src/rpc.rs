@@ -10,3 +10,4 @@ pub mod return_value_encoding;
 pub mod rpc_api_calls;
 pub mod rpc_call;
 pub mod rpc_call_encoder;
+pub mod rpc_info;
