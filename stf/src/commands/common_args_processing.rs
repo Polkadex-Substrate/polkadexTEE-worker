@@ -81,3 +81,50 @@ fn get_order_side_from_str<'a>(arg: &str) -> Result<OrderSide, &'a str> {
         _ => Err("invalid order side argument"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::commands::common_args::{add_main_account_args, add_order_args};
+    use clap::{App, AppSettings};
+
+    #[test]
+    pub fn given_correct_args_then_map_to_order() {
+        let order_args = create_order_args();
+        let matches = create_test_app().get_matches_from(order_args);
+
+        let order_mapping_result = get_order_from_matches(&matches);
+
+        assert!(order_mapping_result.is_ok());
+
+        let order = order_mapping_result.unwrap();
+        assert_eq!(order.order_type, OrderType::MARKET);
+        assert_eq!(order.side, OrderSide::BID);
+        assert_eq!(order.quantity, 198475);
+    }
+
+    pub fn create_order_args() -> Vec<String> {
+        let main_account_arg = format!("--{}=//main_ojwf8a", ACCOUNT_ID_ARG_NAME);
+        let market_id_arg = format!("--{}=market_id_001", MARKET_ID_ARG_NAME);
+        let market_type_arg = format!("--{}=market_type_002", MARKET_TYPE_ARG_NAME);
+        let order_type_arg = format!("--{}=market", ORDER_TYPE_ARG_NAME);
+        let order_side_arg = format!("--{}=bid", ORDER_SIDE_ARG_NAME);
+        let quantity_arg = format!("--{}=198475", QUANTITY_ARG_NAME);
+
+        vec![
+            main_account_arg,
+            market_id_arg,
+            market_type_arg,
+            order_type_arg,
+            order_side_arg,
+            quantity_arg,
+        ]
+    }
+
+    fn create_test_app<'a, 'b>() -> App<'a, 'b> {
+        let test_app = App::new("test_account_details").setting(AppSettings::NoBinaryName);
+        let app_with_main_account = add_main_account_args(test_app);
+        add_order_args(app_with_main_account)
+    }
+}

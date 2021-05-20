@@ -59,6 +59,18 @@ impl AccountDetails {
         sr25519_core::Pair::from(self.signer_pair().clone())
     }
 
+    pub fn signer_public_key(&self) -> sr25519_core::Public {
+        sr25519_core::Public::from(self.signer_pair().public())
+    }
+
+    /// returns a main account public key, IF the signer is a proxy, none otherwise
+    pub fn main_account_public_key_if_not_signer(&self) -> Option<sr25519_core::Public> {
+        match &self.proxy_account {
+            Some(_) => Some(sr25519_core::Public::from(self.main_account.public())),
+            None => None,
+        }
+    }
+
     pub fn main_account_public_key(&self) -> sr25519_core::Public {
         sr25519_core::Public::from(self.main_account.public())
     }
@@ -78,8 +90,6 @@ mod tests {
         PROXY_ACCOUNT_ID_ARG_NAME,
     };
     use clap::{App, AppSettings};
-    use sp_application_crypto::sr25519;
-    use sp_core::{sr25519 as sr25519_core, Pair};
 
     #[test]
     fn given_proxy_account_argument_then_account_details_has_some() {
@@ -96,13 +106,17 @@ mod tests {
 
         assert_eq!(
             account_details.proxy_account_public_key().unwrap(),
-            sr25519_core::Public::from(account_details.signer_key_pair().public())
+            account_details.signer_public_key()
         );
 
         assert_ne!(
             account_details.main_account_public_key(),
-            sr25519_core::Public::from(account_details.signer_key_pair().public())
+            account_details.signer_public_key()
         );
+
+        assert!(account_details
+            .main_account_public_key_if_not_signer()
+            .is_some());
     }
 
     #[test]
@@ -119,8 +133,12 @@ mod tests {
 
         assert_eq!(
             account_details.main_account_public_key(),
-            sr25519_core::Public::from(account_details.signer_key_pair().public())
+            account_details.signer_public_key()
         );
+
+        assert!(account_details
+            .main_account_public_key_if_not_signer()
+            .is_none());
     }
 
     fn create_test_app<'a, 'b>() -> App<'a, 'b> {

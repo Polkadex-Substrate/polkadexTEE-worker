@@ -25,26 +25,30 @@ use sp_application_crypto::sr25519;
 use sp_core::{sr25519 as sr25519_core, Pair};
 
 pub fn get_trusted_nonce(
-    perform_operation: OperationRunner<'_>,
-    matches: &ArgMatches,
-    who: &sr25519::AppPair,
-    key_pair: &sr25519_core::Pair,
+    _perform_operation: OperationRunner<'_>,
+    _matches: &ArgMatches,
+    _who: &sr25519::AppPair,
+    _key_pair: &sr25519_core::Pair,
 ) -> u32 {
-    let top: TrustedOperation =
-        TrustedGetter::nonce(sr25519_core::Public::from(who.public()).into())
-            .sign(&KeyPair::Sr25519(key_pair.clone()))
-            .into();
-    let res = perform_operation(matches, &top);
-    let nonce: Index = if let Some(n) = res {
-        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-            nonce
-        } else {
-            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-            0
-        }
-    } else {
-        0
-    };
-    debug!("got nonce: {:?}", nonce);
-    nonce
+    // for the PolkaDex GW POC we always return nonce = 0
+    // TODO: re-enable proper nonce computation to prevent replay attacks
+    0
+
+    // let top: TrustedOperation =
+    //     TrustedGetter::nonce(sr25519_core::Public::from(who.public()).into())
+    //         .sign(&KeyPair::Sr25519(key_pair.clone()))
+    //         .into();
+    // let res = perform_operation(matches, &top);
+    // let nonce: Index = if let Some(n) = res {
+    //     if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
+    //         nonce
+    //     } else {
+    //         info!("could not decode value. maybe hasn't been set? {:x?}", n);
+    //         0
+    //     }
+    // } else {
+    //     0
+    // };
+    // debug!("got nonce: {:?}", nonce);
+    // nonce
 }

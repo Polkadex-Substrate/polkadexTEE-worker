@@ -25,6 +25,14 @@ pub const ORDER_TYPE_ARG_NAME: &str = "ordertype";
 pub const ORDER_SIDE_ARG_NAME: &str = "orderside";
 pub const QUANTITY_ARG_NAME: &str = "quantity";
 pub const PRICE_ARG_NAME: &str = "price";
+pub const MRENCLAVE_ARG_NAME: &str = "mrenclave";
+pub const SHARD_ARG_NAME: &str = "shard";
+
+pub fn add_common_order_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    let app_with_main_account = add_main_account_args(app);
+    let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+    add_order_args(app_with_proxy_account)
+}
 
 pub fn add_main_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
@@ -72,6 +80,14 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .required(true)
             .value_name("STRING")
             .help("Order type: one of [market, limit, postonly, fillorkill]"),
+    )
+    .arg(
+        Arg::with_name(ORDER_SIDE_ARG_NAME)
+            .long(ORDER_SIDE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Order side: one of [bid, ask]"),
     )
     .arg(
         Arg::with_name(QUANTITY_ARG_NAME)

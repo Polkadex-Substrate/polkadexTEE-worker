@@ -51,6 +51,7 @@ fn command_runner<'a>(
     let signer_key_pair = account_details.signer_key_pair();
 
     let (mrenclave, shard) = get_identifiers(matches);
+
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
     let order =
@@ -59,10 +60,10 @@ fn command_runner<'a>(
     let direct: bool = matches.is_present("direct");
 
     let cancel_order_top: TrustedOperation = TrustedCall::cancel_order(
-        account_details.main_account_public_key().into(),
+        account_details.signer_public_key().into(),
         order,
         account_details
-            .proxy_account_public_key()
+            .main_account_public_key_if_not_signer()
             .map(|pk| pk.into()),
     )
     .sign(
@@ -82,55 +83,45 @@ fn command_runner<'a>(
 mod tests {
 
     use super::*;
-    use crate::{Getter, Index, TrustedCallSigned, TrustedGetter, TrustedGetterSigned};
+
+    use crate::commands::test_utils::utils::{
+        add_identifiers_app_args, create_identifier_args, create_main_account_args,
+        create_order_args, PerformOperationMock,
+    };
     use clap::{App, AppSettings};
-    use clap_nested::{CommandLike, Commander};
-    use codec::Encode;
 
     #[test]
     fn given_the_proper_arguments_then_run_operation() {
-        let proxy_account_arg = format!("--{}=oijfw93ojafje3k", PROXY_ACCOUNT_ID_ARG_NAME);
-        let arg_vec = vec![proxy_account_arg];
+        let args = create_cancel_order_args();
+        let matches = create_test_app().get_matches_from(args);
 
-        // trusted set-balance //AliceIncognito 123456789 --mrenclave $MRENCLAVE --direct
+        let perform_operation_mock = PerformOperationMock::new();
 
-        let matches = App::new("test_program")
-            .setting(AppSettings::NoBinaryName)
-            .get_matches_from(arg_vec);
+        let command_result = command_runner(
+            &matches,
+            &|arg_matches: &ArgMatches<'_>, top: &TrustedOperation| {
+                perform_operation_mock.perform_operation_mock(arg_matches, top)
+            },
+        );
 
-        let command = cancel_order_cli_command(&perform_operation_mock);
-
-        let commander = Commander::new()
-            .args(|_args, matches| matches.value_of("environment").unwrap_or("dev"))
-            .add_cmd(command)
-            .no_cmd(|_args, _matches| {
-                println!("No subcommand matched");
-                Ok(())
-            });
-
-        let result = commander.run();
-
-        assert!(result.is_ok());
+        assert!(command_result.is_ok());
     }
 
-    fn perform_operation_mock(
-        arg_matches: &ArgMatches<'_>,
-        trusted_operation: &TrustedOperation,
-    ) -> Option<Vec<u8>> {
-        match trusted_operation {
-            TrustedOperation::indirect_call(tcs) => {}
-            TrustedOperation::direct_call(tcs) => {}
-            TrustedOperation::get(get) => match get {
-                Getter::public(_) => {}
-                Getter::trusted(tgs) => match &tgs.getter {
-                    TrustedGetter::nonce(accountId) => {
-                        return Some(Index::encode(&145));
-                    }
-                    TrustedGetter::free_balance(_) => {}
-                    TrustedGetter::reserved_balance(_) => {}
-                },
-            },
-        }
-        None
+    fn create_cancel_order_args() -> Vec<String> {
+        let mut main_account_arg = create_main_account_args();
+        let mut order_args = create_order_args();
+        let mut identifier_args = create_identifier_args();
+
+        main_account_arg.append(&mut order_args);
+        main_account_arg.append(&mut identifier_args);
+
+        main_account_arg
+    }
+
+    fn create_test_app<'a, 'b>() -> App<'a, 'b> {
+        let test_app = App::new("test_account_details").setting(AppSettings::NoBinaryName);
+        let app_with_arg = add_app_args(test_app);
+
+        add_identifiers_app_args(app_with_arg)
     }
 }
