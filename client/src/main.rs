@@ -437,11 +437,18 @@ fn get_chain_api(matches: &ArgMatches<'_>) -> Api<sr25519::Pair> {
 
 fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -> Option<Vec<u8>> {
     match top {
-        TrustedOperation::indirect_call(call) => send_request(matches, call.clone()),
+        TrustedOperation::indirect_call(call) => {
+            debug!("performing trusted operation - indirect call");
+            send_request(matches, call.clone())
+        }
         TrustedOperation::direct_call(call) => {
+            debug!("performing trusted operation - direct call");
             send_direct_request_encoded(matches, TrustedOperation::direct_call(call.clone()))
         }
-        TrustedOperation::get(getter) => get_state(matches, TrustedOperation::get(getter.clone())),
+        TrustedOperation::get(getter) => {
+            debug!("performing trusted operation - getter");
+            get_state(matches, TrustedOperation::get(getter.clone()))
+        }
     }
 }
 

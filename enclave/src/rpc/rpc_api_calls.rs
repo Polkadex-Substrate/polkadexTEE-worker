@@ -35,15 +35,18 @@ pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
 }
 
 fn place_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
-    debug!("entering place_order RPC");
+    println!("entering place_order RPC");
 
     // TODO call implementation here
+
+    // TODO decode request and verify it's the correct TrustedOperation
+    // and then verify signature on the TrustedCallSigned
 
     Ok(("called place_order", false, DirectRequestStatus::Ok))
 }
 
 fn cancel_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
-    debug!("entering cancel_order RPC");
+    println!("entering cancel_order RPC");
 
     // TODO call implementation here
 
@@ -51,7 +54,7 @@ fn cancel_order(_request: Request) -> RpcResult<(&'static str, bool, DirectReque
 }
 
 fn withdraw(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
-    debug!("entering withdraw RPC");
+    println!("entering withdraw RPC");
 
     // TODO call implementation here
 
@@ -59,7 +62,7 @@ fn withdraw(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestSt
 }
 
 pub fn get_balance(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
-    debug!("entering get_balance RPC");
+    println!("entering get_balance RPC");
 
     // TODO call implementation here
 

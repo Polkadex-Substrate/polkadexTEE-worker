@@ -39,7 +39,9 @@ $CLIENT trusted place_order --accountid=//AliceIncognito --proxyaccountid=//Alic
  --mrenclave $MRENCLAVE --direct
 
 echo "Get balance of Alice"
-$CLIENT trusted get_balance --accountid=//AliceIncognito --tokenid=btc --mrenclave $MRENCLAVE
+$CLIENT trusted get_balance --accountid=//AliceIncognito \
+ --tokenid=btc \
+ --mrenclave $MRENCLAVE --direct
 
 echo "Cancel order"
 $CLIENT trusted cancel_order --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
@@ -49,4 +51,4 @@ $CLIENT trusted cancel_order --accountid=//AliceIncognito --proxyaccountid=//Ali
 echo "Withdraw"
 $CLIENT trusted withdraw --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
  --tokenid=btc --quantity=293 \
- --mrenclave $MRENCLAVE
+ --mrenclave $MRENCLAVE --direct
