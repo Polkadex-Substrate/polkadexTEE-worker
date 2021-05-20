@@ -17,14 +17,13 @@
 
 pub extern crate alloc;
 use alloc::vec::Vec;
-
 use jsonrpc_core::Result as RpcResult;
-
+use log::*;
 use substratee_node_primitives::Request;
+use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::rpc::rpc_call::{RpcCall, RpcMethodImpl};
 use crate::rpc::rpc_call_encoder::JsonRpcCallEncoder;
-use substratee_worker_primitives::DirectRequestStatus;
 
 pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
     vec![
@@ -36,17 +35,33 @@ pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
 }
 
 fn place_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+    debug!("entering place_order RPC");
+
+    // TODO call implementation here
+
     Ok(("called place_order", false, DirectRequestStatus::Ok))
 }
 
 fn cancel_order(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+    debug!("entering cancel_order RPC");
+
+    // TODO call implementation here
+
     Ok(("called cancel_order", false, DirectRequestStatus::Ok))
 }
 
 fn withdraw(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+    debug!("entering withdraw RPC");
+
+    // TODO call implementation here
+
     Ok(("called withdraw", false, DirectRequestStatus::Ok))
 }
 
 pub fn get_balance(_request: Request) -> RpcResult<(&'static str, bool, DirectRequestStatus)> {
+    debug!("entering get_balance RPC");
+
+    // TODO call implementation here
+
     Ok(("called get_balance", false, DirectRequestStatus::Ok))
 }

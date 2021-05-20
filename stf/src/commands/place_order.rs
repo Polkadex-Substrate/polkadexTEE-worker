@@ -19,6 +19,7 @@ use core::option::Option;
 
 use clap::ArgMatches;
 use clap_nested::Command;
+use log::*;
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
@@ -72,7 +73,11 @@ fn command_runner<'a>(
     )
     .into_trusted_operation(direct);
 
+    debug!("Successfully built place_order trusted operation, dispatching now to enclave");
+
     let _ = perform_operation(matches, &place_order_top);
+
+    debug!("place_order trusted operation was executed");
 
     Ok(())
 }

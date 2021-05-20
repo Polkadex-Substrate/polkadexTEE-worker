@@ -25,6 +25,7 @@ use clap_nested::Command;
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args_processing::get_order_from_matches;
+use log::*;
 
 pub fn cancel_order_cli_command(perform_operation: OperationRunner) -> Command<str> {
     Command::new("cancel_order")
@@ -74,7 +75,11 @@ fn command_runner<'a>(
     )
     .into_trusted_operation(direct);
 
+    debug!("Successfully built cancel_order trusted operation, dispatching now to enclave");
+
     let _ = perform_operation(matches, &cancel_order_top);
+
+    debug!("cancel_order trusted operation was executed");
 
     Ok(())
 }

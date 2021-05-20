@@ -20,6 +20,7 @@ use core::option::Option;
 use clap::{App, ArgMatches};
 use clap_nested::Command;
 use codec::Encode;
+use log::*;
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
@@ -84,7 +85,11 @@ fn command_runner<'a>(
     )
     .into_trusted_operation(direct);
 
+    debug!("Successfully built withdraw trusted operation, dispatching now to enclave");
+
     let _ = perform_operation(matches, &withdraw_top);
+
+    debug!("withdraw trusted operation was executed");
 
     Ok(())
 }
