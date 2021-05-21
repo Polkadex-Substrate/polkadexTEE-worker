@@ -84,6 +84,7 @@ use crate::constants::{
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 
 use crate::extrinsic_handler::{lock_and_update_nonce, PendingExtrinsicHelper};
+use crate::nonce_handler::NonceHandler;
 use serde::private::ser::serialize_tagged_newtype;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
@@ -96,6 +97,7 @@ mod extrinsic_handler;
 pub mod hex;
 mod io;
 mod ipfs;
+mod nonce_handler;
 mod polkadex;
 mod polkadex_balance_storage;
 mod polkadex_orderbook_storage;
@@ -357,6 +359,8 @@ pub unsafe extern "C" fn init_chain_relay(
         Err(e) => return e,
     }
 
+    nonce_handler::create_in_memory_nonce_storage()?;
+
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -443,15 +447,17 @@ pub unsafe extern "C" fn sync_chain(
 
     let mut calls = Vec::<OpaqueCall>::new();
 
-    extrinsic_handler::lock_and_update_nonce(*nonce)?;
-    extrinsic_handler::lock_and_update_active_set()?;
-    if extrinsic_handler::lock_and_is_active_set_not_empty()? {
-        if let Some(unconfirmed_transaction) =
-            extrinsic_handler::lock_and_get_unconfirmed_transaction()?
-        {
-            // Send transaction again
-        }
-    }
+    //TODO: Extrinsic Handler Code [Ignore for now]
+    //extrinsic_handler::lock_and_update_nonce(*nonce)?;
+    //extrinsic_handler::lock_and_update_active_set()?;
+    // if extrinsic_handler::lock_and_is_active_set_not_empty()? {
+    //     if let Some(unconfirmed_transaction) =
+    //         extrinsic_handler::lock_and_get_unconfirmed_transaction()?
+    //     {
+    //         // Send transaction again
+    //     }
+    // }
+    nonce_handler::lock_and_update_nonce(*nonce)?; //FIXME Replace with Index
     debug!("Syncing chain relay!");
     if !blocks_to_sync.is_empty() {
         for signed_block in blocks_to_sync.into_iter() {
@@ -915,7 +921,6 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
-                // TODO Pass refrence of DepositExtrinsicHelper object.
                 if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
                     error!("Error performing ocex withdraw. Error: {:?}", e);
                 }
@@ -1079,12 +1084,7 @@ fn handle_ocex_withdraw(
                     token.clone(),
                     amount,
                 ) {
-                    Ok(()) => {
-                        //TODO KSR Add to active set of PendingExtrinsicHelper
-                        //TODO KSR Get unapproved nonce from PendingExtrinsicHelper
-                        //TODO Pass DepositExtrinsicHelper Object
-                        execute_ocex_release_extrinsic(main_acc.clone(), token, amount)
-                    } // TODO: How to get nonce?
+                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount),
                     Err(e) => return Err(e),
                 }
             } else {
@@ -1105,9 +1105,15 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     let xt_block = [OCEX_MODULE, OCEX_RELEASE];
     let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
     let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
-    let mutex = extrinsic_handler::load_extrinsic_storage()?;
-    let mut extrinsic_storage: SgxMutexGuard<PendingExtrinsicHelper> = mutex.lock().unwrap();
-    let nonce = extrinsic_storage.get_unfinalized_nonce();
+    //TODO Code for ExtrinsicHanlder [Ignore for now]
+    // let mutex = extrinsic_handler::load_extrinsic_storage()?;
+    // let mut extrinsic_storage: SgxMutexGuard<PendingExtrinsicHelper> = mutex.lock().unwrap();
+    // let nonce = extrinsic_storage.get_unfinalized_nonce();
+
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let nonce = nonce_storage.nonce;
+
     // Load the enclave's key pair
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
@@ -1115,7 +1121,7 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     let xt = compose_extrinsic_offline!(
         signer.clone(),
         call,
-        nonce, // TODO: Where is this?
+        nonce,
         Era::Immortal,
         genesis_hash,
         genesis_hash, // FIXME: Shouldn't this be the latest head?
@@ -1123,11 +1129,13 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
         RUNTIME_TRANSACTION_VERSION
     )
     .encode();
-    extrinsic_storage.increase_unfinalzied_nonce();
+    nonce_storage.nonce += 1;
+
+    //TODO Code for Extrinsic Handler [Ignore for now]
+    // call increase_unapproved_nonce
+    // Store xt
     extrinsic_storage.add_active_set_element(nonce, xt.clone());
 
-    // TODO: KSR : call increase_unapproved_nonce
-    // TODO: Store xt
     // TODO: We need to send this using ocall to Polkadex network
     Ok(())
 }
