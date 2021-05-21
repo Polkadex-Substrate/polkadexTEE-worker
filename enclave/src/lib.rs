@@ -28,7 +28,10 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::constants::{CALL_WORKER, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, OCEX_DEPOSIT, SHIELD_FUNDS};
+use crate::constants::{
+    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
+};
+use crate::nonce_handler::NonceHandler;
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -77,6 +80,7 @@ use substratee_worker_primitives::block::{
 };
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
+
 mod aes;
 mod attestation;
 mod constants;
@@ -95,6 +99,7 @@ mod utils;
 
 pub mod cert;
 pub mod hex;
+pub mod nonce_handler;
 pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
@@ -347,6 +352,8 @@ pub unsafe extern "C" fn init_chain_relay(
         Err(e) => return e,
     }
 
+    nonce_handler::create_in_memory_nonce_storage()?;
+
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -432,6 +439,8 @@ pub unsafe extern "C" fn sync_chain(
     };
 
     let mut calls = Vec::<OpaqueCall>::new();
+
+    nonce_handler::lock_and_update_nonce(*nonce)?;
 
     debug!("Syncing chain relay!");
     if !blocks_to_sync.is_empty() {
@@ -888,7 +897,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Withdraw
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
@@ -900,7 +909,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Deposit
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
@@ -1012,7 +1021,8 @@ fn handle_ocex_withdraw(
         amount
     );
 
-    match polkadex::check_main_account(main_acc.clone().into()) { // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
+    match polkadex::check_main_account(main_acc.clone().into()) {
+        // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists == true {
                 match polkadex_balance_storage::lock_storage_and_withdraw(
@@ -1031,12 +1041,7 @@ fn handle_ocex_withdraw(
     }
 }
 
-fn execute_ocex_release_extrinsic(
-    acc: AccountId,
-    token: AssetId,
-    amount: u128,
-    mut nonce: u32,
-) -> SgxResult<()> {
+fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
     // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
     let mut validator = match io::light_validation::unseal() {
         Ok(v) => v,
@@ -1051,6 +1056,10 @@ fn execute_ocex_release_extrinsic(
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let nonce = nonce_storage.nonce;
+
     let xt: Vec<u8> = compose_extrinsic_offline!(
         signer.clone(),
         call,
@@ -1062,7 +1071,7 @@ fn execute_ocex_release_extrinsic(
         RUNTIME_TRANSACTION_VERSION
     )
     .encode();
-    nonce += 1;
+    nonce_storage.nonce += 1;
 
     // TODO: We need to send this using ocall to Polkadex network
     Ok(())
