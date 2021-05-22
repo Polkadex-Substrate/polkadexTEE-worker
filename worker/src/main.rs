@@ -813,9 +813,9 @@ pub unsafe extern "C" fn ocall_send_release_extrinsic(
 ) -> sgx_status_t {
     debug!("Entering ocall_send_release_extrinsic");
     let mut status = sgx_status_t::SGX_SUCCESS;
-    let extrinsic_slice = slice::from_raw_parts(extrinsic, extrinsic_size as usize);
+    let mut extrinsic_slice = slice::from_raw_parts(extrinsic, extrinsic_size as usize);
     let api = Api::<sr25519::Pair>::new(NODE_URL.lock().unwrap().clone()).unwrap();
-    let release_extrinsic_calls: Vec<u8> = match Decode::decode(&mut vextrinsic_slice) {
+    let release_extrinsic_calls: Vec<u8> = match Decode::decode(&mut extrinsic_slice) {
         Ok(calls) => calls,
         Err(_) => {
             error!("Could not decode release calls");

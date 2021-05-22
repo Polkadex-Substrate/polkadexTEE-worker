@@ -440,7 +440,7 @@ pub unsafe extern "C" fn sync_chain(
 
     let mut calls = Vec::<OpaqueCall>::new();
 
-    nonce_handler::lock_and_update_nonce(*nonce)?;
+    nonce_handler::lock_and_update_nonce(*nonce); //FIXME - Error handling
 
     debug!("Syncing chain relay!");
     if !blocks_to_sync.is_empty() {
