@@ -352,7 +352,7 @@ pub unsafe extern "C" fn init_chain_relay(
         Err(e) => return e,
     }
 
-    nonce_handler::create_in_memory_nonce_storage()?;
+    nonce_handler::create_in_memory_nonce_storage(); //FIXME Error handling required
 
     sgx_status_t::SGX_SUCCESS
 }
@@ -1016,7 +1016,7 @@ fn handle_ocex_withdraw(
     info!(
         "Found OCEX Withdraw extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
-        main_acc.clone().encode().to_base58(), //FIXME @gautham please look into it
+        main_acc.clone().encode().to_base58(),
         token,
         amount
     );
@@ -1030,7 +1030,7 @@ fn handle_ocex_withdraw(
                     token.clone(),
                     amount,
                 ) {
-                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount, 0), // TODO: How to get nonce?
+                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount), // TODO: How to get nonce?
                     Err(e) => return Err(e),
                 }
             } else {
@@ -1071,9 +1071,10 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
         RUNTIME_TRANSACTION_VERSION
     )
     .encode();
-    nonce_storage.nonce += 1;
+    nonce_storage.increment();
 
     // TODO: We need to send this using ocall to Polkadex network
+    send_release_extrinsic(xt)?;
     Ok(())
 }
 
@@ -1307,6 +1308,12 @@ extern "C" {
         signed_blocks: *const u8,
         signed_blocks_size: u32,
     ) -> sgx_status_t;
+
+    pub fn ocall_send_release_extrinsic(
+        ret_val: *mut sgx_status_t,
+        xt: *const u8,
+        size_xt: u32,
+    ) -> sgx_status_t;
 }
 
 // TODO: this is redundantly defined in worker/src/main.rs
@@ -1361,6 +1368,24 @@ fn write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
         return Err(rt);
     }
 
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(res);
+    }
+    Ok(())
+}
+
+fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+    let res = unsafe {
+        ocall_send_release_extrinsic(
+            &mut rt as *mut sgx_status_t,
+            extrinsic.encode().as_ptr(),
+            extrinsic.encode().len() as u32,
+        )
+    };
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(rt);
+    }
     if res != sgx_status_t::SGX_SUCCESS {
         return Err(res);
     }

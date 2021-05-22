@@ -23,6 +23,10 @@ impl NonceHandler {
             is_initialized: false,
         }
     }
+
+    pub fn increment(&mut self) {
+        self.nonce += 1;
+    }
 }
 
 pub fn create_in_memory_nonce_storage() -> SgxResult<()> {
