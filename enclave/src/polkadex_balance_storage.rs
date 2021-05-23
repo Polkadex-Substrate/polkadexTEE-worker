@@ -60,6 +60,10 @@ impl PolkadexBalanceStorage {
             .get(&PolkadexBalanceKey::from(token, acc).encode())
     }
 
+    pub fn initialize_balance(&mut self, token: AssetId, acc: AccountId) {
+        self.storage.insert(PolkadexBalanceKey::from(token, acc).encode(), Balances::from(0u128, 0u128));
+    }
+
     pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
         match self
             .storage
@@ -208,6 +212,14 @@ pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balan
             return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
         }
     }
+}
+
+// TODO: Write Unit test for this function
+pub fn lock_storage_and_initialize_balance(main_acc: AccountId, token: AssetId) -> SgxResult<()>{
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    balance_storage.initialize_balance(token,main_acc);
+    Ok(())
 }
 
 pub fn lock_storage_and_get_balances(main_acc: AccountId, token: AssetId) -> SgxResult<Balances> {

@@ -7,12 +7,12 @@ use alloc::vec::Vec;
 
 use sp_core::ed25519::Signature;
 use sp_core::{ed25519, Pair};
-use polkadex_primitives::common_types::Balance;
+use polkadex_primitives::common_types::{Balance, AccountId};
 use polkadex_primitives::assets::AssetId;
 
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
-pub type UserId = Vec<u8>;
+pub type UserId = AccountId;
 /// Unique order ID
 pub type OrderId = Vec<u8>;
 /// Unique order uuid
@@ -114,7 +114,7 @@ impl Default for SignedOrder {
         SignedOrder {
             order_id: vec![],
             order: Order {
-                user_uid: vec![],
+                user_uid: AccountId::default(),
                 market_id: MarketId{
                     base: AssetId::POLKADEX,
                     quote: AssetId::DOT,

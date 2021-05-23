@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::AccountId;
+use polkadex_sgx_primitives::{AccountId, Balance};
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent};
 use sgx_types::{sgx_status_t, SgxResult};
 use fixed::FixedU128;
@@ -12,6 +12,8 @@ use crate::polkadex_orderbook_storage;
 pub enum GatewayError {
     /// Price for limit Order not found
     LimitOrderPriceNotFound,
+    /// Quantity zero for limit order,
+    QuantityZeroInLimitOrder,
     /// Not implemented yet
     NotImplementedYet,
     /// Order Not found for given OrderUUID
@@ -27,7 +29,9 @@ pub enum GatewayError {
     /// Unable to remove order from orderbook storage
     UnableToRemoveOrder,
     /// Undefined Behaviour
-    UndefinedBehaviour
+    UndefinedBehaviour,
+    /// Price not defined for a market buy order
+    MarketOrderPriceNotDefined
 }
 
 /// Place order function does the following
@@ -42,10 +46,15 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
     // Mutate Balances
     match order.order_type {
         OrderType::LIMIT => {
+            if order.quantity == 0 as Balance{
+                error!("Limit Order quantity Zero");
+                return Err(GatewayError::QuantityZeroInLimitOrder);
+            }
             if let Some(price) = order.price {
                 match order.side {
                     OrderSide::BID => {
                         // let amount = price.saturating_mul(order.quantity);
+                        // TODO: Test this
                         let amount = FixedU128::from(price).saturating_mul(FixedU128::from(order.quantity)).saturating_to_num::<u128>();
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, amount) {
                             Ok(()) => {},
@@ -66,12 +75,16 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
         }
         OrderType::MARKET => {
             match order.side {
+                // User defines the max amount in quote they want to use for market buy, it is defined in price field of Order.
                 OrderSide::BID => {
-                    // TODO: We don't need to reserve balance here since Openfinex is tracking balance via deposit and withdrawal events
-                    // If Openfinex is keeping track of balances and then market order executed in Openfinex will execute when it comes back to
-                    // Enclave for settlement
-                    error!("Market Buy is not implemented");
-                    return Err(GatewayError::NotImplementedYet);
+                    if let Some(price) = order.price {
+                        match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, price) {
+                            Ok(()) => {},
+                            Err(e) => return Err(GatewayError::FailedToReserveBalance)
+                        };
+                    }else{
+                        return Err(GatewayError::MarketOrderPriceNotDefined)
+                    }
                 }
                 OrderSide::ASK => {
                     match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity){
@@ -104,8 +117,8 @@ pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order
     // Authenticate
     authenticate_user(main_account.clone(), proxy_acc)?;
     // TODO: Send cancel order to Openfinex API
+    // TODO: We need to wait for Openfinex to acknowledge cancel order before mutating the balance
     // Mutate Balances
-
     if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid){
         match result {
             Some(cancelled_order) => {
@@ -161,13 +174,13 @@ pub fn authenticate_user(main_acc: AccountId, proxy_acc: Option<AccountId>) -> R
     match proxy_acc {
         Some(proxy) => {
             if !polkadex::check_if_proxy_registered(main_acc, proxy).map_err(|_| GatewayError::UndefinedBehaviour)? {
-                error!("Proxy Account is not registered for given Main Account");
+                debug!("Proxy Account is not registered for given Main Account");
                 return Err(GatewayError::ProxyNotRegisteredForMainAccount);
             }
         }
         None => {
             if !polkadex::check_if_main_account_registered(main_acc).map_err(|_| GatewayError::UndefinedBehaviour)? {
-                error!("Main Account is not registered");
+                debug!("Main Account is not registered");
                 return Err(GatewayError::MainAccountNotRegistered);
             }
         }

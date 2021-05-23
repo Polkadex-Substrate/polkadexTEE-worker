@@ -91,6 +91,7 @@ mod rsa3072;
 mod state;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
+mod test_polkadex_gateway;
 mod test_proxy;
 mod utils;
 
@@ -100,6 +101,7 @@ pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
+
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 

@@ -22,6 +22,7 @@ use crate::rsa3072;
 use crate::state;
 use crate::test_orderbook_storage;
 use crate::test_proxy;
+use crate::test_polkadex_gateway;
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -68,6 +69,16 @@ use rpc::{api::SideChainApi, basic_pool::BasicPool};
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
+        // Polkadex Gateway
+        test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
+        test_polkadex_gateway::test_authenticate_user,
+        test_polkadex_gateway::test_place_limit_buy_order,
+        test_polkadex_gateway::test_place_limit_sell_order,
+        test_polkadex_gateway::test_place_market_buy_order,
+        test_polkadex_gateway::test_place_market_sell_order,
+        test_polkadex_gateway::test_cancel_limit_buy_order,
+        test_polkadex_gateway::test_cancel_limit_sell_order,
+        // Polkadex Balance Storage
         test_polkadex_balance_storage::test_deposit,
         test_polkadex_balance_storage::test_withdraw,
         test_polkadex_balance_storage::test_set_free_balance,
