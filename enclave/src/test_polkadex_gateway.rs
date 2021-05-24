@@ -4,14 +4,13 @@ use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType};
 use sgx_tstd::vec::Vec;
 
+// Polkadex represents 1 Token as 10^^18 minimum possible units
+use crate::constants::UNIT;
 use crate::polkadex::{add_main_account, create_in_memory_account_storage};
-use crate::polkadex_balance_storage::{create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_initialize_balance};
+use crate::polkadex_balance_storage::{create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances, lock_storage_and_initialize_balance};
 use crate::polkadex_gateway::{authenticate_user, place_order};
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::test_proxy::initialize_dummy;
-
-// Polkadex represents 1 Token as 10^^18 minimum possible units
-const UNIT: u128 = 100000000000000000;
 
 pub fn initialize_storage() {
     // Initialize Account Storage
@@ -33,6 +32,19 @@ fn setup(main: AccountId) {
     assert!(lock_storage_and_deposit(main.clone(), AssetId::DOT, 100 * UNIT).is_ok());
 }
 
+fn check_balance(free: u128, reserved: u128, main: AccountId, token: AssetId) -> Result<(), u32> {
+    let balance = lock_storage_and_get_balances(main, token).unwrap();
+    if balance.free != free {
+        error!("Expected Free balance: {}, Given: {}", balance.free, free);
+        return Err(0);
+    }
+    if balance.reserved != reserved {
+        error!("Expected Reserved balance: {}, Given: {}", balance.reserved, reserved);
+        return Err(1);
+    }
+    Ok(())
+}
+
 pub fn test_place_limit_buy_order() {
     let main: AccountId = get_account("test_place_limit_buy_order");
     let mut new_order: Order = Order {
@@ -46,20 +58,16 @@ pub fn test_place_limit_buy_order() {
     };
 
     setup(main.clone());
-
-    // Balance:  DOT = (100,0) where (free,reserved)
-    if let Err(e) = place_order(main.clone(), None, new_order.clone()) {
-        error!("Panicked due to error: {:?}", e)
-    }
+    check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
     assert!(place_order(main.clone(), None, new_order.clone()).is_ok());
-    // Balance: DOT = (99,1) where (free,reserved)
     new_order.quantity = 100 * UNIT;
+    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap();  // Balance: DOT = (99,1) where (free,reserved)
     assert!(place_order(main.clone(), None, new_order.clone()).is_err());
-    // Balance: DOT = (99,1) where (free,reserved)
     new_order.quantity = UNIT;
     new_order.price = Some(99 * UNIT);
+    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap();  // Balance: DOT = (99,1) where (free,reserved)
     assert!(place_order(main.clone(), None, new_order.clone()).is_ok());
-    // Balance: DOT = (0,100) where (free,reserved)
+    check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap();  // Balance: DOT = (0,100) where (free,reserved)
 }
 
 pub fn test_place_limit_sell_order() {}

@@ -1,5 +1,4 @@
 use codec::{Decode, Encode};
-use fixed::FixedU128;
 use log::*;
 use polkadex_sgx_primitives::{AccountId, Balance};
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent};
