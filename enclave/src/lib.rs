@@ -350,6 +350,10 @@ pub unsafe extern "C" fn init_chain_relay(
         Err(e) => return e,
     }
 
+    // Initializes the Order Nonce
+    polkadex_gateway::initialize_polkadex_gateway();
+    info!(" Order Nonce Initialized to 0");
+
     sgx_status_t::SGX_SUCCESS
 }
 

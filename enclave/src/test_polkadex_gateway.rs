@@ -8,11 +8,13 @@ use sgx_tstd::vec::Vec;
 use crate::constants::UNIT;
 use crate::polkadex::{add_main_account, create_in_memory_account_storage};
 use crate::polkadex_balance_storage::{create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances, lock_storage_and_initialize_balance};
-use crate::polkadex_gateway::{authenticate_user, place_order};
+use crate::polkadex_gateway::{authenticate_user, place_order, initialize_polkadex_gateway};
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::test_proxy::initialize_dummy;
 
 pub fn initialize_storage() {
+    // Initialize Gateway
+    initialize_polkadex_gateway();
     // Initialize Account Storage
     assert!(create_in_memory_account_storage(vec![]).is_ok());
     // Initialize Balance storage

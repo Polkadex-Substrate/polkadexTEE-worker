@@ -3,6 +3,10 @@ use log::*;
 use polkadex_sgx_primitives::{AccountId, Balance};
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent};
 use sgx_types::{sgx_status_t, SgxResult};
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, SgxMutex, SgxMutexGuard};
+use std::sync::atomic::{AtomicPtr, Ordering};
+
 use crate::constants::UNIT;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
@@ -32,6 +36,8 @@ pub enum GatewayError {
     UndefinedBehaviour,
     /// Price not defined for a market buy order
     MarketOrderPriceNotDefined,
+    /// Error in cancelling the order
+    UnableToCancelOrder,
 }
 
 /// Place order function does the following
@@ -56,13 +62,13 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
                         let amount = ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, amount) {
                             Ok(()) => {}
-                            Err(e) => return Err(GatewayError::FailedToReserveBalance)
+                            Err(_) => return Err(GatewayError::FailedToReserveBalance)
                         };
                     }
                     OrderSide::ASK => {
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity) {
                             Ok(()) => {}
-                            Err(e) => return Err(GatewayError::FailedToReserveBalance)
+                            Err(_) => return Err(GatewayError::FailedToReserveBalance)
                         };
                     }
                 }
@@ -78,7 +84,7 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
                     if let Some(price) = order.price {
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, price) {
                             Ok(()) => {}
-                            Err(e) => return Err(GatewayError::FailedToReserveBalance)
+                            Err(_) => return Err(GatewayError::FailedToReserveBalance)
                         };
                     } else {
                         return Err(GatewayError::MarketOrderPriceNotDefined);
@@ -87,7 +93,7 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
                 OrderSide::ASK => {
                     match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity) {
                         Ok(()) => {}
-                        Err(e) => return Err(GatewayError::FailedToReserveBalance)
+                        Err(_) => return Err(GatewayError::FailedToReserveBalance)
                     };
                 }
             }
@@ -98,70 +104,100 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
         }
     }
     // Store the order
-    // TODO: we need OrderUUID for storing the order, it is given by Openfinex but we need OrderUUID to
-    // TODO: store the order in the orderbook storage
-    // polkadex_orderbook_storage::OrderbookStorage::add_order();
+    // Order will be cached using incremental nonce and submitted to Openfinex with the nonce and it is stored to Orderbook
+    // after nonce is replaced with OrderUUID from Openfinex
+    if let Ok(nonce) = get_new_nonce() {
+        if let Ok(mutex) = load_create_cache_pointer() {
+            let mut cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
+            cache.insert(nonce, order);
+        } else {
+            error!("Unable to get new nonce for order");
+            return Err(GatewayError::UndefinedBehaviour);
+        }
+    } else {
+        error!("Unable to get new nonce for order");
+        return Err(GatewayError::UndefinedBehaviour);
+    }
     // TODO: Send order async to Openfinex for inclusion
     Ok(())
 }
 
-/// Place order function does the following
+/// Cancel order function does the following
 /// 1. authenticate
-/// 2. send cancel_order to OpenFinex API
-/// 3. remove order from orderbook mirror
-/// 4. free reserved balance for the remainder of the order (in case of partial execution)
-/// 5. report result to sender
+/// 2. Cache the cancel request
+/// 3. send cancel_order to OpenFinex API
 pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order_uuid: OrderUUID) -> Result<(), GatewayError> {
     // Authenticate
     authenticate_user(main_account.clone(), proxy_acc)?;
-    // TODO: Send cancel order to Openfinex API
-    // TODO: We need to wait for Openfinex to acknowledge cancel order before mutating the balance
-    // Mutate Balances
-    if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid) {
-        match result {
-            Some(cancelled_order) => {
-                match cancelled_order.order_type {
-                    OrderType::LIMIT => {
-                        if let Some(price) = cancelled_order.price {
-                            match cancelled_order.side {
-                                OrderSide::BID => {
-                                    let amount = ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
-                                    match polkadex_balance_storage::unreserve_balance(main_account.clone(), cancelled_order.market_id.quote, amount) {
-                                        Ok(()) => {}
-                                        Err(e) => return Err(GatewayError::FailedToUnReserveBalance)
-                                    };
+    if let Ok(mutex) = load_cancel_cache_pointer() {
+        let mut cancel_cache: SgxMutexGuard<HashSet<OrderUUID>> = mutex.lock().unwrap();
+        cancel_cache.insert(order_uuid);
+        // TODO: Send cancel order to Openfinex API
+    }
+    error!("Unable to load the cancel cache pointer");
+    return Err(GatewayError::UndefinedBehaviour);
+}
+
+/// process_cancel_order does the following
+/// 1. Checks the orderUUID with cancel request cache
+/// 2. Remove order from Orderbook Mirror
+/// 3. Mutate the balances
+pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
+    if let Ok(mutex) = load_cancel_cache_pointer() {
+        let mut cancel_cache: SgxMutexGuard<HashSet<OrderUUID>> = mutex.lock().unwrap();
+        if !cancel_cache.remove(&order_uuid) {
+            error!("Order Cancel Request not found in Cache");
+            return Err(GatewayError::UnableToCancelOrder);
+        }
+        // Mutate Balances
+        if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid) {
+            match result {
+                Some(cancelled_order) => {
+                    match cancelled_order.order_type {
+                        OrderType::LIMIT => {
+                            if let Some(price) = cancelled_order.price {
+                                match cancelled_order.side {
+                                    OrderSide::BID => {
+                                        let amount = ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
+                                        match polkadex_balance_storage::unreserve_balance(cancelled_order.user_uid, cancelled_order.market_id.quote, amount) {
+                                            Ok(()) => {}
+                                            Err(_) => return Err(GatewayError::FailedToUnReserveBalance)
+                                        };
+                                    }
+                                    OrderSide::ASK => {
+                                        match polkadex_balance_storage::unreserve_balance(cancelled_order.user_uid, cancelled_order.market_id.base, cancelled_order.quantity) {
+                                            Ok(()) => {}
+                                            Err(_) => return Err(GatewayError::FailedToUnReserveBalance)
+                                        };
+                                    }
                                 }
-                                OrderSide::ASK => {
-                                    match polkadex_balance_storage::unreserve_balance(main_account.clone(), cancelled_order.market_id.base, cancelled_order.quantity) {
-                                        Ok(()) => {}
-                                        Err(e) => return Err(GatewayError::FailedToUnReserveBalance)
-                                    };
-                                }
+                            } else {
+                                error!("Unable to find price for limit order");
+                                return Err(GatewayError::LimitOrderPriceNotFound);
                             }
-                        } else {
-                            error!("Unable to find price for limit order");
-                            return Err(GatewayError::LimitOrderPriceNotFound);
+                        }
+                        OrderType::MARKET => {
+                            error!("Cancel Order is not applicable for Market Order");
+                            return Err(GatewayError::UndefinedBehaviour);
+                        }
+                        OrderType::FillOrKill | OrderType::PostOnly => {
+                            error!("OrderType is not implemented");
+                            return Err(GatewayError::NotImplementedYet);
                         }
                     }
-                    OrderType::MARKET => {
-                        error!("OrderType is not implemented");
-                        return Err(GatewayError::UndefinedBehaviour);
-                    }
-                    OrderType::FillOrKill | OrderType::PostOnly => {
-                        error!("OrderType is not implemented");
-                        return Err(GatewayError::NotImplementedYet);
-                    }
+                }
+                None => {
+                    error!("Unable to find order for given order_uuid");
+                    return Err(GatewayError::OrderNotFound);
                 }
             }
-            None => {
-                error!("Unable to find order for given order_uuid");
-                return Err(GatewayError::OrderNotFound);
-            }
+        } else {
+            return Err(GatewayError::UnableToRemoveOrder);
         }
-    } else {
-        return Err(GatewayError::UnableToRemoveOrder);
+        return Ok(());
     }
-    Ok(())
+    error!("Unable to load the cancel cache pointer");
+    Err(GatewayError::UndefinedBehaviour)
 }
 
 
@@ -180,6 +216,78 @@ pub fn authenticate_user(main_acc: AccountId, proxy_acc: Option<AccountId>) -> R
                 return Err(GatewayError::MainAccountNotRegistered);
             }
         }
+    }
+    Ok(())
+}
+
+static CREATE_ORDER_NONCE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+static CANCEL_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+
+pub fn initialize_polkadex_gateway() {
+    let nonce: u128 = 0;
+    let create_nonce_storage_ptr = Arc::new(SgxMutex::<u128>::new(nonce));
+    let create_nonce_ptr = Arc::into_raw(create_nonce_storage_ptr);
+    CREATE_ORDER_NONCE.store(create_nonce_ptr as *mut (), Ordering::SeqCst);
+
+    let cancel_cache: HashSet<OrderUUID> = HashSet::new();
+    let cancel_cache_storage_ptr = Arc::new(SgxMutex::new(cancel_cache));
+    let cancel_cache_ptr = Arc::into_raw(cancel_cache_storage_ptr);
+    CANCEL_ORDER_CACHE.store(cancel_cache_ptr as *mut (), Ordering::SeqCst);
+
+    let create_cache: HashMap<u128, Order> = HashMap::new();
+    let create_cache_storage_ptr = Arc::new(SgxMutex::new(create_cache));
+    let create_cache_ptr = Arc::into_raw(create_cache_storage_ptr);
+    CREATE_ORDER_CACHE.store(create_cache_ptr as *mut (), Ordering::SeqCst);
+}
+
+fn load_nonce_pointer() -> SgxResult<&'static SgxMutex<u128>> {
+    let ptr = CREATE_ORDER_NONCE.load(Ordering::SeqCst) as *mut SgxMutex<u128>;
+    if ptr.is_null() {
+        error!("Pointer is Null");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(unsafe { &*ptr })
+    }
+}
+
+fn load_cancel_cache_pointer() -> SgxResult<&'static SgxMutex<HashSet<OrderUUID>>> {
+    let ptr = CANCEL_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<HashSet<OrderUUID>>;
+    if ptr.is_null() {
+        error!("Pointer is Null");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(unsafe { &*ptr })
+    }
+}
+
+fn load_create_cache_pointer() -> SgxResult<&'static SgxMutex<HashMap<u128, Order>>> {
+    let ptr = CREATE_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<HashMap<u128, Order>>;
+    if ptr.is_null() {
+        error!("Pointer is Null");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(unsafe { &*ptr })
+    }
+}
+
+fn get_new_nonce() -> SgxResult<u128> {
+    let mutex = load_nonce_pointer()?;
+    let mut nonce: SgxMutexGuard<u128> = mutex.lock().unwrap();
+    let current_nonce = nonce.clone();
+    nonce.saturating_add(1);
+    Ok(current_nonce)
+}
+
+
+pub unsafe fn remove_order_from_cache_and_store_in_ordermirror(nonce: u128, order_uuid: OrderUUID) -> SgxResult<()> {
+    let mutex = load_create_cache_pointer()?;
+    let cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
+    if let Some(order) = cache.get(&nonce) {
+        polkadex_orderbook_storage::add_order(order.clone(), order_uuid)?;
+    } else {
+        error!("Unable to find order for the given nonce");
+        return Err(Default::default());
     }
     Ok(())
 }
