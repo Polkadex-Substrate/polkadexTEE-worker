@@ -1,7 +1,7 @@
 use std::{thread, time};
 
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, SignedOrder, MarketId};
-
+use polkadex_sgx_primitives::accounts::get_account;
 use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
 use sp_core::ed25519::Signature;
 use std::sync::MutexGuard;
@@ -20,7 +20,7 @@ fn test_write_and_delete() {
     let first_order = SignedOrder {
         order_id: "FIRST_ORDER".to_string().into_bytes(),
         order: Order {
-            user_uid: "FOO".to_string().into_bytes(),
+            user_uid: get_account("FOO"),
             market_id: MarketId{
                 base: AssetId::POLKADEX,
                 quote: AssetId::DOT
@@ -79,7 +79,7 @@ fn test_read_all() {
     let first_order = SignedOrder {
         order_id: "FIRST_ORDER1".to_string().into_bytes(),
         order: Order {
-            user_uid: "FOO".to_string().into_bytes(),
+            user_uid: get_account("FOO"),
             market_id: MarketId{
                 base: AssetId::POLKADEX,
                 quote: AssetId::DOT
@@ -95,7 +95,7 @@ fn test_read_all() {
     let second_order = SignedOrder {
         order_id: "SECOND_ORDER1".to_string().into_bytes(),
         order: Order {
-            user_uid: "FOO".to_string().into_bytes(),
+            user_uid: get_account("FOO"),
             market_id: MarketId{
                 base: AssetId::POLKADEX,
                 quote: AssetId::DOT
@@ -111,7 +111,7 @@ fn test_read_all() {
     let third_order = SignedOrder {
         order_id: "THIRD_ORDER".to_string().into_bytes(),
         order: Order {
-            user_uid: "FOO".to_string().into_bytes(),
+            user_uid:get_account("FOO"),
             market_id: MarketId{
                 base: AssetId::POLKADEX,
                 quote: AssetId::DOT
