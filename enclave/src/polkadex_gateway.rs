@@ -1,9 +1,10 @@
 use codec::{Decode, Encode};
+use fixed::FixedU128;
 use log::*;
 use polkadex_sgx_primitives::{AccountId, Balance};
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent};
 use sgx_types::{sgx_status_t, SgxResult};
-use fixed::FixedU128;
+use crate::constants::UNIT;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
 use crate::polkadex_orderbook_storage;
@@ -31,7 +32,7 @@ pub enum GatewayError {
     /// Undefined Behaviour
     UndefinedBehaviour,
     /// Price not defined for a market buy order
-    MarketOrderPriceNotDefined
+    MarketOrderPriceNotDefined,
 }
 
 /// Place order function does the following
@@ -46,24 +47,22 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
     // Mutate Balances
     match order.order_type {
         OrderType::LIMIT => {
-            if order.quantity == 0 as Balance{
+            if order.quantity == 0 as Balance {
                 error!("Limit Order quantity Zero");
                 return Err(GatewayError::QuantityZeroInLimitOrder);
             }
             if let Some(price) = order.price {
                 match order.side {
                     OrderSide::BID => {
-                        // let amount = price.saturating_mul(order.quantity);
-                        // TODO: Test this
-                        let amount = FixedU128::from(price).saturating_mul(FixedU128::from(order.quantity)).saturating_to_num::<u128>();
+                        let amount = ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, amount) {
-                            Ok(()) => {},
+                            Ok(()) => {}
                             Err(e) => return Err(GatewayError::FailedToReserveBalance)
                         };
                     }
                     OrderSide::ASK => {
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity) {
-                            Ok(()) => { } ,
+                            Ok(()) => {}
                             Err(e) => return Err(GatewayError::FailedToReserveBalance)
                         };
                     }
@@ -79,16 +78,16 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
                 OrderSide::BID => {
                     if let Some(price) = order.price {
                         match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, price) {
-                            Ok(()) => {},
+                            Ok(()) => {}
                             Err(e) => return Err(GatewayError::FailedToReserveBalance)
                         };
-                    }else{
-                        return Err(GatewayError::MarketOrderPriceNotDefined)
+                    } else {
+                        return Err(GatewayError::MarketOrderPriceNotDefined);
                     }
                 }
                 OrderSide::ASK => {
-                    match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity){
-                        Ok(()) => {},
+                    match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity) {
+                        Ok(()) => {}
                         Err(e) => return Err(GatewayError::FailedToReserveBalance)
                     };
                 }
@@ -119,7 +118,7 @@ pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order
     // TODO: Send cancel order to Openfinex API
     // TODO: We need to wait for Openfinex to acknowledge cancel order before mutating the balance
     // Mutate Balances
-    if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid){
+    if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid) {
         match result {
             Some(cancelled_order) => {
                 match cancelled_order.order_type {
@@ -127,16 +126,15 @@ pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order
                         if let Some(price) = cancelled_order.price {
                             match cancelled_order.side {
                                 OrderSide::BID => {
-                                    // let amount = price.saturating_mul(cancelled_order.quantity);
-                                    let amount = FixedU128::from(price).saturating_mul(FixedU128::from(cancelled_order.quantity)).saturating_to_num::<u128>();
-                                    match polkadex_balance_storage::unreserve_balance(main_account.clone(), cancelled_order.market_id.quote, amount){
-                                        Ok(()) => { } ,
+                                    let amount = ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
+                                    match polkadex_balance_storage::unreserve_balance(main_account.clone(), cancelled_order.market_id.quote, amount) {
+                                        Ok(()) => {}
                                         Err(e) => return Err(GatewayError::FailedToUnReserveBalance)
                                     };
                                 }
                                 OrderSide::ASK => {
-                                    match polkadex_balance_storage::unreserve_balance(main_account.clone(), cancelled_order.market_id.base, cancelled_order.quantity){
-                                        Ok(()) => {},
+                                    match polkadex_balance_storage::unreserve_balance(main_account.clone(), cancelled_order.market_id.base, cancelled_order.quantity) {
+                                        Ok(()) => {}
                                         Err(e) => return Err(GatewayError::FailedToUnReserveBalance)
                                     };
                                 }
@@ -161,9 +159,8 @@ pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order
                 return Err(GatewayError::OrderNotFound);
             }
         }
-    }
-    else{
-        return Err(GatewayError::UnableToRemoveOrder)
+    } else {
+        return Err(GatewayError::UnableToRemoveOrder);
     }
     Ok(())
 }

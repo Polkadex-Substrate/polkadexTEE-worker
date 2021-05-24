@@ -21,6 +21,8 @@ pub const SHARDS_PATH: &str = "./shards";
 pub const AES_KEY_FILE_AND_INIT_V: &str = "aes_key_sealed.bin";
 pub const CHAIN_RELAY_DB: &str = "chain_relay_db.bin";
 
+/// Polkadex Defines 1 token as 10^^18 fundamental units
+pub const UNIT: u128 = 1000000000000000000;
 pub const RA_DUMP_CERT_DER_FILE: &str = "ra_dump_cert.der";
 
 #[cfg(feature = "production")]
