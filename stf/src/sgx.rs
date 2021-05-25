@@ -266,22 +266,12 @@ impl Stf {
                     Ok(())
                 }
 
-                TrustedCall::place_order(_main_account, _order, _proxy_account) => {
-                    // TODO implement and call into SGX runtime
-                    Ok(())
-                }
-                TrustedCall::cancel_order(_main_account, _order, _proxy_account) => {
-                    // TODO implement and call into SGX runtime
-                    Ok(())
-                }
+                TrustedCall::place_order(_main_account, _order, _proxy_account) => Ok(()),
+                TrustedCall::cancel_order(_main_account, _order, _proxy_account) => Ok(()),
                 TrustedCall::withdraw(_main_account, _currency_id, _balance, _proxy_account) => {
-                    // TODO implement and call into SGX runtime
                     Ok(())
                 }
-                TrustedCall::get_balance(_main_account, _currency_id, _proxy_account) => {
-                    // TODO implement and call into SGX runtime
-                    Ok(())
-                }
+                TrustedCall::get_balance(_main_account, _currency_id, _proxy_account) => Ok(()),
             }?;
             increment_nonce(&sender);
             Ok(())

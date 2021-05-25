@@ -43,7 +43,7 @@ pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
 }
 
 fn place_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
-    println!("entering place_order RPC");
+    debug!("entering place_order RPC");
 
     // TODO the functionality of verifying the request and extracting the parameters is duplicated
     // in each function. Generalize it and share it among all calls
@@ -74,7 +74,7 @@ fn place_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatu
 }
 
 fn cancel_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
-    println!("entering cancel_order RPC");
+    debug!("entering cancel_order RPC");
 
     let verified_trusted_operation = get_verified_trusted_operation(request);
     if let Err(s) = verified_trusted_operation {
@@ -103,7 +103,7 @@ fn cancel_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStat
 }
 
 fn withdraw(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
-    println!("entering withdraw RPC");
+    debug!("entering withdraw RPC");
 
     let verified_trusted_operation = get_verified_trusted_operation(request);
     if let Err(s) = verified_trusted_operation {
@@ -132,7 +132,7 @@ fn withdraw(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)>
 }
 
 fn get_balance(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
-    println!("entering get_balance RPC");
+    debug!("entering get_balance RPC");
 
     let verified_trusted_operation = get_verified_trusted_operation(request);
     if let Err(s) = verified_trusted_operation {
@@ -163,12 +163,12 @@ fn get_balance(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatu
 fn get_verified_trusted_operation(request: Request) -> Result<TrustedOperation, RpcCallStatus> {
     // decode call
     let shard_id = request.shard;
-    let decode_result = decode_request(request);
-    if let Err(e) = decode_result {
-        return Err(e);
-    }
 
-    let trusted_operation = decode_result.unwrap();
+    let trusted_operation = match decode_request(request) {
+        Ok(decoded_result) => decoded_result,
+        Err(e) => return Err(e),
+    };
+
     match verify_signature(&trusted_operation, &shard_id) {
         Ok(()) => {
             debug!("successfully verified signature")

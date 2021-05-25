@@ -29,7 +29,7 @@ pub fn get_trusted_nonce(
     _matches: &ArgMatches,
     _who: &sr25519::AppPair,
     _key_pair: &sr25519_core::Pair,
-) -> u32 {
+) -> Index {
     // for the PolkaDex GW POC we always return nonce = 0
     // TODO: re-enable proper nonce computation to prevent replay attacks
     0
