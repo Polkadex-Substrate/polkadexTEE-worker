@@ -806,6 +806,28 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     status
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn ocall_send_release_extrinsic(
+    extrinsic: *const u8,
+    extrinsic_size: u32,
+) -> sgx_status_t {
+    debug!("Entering ocall_send_release_extrinsic");
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let mut extrinsic_slice = slice::from_raw_parts(extrinsic, extrinsic_size as usize);
+    let api = Api::<sr25519::Pair>::new(NODE_URL.lock().unwrap().clone()).unwrap();
+    let release_extrinsic_calls: Vec<u8> = match Decode::decode(&mut extrinsic_slice) {
+        Ok(calls) => calls,
+        Err(_) => {
+            error!("Could not decode release calls");
+            status = sgx_status_t::SGX_ERROR_UNEXPECTED;
+            vec![]
+        }
+    };
+    api.send_extrinsic(hex_encode(release_extrinsic_calls), XtStatus::Ready)
+        .unwrap();
+    status
+}
+
 /// # Safety
 ///
 /// FFI are always unsafe
@@ -830,7 +852,7 @@ pub unsafe extern "C" fn ocall_send_block_and_confirmation(
         Err(_) => {
             error!("Could not decode confirmation calls");
             status = sgx_status_t::SGX_ERROR_UNEXPECTED;
-            vec![vec![]]
+            vec![]
         }
     };
 
