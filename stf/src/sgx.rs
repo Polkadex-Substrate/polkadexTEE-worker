@@ -266,11 +266,8 @@ impl Stf {
                     Ok(())
                 }
 
-                TrustedCall::place_order(_main_account, _order, _proxy_account) => Ok(()),
-                TrustedCall::cancel_order(_main_account, _order, _proxy_account) => Ok(()),
-                TrustedCall::withdraw(_main_account, _currency_id, _balance, _proxy_account) => {
-                    Ok(())
-                }
+                // default, other trusted calls have no implementation here
+                _ => Ok(()),
             }?;
             increment_nonce(&sender);
             Ok(())
