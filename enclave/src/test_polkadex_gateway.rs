@@ -8,13 +8,13 @@ use sgx_tstd::vec::Vec;
 use crate::constants::UNIT;
 use crate::polkadex::{add_main_account, create_in_memory_account_storage};
 use crate::polkadex_balance_storage::{create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances, lock_storage_and_initialize_balance};
-use crate::polkadex_gateway::{authenticate_user, place_order, initialize_polkadex_gateway};
+use crate::polkadex_gateway::{authenticate_user, cancel_order, place_order};
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::test_proxy::initialize_dummy;
 
 pub fn initialize_storage() {
     // Initialize Gateway
-    initialize_polkadex_gateway();
+    // initialize_polkadex_gateway();
     // Initialize Account Storage
     assert!(create_in_memory_account_storage(vec![]).is_ok());
     // Initialize Balance storage
@@ -95,7 +95,7 @@ pub fn test_place_limit_sell_order() {
     new_order.quantity = UNIT;
     new_order.price = Some(99 * UNIT);
     assert!(place_order(main.clone(), None, new_order.clone()).is_ok());
-    check_balance(98*UNIT, 2*UNIT, main.clone(), AssetId::POLKADEX).unwrap();  // Balance: DOT = (0,100) where (free,reserved)
+    check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap();  // Balance: DOT = (0,100) where (free,reserved)
     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap();
 }
 
@@ -145,13 +145,11 @@ pub fn test_place_market_sell_order() {
     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::POLKADEX).unwrap();  // Balance: DOT = (99,1) where (free,reserved)
     new_order.quantity = UNIT;
     assert!(place_order(main.clone(), None, new_order.clone()).is_ok());
-    check_balance(98*UNIT, 2*UNIT, main.clone(), AssetId::POLKADEX).unwrap();  // Balance: DOT = (0,100) where (free,reserved)
+    check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap();  // Balance: DOT = (0,100) where (free,reserved)
     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap();
 }
 
-pub fn test_cancel_limit_buy_order() {
-
-}
+pub fn test_cancel_limit_buy_order() {}
 
 pub fn test_cancel_limit_sell_order() {}
 

@@ -351,8 +351,8 @@ pub unsafe extern "C" fn init_chain_relay(
     }
 
     // Initializes the Order Nonce
-    polkadex_gateway::initialize_polkadex_gateway();
-    info!(" Order Nonce Initialized to 0");
+    // polkadex_gateway::initialize_polkadex_gateway();
+    // info!(" Polkadex Gateway Nonces and Cache Initialized");
 
     sgx_status_t::SGX_SUCCESS
 }
