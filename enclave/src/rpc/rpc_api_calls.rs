@@ -19,6 +19,7 @@ pub extern crate alloc;
 use alloc::{str, string::String, string::ToString, vec::Vec};
 
 use crate::attestation;
+use crate::polkadex_balance_storage::lock_storage_and_get_balances;
 use crate::rpc::rpc_call::{RpcCall, RpcMethodImpl};
 use crate::rpc::rpc_call_encoder::JsonRpcCallEncoder;
 use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
@@ -143,7 +144,7 @@ fn get_balance(request: DirectRequest) -> RpcResult<(RpcInfo, bool, DirectReques
     let get_balance_call_args = match verified_trusted_operation.unwrap() {
         TrustedOperation::get(getter) => match getter {
             Getter::trusted(tgs) => match tgs.getter {
-                TrustedGetter::get_balance(a, c, p) => Ok((a, c, p)),
+                TrustedGetter::get_balance(a, c, p) => Ok((p.unwrap_or(a), c)),
                 _ => Err(RpcCallStatus::operation_type_mismatch),
             },
             _ => Err(RpcCallStatus::operation_type_mismatch),
@@ -155,7 +156,9 @@ fn get_balance(request: DirectRequest) -> RpcResult<(RpcInfo, bool, DirectReques
         return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
     }
 
-    // TODO call implementation here
+    //let main_account = get_balance_call_args.0;
+    //let asset_id = get_balance_call_args.1;
+    //let balances_result = lock_storage_and_get_balances(main_account asset_id);
 
     Ok((
         RpcInfo::from(RpcCallStatus::operation_success),
