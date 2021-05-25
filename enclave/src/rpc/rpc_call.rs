@@ -19,23 +19,25 @@ pub extern crate alloc;
 
 use alloc::{str, string::String};
 
+use crate::rpc::rpc_call_encoder::RpcCallEncoder;
+use crate::rpc::rpc_info::RpcInfo;
 use core::marker::{Send, Sync};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_core::*;
-
-use substratee_node_primitives::Request;
+use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_worker_primitives::DirectRequestStatus;
 
-use crate::rpc::rpc_call_encoder::RpcCallEncoder;
-use crate::rpc::rpc_info::RpcInfo;
-
-pub type RpcMethodImpl = dyn Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync;
+pub type RpcMethodImpl =
+    dyn Fn(DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync;
 
 /// RPC call structure
 pub struct RpcCall<E, F>
 where
     E: RpcCallEncoder + Send + Sync + 'static,
-    F: Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync + ?Sized + 'static,
+    F: Fn(DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)>
+        + Sync
+        + ?Sized
+        + 'static,
 {
     method_name: &'static str,
     method_impl: &'static F,
@@ -45,7 +47,10 @@ where
 impl<E, F> RpcCall<E, F>
 where
     E: RpcCallEncoder + Send + Sync + 'static,
-    F: Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync + ?Sized + 'static,
+    F: Fn(DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)>
+        + Sync
+        + ?Sized
+        + 'static,
 {
     pub fn method_name(&self) -> &'static str {
         self.method_name
@@ -66,10 +71,13 @@ where
 impl<E, F> RpcMethodSync for RpcCall<E, F>
 where
     E: RpcCallEncoder + Send + Sync + 'static,
-    F: Fn(Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> + Sync + ?Sized + 'static,
+    F: Fn(DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)>
+        + Sync
+        + ?Sized
+        + 'static,
 {
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
-        E::call(params, &|r: Request| (self.method_impl)(r))
+        E::call(params, &|r: DirectRequest| (self.method_impl)(r))
     }
 }
 
@@ -98,7 +106,7 @@ pub mod tests {
     fn create_test_rpc_call() -> RpcCall<RpcCallEncoderMock, RpcMethodImpl> {
         RpcCall::new(
             "test_call",
-            &|_r: Request| {
+            &|_r: DirectRequest| {
                 Ok((
                     RpcInfo::from(RpcCallStatus::operation_success),
                     false,

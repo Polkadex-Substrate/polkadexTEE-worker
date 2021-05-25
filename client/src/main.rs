@@ -25,15 +25,8 @@ extern crate log;
 
 extern crate chrono;
 use chrono::{DateTime, Utc};
-use std::time::{Duration, UNIX_EPOCH};
-
-use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
-
-use sp_application_crypto::{ed25519, sr25519};
-use sp_keyring::AccountKeyring;
 
 use base58::{FromBase58, ToBase58};
-
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
@@ -42,12 +35,17 @@ use my_node_runtime::{
     pallet_substratee_registry::{Enclave, Request},
     AccountId, BalancesCall, Call, Event, Hash,
 };
+use polkadex_sgx_primitives::types::DirectRequest;
+use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
+use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
+use sp_keyring::AccountKeyring;
 use sp_runtime::MultiSignature;
 use std::convert::TryFrom;
 use std::result::Result as StdResult;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::{Duration, UNIX_EPOCH};
 use substrate_api_client::{
     compose_extrinsic, compose_extrinsic_offline,
     events::EventsDecoder,
@@ -56,7 +54,6 @@ use substrate_api_client::{
     utils::FromHexString,
     Api, XtStatus,
 };
-
 use substrate_client_keystore::LocalKeystore;
 use substratee_stf::cli_utils::account_parsing::*;
 use substratee_stf::top::get_rpc_function_name_from_top;
@@ -613,9 +610,9 @@ fn send_direct_request_encoded(
     let shard = read_shard(matches).unwrap();
 
     // compose jsonrpc call
-    let data = Request {
+    let data = DirectRequest {
         shard,
-        cyphertext: operation_call_encoded,
+        encoded_text: operation_call_encoded,
     };
 
     let rpc_method_str_option = get_rpc_function_name_from_top(&operation_call);

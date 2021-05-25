@@ -21,16 +21,15 @@ use alloc::{string::String, vec::Vec};
 use codec::{Decode, Encode};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_core::*;
+use polkadex_sgx_primitives::types::DirectRequest;
 use serde_json::*;
-
-use substratee_node_primitives::Request;
 use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
 };
 
-type RpcMethodImpl<'a, T> = &'a dyn Fn(Request) -> RpcResult<(T, bool, DirectRequestStatus)>;
+type RpcMethodImpl<'a, T> = &'a dyn Fn(DirectRequest) -> RpcResult<(T, bool, DirectRequestStatus)>;
 
 pub trait RpcCallEncoder {
     fn call<T: Encode>(
@@ -43,7 +42,7 @@ pub struct JsonRpcCallEncoder {}
 
 impl JsonRpcCallEncoder {
     fn handle_request<T: Encode>(
-        request: Request,
+        request: DirectRequest,
         method_impl: RpcMethodImpl<T>,
     ) -> RpcResult<Value> {
         match method_impl(request) {
@@ -64,7 +63,7 @@ impl RpcCallEncoder for JsonRpcCallEncoder {
         method_impl: RpcMethodImpl<T>,
     ) -> BoxFuture<RpcResult<Value>> {
         match params.parse::<Vec<u8>>() {
-            Ok(encoded_params) => match Request::decode(&mut encoded_params.as_slice()) {
+            Ok(encoded_params) => match DirectRequest::decode(&mut encoded_params.as_slice()) {
                 Ok(request) => {
                     JsonRpcCallEncoder::handle_request(request, method_impl).into_future()
                 }
@@ -103,7 +102,7 @@ pub mod tests {
 
         let result = block_on(JsonRpcCallEncoder::call(
             Params::None,
-            &|_request: Request| Ok(("message", expected_do_watch, DirectRequestStatus::Ok)),
+            &|_request: DirectRequest| Ok(("message", expected_do_watch, DirectRequestStatus::Ok)),
         ))
         .unwrap();
 

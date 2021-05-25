@@ -17,22 +17,21 @@
 
 pub extern crate alloc;
 use alloc::{str, string::String, string::ToString, vec::Vec};
-use base58::ToBase58;
-use codec::{Decode, Encode};
-use jsonrpc_core::Result as RpcResult;
-use log::*;
-use sgx_types::sgx_measurement_t;
-use substratee_node_primitives::Request;
-use substratee_stf::{
-    Getter, ShardIdentifier, TrustedCall, TrustedCallSigned, TrustedGetter, TrustedOperation,
-};
-use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::attestation;
 use crate::rpc::rpc_call::{RpcCall, RpcMethodImpl};
 use crate::rpc::rpc_call_encoder::JsonRpcCallEncoder;
-
 use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
+use base58::ToBase58;
+use codec::{Decode, Encode};
+use jsonrpc_core::Result as RpcResult;
+use log::*;
+use polkadex_sgx_primitives::types::DirectRequest;
+use sgx_types::sgx_measurement_t;
+use substratee_stf::{
+    Getter, ShardIdentifier, TrustedCall, TrustedCallSigned, TrustedGetter, TrustedOperation,
+};
+use substratee_worker_primitives::DirectRequestStatus;
 
 /// Get a list of all RPC calls - can be used to insert into the IO handler
 pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
@@ -44,7 +43,7 @@ pub fn get_all_rpc_calls() -> Vec<RpcCall<JsonRpcCallEncoder, RpcMethodImpl>> {
     ]
 }
 
-fn place_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
+fn place_order(request: DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     debug!("entering place_order RPC");
 
     // TODO the functionality of verifying the request and extracting the parameters is duplicated
@@ -75,7 +74,7 @@ fn place_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatu
     ))
 }
 
-fn cancel_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
+fn cancel_order(request: DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     debug!("entering cancel_order RPC");
 
     let verified_trusted_operation = get_verified_trusted_operation(request);
@@ -104,7 +103,7 @@ fn cancel_order(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStat
     ))
 }
 
-fn withdraw(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
+fn withdraw(request: DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     debug!("entering withdraw RPC");
 
     let verified_trusted_operation = get_verified_trusted_operation(request);
@@ -133,7 +132,7 @@ fn withdraw(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)>
     ))
 }
 
-fn get_balance(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
+fn get_balance(request: DirectRequest) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
     debug!("entering get_balance RPC");
 
     let verified_trusted_operation = get_verified_trusted_operation(request);
@@ -165,7 +164,9 @@ fn get_balance(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatu
     ))
 }
 
-fn get_verified_trusted_operation(request: Request) -> Result<TrustedOperation, RpcCallStatus> {
+fn get_verified_trusted_operation(
+    request: DirectRequest,
+) -> Result<TrustedOperation, RpcCallStatus> {
     // decode call
     let shard_id = request.shard;
 
@@ -184,9 +185,9 @@ fn get_verified_trusted_operation(request: Request) -> Result<TrustedOperation, 
     Ok(trusted_operation)
 }
 
-fn decode_request(request: Request) -> Result<TrustedOperation, RpcCallStatus> {
+fn decode_request(request: DirectRequest) -> Result<TrustedOperation, RpcCallStatus> {
     debug!("decode Request -> TrustedOperation");
-    match TrustedOperation::decode(&mut request.cyphertext.as_slice()) {
+    match TrustedOperation::decode(&mut request.encoded_text.as_slice()) {
         Ok(trusted_operation) => Ok(trusted_operation),
         Err(e) => Err(RpcCallStatus::decoding_failure),
     }
