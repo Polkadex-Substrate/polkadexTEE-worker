@@ -615,12 +615,13 @@ fn send_direct_request_encoded(
         encoded_text: operation_call_encoded,
     };
 
-    let rpc_method_str_option = get_rpc_function_name_from_top(&operation_call);
-    if let None = rpc_method_str_option {
-        println!("[Error]: This type of TrustedOperation is not supported")
-    }
-
-    let rpc_method_str = rpc_method_str_option.unwrap();
+    let rpc_method_str = match get_rpc_function_name_from_top(&operation_call) {
+        Some(str) => str,
+        None => {
+            println!("[Error]: This type of TrustedOperation is not supported");
+            return None;
+        }
+    };
 
     debug!("Got trusted operation for RPC method {}", rpc_method_str);
 
