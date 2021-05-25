@@ -98,6 +98,7 @@ pub mod utils {
                         }
                         TrustedGetter::free_balance(_) => {}
                         TrustedGetter::reserved_balance(_) => {}
+                        TrustedGetter::get_balance(_, _, _) => {}
                     },
                 },
             }
