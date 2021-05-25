@@ -24,7 +24,7 @@ use log::*;
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::{KeyPair, TrustedCall, TrustedOperation};
+use crate::{KeyPair, TrustedGetter, TrustedOperation};
 
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
@@ -54,30 +54,19 @@ fn command_runner<'a>(
 ) -> Result<(), clap::Error> {
     let account_details = AccountDetails::new(matches);
 
-    let signer_pair = account_details.signer_pair();
     let signer_key_pair = account_details.signer_key_pair();
-
-    let (mrenclave, shard) = get_identifiers(matches);
-    let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
-
-    let direct: bool = matches.is_present("direct");
 
     let currency_id = get_token_id_from_matches(matches).unwrap();
 
-    let get_balance_top: TrustedOperation = TrustedCall::get_balance(
+    let get_balance_top: TrustedOperation = TrustedGetter::get_balance(
         account_details.signer_public_key().into(),
         currency_id.encode(),
         account_details
             .main_account_public_key_if_not_signer()
             .map(|pk| pk.into()),
     )
-    .sign(
-        &KeyPair::Sr25519(signer_key_pair),
-        nonce,
-        &mrenclave,
-        &shard,
-    )
-    .into_trusted_operation(direct);
+    .sign(&KeyPair::Sr25519(signer_key_pair))
+    .into();
 
     debug!("Successfully built get_balance trusted operation, dispatching now to enclave");
 

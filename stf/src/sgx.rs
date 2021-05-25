@@ -271,7 +271,6 @@ impl Stf {
                 TrustedCall::withdraw(_main_account, _currency_id, _balance, _proxy_account) => {
                     Ok(())
                 }
-                TrustedCall::get_balance(_main_account, _currency_id, _proxy_account) => Ok(()),
             }?;
             increment_nonce(&sender);
             Ok(())
@@ -330,6 +329,10 @@ impl Stf {
                     } else {
                         None
                     }
+                }
+                TrustedGetter::get_balance(signer, currency, option) => {
+                    // TODO call implementation
+                    None
                 }
             },
             Getter::public(g) => match g {
@@ -396,7 +399,6 @@ impl Stf {
             TrustedCall::place_order(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::cancel_order(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::withdraw(_, _, _, _) => debug!("No storage updates needed..."),
-            TrustedCall::get_balance(_, _, _) => debug!("No storage updates needed..."),
         };
         key_hashes
     }

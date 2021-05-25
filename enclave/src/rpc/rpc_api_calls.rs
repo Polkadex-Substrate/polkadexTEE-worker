@@ -23,7 +23,9 @@ use jsonrpc_core::Result as RpcResult;
 use log::*;
 use sgx_types::sgx_measurement_t;
 use substratee_node_primitives::Request;
-use substratee_stf::{Getter, ShardIdentifier, TrustedCall, TrustedCallSigned, TrustedOperation};
+use substratee_stf::{
+    Getter, ShardIdentifier, TrustedCall, TrustedCallSigned, TrustedGetter, TrustedOperation,
+};
 use substratee_worker_primitives::DirectRequestStatus;
 
 use crate::attestation;
@@ -140,8 +142,11 @@ fn get_balance(request: Request) -> RpcResult<(RpcInfo, bool, DirectRequestStatu
     }
 
     let get_balance_call_args = match verified_trusted_operation.unwrap() {
-        TrustedOperation::direct_call(tcs) => match tcs.call {
-            TrustedCall::get_balance(a, c, p) => Ok((a, c, p)),
+        TrustedOperation::get(getter) => match getter {
+            Getter::trusted(tgs) => match tgs.getter {
+                TrustedGetter::get_balance(a, c, p) => Ok((a, c, p)),
+                _ => Err(RpcCallStatus::operation_type_mismatch),
+            },
             _ => Err(RpcCallStatus::operation_type_mismatch),
         },
         _ => Err(RpcCallStatus::operation_type_mismatch),

@@ -15,17 +15,23 @@
 
 */
 
-use crate::{TrustedCall, TrustedOperation};
+use crate::Getter::*;
+use crate::{TrustedCall, TrustedGetter, TrustedOperation};
 
 pub fn get_rpc_function_name_from_top(trusted_operation: &TrustedOperation) -> Option<String> {
     match trusted_operation {
-        TrustedOperation::get(_) => None,
+        TrustedOperation::get(getter) => match getter {
+            public(_) => None,
+            trusted(tgs) => match tgs.getter {
+                TrustedGetter::get_balance(_, _, _) => Some("get_balance".to_owned()),
+                _ => None,
+            },
+        },
         TrustedOperation::indirect_call(_) => None,
         TrustedOperation::direct_call(trusted_call_signed) => match trusted_call_signed.call {
             TrustedCall::place_order(_, _, _) => Some("place_order".to_owned()),
             TrustedCall::cancel_order(_, _, _) => Some("cancel_order".to_owned()),
             TrustedCall::withdraw(_, _, _, _) => Some("withdraw".to_owned()),
-            TrustedCall::get_balance(_, _, _) => Some("get_balance".to_owned()),
             _ => None,
         },
     }
