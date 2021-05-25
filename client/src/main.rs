@@ -444,7 +444,7 @@ fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -
         }
         TrustedOperation::get(getter) => {
             debug!("performing trusted operation - getter");
-            get_state(matches, TrustedOperation::get(getter.clone()))
+            send_direct_request_encoded(matches, TrustedOperation::get(getter.clone()))
         }
     }
 }
