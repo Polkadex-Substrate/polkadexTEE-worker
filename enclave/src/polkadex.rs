@@ -179,7 +179,7 @@ pub fn check_if_main_account_registered(acc: AccountId) -> SgxResult<bool> {
 }
 
 pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
-    // Aquire lock on proxy_registry
+    // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
 
@@ -212,12 +212,12 @@ pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> SgxResult<()> {
     Ok(proxy_storage.add_proxy(main_acc, proxy))
 }
 
-pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
-    // Aquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
-    Ok(proxy_storage.accounts.contains_key(&acc.encode()))
-}
+// pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
+//     // Aquire lock on proxy_registry
+//     let mutex = load_proxy_registry()?;
+//     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+//     Ok(proxy_storage.accounts.contains_key(&acc.encode()))
+// }
 
 pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> SgxResult<()> {
     // Aquire lock on proxy_registry

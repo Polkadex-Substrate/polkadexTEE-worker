@@ -2081,6 +2081,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1"
+version = "0.6.0"
+source = "git+https://github.com/mesalock-linux/rust-sha1-sgx#482a4d489e860d63a21662aaea988f600f8e20a4"
+dependencies = [
+ "sgx_tstd",
+]
+
+[[package]]
 name = "sha2"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2627,6 +2635,7 @@ dependencies = [
  "substratee-node-primitives",
  "substratee-stf",
  "substratee-worker-primitives",
+ "uuid",
  "webpki",
  "webpki-roots",
  "yasna",
@@ -2843,6 +2852,16 @@ name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
+
+[[package]]
+name = "uuid"
+version = "0.8.1"
+source = "git+https://github.com/mesalock-linux/uuid-sgx.git#9b425a8f07d5bb6e50b9a24414d11a59ec86617a"
+dependencies = [
+ "serde 1.0.118",
+ "sgx_tstd",
+ "sha1",
+]
 
 [[package]]
 name = "version_check"

@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount, Balance};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance, PolkadexAccount};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::hash::Hash;
 use sgx_tstd::hash::Hasher;
@@ -8,8 +8,8 @@ use sgx_tstd::vec::Vec;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use sp_core::blake2_256;
 use std::sync::{
-    atomic::{AtomicPtr, Ordering},
-    Arc, SgxMutex, SgxMutexGuard,
+    Arc,
+    atomic::{AtomicPtr, Ordering}, SgxMutex, SgxMutexGuard,
 };
 
 static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
@@ -58,6 +58,10 @@ impl PolkadexBalanceStorage {
     pub fn read_balance(&self, token: AssetId, acc: AccountId) -> Option<&Balances> {
         self.storage
             .get(&PolkadexBalanceKey::from(token, acc).encode())
+    }
+
+    pub fn initialize_balance(&mut self, token: AssetId, acc: AccountId) {
+        self.storage.insert(PolkadexBalanceKey::from(token, acc).encode(), Balances::from(0u128, 0u128));
     }
 
     pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
@@ -150,6 +154,39 @@ pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStor
     }
 }
 
+// TODO: Write test cases for this function
+pub fn reserve_balance(main_acc: &AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
+    // Acquire lock on balance_storage
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    let mut balance = balance_storage.read_balance(token.clone(), main_acc.clone())
+        .expect("Unable to read balance from balance storage").clone();
+
+    if balance.free < amount {
+        error!("Not enought free balance");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    }
+    balance_storage.set_free_balance(token.clone(), main_acc.clone(), balance.free.saturating_sub(amount))?;
+    balance_storage.set_reserve_balance(token.clone(), main_acc.clone(), balance.reserved.saturating_add(amount))?;
+    Ok(())
+}
+
+// TODO: Write test cases for this function
+pub fn unreserve_balance(main_acc: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
+    // Acquire lock on balance_storage
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    let mut balance = balance_storage.read_balance(token.clone(), main_acc.clone())
+        .expect("Unable to read balance from balance storage").clone();
+    if balance.reserved < amount {
+        error!("Unable to un-reserve balance greater than reserved balance");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    }
+    balance_storage.set_free_balance(token.clone(), main_acc.clone(), balance.free.saturating_add(amount))?;
+    balance_storage.set_reserve_balance(token, main_acc, balance.reserved.saturating_sub(amount))?;
+    Ok(())
+}
+
 pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
@@ -175,6 +212,14 @@ pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balan
             return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
         }
     }
+}
+
+// TODO: Write Unit test for this function
+pub fn lock_storage_and_initialize_balance(main_acc: AccountId, token: AssetId) -> SgxResult<()>{
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    balance_storage.initialize_balance(token,main_acc);
+    Ok(())
 }
 
 pub fn lock_storage_and_get_balances(main_acc: AccountId, token: AssetId) -> SgxResult<Balances> {
