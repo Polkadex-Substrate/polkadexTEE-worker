@@ -351,3 +351,9 @@ pub fn authenticate_user(main_acc: AccountId, proxy_acc: Option<AccountId>) -> R
 //     }
 //     Ok(())
 // }
+
+
+pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
+    //TODO:
+    Ok(())
+}
