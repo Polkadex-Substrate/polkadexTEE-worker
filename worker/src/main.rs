@@ -212,6 +212,7 @@ fn main() {
         return;
     }
     if let Some(_matches) = matches.subcommand_matches("init-shard") {
+        info!("*** Initializing shard");
         match _matches.values_of("shard") {
             Some(values) => {
                 for shard in values {
@@ -224,6 +225,7 @@ fn main() {
                 }
             }
             _ => {
+                info!("No shard identifier was provided, using MRENCLAVE ID");
                 let enclave = enclave_init().unwrap();
                 let shard =
                     ShardIdentifier::from_slice(&enclave_mrenclave(enclave.geteid()).unwrap());

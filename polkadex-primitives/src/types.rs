@@ -1,10 +1,11 @@
 pub extern crate alloc;
 
-use codec::{Decode, Encode, Error};
-use frame_support::sp_runtime::traits::Verify;
 use alloc::vec;
 use alloc::vec::Vec;
+use codec::{Decode, Encode, Error};
+use frame_support::sp_runtime::traits::Verify;
 
+use crate::ShardIdentifier;
 use sp_core::ed25519::Signature;
 use sp_core::{ed25519, Pair};
 use polkadex_primitives::common_types::{Balance, AccountId};
@@ -249,4 +250,11 @@ pub struct TradeEvent {
     maker_side: OrderSide,
     // Trade Timestamp
     timestamp: Vec<u8>,
+}
+
+// DirectRequest for RPC
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct DirectRequest {
+    pub shard: ShardIdentifier,
+    pub encoded_text: Vec<u8>,
 }

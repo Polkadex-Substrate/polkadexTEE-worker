@@ -82,5 +82,8 @@ version = "3.0.0"
 git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
 
+[dependencies.polkadex-sgx-primitives]
+path = "../polkadex-primitives"
+
 #[patch.crates-io]
 #ed25519-dalek = { git = "https://github.com/scs/ed25519-dalek.git", branch = "no_std_sgx"}

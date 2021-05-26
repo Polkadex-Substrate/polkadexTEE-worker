@@ -39,7 +39,9 @@ use sgx_runtime::Balance;
 pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
-//use sp_core::{Encode, Decode};
+
+use polkadex_sgx_primitives::types::{CurrencyId, Order};
+
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
 // TODO: use MultiAddress instead of AccountId32?
@@ -93,6 +95,15 @@ pub mod sgx;
 
 #[cfg(feature = "std")]
 pub mod cli;
+
+#[cfg(feature = "std")]
+pub mod commands;
+
+#[cfg(feature = "std")]
+pub mod cli_utils;
+
+#[cfg(feature = "std")]
+pub mod top;
 
 #[cfg(feature = "sgx")]
 //pub type State = sp_io::SgxExternalitiesType;
@@ -166,15 +177,53 @@ pub enum TrustedCall {
     balance_transfer(AccountId, AccountId, Balance),
     balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
+
+    place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+    cancel_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
 }
 
 impl TrustedCall {
-    pub fn account(&self) -> &AccountId {
+    /// Return the signer account (may be proxy or main account)
+    pub fn signer(&self) -> &AccountId {
         match self {
-            TrustedCall::balance_set_balance(account, _, _, _) => account,
-            TrustedCall::balance_transfer(account, _, _) => account,
-            TrustedCall::balance_unshield(account, _, _, _) => account,
-            TrustedCall::balance_shield(account, _) => account,
+            TrustedCall::balance_set_balance(signer, _, _, _) => signer,
+            TrustedCall::balance_transfer(signer, _, _) => signer,
+            TrustedCall::balance_unshield(signer, _, _, _) => signer,
+            TrustedCall::balance_shield(signer, _) => signer,
+
+            TrustedCall::place_order(signer, _, _) => signer,
+            TrustedCall::cancel_order(signer, _, _) => signer,
+            TrustedCall::withdraw(signer, _, _, _) => signer,
+        }
+    }
+
+    /// Get the main account ID. For the polkadex orders, the first argument is always the signer.
+    /// A signer may either be a proxy account or a main account. If the signer is a proxy account,
+    /// the main account will be provided as Option
+    pub fn main_account(&self) -> &AccountId {
+        match self {
+            TrustedCall::balance_set_balance(main_account, _, _, _) => main_account,
+            TrustedCall::balance_transfer(main_account, _, _) => main_account,
+            TrustedCall::balance_unshield(main_account, _, _, _) => main_account,
+            TrustedCall::balance_shield(main_account, _) => main_account,
+
+            TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
+                Some(main_account) => main_account,
+                None => signer,
+            },
+
+            TrustedCall::cancel_order(signer, _, main_account_option) => {
+                match main_account_option {
+                    Some(main_account) => main_account,
+                    None => signer,
+                }
+            }
+
+            TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
+                Some(main_account) => main_account,
+                None => signer,
+            },
         }
     }
 
@@ -204,14 +253,33 @@ pub enum TrustedGetter {
     free_balance(AccountId),
     reserved_balance(AccountId),
     nonce(AccountId),
+    get_balance(AccountId, CurrencyId, Option<AccountId>), // (SignerAccount, tokenid, MainAccount (if signer is proxy))
 }
 
 impl TrustedGetter {
-    pub fn account(&self) -> &AccountId {
+    pub fn signer(&self) -> &AccountId {
         match self {
-            TrustedGetter::free_balance(account) => account,
-            TrustedGetter::reserved_balance(account) => account,
-            TrustedGetter::nonce(account) => account,
+            TrustedGetter::free_balance(signer) => signer,
+            TrustedGetter::reserved_balance(signer) => signer,
+            TrustedGetter::nonce(signer) => signer,
+            TrustedGetter::get_balance(signer, _, _) => signer,
+        }
+    }
+
+    /// Get the main account ID. For the polkadex orders, the first argument is always the signer.
+    /// A signer may either be a proxy account or a main account. If the signer is a proxy account,
+    /// the main account will be provided as Option
+    pub fn main_account(&self) -> &AccountId {
+        match self {
+            TrustedGetter::free_balance(main_account) => main_account,
+            TrustedGetter::reserved_balance(main_account) => main_account,
+            TrustedGetter::nonce(main_account) => main_account,
+
+            TrustedGetter::get_balance(signer, _, main_account_option) => match main_account_option
+            {
+                Some(main_account) => main_account,
+                None => signer,
+            },
         }
     }
 
@@ -237,7 +305,7 @@ impl TrustedGetterSigned {
 
     pub fn verify_signature(&self) -> bool {
         self.signature
-            .verify(self.getter.encode().as_slice(), self.getter.account())
+            .verify(self.getter.encode().as_slice(), self.getter.signer())
     }
 }
 
@@ -263,7 +331,7 @@ impl TrustedCallSigned {
         payload.append(&mut mrenclave.encode());
         payload.append(&mut shard.encode());
         self.signature
-            .verify(payload.as_slice(), self.call.account())
+            .verify(payload.as_slice(), self.call.signer())
     }
 
     pub fn into_trusted_operation(self, direct: bool) -> TrustedOperation {

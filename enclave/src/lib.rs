@@ -47,7 +47,7 @@ use constants::{
 use core::ops::Deref;
 use log::*;
 use polkadex_sgx_primitives::types::SignedOrder;
-use polkadex_sgx_primitives::{AssetId, LinkedAccount, PolkadexAccount};
+use polkadex_sgx_primitives::{AssetId, PolkadexAccount};
 use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
@@ -89,8 +89,8 @@ mod io;
 mod ipfs;
 mod polkadex;
 mod polkadex_balance_storage;
-mod polkadex_orderbook_storage;
 mod polkadex_gateway;
+mod polkadex_orderbook_storage;
 mod rsa3072;
 mod state;
 mod test_orderbook_storage;
@@ -106,7 +106,6 @@ pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
-
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 
@@ -360,7 +359,6 @@ pub unsafe extern "C" fn init_chain_relay(
     // info!(" Polkadex Gateway Nonces and Cache Initialized");
 
     nonce_handler::create_in_memory_nonce_storage(); //FIXME Error handling required
-
 
     sgx_status_t::SGX_SUCCESS
 }
@@ -1029,8 +1027,8 @@ fn handle_ocex_withdraw(
         amount
     );
 
-    match polkadex::check_if_main_account_registered(main_acc.clone().into()) { // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
-
+    match polkadex::check_if_main_account_registered(main_acc.clone().into()) {
+        // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists == true {
                 match polkadex_balance_storage::lock_storage_and_withdraw(
