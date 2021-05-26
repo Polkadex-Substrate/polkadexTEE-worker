@@ -19,11 +19,11 @@
 pub extern crate alloc;
 use alloc::{string::String, string::ToString};
 
+use crate::polkadex_balance_storage::lock_storage_and_get_balances;
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
 use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
 use crate::rpc::trusted_operation_verifier::get_verified_trusted_operation;
-use jsonrpc_core::Result as RpcResult;
-use jsonrpc_core::*;
+use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
 use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{Getter, TrustedGetter, TrustedOperation};
@@ -35,32 +35,25 @@ impl RpcGetBalance {
     fn method_impl(
         &self,
         request: DirectRequest,
-    ) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
+    ) -> Result<(RpcInfo, bool, DirectRequestStatus), String> {
         debug!("entering get_balance RPC");
 
-        let verified_trusted_operation = get_verified_trusted_operation(request);
-        if let Err(s) = verified_trusted_operation {
-            return Ok((RpcInfo::from(s), false, DirectRequestStatus::Error));
-        }
+        let verified_trusted_operation = get_verified_trusted_operation(request)?;
 
-        let get_balance_call_args = match verified_trusted_operation.unwrap() {
+        let get_balance_call_args = match verified_trusted_operation {
             TrustedOperation::get(getter) => match getter {
                 Getter::trusted(tgs) => match tgs.getter {
                     TrustedGetter::get_balance(a, c, p) => Ok((p.unwrap_or(a), c)),
-                    _ => Err(RpcCallStatus::operation_type_mismatch),
+                    _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
                 },
-                _ => Err(RpcCallStatus::operation_type_mismatch),
+                _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
             },
-            _ => Err(RpcCallStatus::operation_type_mismatch),
-        };
+            _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
+        }?;
 
-        if let Err(e) = get_balance_call_args {
-            return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
-        }
-
-        //let main_account = get_balance_call_args.0;
-        //let asset_id = get_balance_call_args.1;
-        //let balances_result = lock_storage_and_get_balances(main_account asset_id);
+        let main_account = get_balance_call_args.0;
+        let asset_id = get_balance_call_args.1;
+        let balances_result = lock_storage_and_get_balances(main_account, asset_id);
 
         Ok((
             RpcInfo::from(RpcCallStatus::operation_success),

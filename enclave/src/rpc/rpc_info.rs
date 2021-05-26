@@ -15,6 +15,8 @@
 
 */
 
+pub extern crate alloc;
+use alloc::{string::String, string::ToString};
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, Debug)]
@@ -25,6 +27,20 @@ pub enum RpcCallStatus {
     decoding_failure,
     mrenclave_failure,
     operation_success,
+}
+
+impl ToString for RpcCallStatus {
+    fn to_string(&self) -> String {
+        match self {
+            RpcCallStatus::operation_type_mismatch => String::from("Operation types do not match"),
+            RpcCallStatus::signature_verification_failure => {
+                String::from("Failed to verify signature")
+            }
+            RpcCallStatus::decoding_failure => String::from("Failed to decode"),
+            RpcCallStatus::mrenclave_failure => String::from("Failed to get MRENCLAVE"),
+            RpcCallStatus::operation_success => String::from("Operation was successful"),
+        }
+    }
 }
 
 #[derive(Encode, Decode, Clone, Debug)]

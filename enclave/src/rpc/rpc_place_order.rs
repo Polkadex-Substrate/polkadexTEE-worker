@@ -22,8 +22,7 @@ use alloc::{string::String, string::ToString};
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
 use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
 use crate::rpc::trusted_operation_verifier::get_verified_trusted_operation;
-use jsonrpc_core::Result as RpcResult;
-use jsonrpc_core::*;
+use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
 use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{TrustedCall, TrustedOperation};
@@ -35,27 +34,18 @@ impl RpcPlaceOrder {
     fn method_impl(
         &self,
         request: DirectRequest,
-    ) -> RpcResult<(RpcInfo, bool, DirectRequestStatus)> {
+    ) -> Result<(RpcInfo, bool, DirectRequestStatus), String> {
         debug!("entering place_order RPC");
 
-        // TODO the functionality of verifying the request and extracting the parameters is duplicated
-        // in each function. Generalize it and share it among all calls
-        let verified_trusted_operation = get_verified_trusted_operation(request);
-        if let Err(s) = verified_trusted_operation {
-            return Ok((RpcInfo::from(s), false, DirectRequestStatus::Error));
-        }
+        let verified_trusted_operation = get_verified_trusted_operation(request)?;
 
-        let place_order_call_args = match verified_trusted_operation.unwrap() {
+        let place_order_call_args = match verified_trusted_operation {
             TrustedOperation::direct_call(tcs) => match tcs.call {
                 TrustedCall::place_order(a, o, p) => Ok((a, o, p)),
-                _ => Err(RpcCallStatus::operation_type_mismatch),
+                _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
             },
-            _ => Err(RpcCallStatus::operation_type_mismatch),
-        };
-
-        if let Err(e) = place_order_call_args {
-            return Ok((RpcInfo::from(e), false, DirectRequestStatus::Error));
-        }
+            _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
+        }?;
 
         // TODO call implementation here
 

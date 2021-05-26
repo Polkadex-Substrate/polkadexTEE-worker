@@ -16,6 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub extern crate alloc;
+use alloc::{string::String, string::ToString};
+
 use crate::attestation;
 use crate::rpc::rpc_info::RpcCallStatus;
 use base58::ToBase58;
@@ -26,22 +29,20 @@ use polkadex_sgx_primitives::ShardIdentifier;
 use sgx_types::sgx_measurement_t;
 use substratee_stf::{Getter, TrustedCallSigned, TrustedOperation};
 
-pub fn get_verified_trusted_operation(
-    request: DirectRequest,
-) -> Result<TrustedOperation, RpcCallStatus> {
+pub fn get_verified_trusted_operation(request: DirectRequest) -> Result<TrustedOperation, String> {
     // decode call
     let shard_id = request.shard;
 
     let trusted_operation = match decode_request(request) {
         Ok(decoded_result) => decoded_result,
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.to_string()),
     };
 
     match verify_signature(&trusted_operation, &shard_id) {
         Ok(()) => {
             debug!("successfully verified signature")
         }
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.to_string()),
     }
 
     Ok(trusted_operation)
