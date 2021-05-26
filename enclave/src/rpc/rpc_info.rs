@@ -15,9 +15,6 @@
 
 */
 
-pub extern crate alloc;
-use alloc::{str, string::String, string::ToString, vec::Vec};
-use codec::Error as CodecError;
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, Debug)]
@@ -43,18 +40,3 @@ impl RpcInfo {
         RpcInfo { status: s }
     }
 }
-
-// impl Encode for RpcInfo {
-//     fn encode(&self) -> Vec<u8> {
-//         self.status.encode()
-//     }
-// }
-//
-// impl Decode for RpcInfo {
-//     fn decode<T>(input: &mut T) -> Result<Self, CodecError> {
-//         return match String::decode(input) {
-//             Ok(s) => Ok(RpcInfo::from(s)),
-//             Err(e) => Err(e),
-//         };
-//     }
-// }

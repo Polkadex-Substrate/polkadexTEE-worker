@@ -31,6 +31,10 @@ use crate::rpc::return_value_encoding::{
 
 type RpcMethodImpl<'a, T> = &'a dyn Fn(DirectRequest) -> RpcResult<(T, bool, DirectRequestStatus)>;
 
+pub trait RpcCall: RpcMethodSync {
+    fn name() -> String;
+}
+
 pub trait RpcCallEncoder {
     fn call<T: Encode>(
         params: Params,
