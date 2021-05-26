@@ -38,6 +38,18 @@ pub enum GatewayError {
     MarketOrderPriceNotDefined,
     /// Error in cancelling the order
     UnableToCancelOrder,
+    /// MarketIds don't match for given trade, maker, and taker
+    MarketIdMismatch,
+    /// Maker OrderSide mismatch between TradeEvent and MakerOrder
+    MakerSideMismatch,
+    /// Unable to Load pointer
+    UnableToLoadPointer,
+    /// Not enough Free Balance
+    NotEnoughFreeBalance,
+    /// Not enough Reserved Balance,
+    NotEnoughReservedBalance,
+    /// Unable to find AcccountId or AssetId,
+    AccountIdOrAssetIdNotFound,
 }
 
 /// Place order function does the following
@@ -354,6 +366,27 @@ pub fn authenticate_user(main_acc: AccountId, proxy_acc: Option<AccountId>) -> R
 
 
 pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
-    //TODO:
+    // Check if both orders exist and get them
+    match (polkadex_orderbook_storage::remove_order(&trade.maker_order_uuid)
+               .map_err(|_| Err(GatewayError::OrderNotFound))?,
+           polkadex_orderbook_storage::remove_order(&trade.taker_order_uuid)
+               .map_err(|_| Err(GatewayError::OrderNotFound))?) {
+        (Some(maker), Some(taker)) => {
+            // TODO: Check the mathematical validity
+            if (maker.market_id != taker.market_id) | (maker.market_id != trade.market_id) {
+                return Err(GatewayError::MarketIdMismatch);
+            }
+            if maker.side != trade.maker_side {
+                return Err(GatewayError::MakerSideMismatch);
+            }
+
+            // TODO: Trade balances
+            // TODO: Remove Or Update Orders in the Orderbook mirror
+        }
+        (_, _) => {
+            error!("Unable to find either maker or taker order in orderbook mirror");
+            return Err(GatewayError::UndefinedBehaviour);
+        }
+    }
     Ok(())
 }

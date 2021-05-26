@@ -10,6 +10,7 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
+use crate::polkadex_gateway::GatewayError;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -78,17 +79,17 @@ pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> Sg
 }
 
 /// Loads and Returns Orderbook under mutex from Static Atomics Pointer
-pub fn load_orderbook() -> SgxResult<&'static SgxMutex<OrderbookStorage>> {
+pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>,GatewayError> {
     let ptr = GLOBAL_ORDERBOOK_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<OrderbookStorage>;
     if ptr.is_null() {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        return Err(GatewayError::UnableToLoadPointer);
     } else {
         Ok(unsafe { &*ptr })
     }
 }
 
 // TODO: Write test cases for this function
-pub fn remove_order(order_uuid: &OrderUUID) -> SgxResult<Option<Order>>{
+pub fn remove_order(order_uuid: &OrderUUID) -> Result<Option<Order>, GatewayError>{
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
@@ -96,7 +97,7 @@ pub fn remove_order(order_uuid: &OrderUUID) -> SgxResult<Option<Order>>{
 }
 
 // TODO: Write test cases for this function
-pub fn add_order(order: Order, order_uuid: OrderUUID) -> SgxResult<Option<Order>>{
+pub fn add_order(order: Order, order_uuid: OrderUUID) -> Result<Option<Order>,GatewayError>{
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();

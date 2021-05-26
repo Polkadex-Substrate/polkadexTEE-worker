@@ -228,25 +228,25 @@ pub struct OrderUpdate {
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct TradeEvent {
     // Market Unique Identifier
-    market_id: MarketId,
+    pub market_id: MarketId,
     // Unique Trade ID
     trade_id: TradeId,
     // Trade execution price
-    price: PriceAndQuantityType,
+    pub price: PriceAndQuantityType,
     // Trade execution amount
-    amount: PriceAndQuantityType,
+    pub amount: PriceAndQuantityType,
     // Trade Funds (amount*price)
-    funds: PriceAndQuantityType,
+    pub funds: PriceAndQuantityType,
     // Maker's trade Order Id
     maker_order_id: OrderId,
     // Maker's trade Order UUID
-    maker_order_uuid: OrderUUID,
+    pub maker_order_uuid: OrderUUID,
     // Taker's trade Order Id
     taker_order_id: OrderId,
     // Taker's trade Order UUID
-    taker_order_uuid: OrderUUID,
+    pub taker_order_uuid: OrderUUID,
     // Maker Order Side
-    maker_side: OrderSide,
+    pub maker_side: OrderSide,
     // Trade Timestamp
     timestamp: Vec<u8>,
 }

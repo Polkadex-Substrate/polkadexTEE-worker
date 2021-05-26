@@ -20,6 +20,7 @@ use std::sync::{
 //use std::collections::HashMap;
 // TODO: Fix this import
 use crate::utils::UnwrapOrSgxErrorUnexpected;
+use crate::polkadex_gateway::GatewayError;
 
 static GLOBAL_ACCOUNTS_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -98,7 +99,7 @@ fn key_hash<K: Encode>(key: &K, hasher: &StorageHasher) -> Vec<u8> {
     }
 }
 
-pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> SgxResult<()> {
+pub fn create_in_memory_account_storage(accounts: Vec<PolkadexAccount>) -> Result<(),GatewayError> {
     let accounts_storage = PolkadexAccountsStorage::create(accounts);
     let storage_ptr = Arc::new(SgxMutex::<PolkadexAccountsStorage>::new(accounts_storage));
     let ptr = Arc::into_raw(storage_ptr);
@@ -171,14 +172,14 @@ impl PolkadexAccountsStorage {
     }
 }
 
-pub fn check_if_main_account_registered(acc: AccountId) -> SgxResult<bool> {
+pub fn check_if_main_account_registered(acc: AccountId) -> Result<bool,GatewayError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.accounts.contains_key(&acc.encode()))
 }
 
-pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> SgxResult<bool> {
+pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> Result<bool,GatewayError> {
     // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
@@ -187,50 +188,43 @@ pub fn check_if_proxy_registered(main_acc: AccountId, proxy: AccountId) -> SgxRe
         Ok(list_of_proxies.contains(&proxy))
     } else {
         warn!("Main account not present");
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        Err(GatewayError::MainAccountNotRegistered)
     }
 }
 
-pub fn add_main_account(main_acc: AccountId) -> SgxResult<()> {
+pub fn add_main_account(main_acc: AccountId) -> Result<(),GatewayError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.add_main_account(main_acc))
 }
 
-pub fn remove_main_account(main_acc: AccountId) -> SgxResult<()> {
+pub fn remove_main_account(main_acc: AccountId) -> Result<(),GatewayError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.remove_main_account(main_acc))
 }
 
-pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> SgxResult<()> {
+pub fn add_proxy(main_acc: AccountId, proxy: AccountId) ->Result<(),GatewayError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.add_proxy(main_acc, proxy))
 }
 
-// pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
-//     // Aquire lock on proxy_registry
-//     let mutex = load_proxy_registry()?;
-//     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
-//     Ok(proxy_storage.accounts.contains_key(&acc.encode()))
-// }
-
-pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> SgxResult<()> {
+pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(),GatewayError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
     Ok(proxy_storage.remove_proxy(main_acc, proxy))
 }
 
-pub fn load_proxy_registry() -> SgxResult<&'static SgxMutex<PolkadexAccountsStorage>> {
+pub fn load_proxy_registry() -> Result<&'static SgxMutex<PolkadexAccountsStorage>, GatewayError> {
     let ptr =
         GLOBAL_ACCOUNTS_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<PolkadexAccountsStorage>;
     if ptr.is_null() {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        return Err(GatewayError::UnableToLoadPointer);
     } else {
         Ok(unsafe { &*ptr })
     }

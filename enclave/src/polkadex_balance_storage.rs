@@ -11,6 +11,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicPtr, Ordering}, SgxMutex, SgxMutexGuard,
 };
+use crate::polkadex_gateway::GatewayError;
 
 static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -64,7 +65,7 @@ impl PolkadexBalanceStorage {
         self.storage.insert(PolkadexBalanceKey::from(token, acc).encode(), Balances::from(0u128, 0u128));
     }
 
-    pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
+    pub fn set_free_balance(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> Result<(),GatewayError> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -75,7 +76,7 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+                return Err(GatewayError::AccountIdOrAssetIdNotFound);
             }
         }
     }
@@ -85,7 +86,7 @@ impl PolkadexBalanceStorage {
         token: AssetId,
         acc: AccountId,
         amt: Balance,
-    ) -> SgxResult<()> {
+    ) -> Result<(),GatewayError> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -96,12 +97,12 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+                return Err(GatewayError::AccountIdOrAssetIdNotFound);
             }
         }
     }
 
-    pub fn deposit(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
+    pub fn deposit(&mut self, token: AssetId, acc: AccountId, amt: Balance) ->Result<(),GatewayError> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -112,12 +113,12 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset Id not available [here]");
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+                return Err(GatewayError::AccountIdOrAssetIdNotFound);
             }
         }
     }
 
-    pub fn withdraw(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> SgxResult<()> {
+    pub fn withdraw(&mut self, token: AssetId, acc: AccountId, amt: Balance) -> Result<(),GatewayError> {
         match self
             .storage
             .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
@@ -128,14 +129,14 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+                return Err(GatewayError::AccountIdOrAssetIdNotFound);
             }
         }
     }
     // We can write functions which settle balances for two trades but we need to know the trade structure for it
 }
 
-pub fn create_in_memory_balance_storage() -> SgxResult<()> {
+pub fn create_in_memory_balance_storage() -> Result<(),GatewayError> {
     let balances_storage = PolkadexBalanceStorage::create();
     let storage_ptr = Arc::new(SgxMutex::<PolkadexBalanceStorage>::new(balances_storage));
     let ptr = Arc::into_raw(storage_ptr);
@@ -143,19 +144,19 @@ pub fn create_in_memory_balance_storage() -> SgxResult<()> {
     Ok(())
 }
 
-pub fn load_balance_storage() -> SgxResult<&'static SgxMutex<PolkadexBalanceStorage>> {
+pub fn load_balance_storage() -> Result<&'static SgxMutex<PolkadexBalanceStorage>, GatewayError> {
     let ptr = GLOBAL_POLKADEX_BALANCE_STORAGE.load(Ordering::SeqCst)
         as *mut SgxMutex<PolkadexBalanceStorage>;
     if ptr.is_null() {
         error!("Pointer is Null");
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        return Err(GatewayError::UnableToLoadPointer);
     } else {
         Ok(unsafe { &*ptr })
     }
 }
 
 // TODO: Write test cases for this function
-pub fn reserve_balance(main_acc: &AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
+pub fn reserve_balance(main_acc: &AccountId, token: AssetId, amount: Balance) -> Result<(),GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
@@ -164,7 +165,7 @@ pub fn reserve_balance(main_acc: &AccountId, token: AssetId, amount: Balance) ->
 
     if balance.free < amount {
         error!("Not enought free balance");
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        return Err(GatewayError::NotEnoughFreeBalance);
     }
     balance_storage.set_free_balance(token.clone(), main_acc.clone(), balance.free.saturating_sub(amount))?;
     balance_storage.set_reserve_balance(token.clone(), main_acc.clone(), balance.reserved.saturating_add(amount))?;
@@ -172,7 +173,7 @@ pub fn reserve_balance(main_acc: &AccountId, token: AssetId, amount: Balance) ->
 }
 
 // TODO: Write test cases for this function
-pub fn unreserve_balance(main_acc: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
+pub fn unreserve_balance(main_acc: AccountId, token: AssetId, amount: Balance) -> Result<(),GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
@@ -180,21 +181,21 @@ pub fn unreserve_balance(main_acc: AccountId, token: AssetId, amount: Balance) -
         .expect("Unable to read balance from balance storage").clone();
     if balance.reserved < amount {
         error!("Unable to un-reserve balance greater than reserved balance");
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        return Err(GatewayError::NotEnoughReservedBalance);
     }
     balance_storage.set_free_balance(token.clone(), main_acc.clone(), balance.free.saturating_add(amount))?;
     balance_storage.set_reserve_balance(token, main_acc, balance.reserved.saturating_sub(amount))?;
     Ok(())
 }
 
-pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
+pub fn lock_storage_and_deposit(main_acc: AccountId, token: AssetId, amt: Balance) -> Result<(),GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     balance_storage.deposit(token, main_acc, amt)
 }
 
-pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balance) -> SgxResult<()> {
+pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balance) ->  Result<(),GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
@@ -204,31 +205,32 @@ pub fn lock_storage_and_withdraw(main_acc: AccountId, token: AssetId, amt: Balan
                 balance_storage.withdraw(token, main_acc, amt)
             } else {
                 error!("Balance is low");
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+                return Err(GatewayError::NotEnoughFreeBalance);
             }
         }
         None => {
             error!("Account Id or Asset Id is not available");
-            return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+            return Err(GatewayError::AccountIdOrAssetIdNotFound);
         }
     }
+    Ok(())
 }
 
 // TODO: Write Unit test for this function
-pub fn lock_storage_and_initialize_balance(main_acc: AccountId, token: AssetId) -> SgxResult<()>{
+pub fn lock_storage_and_initialize_balance(main_acc: AccountId, token: AssetId) -> Result<(),GatewayError>{
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     balance_storage.initialize_balance(token,main_acc);
     Ok(())
 }
 
-pub fn lock_storage_and_get_balances(main_acc: AccountId, token: AssetId) -> SgxResult<Balances> {
+pub fn lock_storage_and_get_balances(main_acc: AccountId, token: AssetId) ->Result<Balances,GatewayError> {
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     if let Some(balance) = balance_storage.read_balance(token, main_acc).cloned() {
         Ok(balance)
     } else {
         error!("Account Id or Asset Id is not available");
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        Err(GatewayError::AccountIdOrAssetIdNotFound)
     }
 }
