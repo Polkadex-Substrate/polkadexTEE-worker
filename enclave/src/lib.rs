@@ -89,8 +89,8 @@ mod io;
 mod ipfs;
 mod polkadex;
 mod polkadex_balance_storage;
-mod polkadex_orderbook_storage;
 mod polkadex_gateway;
+mod polkadex_orderbook_storage;
 mod rsa3072;
 mod state;
 mod test_orderbook_storage;
@@ -106,7 +106,6 @@ pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
-
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 
@@ -361,7 +360,6 @@ pub unsafe extern "C" fn init_chain_relay(
 
     nonce_handler::create_in_memory_nonce_storage(); //FIXME Error handling required
 
-
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -394,8 +392,8 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         return status;
     }
 
-    if let Err(status) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
-        return status;
+    if let Err(_) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
     sgx_status_t::SGX_SUCCESS
@@ -970,7 +968,11 @@ fn handle_ocex_register(
         call,
         main_acc.encode().to_base58(),
     );
-    polkadex::add_main_account(main_acc.into())
+    if let Err(_) = polkadex::add_main_account(main_acc.into()) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_add_proxy(
@@ -984,7 +986,11 @@ fn handle_ocex_add_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::add_proxy(main_acc.into(), proxy.into())
+    if let Err(_) = polkadex::add_proxy(main_acc.into(), proxy.into()) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_remove_proxy(
@@ -998,7 +1004,11 @@ fn handle_ocex_remove_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::remove_proxy(main_acc.into(), proxy.into())
+    if let Err(_) = polkadex::remove_proxy(main_acc.into(), proxy.into()) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_deposit(
@@ -1013,7 +1023,11 @@ fn handle_ocex_deposit(
         token.encode().to_base58(),
         amount
     );
-    polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount)
+    if let Err(_) = polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_withdraw(
@@ -1029,8 +1043,8 @@ fn handle_ocex_withdraw(
         amount
     );
 
-    match polkadex::check_if_main_account_registered(main_acc.clone().into()) { // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
-
+    match polkadex::check_if_main_account_registered(main_acc.clone().into()) {
+        // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists == true {
                 match polkadex_balance_storage::lock_storage_and_withdraw(
@@ -1039,13 +1053,13 @@ fn handle_ocex_withdraw(
                     amount,
                 ) {
                     Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount), // TODO: How to get nonce?
-                    Err(e) => return Err(e),
+                    Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
                 }
             } else {
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
             }
         }
-        Err(e) => return Err(e),
+        Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
     }
 }
 

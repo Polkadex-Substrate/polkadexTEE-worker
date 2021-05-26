@@ -1,4 +1,5 @@
 use crate::ed25519;
+use crate::polkadex_gateway::GatewayError;
 use log::error;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
@@ -10,7 +11,6 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
-use crate::polkadex_gateway::GatewayError;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -79,7 +79,7 @@ pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> Sg
 }
 
 /// Loads and Returns Orderbook under mutex from Static Atomics Pointer
-pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>,GatewayError> {
+pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayError> {
     let ptr = GLOBAL_ORDERBOOK_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<OrderbookStorage>;
     if ptr.is_null() {
         return Err(GatewayError::UnableToLoadPointer);
@@ -89,17 +89,21 @@ pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>,GatewayErr
 }
 
 // TODO: Write test cases for this function
-pub fn remove_order(order_uuid: &OrderUUID) -> Result<Option<Order>, GatewayError>{
+pub fn remove_order(order_uuid: &OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
-    Ok(orderbook.remove_order(order_uuid))
+    if let Some(order) = orderbook.remove_order(order_uuid) {
+        Ok(order)
+    } else {
+        Err(GatewayError::OrderNotFound)
+    }
 }
 
 // TODO: Write test cases for this function
-pub fn add_order(order: Order, order_uuid: OrderUUID) -> Result<Option<Order>,GatewayError>{
+pub fn add_order(order: Order, order_uuid: OrderUUID) -> Result<Option<Order>, GatewayError> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
-    Ok(orderbook.add_order(order_uuid,order))
+    Ok(orderbook.add_order(order_uuid, order))
 }
