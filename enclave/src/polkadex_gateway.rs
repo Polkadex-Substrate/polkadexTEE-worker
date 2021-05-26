@@ -1,3 +1,6 @@
+pub extern crate alloc;
+use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult};
+
 use codec::{Decode, Encode};
 use log::*;
 use polkadex_sgx_primitives::{AccountId, Balance};
@@ -38,6 +41,14 @@ pub enum GatewayError {
     MarketOrderPriceNotDefined,
     /// Error in cancelling the order
     UnableToCancelOrder,
+}
+
+impl alloc::fmt::Display for GatewayError {
+    fn fmt(&self, f: &mut alloc::fmt::Formatter) -> FormatResult {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 /// Place order function does the following

@@ -19,7 +19,8 @@
 pub extern crate alloc;
 use alloc::{string::String, string::ToString};
 
-use crate::polkadex_balance_storage::lock_storage_and_get_balances;
+use crate::polkadex_balance_storage::{lock_storage_and_get_balances, Balances};
+use crate::polkadex_gateway::authenticate_user;
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
 use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
 use crate::rpc::trusted_operation_verifier::get_verified_trusted_operation;
@@ -35,31 +36,38 @@ impl RpcGetBalance {
     fn method_impl(
         &self,
         request: DirectRequest,
-    ) -> Result<(RpcInfo, bool, DirectRequestStatus), String> {
+    ) -> Result<(Balances, bool, DirectRequestStatus), String> {
         debug!("entering get_balance RPC");
 
         let verified_trusted_operation = get_verified_trusted_operation(request)?;
 
-        let get_balance_call_args = match verified_trusted_operation {
+        let trusted_getter_signed = match verified_trusted_operation {
             TrustedOperation::get(getter) => match getter {
-                Getter::trusted(tgs) => match tgs.getter {
-                    TrustedGetter::get_balance(a, c, p) => Ok((p.unwrap_or(a), c)),
-                    _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
-                },
+                Getter::trusted(tgs) => Ok(tgs),
                 _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
             },
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
 
-        let main_account = get_balance_call_args.0;
-        let asset_id = get_balance_call_args.1;
-        let balances_result = lock_storage_and_get_balances(main_account, asset_id);
+        let main_account = trusted_getter_signed.getter.main_account().clone();
+        let proxy_account = trusted_getter_signed.getter.proxy_account().clone();
 
-        Ok((
-            RpcInfo::from(RpcCallStatus::operation_success),
-            false,
-            DirectRequestStatus::Ok,
-        ))
+        let _authorization_result = match authenticate_user(main_account.clone(), proxy_account) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(format!("Authorization error: {}", e)),
+        }?;
+
+        let asset_id = match trusted_getter_signed.getter {
+            TrustedGetter::get_balance(_, c, _) => Ok(c),
+            _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
+        }?;
+
+        let balances = match lock_storage_and_get_balances(main_account.clone(), asset_id) {
+            Ok(b) => Ok(b),
+            Err(e) => Err(String::from(e.as_str())),
+        }?;
+
+        Ok((balances, false, DirectRequestStatus::Ok))
     }
 }
 
