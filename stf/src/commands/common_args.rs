@@ -19,7 +19,8 @@ use clap::{App, Arg};
 
 pub const ACCOUNT_ID_ARG_NAME: &str = "accountid";
 pub const PROXY_ACCOUNT_ID_ARG_NAME: &str = "proxyaccountid";
-pub const MARKET_ID_ARG_NAME: &str = "marketid";
+pub const MARKET_ID_BASE_ARG_NAME: &str = "marketbase";
+pub const MARKET_ID_QUOTE_ARG_NAME: &str = "marketquote";
 pub const MARKET_TYPE_ARG_NAME: &str = "markettype";
 pub const ORDER_TYPE_ARG_NAME: &str = "ordertype";
 pub const ORDER_SIDE_ARG_NAME: &str = "orderside";
@@ -81,12 +82,20 @@ pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
 
 pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
-        Arg::with_name(MARKET_ID_ARG_NAME)
-            .long(MARKET_ID_ARG_NAME)
+        Arg::with_name(MARKET_ID_BASE_ARG_NAME)
+            .long(MARKET_ID_BASE_ARG_NAME)
             .takes_value(true)
             .required(true)
             .value_name("STRING")
-            .help("Market ID, e.g.: 'btcusd'"),
+            .help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
+    )
+    .arg(
+        Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
+            .long(MARKET_ID_QUOTE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
     )
     .arg(
         Arg::with_name(MARKET_TYPE_ARG_NAME)

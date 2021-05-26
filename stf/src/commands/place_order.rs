@@ -53,8 +53,8 @@ fn command_runner<'a>(
     let (mrenclave, shard) = get_identifiers(matches);
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
-    let order =
-        get_order_from_matches(matches).expect("failed to build order from command line arguments");
+    let order = get_order_from_matches(matches, account_details.main_account_public_key().into())
+        .expect("failed to build order from command line arguments");
 
     let direct: bool = matches.is_present("direct");
 

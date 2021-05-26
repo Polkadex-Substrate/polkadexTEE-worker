@@ -15,21 +15,15 @@
 
 */
 
-use core::option::Option;
-
-use clap::{App, ArgMatches};
-use clap_nested::Command;
-use codec::Encode;
-use log::*;
-
-use crate::cli_utils::account_parsing::*;
-use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::{KeyPair, TrustedGetter, TrustedOperation};
-
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::*;
 use crate::commands::common_args_processing::get_token_id_from_matches;
+use crate::{KeyPair, TrustedGetter, TrustedOperation};
+use clap::{App, ArgMatches};
+use clap_nested::Command;
+use core::option::Option;
+use log::*;
 
 pub fn get_balance_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
@@ -56,11 +50,11 @@ fn command_runner<'a>(
 
     let signer_key_pair = account_details.signer_key_pair();
 
-    let currency_id = get_token_id_from_matches(matches).unwrap();
+    let token_id = get_token_id_from_matches(matches).unwrap();
 
     let get_balance_top: TrustedOperation = TrustedGetter::get_balance(
         account_details.signer_public_key().into(),
-        currency_id.encode(),
+        token_id,
         account_details
             .main_account_public_key_if_not_signer()
             .map(|pk| pk.into()),

@@ -19,22 +19,25 @@
 pub mod utils {
 
     use crate::commands::common_args::{
-        ACCOUNT_ID_ARG_NAME, MARKET_ID_ARG_NAME, MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME,
-        ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
+        ACCOUNT_ID_ARG_NAME, MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME,
+        MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
+        QUANTITY_ARG_NAME, SHARD_ARG_NAME,
     };
     use crate::{Getter, Index, TrustedGetter, TrustedOperation};
     use clap::{App, Arg, ArgMatches};
     use codec::Encode;
 
     pub fn create_order_args() -> Vec<String> {
-        let market_id_arg = format!("--{}=market_id_001", MARKET_ID_ARG_NAME);
+        let market_id_base_arg = format!("--{}=polkadex", MARKET_ID_BASE_ARG_NAME);
+        let market_id_quote_arg = format!("--{}=dot", MARKET_ID_QUOTE_ARG_NAME);
         let market_type_arg = format!("--{}=market_type_002", MARKET_TYPE_ARG_NAME);
-        let order_type_arg = format!("--{}=limit", ORDER_TYPE_ARG_NAME);
-        let order_side_arg = format!("--{}=ask", ORDER_SIDE_ARG_NAME);
+        let order_type_arg = format!("--{}=market", ORDER_TYPE_ARG_NAME);
+        let order_side_arg = format!("--{}=bid", ORDER_SIDE_ARG_NAME);
         let quantity_arg = format!("--{}=198475", QUANTITY_ARG_NAME);
 
         vec![
-            market_id_arg,
+            market_id_base_arg,
+            market_id_quote_arg,
             market_type_arg,
             order_type_arg,
             order_side_arg,

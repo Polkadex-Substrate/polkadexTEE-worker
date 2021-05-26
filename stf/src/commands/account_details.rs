@@ -15,21 +15,20 @@
 
 */
 
+use crate::cli_utils::account_parsing::get_pair_from_str;
+use crate::commands::common_args::{ACCOUNT_ID_ARG_NAME, PROXY_ACCOUNT_ID_ARG_NAME};
 use clap::ArgMatches;
 use sp_application_crypto::sr25519;
 use sp_core::{sr25519 as sr25519_core, Pair};
 
-use crate::cli_utils::account_parsing::get_pair_from_str;
-use crate::commands::common_args::{ACCOUNT_ID_ARG_NAME, PROXY_ACCOUNT_ID_ARG_NAME};
-
+/// Account details parsed from the command line arguments
+/// Provides methods to get the signer account, depending on whether an optional
+/// proxy account was provided, or just a main account
 pub struct AccountDetails {
     main_account: sr25519::AppPair,
     proxy_account: Option<sr25519::AppPair>,
 }
 
-/// Account details parsed from the command line arguments
-/// Provides methods to get the signer account, depending on whether an optional
-/// proxy account was provided, or just a main account
 impl AccountDetails {
     pub fn new(matches: &ArgMatches<'_>) -> Self {
         let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME).expect(&format!(
@@ -63,17 +62,16 @@ impl AccountDetails {
         sr25519_core::Public::from(self.signer_pair().public())
     }
 
+    pub fn main_account_public_key(&self) -> sr25519_core::Public {
+        sr25519_core::Public::from(self.main_account.public())
+    }
+
     /// returns a main account public key, IF the signer is a proxy, none otherwise
     pub fn main_account_public_key_if_not_signer(&self) -> Option<sr25519_core::Public> {
         match &self.proxy_account {
             Some(_) => Some(sr25519_core::Public::from(self.main_account.public())),
             None => None,
         }
-    }
-
-    #[cfg(test)]
-    pub fn main_account_public_key(&self) -> sr25519_core::Public {
-        sr25519_core::Public::from(self.main_account.public())
     }
 
     #[cfg(test)]

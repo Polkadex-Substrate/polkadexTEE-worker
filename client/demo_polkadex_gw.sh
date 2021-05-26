@@ -35,20 +35,20 @@ read MRENCLAVE <<< $($CLIENT list-workers | awk '/  MRENCLAVE:[[:space:]]/ { pri
 # example for calling 'place_order'
 echo "Alice places order with proxy account"
 $CLIENT trusted place_order --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
- --marketid=btcusd --markettype=trusted --ordertype=limit --orderside=ask --quantity=987345 \
+ --marketbase=polkadex --marketquote=dot --markettype=trusted --ordertype=limit --orderside=ask --quantity=987345 \
  --mrenclave $MRENCLAVE --direct
 
 echo "Get balance of Alice"
 $CLIENT trusted get_balance --accountid=//AliceIncognito \
- --tokenid=btc \
+ --tokenid=dot \
  --mrenclave $MRENCLAVE --direct
 
 echo "Cancel order"
 $CLIENT trusted cancel_order --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
- --marketid=btcusd --markettype=trusted --ordertype=limit --orderside=ask --quantity=987345 \
+ --marketbase=polkadex --marketquote=dot --markettype=trusted --ordertype=limit --orderside=ask --quantity=987345 \
  --mrenclave $MRENCLAVE --direct
 
 echo "Withdraw"
 $CLIENT trusted withdraw --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
- --tokenid=btc --quantity=293 \
+ --tokenid=dot --quantity=293 \
  --mrenclave $MRENCLAVE --direct
