@@ -16,7 +16,7 @@
 */
 
 pub extern crate alloc;
-use alloc::{str, string::String, vec::Vec};
+use alloc::{str, vec::Vec};
 
 use codec::Encode;
 

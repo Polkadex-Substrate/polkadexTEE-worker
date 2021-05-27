@@ -66,6 +66,7 @@ use sp_core::ed25519 as spEd25519;
 use rpc::author::{Author, AuthorApi};
 use rpc::io_handler_extensions;
 use rpc::rpc_call_encoder;
+use rpc::rpc_get_balance;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 
 #[no_mangle]
@@ -98,6 +99,11 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_orderbook_storage::test_read_orderbook,
         test_orderbook_storage::test_add_orderbook,
         test_orderbook_storage::test_remove_orderbook,
+
+        // RPC API tests
+        rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
+        rpc_get_balance::tests::test_given_valid_top_return_balances,
+        io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
 
         // Substratee Tests
         top_pool::base_pool::test_should_import_transaction_to_ready,
@@ -136,10 +142,6 @@ pub extern "C" fn test_main_entrance() -> size_t {
         state::test_write_and_load_state_works,
         state::test_sgx_state_decode_encode_works,
         state::test_encrypt_decrypt_state_type_works,
-        rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
-        //rpc_call::tests::test_method_name_should_not_be_empty,
-        //rpc_call::tests::test_given_none_params_return_ok_result,
-        io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
         test_time_is_overdue,
         test_time_is_not_overdue,
         test_compose_block_and_confirmation,

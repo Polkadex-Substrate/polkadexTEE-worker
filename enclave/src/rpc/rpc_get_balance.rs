@@ -17,29 +17,43 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use alloc::{string::String, string::ToString};
+use alloc::{boxed::Box, string::String, string::ToString};
 
-use crate::polkadex_balance_storage::{lock_storage_and_get_balances, Balances};
-use crate::polkadex_gateway::authenticate_user;
+use crate::polkadex_balance_storage::Balances;
+use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
-use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
-use crate::rpc::trusted_operation_verifier::get_verified_trusted_operation;
+use crate::rpc::rpc_info::RpcCallStatus;
+use crate::rpc::trusted_operation_verifier::TrustedOperationExtractor;
 use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
 use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{Getter, TrustedGetter, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
-pub struct RpcGetBalance {}
+pub struct RpcGetBalance {
+    top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
+    rpc_gateway: Box<dyn RpcGateway + 'static>,
+}
 
 impl RpcGetBalance {
+    pub fn new(
+        top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
+        rpc_gateway: Box<dyn RpcGateway + 'static>,
+    ) -> Self {
+        RpcGetBalance {
+            top_extractor,
+            rpc_gateway,
+        }
+    }
+
     fn method_impl(
         &self,
         request: DirectRequest,
     ) -> Result<(Balances, bool, DirectRequestStatus), String> {
         debug!("entering get_balance RPC");
 
-        let verified_trusted_operation = get_verified_trusted_operation(request)?;
+        let verified_trusted_operation =
+            self.top_extractor.get_verified_trusted_operation(request)?;
 
         let trusted_getter_signed = match verified_trusted_operation {
             TrustedOperation::get(getter) => match getter {
@@ -52,7 +66,10 @@ impl RpcGetBalance {
         let main_account = trusted_getter_signed.getter.main_account().clone();
         let proxy_account = trusted_getter_signed.getter.proxy_account().clone();
 
-        let _authorization_result = match authenticate_user(main_account.clone(), proxy_account) {
+        let _authorization_result = match self
+            .rpc_gateway
+            .authorize_user(main_account.clone(), proxy_account)
+        {
             Ok(()) => Ok(()),
             Err(e) => Err(format!("Authorization error: {}", e)),
         }?;
@@ -62,7 +79,10 @@ impl RpcGetBalance {
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
 
-        let balances = match lock_storage_and_get_balances(main_account.clone(), asset_id) {
+        let balances = match self
+            .rpc_gateway
+            .get_balances(main_account.clone(), asset_id)
+        {
             Ok(b) => Ok(b),
             Err(e) => Err(String::from(e.as_str())),
         }?;
@@ -80,5 +100,63 @@ impl RpcCall for RpcGetBalance {
 impl RpcMethodSync for RpcGetBalance {
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
         JsonRpcCallEncoder::call(params, &|r: DirectRequest| self.method_impl(r))
+    }
+}
+
+pub mod tests {
+
+    pub extern crate alloc;
+    use crate::polkadex_balance_storage::Balances;
+    use crate::rpc::mocks::{
+        rpc_gateway_mock::RpcGatewayMock,
+        trusted_operation_extractor_mock::TrustedOperationExtractorMock,
+    };
+    use crate::rpc::rpc_get_balance::RpcGetBalance;
+    use alloc::boxed::Box;
+    use polkadex_sgx_primitives::types::{CurrencyId, DirectRequest};
+    use sp_core::{ed25519 as ed25519_core, Pair, H256};
+    use substratee_stf::{Getter, KeyPair, TrustedGetter, TrustedOperation};
+    use substratee_worker_primitives::DirectRequestStatus;
+
+    pub fn test_given_valid_top_return_balances() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_get_balance_getter()),
+        });
+
+        let free_balance = 500;
+        let reserved_balance = 1000;
+
+        let rpc_gateway = Box::new(RpcGatewayMock {
+            do_authorize: true,
+            balance_to_return: Some(Balances {
+                free: free_balance,
+                reserved: reserved_balance,
+            }),
+        });
+
+        let request = create_dummy_request();
+        let rpc_get_balance = RpcGetBalance::new(top_extractor, rpc_gateway);
+
+        let result = rpc_get_balance.method_impl(request).unwrap();
+        assert_eq!(result.2, DirectRequestStatus::Ok);
+        assert_eq!(result.0.free, free_balance);
+        assert_eq!(result.0.reserved, reserved_balance);
+    }
+
+    fn create_dummy_request() -> DirectRequest {
+        DirectRequest {
+            encoded_text: vec![0, 1, 2, 3, 4],
+            shard: H256::from([1u8; 32]),
+        }
+    }
+
+    fn create_get_balance_getter() -> TrustedOperation {
+        let key_pair = ed25519_core::Pair::from_seed(b"12345678901234567890123456789012");
+
+        let trusted_getter =
+            TrustedGetter::get_balance(key_pair.public().into(), CurrencyId::DOT, None);
+        let trusted_getter_signed = trusted_getter.sign(&KeyPair::Ed25519(key_pair));
+
+        TrustedOperation::get(Getter::trusted(trusted_getter_signed))
     }
 }

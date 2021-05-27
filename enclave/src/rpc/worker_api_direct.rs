@@ -16,9 +16,11 @@
 */
 
 pub extern crate alloc;
+use crate::rpc::polkadex_rpc_gateway::PolkadexRpcGateway;
 use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
 };
+use crate::rpc::trusted_operation_verifier::{TrustedOperationExtractor, TrustedOperationVerifier};
 use crate::rpc::{
     api::SideChainApi,
     author::{Author, AuthorApi},
@@ -35,6 +37,7 @@ use crate::top_pool::pool::Options as PoolOptions;
 use crate::utils::write_slice_and_whitespace_pad;
 use alloc::{
     borrow::ToOwned,
+    boxed::Box,
     format,
     slice::{from_raw_parts, from_raw_parts_mut},
     str,
@@ -123,7 +126,13 @@ fn init_io_handler() -> IoHandler {
     io.add_sync_method(&RpcPlaceOrder::name(), RpcPlaceOrder {});
     io.add_sync_method(&RpcCancelOrder::name(), RpcCancelOrder {});
     io.add_sync_method(&RpcWithdraw::name(), RpcWithdraw {});
-    io.add_sync_method(&RpcGetBalance::name(), RpcGetBalance {});
+    io.add_sync_method(
+        &RpcGetBalance::name(),
+        RpcGetBalance::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
 
     // // author_submitAndWatchExtrinsic
     // let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";

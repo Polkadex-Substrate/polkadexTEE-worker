@@ -29,6 +29,24 @@ use polkadex_sgx_primitives::ShardIdentifier;
 use sgx_types::sgx_measurement_t;
 use substratee_stf::{Getter, TrustedCallSigned, TrustedOperation};
 
+pub trait TrustedOperationExtractor: Send + Sync {
+    fn get_verified_trusted_operation(
+        &self,
+        request: DirectRequest,
+    ) -> Result<TrustedOperation, String>;
+}
+
+pub struct TrustedOperationVerifier {}
+
+impl TrustedOperationExtractor for TrustedOperationVerifier {
+    fn get_verified_trusted_operation(
+        &self,
+        request: DirectRequest,
+    ) -> Result<TrustedOperation, String> {
+        get_verified_trusted_operation(request)
+    }
+}
+
 pub fn get_verified_trusted_operation(request: DirectRequest) -> Result<TrustedOperation, String> {
     // decode call
     let shard_id = request.shard;
