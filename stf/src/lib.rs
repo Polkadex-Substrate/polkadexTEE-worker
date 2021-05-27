@@ -400,6 +400,7 @@ pub struct Stf {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use polkadex_sgx_primitives::AssetId;
     use sp_keyring::AccountKeyring;
 
     #[test]
@@ -422,5 +423,29 @@ mod tests {
         );
 
         assert!(signed_call.verify_signature(&mrenclave, &shard));
+    }
+
+    #[test]
+    fn given_proxy_account_on_getter_then_return_some() {
+        let main_account = AccountKeyring::Alice;
+        let proxy_account = AccountKeyring::Bob;
+
+        let trusted_getter = TrustedGetter::get_balance(
+            main_account.public().into(),
+            CurrencyId::DOT,
+            Some(proxy_account.public().into()),
+        );
+
+        assert!(trusted_getter.proxy_account().is_some());
+    }
+
+    #[test]
+    fn given_no_proxy_account_on_getter_then_return_none() {
+        let main_account = AccountKeyring::Alice;
+
+        let trusted_getter =
+            TrustedGetter::get_balance(main_account.public().into(), CurrencyId::DOT, None);
+
+        assert!(trusted_getter.proxy_account().is_none());
     }
 }
