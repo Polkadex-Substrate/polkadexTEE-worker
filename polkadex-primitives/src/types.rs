@@ -1,15 +1,14 @@
 pub extern crate alloc;
 
-use codec::{Decode, Encode, Error};
-use frame_support::sp_runtime::traits::Verify;
 use alloc::vec;
 use alloc::vec::Vec;
+use codec::{Decode, Encode, Error};
+use frame_support::sp_runtime::traits::Verify;
 
+use polkadex_primitives::assets::AssetId;
+use polkadex_primitives::common_types::{AccountId, Balance};
 use sp_core::ed25519::Signature;
 use sp_core::{ed25519, Pair};
-use polkadex_primitives::common_types::{Balance, AccountId};
-use polkadex_primitives::assets::AssetId;
-
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = AccountId;
@@ -30,9 +29,8 @@ pub type CurrencyId = AssetId;
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct MarketId {
     pub base: AssetId,
-    pub quote: AssetId
+    pub quote: AssetId,
 }
-
 
 /// The different Order Types
 /// - market: "m"
@@ -63,7 +61,7 @@ pub enum OrderState {
 }
 
 // Create Order
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy, Eq)]
 pub struct Order {
     pub user_uid: UserId,
     pub market_id: MarketId,
@@ -115,7 +113,7 @@ impl Default for SignedOrder {
             order_id: vec![],
             order: Order {
                 user_uid: AccountId::default(),
-                market_id: MarketId{
+                market_id: MarketId {
                     base: AssetId::POLKADEX,
                     quote: AssetId::DOT,
                 },
