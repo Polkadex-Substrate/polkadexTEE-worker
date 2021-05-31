@@ -21,7 +21,7 @@ pub mod utils {
     use crate::commands::common_args::{
         ACCOUNT_ID_ARG_NAME, MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME,
         MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
-        QUANTITY_ARG_NAME, SHARD_ARG_NAME,
+        ORDER_UUID_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
     };
     use crate::{Getter, Index, TrustedGetter, TrustedOperation};
     use clap::{App, Arg, ArgMatches};
@@ -51,6 +51,12 @@ pub mod utils {
         let shard_arg = format!("--{}={}", SHARD_ARG_NAME, mrenclave);
 
         vec![mrenclave_arg, shard_arg]
+    }
+
+    pub fn create_order_id_args() -> Vec<String> {
+        let order_id_arg = format!("--{}=0l5j0j2lfam", ORDER_UUID_ARG_NAME);
+
+        vec![order_id_arg]
     }
 
     pub fn create_main_account_args() -> Vec<String> {

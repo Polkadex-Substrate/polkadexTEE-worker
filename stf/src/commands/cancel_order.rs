@@ -91,7 +91,7 @@ mod tests {
 
     use crate::commands::test_utils::utils::{
         add_identifiers_app_args, create_identifier_args, create_main_account_args,
-        create_order_args, PerformOperationMock,
+        create_order_args, create_order_id_args, PerformOperationMock,
     };
     use clap::{App, AppSettings};
 
@@ -114,10 +114,10 @@ mod tests {
 
     fn create_cancel_order_args() -> Vec<String> {
         let mut main_account_arg = create_main_account_args();
-        let mut order_args = create_order_args();
+        let mut order_id_args = create_order_id_args();
         let mut identifier_args = create_identifier_args();
 
-        main_account_arg.append(&mut order_args);
+        main_account_arg.append(&mut order_id_args);
         main_account_arg.append(&mut identifier_args);
 
         main_account_arg
