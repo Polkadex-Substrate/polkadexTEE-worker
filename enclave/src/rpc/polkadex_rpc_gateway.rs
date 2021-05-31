@@ -16,22 +16,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub extern crate alloc;
+use alloc::string::String;
+
 use crate::polkadex_balance_storage::{lock_storage_and_get_balances, Balances};
 use crate::polkadex_gateway::{authenticate_user, place_order, GatewayError};
 use polkadex_sgx_primitives::types::{Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::SgxResult;
+use substratee_stf::TrustedCall;
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
 pub trait RpcGateway: Send + Sync {
+    /// verifies that the proxy account (if any) is authorized to represent the main account
     fn authorize_user(
         &self,
         main_account: AccountId,
         proxy_account: Option<AccountId>,
     ) -> Result<(), GatewayError>;
 
+    /// verifies that the proxy account (if any) is authorized to represent the main account
+    /// given a trusted call (convenience function)
+    fn authorize_trusted_call(&self, trusted_call: &TrustedCall) -> Result<(), String>;
+
+    /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
 
+    /// place an order
     fn place_order(
         &self,
         main_account: AccountId,
@@ -49,6 +60,16 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_account: Option<AccountId>,
     ) -> Result<(), GatewayError> {
         authenticate_user(main_account, proxy_account)
+    }
+
+    fn authorize_trusted_call(&self, trusted_call: &TrustedCall) -> Result<(), String> {
+        let main_account = trusted_call.main_account().clone();
+        let proxy_account = trusted_call.proxy_account().clone();
+
+        match self.authorize_user(main_account.clone(), proxy_account.clone()) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(format!("Authorization error: {}", e)),
+        }
     }
 
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {

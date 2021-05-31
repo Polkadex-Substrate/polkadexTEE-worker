@@ -16,12 +16,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub extern crate alloc;
+use alloc::string::String;
+
 use crate::polkadex_balance_storage::Balances;
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use polkadex_sgx_primitives::types::{Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
+use substratee_stf::TrustedCall;
 
 /// Mock implementation to be used in unit testing
 pub struct RpcGatewayMock {
@@ -58,6 +62,13 @@ impl RpcGateway for RpcGatewayMock {
         match self.do_authorize {
             true => Ok(()),
             false => Err(GatewayError::ProxyNotRegisteredForMainAccount),
+        }
+    }
+
+    fn authorize_trusted_call(&self, _trusted_call: &TrustedCall) -> Result<(), String> {
+        match self.do_authorize {
+            true => Ok(()),
+            false => Err(String::from("Authorization failed")),
         }
     }
 

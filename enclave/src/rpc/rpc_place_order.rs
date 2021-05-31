@@ -54,23 +54,17 @@ impl RpcPlaceOrder {
         let verified_trusted_operation =
             self.top_extractor.get_verified_trusted_operation(request)?;
 
-        let trusted_call_signed = match verified_trusted_operation {
+        let trusted_call = match verified_trusted_operation {
             TrustedOperation::direct_call(tcs) => Ok(tcs.call),
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
 
-        let main_account = trusted_call_signed.main_account().clone();
-        let proxy_account = trusted_call_signed.proxy_account().clone();
+        let _authorization_result = self.rpc_gateway.authorize_trusted_call(&trusted_call)?;
 
-        let _authorization_result = match self
-            .rpc_gateway
-            .authorize_user(main_account.clone(), proxy_account.clone())
-        {
-            Ok(()) => Ok(()),
-            Err(e) => Err(format!("Authorization error: {}", e)),
-        }?;
+        let main_account = trusted_call.main_account().clone();
+        let proxy_account = trusted_call.proxy_account();
 
-        let order = match trusted_call_signed {
+        let order = match trusted_call {
             TrustedCall::place_order(_, order, _) => Ok(order),
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
