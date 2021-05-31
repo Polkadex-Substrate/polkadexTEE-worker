@@ -64,6 +64,12 @@ impl RpcGatewayMock {
         get_place_order_mock.do_authorize = do_authorize;
         get_place_order_mock
     }
+
+    pub fn mock_withdraw(do_authorize: bool) -> Self {
+        let mut withdraw_mock = RpcGatewayMock::default();
+        withdraw_mock.do_authorize = do_authorize;
+        withdraw_mock
+    }
 }
 
 impl RpcGateway for RpcGatewayMock {
@@ -126,5 +132,9 @@ impl RpcGateway for RpcGatewayMock {
             }
             None => Err(GatewayError::OrderNotFound),
         }
+    }
+
+    fn withdraw(&self, _main_account: AccountId, _token: AssetId, _amount: u128) -> SgxResult<()> {
+        Ok(())
     }
 }

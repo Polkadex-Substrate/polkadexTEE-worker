@@ -19,11 +19,13 @@
 pub extern crate alloc;
 use alloc::{string::String, string::ToString};
 
-use crate::polkadex_balance_storage::{lock_storage_and_get_balances, Balances};
+use crate::polkadex_balance_storage::{
+    lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
+};
 use crate::polkadex_gateway::{authenticate_user, cancel_order, place_order, GatewayError};
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{Order, OrderUUID};
-use polkadex_sgx_primitives::{AccountId, AssetId};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::SgxResult;
 use substratee_stf::{TrustedCall, TrustedOperation};
 
@@ -61,6 +63,9 @@ pub trait RpcGateway: Send + Sync {
         proxy_acc: Option<AccountId>,
         order_uuid: OrderUUID,
     ) -> Result<(), GatewayError>;
+
+    /// withdraw funds from main account
+    fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()>;
 }
 
 pub struct PolkadexRpcGateway {}
@@ -112,5 +117,9 @@ impl RpcGateway for PolkadexRpcGateway {
         order_uuid: OrderUUID,
     ) -> Result<(), GatewayError> {
         cancel_order(main_account, proxy_acc, order_uuid)
+    }
+
+    fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
+        lock_storage_and_withdraw(main_account, token, amount)
     }
 }
