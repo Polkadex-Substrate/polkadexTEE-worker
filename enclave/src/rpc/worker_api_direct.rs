@@ -132,7 +132,16 @@ fn init_io_handler() -> IoHandler {
         ),
     );
 
-    io.add_sync_method(&RpcCancelOrder::name(), RpcCancelOrder {});
+    // CANCEL ORDER
+    io.add_sync_method(
+        &RpcCancelOrder::name(),
+        RpcCancelOrder::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
+
+    // WITHDRAW
     io.add_sync_method(&RpcWithdraw::name(), RpcWithdraw {});
 
     // GET BALANCE

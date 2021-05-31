@@ -45,7 +45,7 @@ $CLIENT trusted get_balance --accountid=//AliceIncognito \
 
 echo "Cancel order"
 $CLIENT trusted cancel_order --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
- --marketbase=polkadex --marketquote=dot --markettype=trusted --ordertype=limit --orderside=ask --quantity=987345 \
+ --orderid=oijef03jaf \
  --mrenclave $MRENCLAVE --direct
 
 echo "Withdraw"

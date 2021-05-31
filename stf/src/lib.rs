@@ -40,7 +40,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 
-use polkadex_sgx_primitives::types::{CurrencyId, Order};
+use polkadex_sgx_primitives::types::{CurrencyId, Order, OrderUUID};
 
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
@@ -179,7 +179,7 @@ pub enum TrustedCall {
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
 
     place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
-    cancel_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+    cancel_order(AccountId, OrderUUID, Option<AccountId>), // (SignerAccount, Order ID, MainAccount (if signer is proxy))
     withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
 }
 

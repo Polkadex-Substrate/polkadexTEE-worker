@@ -65,7 +65,9 @@ use sp_core::ed25519 as spEd25519;
 
 use rpc::author::{Author, AuthorApi};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
-use rpc::{io_handler_extensions, rpc_call_encoder, rpc_get_balance, rpc_place_order};
+use rpc::{
+    io_handler_extensions, rpc_call_encoder, rpc_cancel_order, rpc_get_balance, rpc_place_order,
+};
 
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
@@ -102,6 +104,8 @@ pub extern "C" fn test_main_entrance() -> size_t {
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         rpc_get_balance::tests::test_given_valid_top_return_balances,
         rpc_place_order::tests::test_given_valid_call_return_order_uuid,
+        rpc_cancel_order::tests::test_given_valid_order_id_return_success,
+        rpc_cancel_order::tests::test_given_order_id_mismatch_then_fail,
         io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
 
         // Substratee Tests

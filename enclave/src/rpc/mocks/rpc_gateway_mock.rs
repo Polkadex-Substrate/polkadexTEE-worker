@@ -25,31 +25,44 @@ use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use polkadex_sgx_primitives::types::{Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
-use substratee_stf::TrustedCall;
+use substratee_stf::{TrustedCall, TrustedOperation};
 
 /// Mock implementation to be used in unit testing
 pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
-    pub order_uuid_to_return: Option<OrderUUID>,
+    pub order_uuid: Option<OrderUUID>,
 }
 
 /// constructors
 impl RpcGatewayMock {
-    pub fn mock_balances(balances: Option<Balances>, do_authorize: bool) -> Self {
+    fn default() -> Self {
         RpcGatewayMock {
-            do_authorize,
-            balance_to_return: balances,
-            order_uuid_to_return: None,
+            do_authorize: false,
+            balance_to_return: None,
+            order_uuid: None,
         }
     }
 
+    pub fn mock_balances(balances: Option<Balances>, do_authorize: bool) -> Self {
+        let mut get_balances_mock = RpcGatewayMock::default();
+        get_balances_mock.balance_to_return = balances;
+        get_balances_mock.do_authorize = do_authorize;
+        get_balances_mock
+    }
+
     pub fn mock_place_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
-        RpcGatewayMock {
-            do_authorize,
-            balance_to_return: None,
-            order_uuid_to_return: order_uuid,
-        }
+        let mut get_place_order_mock = RpcGatewayMock::default();
+        get_place_order_mock.order_uuid = order_uuid;
+        get_place_order_mock.do_authorize = do_authorize;
+        get_place_order_mock
+    }
+
+    pub fn mock_cancel_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
+        let mut get_place_order_mock = RpcGatewayMock::default();
+        get_place_order_mock.order_uuid = order_uuid;
+        get_place_order_mock.do_authorize = do_authorize;
+        get_place_order_mock
     }
 }
 
@@ -65,9 +78,15 @@ impl RpcGateway for RpcGatewayMock {
         }
     }
 
-    fn authorize_trusted_call(&self, _trusted_call: &TrustedCall) -> Result<(), String> {
+    fn authorize_trusted_call(
+        &self,
+        trusted_operation: TrustedOperation,
+    ) -> Result<TrustedCall, String> {
         match self.do_authorize {
-            true => Ok(()),
+            true => match trusted_operation {
+                TrustedOperation::direct_call(tcs) => Ok(tcs.call),
+                _ => Err(String::from("Trusted operation is not a direct call")),
+            },
             false => Err(String::from("Authorization failed")),
         }
     }
@@ -85,8 +104,26 @@ impl RpcGateway for RpcGatewayMock {
         _proxy_acc: Option<AccountId>,
         _order: Order,
     ) -> Result<OrderUUID, GatewayError> {
-        match &self.order_uuid_to_return {
+        match &self.order_uuid {
             Some(o) => Ok(o.clone()),
+            None => Err(GatewayError::OrderNotFound),
+        }
+    }
+
+    fn cancel_order(
+        &self,
+        _main_account: AccountId,
+        _proxy_acc: Option<AccountId>,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError> {
+        match &self.order_uuid {
+            Some(o) => {
+                return if o.eq(&order_uuid) {
+                    Ok(())
+                } else {
+                    Err(GatewayError::OrderNotFound)
+                }
+            }
             None => Err(GatewayError::OrderNotFound),
         }
     }

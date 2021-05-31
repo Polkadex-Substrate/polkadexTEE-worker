@@ -54,12 +54,9 @@ impl RpcPlaceOrder {
         let verified_trusted_operation =
             self.top_extractor.get_verified_trusted_operation(request)?;
 
-        let trusted_call = match verified_trusted_operation {
-            TrustedOperation::direct_call(tcs) => Ok(tcs.call),
-            _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
-        }?;
-
-        let _authorization_result = self.rpc_gateway.authorize_trusted_call(&trusted_call)?;
+        let trusted_call = self
+            .rpc_gateway
+            .authorize_trusted_call(verified_trusted_operation)?;
 
         let main_account = trusted_call.main_account().clone();
         let proxy_account = trusted_call.proxy_account();
@@ -96,18 +93,15 @@ impl RpcMethodSync for RpcPlaceOrder {
 
 pub mod tests {
 
-    pub extern crate alloc;
     use super::*;
     use crate::rpc::mocks::dummy_builder::{
         create_dummy_account, create_dummy_order, create_dummy_request, sign_trusted_call,
     };
     use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
     use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
-    use alloc::boxed::Box;
     use codec::Encode;
     use polkadex_sgx_primitives::AccountId;
     use sp_core::Pair;
-    use substratee_stf::{TrustedCall, TrustedOperation};
 
     pub fn test_given_valid_call_return_order_uuid() {
         let top_extractor = Box::new(TrustedOperationExtractorMock {
