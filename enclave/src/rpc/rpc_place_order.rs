@@ -17,43 +17,74 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use alloc::{string::String, string::ToString};
+use alloc::{boxed::Box, string::String, string::ToString};
 
+use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
-use crate::rpc::rpc_info::{RpcCallStatus, RpcInfo};
-use crate::rpc::trusted_operation_verifier::get_verified_trusted_operation;
+use crate::rpc::rpc_info::RpcCallStatus;
+use crate::rpc::trusted_operation_verifier::TrustedOperationExtractor;
 use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
-use polkadex_sgx_primitives::types::DirectRequest;
+use polkadex_sgx_primitives::types::{DirectRequest, OrderUUID};
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
-pub struct RpcPlaceOrder {}
+pub struct RpcPlaceOrder {
+    top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
+    rpc_gateway: Box<dyn RpcGateway + 'static>,
+}
 
 impl RpcPlaceOrder {
+    pub fn new(
+        top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
+        rpc_gateway: Box<dyn RpcGateway + 'static>,
+    ) -> Self {
+        RpcPlaceOrder {
+            top_extractor,
+            rpc_gateway,
+        }
+    }
+
     fn method_impl(
         &self,
         request: DirectRequest,
-    ) -> Result<(RpcInfo, bool, DirectRequestStatus), String> {
+    ) -> Result<(OrderUUID, bool, DirectRequestStatus), String> {
         debug!("entering place_order RPC");
 
-        let verified_trusted_operation = get_verified_trusted_operation(request)?;
+        let verified_trusted_operation =
+            self.top_extractor.get_verified_trusted_operation(request)?;
 
-        let place_order_call_args = match verified_trusted_operation {
-            TrustedOperation::direct_call(tcs) => match tcs.call {
-                TrustedCall::place_order(a, o, p) => Ok((a, o, p)),
-                _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
-            },
+        let trusted_call_signed = match verified_trusted_operation {
+            TrustedOperation::direct_call(tcs) => Ok(tcs.call),
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
 
-        // TODO call implementation here
+        let main_account = trusted_call_signed.main_account().clone();
+        let proxy_account = trusted_call_signed.proxy_account().clone();
 
-        Ok((
-            RpcInfo::from(RpcCallStatus::operation_success),
-            false,
-            DirectRequestStatus::Ok,
-        ))
+        let _authorization_result = match self
+            .rpc_gateway
+            .authorize_user(main_account.clone(), proxy_account.clone())
+        {
+            Ok(()) => Ok(()),
+            Err(e) => Err(format!("Authorization error: {}", e)),
+        }?;
+
+        let order = match trusted_call_signed {
+            TrustedCall::place_order(_, order, _) => Ok(order),
+            _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
+        }?;
+
+        let order_uuid =
+            match self
+                .rpc_gateway
+                .place_order(main_account, proxy_account.clone(), order)
+            {
+                Ok(uuid) => Ok(uuid),
+                Err(e) => Err(String::from(e.to_string())),
+            }?;
+
+        Ok((order_uuid, false, DirectRequestStatus::Ok))
     }
 }
 
@@ -66,5 +97,55 @@ impl RpcCall for RpcPlaceOrder {
 impl RpcMethodSync for RpcPlaceOrder {
     fn call(&self, params: Params) -> BoxFuture<RpcResult<Value>> {
         JsonRpcCallEncoder::call(params, &|r: DirectRequest| self.method_impl(r))
+    }
+}
+
+pub mod tests {
+
+    pub extern crate alloc;
+    use super::*;
+    use crate::rpc::mocks::dummy_builder::{
+        create_dummy_account, create_dummy_order, create_dummy_request, sign_trusted_call,
+    };
+    use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
+    use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
+    use alloc::boxed::Box;
+    use codec::Encode;
+    use polkadex_sgx_primitives::AccountId;
+    use sp_core::Pair;
+    use substratee_stf::{TrustedCall, TrustedOperation};
+
+    pub fn test_given_valid_call_return_order_uuid() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_place_order_operation()),
+        });
+
+        let order_uuid = "lkas903jfaj3".encode();
+
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_place_order(
+            Some(order_uuid.clone()),
+            true,
+        ));
+
+        let request = create_dummy_request();
+
+        let rpc_place_order = RpcPlaceOrder::new(top_extractor, rpc_gateway);
+
+        let result = rpc_place_order.method_impl(request).unwrap();
+
+        assert_eq!(result.0, order_uuid);
+        assert_eq!(result.2, DirectRequestStatus::Ok);
+    }
+
+    fn create_place_order_operation() -> TrustedOperation {
+        let key_pair = create_dummy_account();
+        let account_id: AccountId = key_pair.public().into();
+        let order = create_dummy_order(account_id.clone());
+
+        let trusted_call = TrustedCall::place_order(account_id.clone(), order, None);
+
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+
+        TrustedOperation::direct_call(trusted_call_signed)
     }
 }

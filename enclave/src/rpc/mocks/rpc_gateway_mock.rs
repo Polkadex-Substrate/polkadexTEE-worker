@@ -19,12 +19,34 @@
 use crate::polkadex_balance_storage::Balances;
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
+use polkadex_sgx_primitives::types::{Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
 
+/// Mock implementation to be used in unit testing
 pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
+    pub order_uuid_to_return: Option<OrderUUID>,
+}
+
+/// constructors
+impl RpcGatewayMock {
+    pub fn mock_balances(balances: Option<Balances>, do_authorize: bool) -> Self {
+        RpcGatewayMock {
+            do_authorize,
+            balance_to_return: balances,
+            order_uuid_to_return: None,
+        }
+    }
+
+    pub fn mock_place_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
+        RpcGatewayMock {
+            do_authorize,
+            balance_to_return: None,
+            order_uuid_to_return: order_uuid,
+        }
+    }
 }
 
 impl RpcGateway for RpcGatewayMock {
@@ -43,6 +65,18 @@ impl RpcGateway for RpcGatewayMock {
         match &self.balance_to_return {
             Some(b) => Ok(b.clone()),
             None => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
+    }
+
+    fn place_order(
+        &self,
+        _main_account: AccountId,
+        _proxy_acc: Option<AccountId>,
+        _order: Order,
+    ) -> Result<OrderUUID, GatewayError> {
+        match &self.order_uuid_to_return {
+            Some(o) => Ok(o.clone()),
+            None => Err(GatewayError::OrderNotFound),
         }
     }
 }

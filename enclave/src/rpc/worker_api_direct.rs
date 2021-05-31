@@ -123,9 +123,19 @@ fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, Str
 fn init_io_handler() -> IoHandler {
     let mut io = IoHandler::new();
 
-    io.add_sync_method(&RpcPlaceOrder::name(), RpcPlaceOrder {});
+    // PLACE ORDER
+    io.add_sync_method(
+        &RpcPlaceOrder::name(),
+        RpcPlaceOrder::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
+
     io.add_sync_method(&RpcCancelOrder::name(), RpcCancelOrder {});
     io.add_sync_method(&RpcWithdraw::name(), RpcWithdraw {});
+
+    // GET BALANCE
     io.add_sync_method(
         &RpcGetBalance::name(),
         RpcGetBalance::new(

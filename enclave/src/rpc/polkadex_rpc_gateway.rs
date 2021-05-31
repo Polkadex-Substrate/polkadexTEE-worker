@@ -17,7 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::polkadex_balance_storage::{lock_storage_and_get_balances, Balances};
-use crate::polkadex_gateway::{authenticate_user, GatewayError};
+use crate::polkadex_gateway::{authenticate_user, place_order, GatewayError};
+use polkadex_sgx_primitives::types::{Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::SgxResult;
 
@@ -30,6 +31,13 @@ pub trait RpcGateway: Send + Sync {
     ) -> Result<(), GatewayError>;
 
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
+
+    fn place_order(
+        &self,
+        main_account: AccountId,
+        proxy_acc: Option<AccountId>,
+        order: Order,
+    ) -> Result<OrderUUID, GatewayError>;
 }
 
 pub struct PolkadexRpcGateway {}
@@ -45,5 +53,14 @@ impl RpcGateway for PolkadexRpcGateway {
 
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {
         lock_storage_and_get_balances(main_account, asset_id)
+    }
+
+    fn place_order(
+        &self,
+        main_account: AccountId,
+        proxy_acc: Option<AccountId>,
+        order: Order,
+    ) -> Result<OrderUUID, GatewayError> {
+        place_order(main_account, proxy_acc, order)
     }
 }
