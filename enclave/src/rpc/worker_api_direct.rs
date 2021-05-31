@@ -16,57 +16,53 @@
 */
 
 pub extern crate alloc;
+use crate::rpc::polkadex_rpc_gateway::PolkadexRpcGateway;
+use crate::rpc::return_value_encoding::{
+    compute_encoded_return_error, compute_encoded_return_value,
+};
+use crate::rpc::trusted_operation_verifier::{TrustedOperationExtractor, TrustedOperationVerifier};
+use crate::rpc::{
+    api::SideChainApi,
+    author::{Author, AuthorApi},
+    basic_pool::BasicPool,
+    io_handler_extensions,
+    rpc_call_encoder::RpcCall,
+    rpc_cancel_order::RpcCancelOrder,
+    rpc_get_balance::RpcGetBalance,
+    rpc_place_order::RpcPlaceOrder,
+    rpc_withdraw::RpcWithdraw,
+};
+use crate::rsa3072;
+use crate::top_pool::pool::Options as PoolOptions;
+use crate::utils::write_slice_and_whitespace_pad;
 use alloc::{
     borrow::ToOwned,
+    boxed::Box,
     format,
     slice::{from_raw_parts, from_raw_parts_mut},
     str,
     string::String,
     vec::Vec,
 };
+use base58::FromBase58;
+use chain_relay::Block;
+use codec::{Decode, Encode};
 use core::{ops::Deref, result::Result};
-
+use jsonrpc_core::futures::executor;
+use jsonrpc_core::Error as RpcError;
+use jsonrpc_core::*;
+use log::*;
+use serde_json::*;
 use sgx_types::*;
+use sp_core::H256 as Hash;
 use std::{
     sync::atomic::{AtomicPtr, Ordering},
     sync::{Arc, SgxMutex},
 };
-
-use sp_core::H256 as Hash;
-
-use codec::{Decode, Encode};
-use log::*;
-
-use crate::rpc::{
-    api::SideChainApi,
-    author::{Author, AuthorApi},
-    basic_pool::BasicPool,
-    io_handler_extensions,
-};
-
-use crate::top_pool::pool::Options as PoolOptions;
-
-use jsonrpc_core::futures::executor;
-use jsonrpc_core::Error as RpcError;
-use jsonrpc_core::*;
-use serde_json::*;
-
-use substratee_stf::ShardIdentifier;
-
-use base58::FromBase58;
-use chain_relay::Block;
-
 use substratee_node_primitives::Request;
+use substratee_stf::ShardIdentifier;
 use substratee_worker_primitives::RpcReturnValue;
 use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
-
-use crate::rpc::return_value_encoding::{
-    compute_encoded_return_error, compute_encoded_return_value,
-};
-
-use crate::rpc::rpc_api_calls::get_all_rpc_calls;
-use crate::rsa3072;
-use crate::utils::write_slice_and_whitespace_pad;
 
 static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -127,10 +123,16 @@ fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, Str
 fn init_io_handler() -> IoHandler {
     let mut io = IoHandler::new();
 
-    // Add rpc methods
-    for api_call in get_all_rpc_calls() {
-        io.add_sync_method(api_call.method_name(), api_call);
-    }
+    io.add_sync_method(&RpcPlaceOrder::name(), RpcPlaceOrder {});
+    io.add_sync_method(&RpcCancelOrder::name(), RpcCancelOrder {});
+    io.add_sync_method(&RpcWithdraw::name(), RpcWithdraw {});
+    io.add_sync_method(
+        &RpcGetBalance::name(),
+        RpcGetBalance::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
 
     // // author_submitAndWatchExtrinsic
     // let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";

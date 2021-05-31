@@ -1,11 +1,14 @@
+pub extern crate alloc;
+use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult};
+
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::{AccountId, Balance};
 use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent};
+use polkadex_sgx_primitives::{AccountId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, SgxMutex, SgxMutexGuard};
 use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::{Arc, SgxMutex, SgxMutexGuard};
 
 use crate::constants::UNIT;
 use crate::polkadex;
@@ -40,13 +43,25 @@ pub enum GatewayError {
     UnableToCancelOrder,
 }
 
+impl alloc::fmt::Display for GatewayError {
+    fn fmt(&self, f: &mut alloc::fmt::Formatter) -> FormatResult {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
+}
+
 /// Place order function does the following
 /// 1. authenticate
 /// 2. mutate balances (reserve amount offered in order)
 /// 3. store_order (async)
 /// 4. send order to OpenFinex API
 /// 5. report OpenFinex API result to sender
-pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order: Order) -> Result<OrderUUID, GatewayError> {
+pub fn place_order(
+    main_account: AccountId,
+    proxy_acc: Option<AccountId>,
+    order: Order,
+) -> Result<OrderUUID, GatewayError> {
     // Authentication
     authenticate_user(main_account.clone(), proxy_acc)?;
     // Mutate Balances
@@ -59,16 +74,25 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
             if let Some(price) = order.price {
                 match order.side {
                     OrderSide::BID => {
-                        let amount = ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
-                        match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, amount) {
+                        let amount =
+                            ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
+                        match polkadex_balance_storage::reserve_balance(
+                            &main_account,
+                            order.market_id.quote,
+                            amount,
+                        ) {
                             Ok(()) => {}
-                            Err(_) => return Err(GatewayError::FailedToReserveBalance)
+                            Err(_) => return Err(GatewayError::FailedToReserveBalance),
                         };
                     }
                     OrderSide::ASK => {
-                        match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity) {
+                        match polkadex_balance_storage::reserve_balance(
+                            &main_account,
+                            order.market_id.base,
+                            order.quantity,
+                        ) {
                             Ok(()) => {}
-                            Err(_) => return Err(GatewayError::FailedToReserveBalance)
+                            Err(_) => return Err(GatewayError::FailedToReserveBalance),
                         };
                     }
                 }
@@ -82,18 +106,26 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
                 // User defines the max amount in quote they want to use for market buy, it is defined in price field of Order.
                 OrderSide::BID => {
                     if let Some(price) = order.price {
-                        match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.quote, price) {
+                        match polkadex_balance_storage::reserve_balance(
+                            &main_account,
+                            order.market_id.quote,
+                            price,
+                        ) {
                             Ok(()) => {}
-                            Err(_) => return Err(GatewayError::FailedToReserveBalance)
+                            Err(_) => return Err(GatewayError::FailedToReserveBalance),
                         };
                     } else {
                         return Err(GatewayError::MarketOrderPriceNotDefined);
                     }
                 }
                 OrderSide::ASK => {
-                    match polkadex_balance_storage::reserve_balance(&main_account, order.market_id.base, order.quantity) {
+                    match polkadex_balance_storage::reserve_balance(
+                        &main_account,
+                        order.market_id.base,
+                        order.quantity,
+                    ) {
                         Ok(()) => {}
-                        Err(_) => return Err(GatewayError::FailedToReserveBalance)
+                        Err(_) => return Err(GatewayError::FailedToReserveBalance),
                     };
                 }
             }
@@ -121,7 +153,8 @@ pub fn place_order(main_account: AccountId, proxy_acc: Option<AccountId>, order:
     // }
 
     let order_uuid: OrderUUID = send_order_to_open_finex(order.clone())?;
-    polkadex_orderbook_storage::add_order(order, order_uuid.clone()).map_err(|_| GatewayError::UndefinedBehaviour)?; // TODO: Change the error type of add order to GateWay Error.
+    polkadex_orderbook_storage::add_order(order, order_uuid.clone())
+        .map_err(|_| GatewayError::UndefinedBehaviour)?; // TODO: Change the error type of add order to GateWay Error.
     Ok(order_uuid)
 }
 
@@ -139,7 +172,11 @@ fn send_cancel_request_to_openfinex(order_uuid: &OrderUUID) -> Result<(), Gatewa
 /// 1. authenticate
 /// 2. Cache the cancel request
 /// 3. send cancel_order to OpenFinex API
-pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+pub fn cancel_order(
+    main_account: AccountId,
+    proxy_acc: Option<AccountId>,
+    order_uuid: OrderUUID,
+) -> Result<(), GatewayError> {
     // Authenticate
     authenticate_user(main_account.clone(), proxy_acc)?;
     // if let Ok(mutex) = load_cancel_cache_pointer() {
@@ -151,40 +188,48 @@ pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order
     // Mutate Balances
     if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid) {
         match result {
-            Some(cancelled_order) => {
-                match cancelled_order.order_type {
-                    OrderType::LIMIT => {
-                        if let Some(price) = cancelled_order.price {
-                            match cancelled_order.side {
-                                OrderSide::BID => {
-                                    let amount = ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
-                                    match polkadex_balance_storage::unreserve_balance(cancelled_order.user_uid, cancelled_order.market_id.quote, amount) {
-                                        Ok(()) => {}
-                                        Err(_) => return Err(GatewayError::FailedToUnReserveBalance)
-                                    };
-                                }
-                                OrderSide::ASK => {
-                                    match polkadex_balance_storage::unreserve_balance(cancelled_order.user_uid, cancelled_order.market_id.base, cancelled_order.quantity) {
-                                        Ok(()) => {}
-                                        Err(_) => return Err(GatewayError::FailedToUnReserveBalance)
-                                    };
-                                }
+            Some(cancelled_order) => match cancelled_order.order_type {
+                OrderType::LIMIT => {
+                    if let Some(price) = cancelled_order.price {
+                        match cancelled_order.side {
+                            OrderSide::BID => {
+                                let amount = ((price as f64)
+                                    * ((cancelled_order.quantity as f64) / (UNIT as f64)))
+                                    as u128;
+                                match polkadex_balance_storage::unreserve_balance(
+                                    cancelled_order.user_uid,
+                                    cancelled_order.market_id.quote,
+                                    amount,
+                                ) {
+                                    Ok(()) => {}
+                                    Err(_) => return Err(GatewayError::FailedToUnReserveBalance),
+                                };
                             }
-                        } else {
-                            error!("Unable to find price for limit order");
-                            return Err(GatewayError::LimitOrderPriceNotFound);
+                            OrderSide::ASK => {
+                                match polkadex_balance_storage::unreserve_balance(
+                                    cancelled_order.user_uid,
+                                    cancelled_order.market_id.base,
+                                    cancelled_order.quantity,
+                                ) {
+                                    Ok(()) => {}
+                                    Err(_) => return Err(GatewayError::FailedToUnReserveBalance),
+                                };
+                            }
                         }
-                    }
-                    OrderType::MARKET => {
-                        error!("Cancel Order is not applicable for Market Order");
-                        return Err(GatewayError::UndefinedBehaviour);
-                    }
-                    OrderType::FillOrKill | OrderType::PostOnly => {
-                        error!("OrderType is not implemented");
-                        return Err(GatewayError::NotImplementedYet);
+                    } else {
+                        error!("Unable to find price for limit order");
+                        return Err(GatewayError::LimitOrderPriceNotFound);
                     }
                 }
-            }
+                OrderType::MARKET => {
+                    error!("Cancel Order is not applicable for Market Order");
+                    return Err(GatewayError::UndefinedBehaviour);
+                }
+                OrderType::FillOrKill | OrderType::PostOnly => {
+                    error!("OrderType is not implemented");
+                    return Err(GatewayError::NotImplementedYet);
+                }
+            },
             None => {
                 error!("Unable to find order for given order_uuid");
                 return Err(GatewayError::OrderNotFound);
@@ -259,18 +304,24 @@ pub fn cancel_order(main_account: AccountId, proxy_acc: Option<AccountId>, order
 //     Err(GatewayError::UndefinedBehaviour)
 // }
 
-
-pub fn authenticate_user(main_acc: AccountId, proxy_acc: Option<AccountId>) -> Result<(), GatewayError> {
+pub fn authenticate_user(
+    main_acc: AccountId,
+    proxy_acc: Option<AccountId>,
+) -> Result<(), GatewayError> {
     // Authentication
     match proxy_acc {
         Some(proxy) => {
-            if !polkadex::check_if_proxy_registered(main_acc, proxy).map_err(|_| GatewayError::UndefinedBehaviour)? {
+            if !polkadex::check_if_proxy_registered(main_acc, proxy)
+                .map_err(|_| GatewayError::UndefinedBehaviour)?
+            {
                 debug!("Proxy Account is not registered for given Main Account");
                 return Err(GatewayError::ProxyNotRegisteredForMainAccount);
             }
         }
         None => {
-            if !polkadex::check_if_main_account_registered(main_acc).map_err(|_| GatewayError::UndefinedBehaviour)? {
+            if !polkadex::check_if_main_account_registered(main_acc)
+                .map_err(|_| GatewayError::UndefinedBehaviour)?
+            {
                 debug!("Main Account is not registered");
                 return Err(GatewayError::MainAccountNotRegistered);
             }

@@ -16,8 +16,7 @@
 */
 
 pub extern crate alloc;
-use alloc::{str, string::String, string::ToString, vec::Vec};
-use codec::Error as CodecError;
+use alloc::{string::String, string::ToString};
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Clone, Debug)]
@@ -28,6 +27,20 @@ pub enum RpcCallStatus {
     decoding_failure,
     mrenclave_failure,
     operation_success,
+}
+
+impl ToString for RpcCallStatus {
+    fn to_string(&self) -> String {
+        match self {
+            RpcCallStatus::operation_type_mismatch => String::from("Operation types do not match"),
+            RpcCallStatus::signature_verification_failure => {
+                String::from("Failed to verify signature")
+            }
+            RpcCallStatus::decoding_failure => String::from("Failed to decode"),
+            RpcCallStatus::mrenclave_failure => String::from("Failed to get MRENCLAVE"),
+            RpcCallStatus::operation_success => String::from("Operation was successful"),
+        }
+    }
 }
 
 #[derive(Encode, Decode, Clone, Debug)]
@@ -43,18 +56,3 @@ impl RpcInfo {
         RpcInfo { status: s }
     }
 }
-
-// impl Encode for RpcInfo {
-//     fn encode(&self) -> Vec<u8> {
-//         self.status.encode()
-//     }
-// }
-//
-// impl Decode for RpcInfo {
-//     fn decode<T>(input: &mut T) -> Result<Self, CodecError> {
-//         return match String::decode(input) {
-//             Ok(s) => Ok(RpcInfo::from(s)),
-//             Err(e) => Err(e),
-//         };
-//     }
-// }

@@ -19,6 +19,7 @@ pub extern crate alloc;
 use alloc::{string::String, vec::Vec};
 
 use codec::{Decode, Encode};
+use core::result::Result;
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_core::*;
 use polkadex_sgx_primitives::types::DirectRequest;
@@ -29,7 +30,12 @@ use crate::rpc::return_value_encoding::{
     compute_encoded_return_error, compute_encoded_return_value,
 };
 
-type RpcMethodImpl<'a, T> = &'a dyn Fn(DirectRequest) -> RpcResult<(T, bool, DirectRequestStatus)>;
+type RpcMethodImpl<'a, T> =
+    &'a dyn Fn(DirectRequest) -> Result<(T, bool, DirectRequestStatus), String>;
+
+pub trait RpcCall: RpcMethodSync {
+    fn name() -> String;
+}
 
 pub trait RpcCallEncoder {
     fn call<T: Encode>(
@@ -111,18 +117,5 @@ pub mod tests {
         } else {
             assert!(false, "result did not match a Value::Array as expected");
         }
-
-        //let outer_message = str::from_utf8(&result).unwrap();
-        //debug!("{:#?}", outer_message)
-
-        // let rpc_return_value = RpcReturnValue::decode(&mut result).unwrap();
-        // let inner_message = str::from_utf8(&rpc_return_value.value).unwrap();
-
-        // assert_eq!(rpc_return_value.status, request_status);
-        //assert_eq!(rpc_return_value.do_watch, expected_do_watch);
-
-        //debug!("{:#?}", result);
-        //debug!("{:#?}", inner_message);
-        //debug!(result.decode());
     }
 }
