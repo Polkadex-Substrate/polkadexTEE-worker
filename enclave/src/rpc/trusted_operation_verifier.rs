@@ -119,3 +119,89 @@ fn verify_signature_of_signed_call(
 
     Err(RpcCallStatus::signature_verification_failure)
 }
+
+pub mod tests {
+
+    use super::*;
+    use crate::rpc::mocks::dummy_builder::{
+        create_dummy_account, create_dummy_request, sign_trusted_call,
+    };
+    use codec::Encode;
+    use polkadex_sgx_primitives::{AccountId, AssetId};
+    use sp_core::{ed25519 as ed25519_core, Pair, H256};
+    use substratee_stf::TrustedCall;
+
+    pub fn given_valid_operation_in_request_then_decode_succeeds() {
+        let input_trusted_operation = create_trusted_operation();
+        let request = DirectRequest {
+            encoded_text: input_trusted_operation.encode(),
+            shard: H256::from([1u8; 32]),
+        };
+
+        let decoded_operation = decode_request(request).unwrap();
+
+        match decoded_operation {
+            TrustedOperation::direct_call(tcs) => match tcs.call {
+                TrustedCall::withdraw(_, asset_id, amount, proxy) => {
+                    assert_eq!(asset_id, AssetId::POLKADEX);
+                    assert_eq!(amount, 14875210);
+                    assert!(proxy.is_none());
+                }
+                _ => assert!(false, "got unexpected TrustedCall back from decoding"),
+            },
+            _ => assert!(false, "got unexpected TrustedOperation back from decoding"),
+        }
+    }
+
+    pub fn given_nonsense_text_in_request_then_decode_fails() {
+        let invalid_request = create_dummy_request();
+
+        let top_result = decode_request(invalid_request);
+
+        assert!(top_result.is_err());
+    }
+
+    pub fn given_valid_operation_with_invalid_signature_then_return_error() {
+        let invalid_top = create_trusted_operation_with_incorrect_signature();
+        let request = DirectRequest {
+            encoded_text: invalid_top.encode(),
+            shard: H256::from([1u8; 32]),
+        };
+
+        let top_result = get_verified_trusted_operation(request);
+
+        assert!(top_result.is_err());
+
+        match top_result {
+            Ok(_) => assert!(false, "did not expect Ok result"),
+            Err(e) => {
+                assert_eq!(e, RpcCallStatus::signature_verification_failure.to_string())
+            }
+        }
+    }
+
+    fn create_trusted_operation() -> TrustedOperation {
+        let key_pair = create_dummy_account();
+        let account_id: AccountId = key_pair.public().into();
+
+        let trusted_call =
+            TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+
+        TrustedOperation::direct_call(trusted_call_signed)
+    }
+
+    fn create_trusted_operation_with_incorrect_signature() -> TrustedOperation {
+        let key_pair = create_dummy_account();
+        let account_id: AccountId = key_pair.public().into();
+
+        let malicious_signer = ed25519_core::Pair::from_seed(b"19857777701234567890123456789012");
+
+        let trusted_call =
+            TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
+
+        let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer);
+
+        TrustedOperation::direct_call(trusted_call_signed)
+    }
+}

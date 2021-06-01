@@ -15,6 +15,6 @@ pub mod rpc_cancel_order;
 pub mod rpc_get_balance;
 pub mod rpc_place_order;
 pub mod rpc_withdraw;
-mod trusted_operation_verifier;
+pub mod trusted_operation_verifier;
 
 pub mod mocks;
