@@ -15,6 +15,7 @@ use crate::polkadex_orderbook_storage;
 
 #[derive(Encode, Decode, Debug, PartialOrd, PartialEq)]
 pub enum GatewayError {
+    BasicOrderCheckError,
     /// Price for limit Order not found
     LimitOrderPriceNotFound,
     /// Quantity zero for limit order,
@@ -155,7 +156,7 @@ pub fn place_order(
     // }
 
     let order_uuid: OrderUUID = send_order_to_open_finex(order.clone())?;
-    polkadex_orderbook_storage::add_order(order, order_uuid.clone())
+    polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid.clone())
         .map_err(|_| GatewayError::UndefinedBehaviour)?; // TODO: Change the error type of add order to GateWay Error.
     Ok(order_uuid)
 }
@@ -187,7 +188,7 @@ pub fn cancel_order(
     //     // Send cancel order to Openfinex API
     // }
     send_cancel_request_to_openfinex(&order_uuid)?;
-    let cancelled_order = polkadex_orderbook_storage::remove_order(&order_uuid)?;
+    let cancelled_order = polkadex_orderbook_storage::lock_storage_and_remove_order(&order_uuid)?;
     match (cancelled_order.order_type, cancelled_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let price = cancelled_order
@@ -196,7 +197,7 @@ pub fn cancel_order(
             let amount =
                 ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
             polkadex_balance_storage::lock_storage_unreserve_balance(
-                cancelled_order.user_uid,
+                &cancelled_order.user_uid,
                 cancelled_order.market_id.quote,
                 amount,
             )?;
@@ -204,7 +205,7 @@ pub fn cancel_order(
 
         (OrderType::LIMIT, OrderSide::ASK) => {
             polkadex_balance_storage::lock_storage_unreserve_balance(
-                cancelled_order.user_uid,
+                &cancelled_order.user_uid,
                 cancelled_order.market_id.base,
                 cancelled_order.quantity,
             )?;
@@ -443,236 +444,330 @@ pub fn authenticate_user(
 
 pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
     // Check if both orders exist and get them
-    let maker = polkadex_orderbook_storage::remove_order(&trade.maker_order_uuid)?;
-    let mut taker = polkadex_orderbook_storage::remove_order(&trade.taker_order_uuid)?;
+    error!("0th");
+    let mut maker =
+        polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.maker_order_uuid)?;
+    let mut taker =
+        polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.taker_order_uuid)?;
+    error!("1st");
     ensure!(
         (maker.market_id == taker.market_id) & (maker.market_id == trade.market_id),
         GatewayError::MarketIdMismatch
     );
+    error!("{:?} {:?}", maker.side, trade.maker_side);
     ensure!(
         maker.side == trade.maker_side,
         GatewayError::MakerSideMismatch
     );
     // Derive buyer and seller from maker and taker
 
-    ensure!(
-        taker.price.unwrap() > maker.price.unwrap(),
-        GatewayError::MakerSideMismatch
-    );
     basic_order_checks(&maker)?;
     basic_order_checks(&taker)?;
-    consume_order(&mut taker, &mut maker)?;
+    consume_order(taker, maker, trade.taker_order_uuid, trade.maker_order_uuid)?;
 
     Ok(())
 }
 
 pub fn basic_order_checks(order: &Order) -> Result<(), GatewayError> {
+    error!("2nd");
     match (order.order_type, order.side) {
         (OrderType::LIMIT, OrderSide::BID) | (OrderType::LIMIT, OrderSide::ASK)
-            if order.price <= 0 || order.quantity <= 0 =>
+            if order.price.unwrap() <= 0 || order.quantity <= 0 =>
         {
-            Err(GatewayError::LimitOrderPriceNotFound)
+            Err(GatewayError::BasicOrderCheckError)
         }
-        (OrderType::MARKET, OrderSide::BID) if order.price <= 0 => {
-            Err(GatewayError::LimitOrderPriceNotFound)
+        (OrderType::MARKET, OrderSide::BID) if order.price.unwrap() <= 0 => {
+            Err(GatewayError::BasicOrderCheckError)
         }
         (OrderType::MARKET, OrderSide::ASK) if order.quantity <= 0 => {
-            Err(GatewayError::LimitOrderPriceNotFound)
+            Err(GatewayError::BasicOrderCheckError)
         }
         _ => Ok(()),
     }
 }
 
-pub fn consume_order(current_order: &mut Order, counter_order: &mut Order) {
-    match (*current_order.order_type, *current_order.side) {
+pub fn consume_order(
+    mut current_order: Order,
+    mut counter_order: Order,
+    taker_order_uuid: OrderUUID,
+    maker_order_uuid: OrderUUID,
+) -> Result<(), GatewayError> {
+    error!("3rd");
+    match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
-            do_asset_exchange(current_order, counter_order);
+            do_asset_exchange(&mut current_order, &mut counter_order);
             if counter_order.quantity > 0 {
-                //TODO Insert counter order agian -- Also look into else
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order,
+                    maker_order_uuid,
+                )?;
             }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order,
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
         }
 
         (OrderType::MARKET, OrderSide::BID) => {
-            do_asset_exchange_market(current_order, counter_order);
+            do_asset_exchange_market(&mut current_order, &mut counter_order);
             if counter_order.quantity > 0 {
-                //TODO counter order again -- Also look into else
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order.clone(),
+                    maker_order_uuid,
+                )?;
             }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order.clone(),
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
         }
 
         (OrderType::LIMIT, OrderSide::ASK) => {
-            do_asset_exchange(current_order, counter_order);
+            do_asset_exchange(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
-                //TODO counter order again -- Also look into else
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order.clone(),
+                    maker_order_uuid,
+                )?;
             }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order.clone(),
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
         }
 
         (OrderType::MARKET, OrderSide::ASK) => {
-            do_asset_exchange_market(current_order, counter_order);
+            do_asset_exchange_market(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
-                //TODO counter order again -- Also look into else
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order.clone(),
+                    maker_order_uuid,
+                )?;
             }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order.clone(),
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
         }
+        _ => Ok(()),
     }
 }
 
-pub fn do_asset_exchange(current_order: &mut Order, counter_order: &mut Order) {
-    match (*current_order.order_type, *current_order.side) {
+pub fn do_asset_exchange(
+    current_order: &mut Order,
+    counter_order: &mut Order,
+) -> Result<(), GatewayError> {
+    match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) if current_order.quantity <= counter_order.quantity => {
-            let trade_amount = counter_order.price * current_order.quantity; //FIXME : Multiplication
+            let trade_amount = ((current_order.price.unwrap() as f64)
+                * ((current_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            error!("It is bid limit order current_order.quantity <= counter_order.quantity");
+
             transfer_asset_current(
-                current_order.market_id.base,
+                &current_order.market_id.quote,
                 trade_amount,
-                current_order.user_uid,
-                counter_order.user_uid,
-            );
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
             transfer_asset(
-                current_order.market_id.quote,
+                &current_order.market_id.base,
                 current_order.quantity,
-                *counter_order.user_uid,
-                *current_order.user_uid,
-            );
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
             counter_order.quantity = counter_order.quantity - current_order.quantity;
-            current_order.quantity = 0; //TODO :- Should we remove order here
+            current_order.quantity = 0;
+            Ok(())
         }
 
         (OrderType::LIMIT, OrderSide::BID) if current_order.quantity > counter_order.quantity => {
-            let trade_amount = counter_order.price * counter_order.quantity;
+            let trade_amount = ((current_order.price.unwrap() as f64)
+                * ((counter_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            error!("It is bid limit order current_order.quantity > counter_order.quantity");
             transfer_asset_current(
-                current_order.market_id.base,
+                &current_order.market_id.quote,
                 trade_amount,
-                current_order.user_uid,
-                counter_order.user_uid,
-            );
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
             transfer_asset(
-                current_order.market_id.quote,
+                &current_order.market_id.base,
                 counter_order.quantity,
-                counter_order.user_uid,
-                current_order.user_uid,
-            );
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
             current_order.quantity = current_order.quantity - counter_order.quantity;
             counter_order.quantity = 0;
-            //TODO Should we remove maker order here
+            Ok(())
         }
 
         (OrderType::LIMIT, OrderSide::ASK) if current_order.quantity <= counter_order.quantity => {
-            let trade_amount = counter_order.price * current_order.quantity;
+            let trade_amount = ((counter_order.price.unwrap() as f64)
+                * ((current_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            error!("It is Ask limit order current_order.quantity <= counter_order.quantity");
             transfer_asset(
-                current_order.market_id.base,
+                &current_order.market_id.quote,
                 trade_amount,
-                counter_order.user_uid,
-                current_order.user_uid,
-            );
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
             transfer_asset_current(
-                current_order.market_id.quote,
+                &current_order.market_id.base,
                 current_order.quantity,
-                current_order.user_uid,
-                counter_order.user_uid,
-            );
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
             counter_order.quantity = counter_order.quantity - current_order.quantity;
             current_order.quantity = 0;
+            Ok(())
         }
 
         (OrderType::LIMIT, OrderSide::ASK) if current_order.quantity > counter_order.quantity => {
-            let trade_amount = counter_order.price * current_order.quantity;
+            let trade_amount = ((counter_order.price.unwrap() as f64)
+                * ((counter_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            error!("It is Ask limit order current_order.quantity > counter_order.quantity");
             transfer_asset(
-                current_order.market_id.base,
+                &current_order.market_id.quote,
                 trade_amount,
-                counter_order.user_uid,
-                current_order.user_uid,
-            );
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
             transfer_asset_current(
-                current_order.market_id.quote,
+                &current_order.market_id.base,
                 counter_order.quantity,
-                current_order.user_uid,
-                counter_order.user_uid,
-            );
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
             current_order.quantity = current_order.quantity - counter_order.quantity;
             counter_order.quantity = 0;
+            Ok(())
         }
-        _ => {}
+        _ => Ok(()),
     }
 }
 
-pub fn do_asset_exchange_market(current_order: &mut Order, counter_order: &mut Order) {
+pub fn do_asset_exchange_market(
+    current_order: &mut Order,
+    counter_order: &mut Order,
+) -> Result<(), GatewayError> {
     match (current_order.order_type, current_order.side) {
         (OrderType::MARKET, OrderSide::BID) => {
-            let current_order_quantity = current_order.price / counter_order.price;
+            let current_order_quantity =
+                current_order.price.unwrap() / counter_order.price.unwrap();
             if current_order_quantity <= counter_order.quantity {
                 transfer_asset_current(
-                    current_order.market_id.base,
-                    current_order.price,
-                    current_order.user_uid,
-                    counter_order.user_uid,
-                );
+                    &current_order.market_id.base,
+                    current_order.price.unwrap(),
+                    &current_order.user_uid,
+                    &counter_order.user_uid,
+                )?;
                 transfer_asset(
-                    current_order.market_id.quote,
+                    &current_order.market_id.quote,
                     current_order_quantity,
-                    counter_order.user_uid,
-                    current_order.user_uid,
-                );
+                    &counter_order.user_uid,
+                    &current_order.user_uid,
+                )?;
                 counter_order.quantity = counter_order.quantity - current_order_quantity;
-                current_order.price = 0;
+                current_order.price = Some(0);
             } else {
-                let trade_amount = counter_order.price * counter_order.quantity;
+                let trade_amount = counter_order.price.unwrap() * counter_order.quantity;
                 transfer_asset_current(
-                    current_order.market_id.base,
+                    &current_order.market_id.base,
                     trade_amount,
-                    current_order.user_uid,
-                    counter_order.user_uid,
-                );
+                    &current_order.user_uid,
+                    &counter_order.user_uid,
+                )?;
                 transfer_asset(
-                    current_order.market_id.quote,
+                    &current_order.market_id.quote,
                     counter_order.quantity,
-                    counter_order.user_uid,
-                    current_order.user_uid,
-                );
+                    &counter_order.user_uid,
+                    &current_order.user_uid,
+                )?;
                 counter_order.quantity = 0;
-                current_order.price = current_order.price - trade_amount;
+                current_order.price = Some(current_order.price.unwrap() - trade_amount);
             }
+            Ok(())
         }
         (OrderType::MARKET, OrderSide::ASK) if current_order.quantity <= counter_order.quantity => {
-            let trade_amount = counter_order.price * current_order.quantity;
+            let trade_amount = counter_order.price.unwrap() * current_order.quantity;
             transfer_asset(
-                current_order.market_id.base,
+                &current_order.market_id.base,
                 trade_amount,
-                counter_order.user_uid,
-                current_order.user_uid,
-            );
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
             transfer_asset_current(
-                current_order.market_id.quote,
+                &current_order.market_id.quote,
                 current_order.quantity,
-                current_order.user_uid,
-                counter_order.user_uid,
-            );
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
             counter_order.quantity = counter_order.quantity - current_order.quantity;
             current_order.quantity = 0;
+            Ok(())
         }
         (OrderType::MARKET, OrderSide::ASK) if current_order.quantity > counter_order.quantity => {
-            let trade_amount = counter_order.price * counter_order.quantity;
+            let trade_amount = counter_order.price.unwrap() * counter_order.quantity;
             transfer_asset(
-                current_order.market_id.base,
+                &current_order.market_id.base,
                 trade_amount,
-                counter_order.user_uid,
-                current_order.user_uid,
-            );
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
             transfer_asset_current(
-                current_order.market_id.quote,
+                &current_order.market_id.quote,
                 counter_order.quantity,
-                current_order.user_uid,
-                counter_order.user_uid,
-            );
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
             current_order.quantity = current_order.quantity - counter_order.quantity;
             counter_order.quantity = 0;
+            Ok(())
         }
+        _ => Ok(()),
     }
 }
-
-pub fn transfer_asset(asset_id: AssetId, amount: u128, from: UserId, to: UserId) {
-
-    // First unreserve
-    // Transfer amount
+//
+pub fn transfer_asset(
+    asset_id: &AssetId,
+    amount: u128,
+    from: &UserId,
+    to: &UserId,
+) -> Result<(), GatewayError> {
+    error!("transfer_asset");
+    polkadex_balance_storage::lock_storage_unreserve_balance(from, asset_id.clone(), amount)?;
+    polkadex_balance_storage::lock_storage_transfer_balance(from, to, asset_id.clone(), amount)?;
+    Ok(())
 }
 
-pub fn transfer_asset_current(asset_id: AssetId, amount: u128, from: UserId, to: UserId) {
-    // Direct transfer
+pub fn transfer_asset_current(
+    asset_id: &AssetId,
+    amount: u128,
+    from: &UserId,
+    to: &UserId,
+) -> Result<(), GatewayError> {
+    error!("transfer_asset_current");
+    polkadex_balance_storage::lock_storage_unreserve_balance(from, asset_id.clone(), amount)?;
+    polkadex_balance_storage::lock_storage_transfer_balance(from, to, asset_id.clone(), amount)?;
+    Ok(())
 }

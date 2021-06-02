@@ -26,7 +26,7 @@ pub type MarketType = Vec<u8>;
 pub type CurrencyId = AssetId;
 
 /// Market identifier for order
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub struct MarketId {
     pub base: AssetId,
     pub quote: AssetId,
@@ -37,7 +37,7 @@ pub struct MarketId {
 /// - limit: "l"
 /// - Post only (Must not fill at all or is canceled): "p"
 /// - Fill or kill (Must fully match at a given price or iscanceled): "f"
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub enum OrderType {
     LIMIT,
     MARKET,
@@ -46,13 +46,13 @@ pub enum OrderType {
 }
 
 /// Used to specify order side, "buy" or "sell"
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub enum OrderSide {
     BID,
     ASK,
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, Copy)]
 pub enum OrderState {
     UNFILLED,
     PARTIAL,
@@ -61,7 +61,7 @@ pub enum OrderState {
 }
 
 // Create Order
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy, Eq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct Order {
     pub user_uid: UserId,
     pub market_id: MarketId,
@@ -228,7 +228,7 @@ pub struct TradeEvent {
     // Market Unique Identifier
     pub market_id: MarketId,
     // Unique Trade ID
-    trade_id: TradeId,
+    pub trade_id: TradeId,
     // Trade execution price
     pub price: PriceAndQuantityType,
     // Trade execution amount
@@ -236,15 +236,15 @@ pub struct TradeEvent {
     // Trade Funds (amount*price)
     pub funds: PriceAndQuantityType,
     // Maker's trade Order Id
-    maker_order_id: OrderId,
+    pub maker_order_id: OrderId,
     // Maker's trade Order UUID
     pub maker_order_uuid: OrderUUID,
     // Taker's trade Order Id
-    taker_order_id: OrderId,
+    pub taker_order_id: OrderId,
     // Taker's trade Order UUID
     pub taker_order_uuid: OrderUUID,
     // Maker Order Side
     pub maker_side: OrderSide,
     // Trade Timestamp
-    timestamp: Vec<u8>,
+    pub timestamp: Vec<u8>,
 }

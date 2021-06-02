@@ -151,6 +151,54 @@ impl PolkadexBalanceStorage {
             }
         }
     }
+
+    pub fn reduce_free_balance(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        amt: Balance,
+    ) -> Result<(), GatewayError> {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
+            Some(balance) => {
+                balance.free = balance
+                    .free
+                    .checked_sub(amt)
+                    .ok_or(GatewayError::LimitOrderPriceNotFound)?; //FIXME Error type
+                Ok(())
+            }
+            None => {
+                error!("Account Id or Asset id not avalaible");
+                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+            }
+        }
+    }
+
+    pub fn increase_free_balance(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        amt: Balance,
+    ) -> Result<(), GatewayError> {
+        match self
+            .storage
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+        {
+            Some(balance) => {
+                balance.free = balance
+                    .free
+                    .checked_add(amt)
+                    .ok_or(GatewayError::LimitOrderPriceNotFound)?; //FIXME Error Type
+                Ok(())
+            }
+            None => {
+                error!("Account Id or Asset Id not available [here]");
+                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+            }
+        }
+    }
     // We can write functions which settle balances for two trades but we need to know the trade structure for it
 }
 
@@ -206,7 +254,7 @@ pub fn lock_storage_and_reserve_balance(
 
 // TODO: Write test cases for this function
 pub fn lock_storage_unreserve_balance(
-    main_acc: AccountId,
+    main_acc: &AccountId,
     token: AssetId,
     amount: Balance,
 ) -> Result<(), GatewayError> {
@@ -217,6 +265,9 @@ pub fn lock_storage_unreserve_balance(
         .read_balance(token.clone(), main_acc.clone())
         .expect("Unable to read balance from balance storage")
         .clone();
+    error!("{:?}", main_acc.clone());
+    error!("{:?} {:?}", balance.reserved, amount);
+    error!("{:?} {:?}", balance.free, amount);
     if balance.reserved < amount {
         error!("Unable to un-reserve balance greater than reserved balance");
         return Err(GatewayError::NotEnoughReservedBalance);
@@ -228,7 +279,7 @@ pub fn lock_storage_unreserve_balance(
     )?;
     balance_storage.set_reserve_balance(
         token,
-        main_acc,
+        main_acc.clone(),
         balance.reserved.saturating_sub(amount),
     )?;
     Ok(())
@@ -293,4 +344,17 @@ pub fn lock_storage_and_get_balances(
         error!("Account Id or Asset Id is not available");
         Err(GatewayError::AccountIdOrAssetIdNotFound)
     }
+}
+
+pub fn lock_storage_transfer_balance(
+    from: &AccountId,
+    to: &AccountId,
+    token: AssetId,
+    amount: u128,
+) -> Result<(), GatewayError> {
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    balance_storage.reduce_free_balance(token.clone(), from.clone(), amount)?;
+    balance_storage.increase_free_balance(token.clone(), to.clone(), amount)?;
+    Ok(())
 }
