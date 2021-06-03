@@ -19,8 +19,10 @@ use crate::cli_utils::account_parsing::get_identifiers;
 use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
-use crate::commands::common_args::{add_main_account_args, add_order_args, add_proxy_account_args};
-use crate::commands::common_args_processing::get_order_from_matches;
+use crate::commands::common_args::{
+    add_main_account_args, add_order_id_args, add_proxy_account_args,
+};
+use crate::commands::common_args_processing::{get_order_from_matches, get_order_id_from_matches};
 use crate::{KeyPair, TrustedCall, TrustedOperation};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
@@ -38,7 +40,7 @@ pub fn cancel_order_cli_command(perform_operation: OperationRunner) -> Command<s
 fn add_app_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     let app_with_main_account = add_main_account_args(app);
     let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
-    add_order_args(app_with_proxy_account)
+    add_order_id_args(app_with_proxy_account)
 }
 
 fn command_runner<'a>(
@@ -54,14 +56,13 @@ fn command_runner<'a>(
 
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
-    let order = get_order_from_matches(matches, account_details.main_account_public_key().into())
-        .expect("failed to build order from command line arguments");
+    let order_id = get_order_id_from_matches(matches).unwrap();
 
     let direct: bool = matches.is_present("direct");
 
     let cancel_order_top: TrustedOperation = TrustedCall::cancel_order(
         account_details.signer_public_key().into(),
-        order,
+        order_id,
         account_details
             .main_account_public_key_if_not_signer()
             .map(|pk| pk.into()),
@@ -90,7 +91,7 @@ mod tests {
 
     use crate::commands::test_utils::utils::{
         add_identifiers_app_args, create_identifier_args, create_main_account_args,
-        create_order_args, PerformOperationMock,
+        create_order_args, create_order_id_args, PerformOperationMock,
     };
     use clap::{App, AppSettings};
 
@@ -113,10 +114,10 @@ mod tests {
 
     fn create_cancel_order_args() -> Vec<String> {
         let mut main_account_arg = create_main_account_args();
-        let mut order_args = create_order_args();
+        let mut order_id_args = create_order_id_args();
         let mut identifier_args = create_identifier_args();
 
-        main_account_arg.append(&mut order_args);
+        main_account_arg.append(&mut order_id_args);
         main_account_arg.append(&mut identifier_args);
 
         main_account_arg

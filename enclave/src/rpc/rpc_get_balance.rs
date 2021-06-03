@@ -107,14 +107,15 @@ pub mod tests {
 
     pub extern crate alloc;
     use crate::polkadex_balance_storage::Balances;
+    use crate::rpc::mocks::dummy_builder::{create_dummy_account, create_dummy_request};
     use crate::rpc::mocks::{
         rpc_gateway_mock::RpcGatewayMock,
         trusted_operation_extractor_mock::TrustedOperationExtractorMock,
     };
     use crate::rpc::rpc_get_balance::RpcGetBalance;
     use alloc::boxed::Box;
-    use polkadex_sgx_primitives::types::{CurrencyId, DirectRequest};
-    use sp_core::{ed25519 as ed25519_core, Pair, H256};
+    use polkadex_sgx_primitives::types::CurrencyId;
+    use sp_core::Pair;
     use substratee_stf::{Getter, KeyPair, TrustedGetter, TrustedOperation};
     use substratee_worker_primitives::DirectRequestStatus;
 
@@ -125,14 +126,12 @@ pub mod tests {
 
         let free_balance = 500;
         let reserved_balance = 1000;
-
-        let rpc_gateway = Box::new(RpcGatewayMock {
-            do_authorize: true,
-            balance_to_return: Some(Balances {
-                free: free_balance,
-                reserved: reserved_balance,
-            }),
+        let balances = Some(Balances {
+            free: free_balance,
+            reserved: reserved_balance,
         });
+
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_balances(balances, true));
 
         let request = create_dummy_request();
         let rpc_get_balance = RpcGetBalance::new(top_extractor, rpc_gateway);
@@ -143,15 +142,8 @@ pub mod tests {
         assert_eq!(result.0.reserved, reserved_balance);
     }
 
-    fn create_dummy_request() -> DirectRequest {
-        DirectRequest {
-            encoded_text: vec![0, 1, 2, 3, 4],
-            shard: H256::from([1u8; 32]),
-        }
-    }
-
     fn create_get_balance_getter() -> TrustedOperation {
-        let key_pair = ed25519_core::Pair::from_seed(b"12345678901234567890123456789012");
+        let key_pair = create_dummy_account();
 
         let trusted_getter =
             TrustedGetter::get_balance(key_pair.public().into(), CurrencyId::DOT, None);

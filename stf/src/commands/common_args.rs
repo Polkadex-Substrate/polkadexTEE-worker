@@ -27,6 +27,7 @@ pub const ORDER_SIDE_ARG_NAME: &str = "orderside";
 pub const QUANTITY_ARG_NAME: &str = "quantity";
 pub const PRICE_ARG_NAME: &str = "price";
 pub const TOKEN_ID_ARG_NAME: &str = "tokenid";
+pub const ORDER_UUID_ARG_NAME: &str = "orderid";
 pub const MRENCLAVE_ARG_NAME: &str = "mrenclave";
 pub const SHARD_ARG_NAME: &str = "shard";
 
@@ -77,6 +78,17 @@ pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .required(false) // proxy account is optional
             .value_name("STRING")
             .help("Proxy Account ID"),
+    )
+}
+
+pub fn add_order_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    app.arg(
+        Arg::with_name(ORDER_UUID_ARG_NAME)
+            .long(ORDER_UUID_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("UUID STRING")
+            .help("Order UUID"),
     )
 }
 

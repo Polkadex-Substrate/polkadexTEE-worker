@@ -64,10 +64,11 @@ use jsonrpc_core::futures::executor;
 use sp_core::ed25519 as spEd25519;
 
 use rpc::author::{Author, AuthorApi};
-use rpc::io_handler_extensions;
-use rpc::rpc_call_encoder;
-use rpc::rpc_get_balance;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
+use rpc::{
+    io_handler_extensions, rpc_call_encoder, rpc_cancel_order, rpc_get_balance, rpc_place_order,
+    rpc_withdraw, trusted_operation_verifier,
+};
 
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
@@ -103,6 +104,14 @@ pub extern "C" fn test_main_entrance() -> size_t {
         // RPC API tests
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         rpc_get_balance::tests::test_given_valid_top_return_balances,
+        rpc_place_order::tests::test_given_valid_call_return_order_uuid,
+        rpc_cancel_order::tests::test_given_valid_order_id_return_success,
+        rpc_cancel_order::tests::test_given_order_id_mismatch_then_fail,
+        rpc_withdraw::tests::test_given_valid_call_then_succeed,
+        rpc_withdraw::tests::test_given_unauthorized_access_then_return_error,
+        trusted_operation_verifier::tests::given_valid_operation_in_request_then_decode_succeeds,
+        trusted_operation_verifier::tests::given_nonsense_text_in_request_then_decode_fails,
+        trusted_operation_verifier::tests::given_valid_operation_with_invalid_signature_then_return_error,
         io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
 
         // Substratee Tests

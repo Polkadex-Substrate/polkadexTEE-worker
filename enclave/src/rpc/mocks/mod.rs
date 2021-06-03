@@ -16,5 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod dummy_builder;
 pub mod rpc_gateway_mock;
 pub mod trusted_operation_extractor_mock;

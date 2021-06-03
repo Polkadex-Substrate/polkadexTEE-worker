@@ -40,7 +40,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 
-use polkadex_sgx_primitives::types::{CurrencyId, Order};
+use polkadex_sgx_primitives::types::{CurrencyId, Order, OrderUUID};
 
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
@@ -179,7 +179,7 @@ pub enum TrustedCall {
     balance_shield(AccountId, Balance),                               // (AccountIncognito, Amount)
 
     place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
-    cancel_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+    cancel_order(AccountId, OrderUUID, Option<AccountId>), // (SignerAccount, Order ID, MainAccount (if signer is proxy))
     withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
 }
 
@@ -229,7 +229,7 @@ impl TrustedCall {
 
     /// Get the Proxy account, if available
     /// If the main account is set, the signer is a proxy account. Otherwise there is no proxy account set
-    pub fn proxy_account(&self) -> Option<&AccountId> {
+    pub fn proxy_account(&self) -> Option<AccountId> {
         match self {
             TrustedCall::balance_set_balance(_, _, _, _) => None,
             TrustedCall::balance_transfer(_, _, _) => None,
@@ -237,19 +237,19 @@ impl TrustedCall {
             TrustedCall::balance_shield(_, _) => None,
 
             TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
-                Some(_) => Some(signer),
+                Some(_) => Some(signer.clone()),
                 None => None,
             },
 
             TrustedCall::cancel_order(signer, _, main_account_option) => {
                 match main_account_option {
-                    Some(_) => Some(signer),
+                    Some(_) => Some(signer.clone()),
                     None => None,
                 }
             }
 
             TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
-                Some(_) => Some(signer),
+                Some(_) => Some(signer.clone()),
                 None => None,
             },
         }

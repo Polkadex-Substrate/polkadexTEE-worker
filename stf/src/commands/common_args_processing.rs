@@ -17,11 +17,11 @@
 
 use crate::commands::common_args::{
     MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME, MARKET_TYPE_ARG_NAME, ORDER_SIDE_ARG_NAME,
-    ORDER_TYPE_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME, TOKEN_ID_ARG_NAME,
+    ORDER_TYPE_ARG_NAME, ORDER_UUID_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME, TOKEN_ID_ARG_NAME,
 };
 use clap::ArgMatches;
 use codec::Encode;
-use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType};
+use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 
 pub fn get_order_from_matches(
@@ -69,6 +69,14 @@ pub fn get_order_from_matches(
     };
 
     return Ok(order);
+}
+
+pub fn get_order_id_from_matches(matches: &ArgMatches) -> Result<OrderUUID, String> {
+    let order_id_str = matches
+        .value_of(ORDER_UUID_ARG_NAME)
+        .expect(format!("missing {} argument", ORDER_UUID_ARG_NAME).as_str());
+
+    Ok(order_id_str.encode())
 }
 
 pub fn get_token_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<AssetId, String> {
