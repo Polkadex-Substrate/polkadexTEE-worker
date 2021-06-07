@@ -23,6 +23,8 @@ extern crate clap;
 extern crate env_logger;
 extern crate log;
 
+mod ocex_commands;
+
 extern crate chrono;
 use chrono::{DateTime, Utc};
 
@@ -411,6 +413,11 @@ fn main() {
                     Ok(())
                 }),
         )
+        .add_cmd(ocex_commands::register_account_command())
+        .add_cmd(ocex_commands::register_proxy_command())
+        .add_cmd(ocex_commands::remove_proxy_command())
+        .add_cmd(ocex_commands::withdraw_command())
+        .add_cmd(ocex_commands::deposit_command())
         .add_cmd(substratee_stf::cli::cmd(&perform_trusted_operation))
         .no_cmd(|_args, _matches| {
             println!("No subcommand matched");
@@ -449,6 +456,7 @@ fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -
     }
 }
 
+#[allow(unused)]
 fn get_state(matches: &ArgMatches<'_>, getter: TrustedOperation) -> Option<Vec<u8>> {
     // TODO: ensure getter is signed?
     let (_operation_call_encoded, operation_call_encrypted) = match encode_encrypt(matches, getter)
@@ -638,6 +646,7 @@ fn send_direct_request_encoded(
 }
 
 /// sends a rpc watch request to the worker api server
+#[allow(unused)]
 fn send_direct_request_encrypted(
     matches: &ArgMatches<'_>,
     operation_call: TrustedOperation,
