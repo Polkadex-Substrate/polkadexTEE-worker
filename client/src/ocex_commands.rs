@@ -1,36 +1,16 @@
 use log::*;
 
-use base58::{FromBase58, ToBase58};
-use clap::{AppSettings, Arg, ArgMatches, App};
-use clap_nested::{Command, Commander};
-use codec::{Decode, Encode};
-use log::*;
-use my_node_runtime::{
-    pallet_substratee_registry::{Enclave, Request},
-    AccountId, BalancesCall, Call, Event, Hash,
-};
-use polkadex_sgx_primitives::{AssetId, PolkadexAccount, Balance};
-use polkadex_sgx_primitives::types::DirectRequest;
-use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
-use sp_application_crypto::{ed25519, sr25519};
-use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
-use sp_keyring::AccountKeyring;
-use sp_runtime::MultiSignature;
-use std::convert::TryFrom;
-use std::result::Result as StdResult;
-use std::sync::mpsc::channel;
-use std::thread;
-use std::time::{Duration, UNIX_EPOCH};
+use clap::{Arg, ArgMatches, App};
+use clap_nested::Command;
+use my_node_runtime::AccountId;
+use polkadex_sgx_primitives::{AssetId, Balance};
+use sp_core::{sr25519 as sr25519_core, Pair};
 use substrate_api_client::{
-    compose_extrinsic, compose_extrinsic_offline,
-    events::EventsDecoder,
-    extrinsic::xt_primitives::{GenericAddress, UncheckedExtrinsicV4},
-    node_metadata::Metadata,
-    utils::FromHexString,
-    Api, XtStatus,
+    compose_extrinsic,
+    extrinsic::xt_primitives::UncheckedExtrinsicV4,
+    XtStatus,
 };
 
-use substratee_stf::commands;
 use substratee_stf::commands::{common_args_processing, common_args};
 
 pub fn register_account_command<'a>() -> Command<'a, str> {

@@ -456,6 +456,7 @@ fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -
     }
 }
 
+#[allow(unused)]
 fn get_state(matches: &ArgMatches<'_>, getter: TrustedOperation) -> Option<Vec<u8>> {
     // TODO: ensure getter is signed?
     let (_operation_call_encoded, operation_call_encrypted) = match encode_encrypt(matches, getter)
@@ -645,6 +646,7 @@ fn send_direct_request_encoded(
 }
 
 /// sends a rpc watch request to the worker api server
+#[allow(unused)]
 fn send_direct_request_encrypted(
     matches: &ArgMatches<'_>,
     operation_call: TrustedOperation,
