@@ -1,7 +1,7 @@
 use log::*;
 
 use base58::{FromBase58, ToBase58};
-use clap::{AppSettings, Arg, ArgMatches};
+use clap::{AppSettings, Arg, ArgMatches, App};
 use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
 use log::*;
@@ -9,6 +9,7 @@ use my_node_runtime::{
     pallet_substratee_registry::{Enclave, Request},
     AccountId, BalancesCall, Call, Event, Hash,
 };
+use polkadex_sgx_primitives::{AssetId, PolkadexAccount, Balance};
 use polkadex_sgx_primitives::types::DirectRequest;
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sp_application_crypto::{ed25519, sr25519};
@@ -28,6 +29,9 @@ use substrate_api_client::{
     utils::FromHexString,
     Api, XtStatus,
 };
+
+use substratee_stf::commands;
+use substratee_stf::commands::{common_args_processing, common_args};
 
 pub fn register_account_command<'a>() -> Command<'a, str> {
         Command::new("register-account")
@@ -164,4 +168,45 @@ pub fn remove_proxy_command<'a>() -> Command<'a, str> {
             println!("[+] Transaction got finalized. Hash: {:?}\n", tx_hash);
             Ok(())
         })
+}
+
+pub fn withdraw_command<'a>() -> Command<'a, str> {
+    Command::new("withdraw")
+        .description("withdraws the given amount of funds from the sender")
+        .options(|app| add_withdraw_command_args(app))
+        .runner(move |_args: &str, matches: &ArgMatches<'_>| {
+            let chain_api = crate::get_chain_api(matches);
+
+            // get the main account /sender
+            let arg_main = matches.value_of("main").unwrap();
+            let main = crate::get_pair_from_str(matches, arg_main);
+            let main_account_id = sr25519_core::Pair::from(main);
+            let chain_api = chain_api.set_signer(main_account_id.clone());
+
+            let asset_id = common_args_processing::get_token_id_from_matches(matches).unwrap();
+            let amount = common_args_processing::get_quantity_from_matches(matches).unwrap();
+
+            // compose the extrinsic
+            let xt: UncheckedExtrinsicV4<([u8; 2], AccountId, AssetId, Balance)> = compose_extrinsic!(
+                chain_api,
+                "PolkadexOcex",
+                "withdraw",
+                main_account_id.public().into(),
+                asset_id,
+                amount
+            );
+
+            let tx_hash = chain_api
+                .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+                .unwrap()
+                .unwrap();
+            println!("[+] Transaction got finalized.  Hash: {:?}\n",  tx_hash);
+            Ok(())
+        })
+}
+
+fn add_withdraw_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    let app_with_main_account = common_args::add_main_account_args(app);
+    let app_with_token_id = common_args::add_token_id_args(app_with_main_account);
+    common_args::add_quantity_args(app_with_token_id)
 }

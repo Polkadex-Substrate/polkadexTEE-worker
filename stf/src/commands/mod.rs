@@ -21,7 +21,7 @@ pub mod place_order;
 pub mod withdraw;
 
 mod account_details;
-mod common_args;
-mod common_args_processing;
+pub mod common_args;
+pub mod common_args_processing;
 
 mod test_utils;

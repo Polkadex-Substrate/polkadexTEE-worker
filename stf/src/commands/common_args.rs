@@ -65,7 +65,7 @@ pub fn add_main_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .long(ACCOUNT_ID_ARG_NAME)
             .takes_value(true)
             .required(true)
-            .value_name("STRING")
+            .value_name("SS58")
             .help("Account/User ID"),
     )
 }
@@ -76,7 +76,7 @@ pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .long(PROXY_ACCOUNT_ID_ARG_NAME)
             .takes_value(true)
             .required(false) // proxy account is optional
-            .value_name("STRING")
+            .value_name("SS58")
             .help("Proxy Account ID"),
     )
 }
