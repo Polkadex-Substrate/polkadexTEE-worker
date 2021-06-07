@@ -359,6 +359,8 @@ pub unsafe extern "C" fn init_chain_relay(
     // info!(" Polkadex Gateway Nonces and Cache Initialized");
 
     nonce_handler::create_in_memory_nonce_storage(); //FIXME Error handling required
+    polkadex_balance_storage::create_in_memory_balance_storage();
+    polkadex_orderbook_storage::create_in_memory_orderbook_storage(vec![]);
 
     sgx_status_t::SGX_SUCCESS
 }
