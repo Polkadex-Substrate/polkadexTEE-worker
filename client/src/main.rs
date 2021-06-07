@@ -411,6 +411,42 @@ fn main() {
                     Ok(())
                 }),
         )
+        .add_cmd(
+            Command::new("register-account")
+                .description("Registers a new main account to the polkadex offchain registry")
+                .options(|app| {
+                    app.arg(
+                        Arg::with_name("from")
+                            .takes_value(true)
+                            .required(true)
+                            .value_name("SS58")
+                            .help("Sender's on-chain AccountId in ss58check format"),
+                    )
+                })
+                .runner(move |_args: &str, matches: &ArgMatches<'_>| {
+                    let chain_api = get_chain_api(matches);
+
+                    // get the sender
+                    let arg_from = matches.value_of("from").unwrap();
+                    let from = get_pair_from_str(matches, arg_from);
+                    let account_id = sr25519_core::Pair::from(from);
+                    let chain_api = chain_api.set_signer(account_id.clone());
+
+                    // compose the extrinsic
+                    let xt: UncheckedExtrinsicV4<([u8; 2], AccountId)> = compose_extrinsic!(
+                        chain_api,
+                        "PolkadexOcex",
+                        "register",
+                        account_id.public().into()
+                    );
+
+                    let tx_hash = chain_api
+                        .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+                        .unwrap();
+                    println!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
+                    Ok(())
+                }),
+        )
         .add_cmd(substratee_stf::cli::cmd(&perform_trusted_operation))
         .no_cmd(|_args, _matches| {
             println!("No subcommand matched");
