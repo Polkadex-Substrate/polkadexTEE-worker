@@ -265,9 +265,6 @@ pub fn lock_storage_unreserve_balance(
         .read_balance(token.clone(), main_acc.clone())
         .expect("Unable to read balance from balance storage")
         .clone();
-    error!("{:?}", main_acc.clone());
-    error!("{:?} {:?}", balance.reserved, amount);
-    error!("{:?} {:?}", balance.free, amount);
     if balance.reserved < amount {
         error!("Unable to un-reserve balance greater than reserved balance");
         return Err(GatewayError::NotEnoughReservedBalance);
