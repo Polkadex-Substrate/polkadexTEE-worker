@@ -49,21 +49,20 @@ pub fn register_account_command<'a>() -> Command<'a, str> {
                 let main = crate::get_pair_from_str(matches, arg_main);
                 let account_id = sr25519_core::Pair::from(main);
                 let chain_api = chain_api.set_signer(account_id.clone());
-                let public_account_id: AccountId = account_id.public().into();
 
                 // compose the extrinsic
                 let xt: UncheckedExtrinsicV4<([u8; 2], AccountId)> = compose_extrinsic!(
                     chain_api,
                     "PolkadexOcex",
                     "register",
-                    public_account_id.clone()
+                    account_id.public().into()
                 );
 
                 let tx_hash = chain_api
                     .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
                     .unwrap()
                     .unwrap();
-                println!("[+] Successfully registered new account {}. Hash: {:?}\n", public_account_id, tx_hash);
+                println!("[+] Transaction got finalized.. Hash: {:?}\n", tx_hash);
                 Ok(())
             })
 }
@@ -105,14 +104,14 @@ pub fn register_proxy_command<'a>() -> Command<'a, str> {
                 "PolkadexOcex",
                 "add_proxy",
                 main_account_id.public().into(),
-                proxy.clone()
+                proxy
             );
 
             let tx_hash = chain_api
                 .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
                 .unwrap()
                 .unwrap();
-            println!("[+] Successfully registered new proxy account: {}. Hash: {:?}\n", proxy, tx_hash);
+            println!("[+] Transaction got finalized. Hash: {:?}\n", tx_hash);
             Ok(())
         })
 }
@@ -155,14 +154,14 @@ pub fn remove_proxy_command<'a>() -> Command<'a, str> {
                 "PolkadexOcex",
                 "remove_proxy",
                 main_account_id.public().into(),
-                proxy.clone()
+                proxy
             );
 
             let tx_hash = chain_api
                 .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
                 .unwrap()
                 .unwrap();
-            println!("[+] Successfully removed proxy account: {}. Hash: {:?}\n", proxy,  tx_hash);
+            println!("[+] Transaction got finalized. Hash: {:?}\n", tx_hash);
             Ok(())
         })
 }
