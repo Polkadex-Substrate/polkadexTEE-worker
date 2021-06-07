@@ -90,16 +90,19 @@ mod tests {
         add_main_account_args, add_proxy_account_args, ACCOUNT_ID_ARG_NAME,
         PROXY_ACCOUNT_ID_ARG_NAME,
     };
+    use crate::commands::test_utils::utils::{add_identifiers_app_args, create_identifier_args};
     use clap::{App, AppSettings};
 
     #[test]
     fn given_proxy_account_argument_then_account_details_has_some() {
         let main_account_arg = format!("--{}=//main_ojwf8a", ACCOUNT_ID_ARG_NAME);
         let proxy_account_arg = format!("--{}=//proxy_awf43t", PROXY_ACCOUNT_ID_ARG_NAME);
+        let mut matches_args = vec![main_account_arg, proxy_account_arg];
+        matches_args.append(&mut create_identifier_args());
 
         let test_app = create_test_app();
 
-        let matches = test_app.get_matches_from(vec![main_account_arg, proxy_account_arg]);
+        let matches = test_app.get_matches_from(matches_args);
 
         let account_details = AccountDetails::new(&matches);
 
@@ -123,10 +126,12 @@ mod tests {
     #[test]
     fn given_no_proxy_account_argument_then_account_details_has_none() {
         let main_account_arg = format!("--{}=//main_ojwf8a", ACCOUNT_ID_ARG_NAME);
+        let mut matches_args = vec![main_account_arg];
+        matches_args.append(&mut create_identifier_args());
 
         let test_app = create_test_app();
 
-        let matches = test_app.get_matches_from(vec![main_account_arg]);
+        let matches = test_app.get_matches_from(matches_args);
 
         let account_details = AccountDetails::new(&matches);
 
@@ -147,7 +152,8 @@ mod tests {
 
         let app_with_main_account = add_main_account_args(test_app);
         let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+        let app_with_identifiers = add_identifiers_app_args(app_with_proxy_account);
 
-        app_with_proxy_account
+        app_with_identifiers
     }
 }
