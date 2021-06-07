@@ -417,6 +417,7 @@ fn main() {
         .add_cmd(ocex_commands::register_proxy_command())
         .add_cmd(ocex_commands::remove_proxy_command())
         .add_cmd(ocex_commands::withdraw_command())
+        .add_cmd(ocex_commands::deposit_command())
         .add_cmd(substratee_stf::cli::cmd(&perform_trusted_operation))
         .no_cmd(|_args, _matches| {
             println!("No subcommand matched");
