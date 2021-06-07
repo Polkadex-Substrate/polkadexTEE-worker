@@ -178,7 +178,7 @@ pub fn withdraw_command<'a>() -> Command<'a, str> {
             let chain_api = crate::get_chain_api(matches);
 
             // get the main account /sender
-            let arg_main = matches.value_of("main").unwrap();
+            let arg_main = matches.value_of("accountid").unwrap();
             let main = crate::get_pair_from_str(matches, arg_main);
             let main_account_id = sr25519_core::Pair::from(main);
             let chain_api = chain_api.set_signer(main_account_id.clone());
