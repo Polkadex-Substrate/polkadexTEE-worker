@@ -15,7 +15,7 @@
 
 */
 
-use crate::cli_utils::account_parsing::get_pair_from_str;
+use crate::cli_utils::account_parsing::get_pair_from_str_trusted;
 use crate::commands::common_args::{ACCOUNT_ID_ARG_NAME, PROXY_ACCOUNT_ID_ARG_NAME};
 use clap::ArgMatches;
 use sp_application_crypto::sr25519;
@@ -36,10 +36,11 @@ impl AccountDetails {
             ACCOUNT_ID_ARG_NAME
         ));
 
-        let main_account_pair = get_pair_from_str(matches, arg_account);
+        let main_account_pair = get_pair_from_str_trusted(matches, arg_account);
 
         let arg_proxy_account_option = matches.value_of(PROXY_ACCOUNT_ID_ARG_NAME);
-        let proxy_account_pair = arg_proxy_account_option.map(|pa| get_pair_from_str(matches, pa));
+        let proxy_account_pair =
+            arg_proxy_account_option.map(|pa| get_pair_from_str_trusted(matches, pa));
 
         AccountDetails {
             main_account: main_account_pair,

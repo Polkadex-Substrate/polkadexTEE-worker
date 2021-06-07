@@ -87,7 +87,8 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
             Command::new("new-account")
                 .description("generates a new incognito account for the given substraTEE shard")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
+                    let store =
+                        LocalKeystore::open(get_trusted_keystore_path(matches), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
                     println!("{}", key.public().to_ss58check());
@@ -98,7 +99,8 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
+                    let store =
+                        LocalKeystore::open(get_trusted_keystore_path(matches), None).unwrap();
                     info!("sr25519 keys:");
                     for pubkey in store
                         .public_keys::<sr25519::AppPublic>()
@@ -151,7 +153,7 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(matches, arg_from);
+                    let from = get_pair_from_str_trusted(matches, arg_from);
                     let to = get_accountid_from_str(arg_to);
                     let direct: bool = matches.is_present("direct");
                     info!("from ss58 is {}", from.public().to_ss58check());
@@ -201,8 +203,8 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                     let arg_who = matches.value_of("account").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let who = get_pair_from_str(matches, arg_who);
-                    let signer = get_pair_from_str(matches, "//Alice");
+                    let who = get_pair_from_str_trusted(matches, arg_who);
+                    let signer = get_pair_from_str_trusted(matches, "//Alice");
                     let direct: bool = matches.is_present("direct");
                     info!("account ss58 is {}", who.public().to_ss58check());
 
@@ -243,7 +245,7 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let arg_who = matches.value_of("accountid").unwrap();
                     info!("arg_who = {:?}", arg_who);
-                    let who = get_pair_from_str(matches, arg_who);
+                    let who = get_pair_from_str_trusted(matches, arg_who);
                     let key_pair = sr25519_core::Pair::from(who.clone());
                     let top: TrustedOperation = TrustedGetter::free_balance(
                         sr25519_core::Public::from(who.public()).into(),
@@ -303,7 +305,7 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(matches, arg_from);
+                    let from = get_pair_from_str_trusted(matches, arg_from);
                     let to = get_accountid_from_str(arg_to);
                     let direct: bool = matches.is_present("direct");
                     println!("from ss58 is {}", from.public().to_ss58check());
