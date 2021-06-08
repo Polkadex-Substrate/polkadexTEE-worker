@@ -80,8 +80,8 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_polkadex_gateway::test_place_limit_sell_order,
         test_polkadex_gateway::test_place_market_buy_order,
         test_polkadex_gateway::test_place_market_sell_order,
-        test_polkadex_gateway::test_cancel_limit_buy_order,
-        test_polkadex_gateway::test_cancel_limit_sell_order,
+        test_polkadex_gateway::test_cancel_limit_bid_order,
+        test_polkadex_gateway::test_cancel_ask_order,
         // Polkadex Balance Storage
         test_polkadex_balance_storage::test_deposit,
         test_polkadex_balance_storage::test_withdraw,
