@@ -1,4 +1,5 @@
 use crate::ed25519;
+use crate::polkadex_gateway::GatewayError;
 use log::error;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
@@ -88,7 +89,7 @@ pub fn load_orderbook() -> SgxResult<&'static SgxMutex<OrderbookStorage>> {
 }
 
 // TODO: Write test cases for this function
-pub fn remove_order(order_uuid: &OrderUUID) -> SgxResult<Option<Order>>{
+pub fn remove_order(order_uuid: &OrderUUID) -> SgxResult<Option<Order>> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
@@ -96,9 +97,19 @@ pub fn remove_order(order_uuid: &OrderUUID) -> SgxResult<Option<Order>>{
 }
 
 // TODO: Write test cases for this function
-pub fn add_order(order: Order, order_uuid: OrderUUID) -> SgxResult<Option<Order>>{
+pub fn add_order(order: Order, order_uuid: OrderUUID) -> SgxResult<Option<Order>> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
-    Ok(orderbook.add_order(order_uuid,order))
+    Ok(orderbook.add_order(order_uuid, order))
+}
+
+pub fn lock_storage_and_add_order(
+    order: Order,
+    order_uuid: OrderUUID,
+) -> Result<Option<Order>, GatewayError> {
+    let mutex = load_orderbook().unwrap();
+    // TODO: Handle this unwrap
+    let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+    Ok(orderbook.add_order(order_uuid, order))
 }

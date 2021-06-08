@@ -15,8 +15,9 @@ use crate::polkadex;
 use crate::polkadex_balance_storage;
 use crate::polkadex_orderbook_storage;
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 pub enum GatewayError {
+    UndefinedBehaviour1,
     /// Price for limit Order not found
     LimitOrderPriceNotFound,
     /// Quantity zero for limit order,
@@ -238,8 +239,9 @@ pub fn cancel_order(
     } else {
         return Err(GatewayError::UnableToRemoveOrder);
     }
-    error!("Unable to load the cancel cache pointer");
-    return Err(GatewayError::UndefinedBehaviour);
+    // error!("Unable to load the cancel cache pointer"); //TODO: @gautham why we need this?
+    // return Err(GatewayError::UndefinedBehaviour1);
+    Ok(())
 }
 
 // /// process_cancel_order does the following
