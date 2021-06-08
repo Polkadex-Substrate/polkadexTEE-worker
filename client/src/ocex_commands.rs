@@ -1,54 +1,52 @@
 use log::*;
 
-use clap::{Arg, ArgMatches, App};
+use clap::{App, Arg, ArgMatches};
 use clap_nested::Command;
 use my_node_runtime::AccountId;
 use polkadex_sgx_primitives::{AssetId, Balance};
 use sp_core::{sr25519 as sr25519_core, Pair};
 use substrate_api_client::{
-    compose_extrinsic,
-    extrinsic::xt_primitives::UncheckedExtrinsicV4,
-    XtStatus,
+    compose_extrinsic, extrinsic::xt_primitives::UncheckedExtrinsicV4, XtStatus,
 };
 
-use substratee_stf::commands::{common_args_processing, common_args};
+use substratee_stf::commands::{common_args, common_args_processing};
 
 pub fn register_account_command<'a>() -> Command<'a, str> {
-        Command::new("register-account")
-            .description("Registers a new main account to the polkadex offchain registry")
-            .options(|app| {
-                app.arg(
-                    Arg::with_name("main")
-                        .takes_value(true)
-                        .required(true)
-                        .value_name("SS58")
-                        .help("Sender's on-chain AccountId in ss58check format"),
-                )
-            })
-            .runner(move |_args: &str, matches: &ArgMatches<'_>| {
-                let chain_api = crate::get_chain_api(matches);
+    Command::new("register-account")
+        .description("Registers a new main account to the polkadex offchain registry")
+        .options(|app| {
+            app.arg(
+                Arg::with_name("main")
+                    .takes_value(true)
+                    .required(true)
+                    .value_name("SS58")
+                    .help("Sender's on-chain AccountId in ss58check format"),
+            )
+        })
+        .runner(move |_args: &str, matches: &ArgMatches<'_>| {
+            let chain_api = crate::get_chain_api(matches);
 
-                // get the main account / sender
-                let arg_main = matches.value_of("main").unwrap();
-                let main = crate::get_pair_from_str(matches, arg_main);
-                let account_id = sr25519_core::Pair::from(main);
-                let chain_api = chain_api.set_signer(account_id.clone());
+            // get the main account / sender
+            let arg_main = matches.value_of("main").unwrap();
+            let main = crate::get_pair_from_str_untrusted(arg_main);
+            let account_id = sr25519_core::Pair::from(main);
+            let chain_api = chain_api.set_signer(account_id.clone());
 
-                // compose the extrinsic
-                let xt: UncheckedExtrinsicV4<([u8; 2], AccountId)> = compose_extrinsic!(
-                    chain_api,
-                    "PolkadexOcex",
-                    "register",
-                    account_id.public().into()
-                );
+            // compose the extrinsic
+            let xt: UncheckedExtrinsicV4<([u8; 2], AccountId)> = compose_extrinsic!(
+                chain_api,
+                "PolkadexOcex",
+                "register",
+                account_id.public().into()
+            );
 
-                let tx_hash = chain_api
-                    .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
-                    .unwrap()
-                    .unwrap();
-                println!("[+] Transaction got finalized.. Hash: {:?}\n", tx_hash);
-                Ok(())
-            })
+            let tx_hash = chain_api
+                .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+                .unwrap()
+                .unwrap();
+            println!("[+] Transaction got finalized.. Hash: {:?}\n", tx_hash);
+            Ok(())
+        })
 }
 
 pub fn register_proxy_command<'a>() -> Command<'a, str> {
@@ -75,7 +73,7 @@ pub fn register_proxy_command<'a>() -> Command<'a, str> {
 
             // get the main account /sender
             let arg_main = matches.value_of("main").unwrap();
-            let main = crate::get_pair_from_str(matches, arg_main);
+            let main = crate::get_pair_from_str_untrusted(arg_main);
             let main_account_id = sr25519_core::Pair::from(main);
             let chain_api = chain_api.set_signer(main_account_id.clone());
 
@@ -99,7 +97,6 @@ pub fn register_proxy_command<'a>() -> Command<'a, str> {
             Ok(())
         })
 }
-
 
 pub fn remove_proxy_command<'a>() -> Command<'a, str> {
     Command::new("remove-proxy")
@@ -125,7 +122,7 @@ pub fn remove_proxy_command<'a>() -> Command<'a, str> {
 
             // get the main account /sender
             let arg_main = matches.value_of("main").unwrap();
-            let main = crate::get_pair_from_str(matches, arg_main);
+            let main = crate::get_pair_from_str_untrusted(arg_main);
             let main_account_id = sr25519_core::Pair::from(main);
             let chain_api = chain_api.set_signer(main_account_id.clone());
 
@@ -159,7 +156,7 @@ pub fn withdraw_command<'a>() -> Command<'a, str> {
 
             // get the main account /sender
             let arg_main = matches.value_of("accountid").unwrap();
-            let main = crate::get_pair_from_str(matches, arg_main);
+            let main = crate::get_pair_from_str_untrusted(arg_main);
             let main_account_id = sr25519_core::Pair::from(main);
             let chain_api = chain_api.set_signer(main_account_id.clone());
 
@@ -191,7 +188,6 @@ fn add_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     common_args::add_quantity_args(app_with_token_id)
 }
 
-
 pub fn deposit_command<'a>() -> Command<'a, str> {
     Command::new("deposit")
         .description("deposits a given amount of funds from the sender")
@@ -201,7 +197,7 @@ pub fn deposit_command<'a>() -> Command<'a, str> {
 
             // get the main account /sender
             let arg_main = matches.value_of("accountid").unwrap();
-            let main = crate::get_pair_from_str(matches, arg_main);
+            let main = crate::get_pair_from_str_untrusted(arg_main);
             let main_account_id = sr25519_core::Pair::from(main);
             let chain_api = chain_api.set_signer(main_account_id.clone());
 
