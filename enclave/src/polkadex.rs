@@ -47,7 +47,7 @@ pub fn verify_pdex_account_read_proofs(
                     return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
                 }
                 if account.account.next.is_some() {
-                    last_account = account.account.next.clone().unwrap();
+                    last_account = account.account.current.clone();
                 } else {
                     break;
                 }
