@@ -123,7 +123,7 @@ fn main() {
             Command::new("new-account")
                 .description("generates a new account for the substraTEE chain")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
+                    let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
                     println!("{}", key.public().to_ss58check());
@@ -134,7 +134,7 @@ fn main() {
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
+                    let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
                     println!("sr25519 keys:");
                     for pubkey in store
                         .public_keys::<sr25519::AppPublic>()
@@ -268,7 +268,7 @@ fn main() {
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(matches,arg_from);
+                    let from = get_pair_from_str_untrusted(arg_from);
                     let to = get_accountid_from_str(arg_to);
                     info!("from ss58 is {}", from.public().to_ss58check());
                     info!("to ss58 is {}", to.to_ss58check());
@@ -386,7 +386,7 @@ fn main() {
 
                     // get the sender
                     let arg_from = matches.value_of("from").unwrap();
-                    let from = get_pair_from_str(matches, arg_from);
+                    let from = get_pair_from_str_untrusted( arg_from);
                     let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
                     // get the recipient
@@ -540,7 +540,9 @@ fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec
     let shard = read_shard(matches).unwrap();
 
     let arg_signer = matches.value_of("xt-signer").unwrap();
-    let signer = get_pair_from_str(matches, arg_signer);
+
+    // TODO: clarify: we're getting these account information from the untrusted key store, is that correct?
+    let signer = get_pair_from_str_untrusted(arg_signer);
     let _chain_api = chain_api.set_signer(sr25519_core::Pair::from(signer));
 
     let request = Request {
