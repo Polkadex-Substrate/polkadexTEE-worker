@@ -1,10 +1,10 @@
 pub extern crate alloc;
 
+use crate::ShardIdentifier;
 use alloc::vec;
 use alloc::vec::Vec;
 use codec::{Decode, Encode, Error};
 use frame_support::sp_runtime::traits::Verify;
-
 use polkadex_primitives::assets::AssetId;
 use polkadex_primitives::common_types::{AccountId, Balance};
 use sp_core::ed25519::Signature;
@@ -77,7 +77,6 @@ pub struct Order {
     // if base currency is BTC and quote currency is USD,
     // then price = 50000 means 1 BTC = 50000 USD
     pub price: Option<PriceAndQuantityType>,
-    pub amount_reserved: u128,
 }
 
 // SignedOrder is used by enclave to store in Orderbook Mirror
@@ -122,7 +121,6 @@ impl Default for SignedOrder {
                 order_type: OrderType::LIMIT,
                 side: OrderSide::BID,
                 quantity: 0,
-                amount_reserved: 0,
                 price: None,
             },
             signature: Signature::default(),
@@ -249,4 +247,11 @@ pub struct TradeEvent {
     pub maker_side: OrderSide,
     // Trade Timestamp
     pub timestamp: Vec<u8>,
+}
+
+// DirectRequest for RPC
+#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, Debug)]
+pub struct DirectRequest {
+    pub shard: ShardIdentifier,
+    pub encoded_text: Vec<u8>,
 }

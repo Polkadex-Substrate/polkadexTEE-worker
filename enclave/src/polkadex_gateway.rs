@@ -1,3 +1,5 @@
+pub extern crate alloc;
+use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult};
 use codec::{Decode, Encode};
 use frame_support::ensure;
 use log::*;
@@ -54,6 +56,14 @@ pub enum GatewayError {
     NotEnoughReservedBalance,
     /// Unable to find AcccountId or AssetId,
     AccountIdOrAssetIdNotFound,
+}
+
+impl alloc::fmt::Display for GatewayError {
+    fn fmt(&self, f: &mut alloc::fmt::Formatter) -> FormatResult {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 /// Place order function does the following
@@ -501,7 +511,6 @@ pub fn consume_order(
         (OrderType::LIMIT, OrderSide::BID) => {
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount);
             if counter_order.quantity > 0 {
-                counter_order.amount_reserved = counter_order.quantity;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order,
                     maker_order_uuid,
@@ -509,13 +518,12 @@ pub fn consume_order(
             }
 
             if current_order.quantity > 0 {
-                current_order.amount_reserved = current_order.amount_reserved - trade_event.amount;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     current_order,
                     taker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = current_order.amount_reserved - trade_event.amount;
+                let amount_to_unreserve = trade_event.funds - trade_event.amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &current_order.user_uid,
                     current_order.market_id.quote,
@@ -528,7 +536,6 @@ pub fn consume_order(
         (OrderType::MARKET, OrderSide::BID) => {
             do_asset_exchange_market(&mut current_order, &mut counter_order);
             if counter_order.quantity > 0 {
-                counter_order.amount_reserved = counter_order.quantity;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order.clone(),
                     maker_order_uuid,
@@ -536,7 +543,6 @@ pub fn consume_order(
             }
 
             if current_order.quantity > 0 {
-                current_order.amount_reserved = current_order.price.unwrap();
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     current_order.clone(),
                     taker_order_uuid,
@@ -548,13 +554,12 @@ pub fn consume_order(
         (OrderType::LIMIT, OrderSide::ASK) => {
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
             if counter_order.quantity > 0 {
-                counter_order.amount_reserved = counter_order.amount_reserved - trade_event.amount;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order.clone(),
                     maker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = counter_order.amount_reserved - trade_event.amount;
+                let amount_to_unreserve = trade_event.funds - trade_event.amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
@@ -563,7 +568,6 @@ pub fn consume_order(
             }
 
             if current_order.quantity > 0 {
-                current_order.amount_reserved = current_order.quantity; // TODO @ksr: Not needed -- Make it optional for ask type orders
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     current_order.clone(),
                     taker_order_uuid,
@@ -575,15 +579,13 @@ pub fn consume_order(
         (OrderType::MARKET, OrderSide::ASK) => {
             do_asset_exchange_market(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
-                counter_order.amount_reserved = counter_order.amount_reserved - trade_event.amount;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order.clone(),
                     maker_order_uuid,
                 )?;
-            }
+            } // TODO : I think we need else case as well
 
             if current_order.quantity > 0 {
-                current_order.amount_reserved = current_order.quantity;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     current_order.clone(),
                     taker_order_uuid,

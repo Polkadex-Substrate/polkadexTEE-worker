@@ -15,6 +15,7 @@ sgx = [
     "sgx-externalities",
     "derive_more",
     "substratee-worker-primitives",
+    "polkadex-sgx-primitives",
 ]
 std = [
     "clap",
@@ -27,6 +28,7 @@ std = [
     "hex",
     "substrate-api-client",
     "substrate-client-keystore",
+    "polkadex-sgx-primitives/std",
     "my-node-runtime"
 ]
 
@@ -126,6 +128,11 @@ optional = true
 path = "../substratee-worker-primitives"
 default-features = false
 features = ["sgx"]
+optional = true
+
+[dependencies.polkadex-sgx-primitives]
+path = "../polkadex-primitives"
+default-features = false
 optional = true
 
 [dev-dependencies.sp-keyring]

@@ -89,6 +89,7 @@ pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayEr
 }
 
 // TODO: Write test cases for this function
+
 pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
@@ -101,6 +102,7 @@ pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, Ga
 }
 
 // TODO: Write test cases for this function
+
 pub fn lock_storage_and_add_order(
     order: Order,
     order_uuid: OrderUUID,
@@ -110,6 +112,7 @@ pub fn lock_storage_and_add_order(
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     Ok(orderbook.add_order(order_uuid, order))
 }
+
 // Only for test
 pub fn lock_storage_and_get_order(order_uuid: OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;

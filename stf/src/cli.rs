@@ -15,26 +15,26 @@
 
 */
 
-use crate::{
-    AccountId, Index, KeyPair, ShardIdentifier, TrustedCall, TrustedGetter, TrustedOperation,
-};
-use base58::{FromBase58, ToBase58};
+use crate::{KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander, MultiCommand};
-use codec::{Decode, Encode};
+use codec::Decode;
 use log::*;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
-use sp_runtime::traits::IdentifyAccount;
-use std::path::PathBuf;
 use substrate_client_keystore::LocalKeystore;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-const KEYSTORE_PATH: &str = "my_trusted_keystore";
+use crate::cli_utils::account_parsing::*;
+use crate::cli_utils::common_operations::get_trusted_nonce;
+use crate::cli_utils::common_types::OperationRunner;
+use crate::commands::cancel_order::cancel_order_cli_command;
+use crate::commands::get_balance::get_balance_cli_command;
+use crate::commands::place_order::place_order_cli_command;
+use crate::commands::withdraw::withdraw_cli_command;
 
-pub fn cmd<'a>(
-    perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
-) -> MultiCommand<'a, str, str> {
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
     Commander::new()
         .options(|app| {
             app.setting(AppSettings::ColoredHelp)
@@ -79,11 +79,16 @@ pub fn cmd<'a>(
                 .about("trusted calls to worker enclave")
                 .after_help("stf subcommands depend on the stf crate this has been built against")
         })
+        .add_cmd(place_order_cli_command(perform_operation))
+        .add_cmd(cancel_order_cli_command(perform_operation))
+        .add_cmd(get_balance_cli_command(perform_operation))
+        .add_cmd(withdraw_cli_command(perform_operation))
         .add_cmd(
             Command::new("new-account")
                 .description("generates a new incognito account for the given substraTEE shard")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
+                    let store =
+                        LocalKeystore::open(get_trusted_keystore_path(matches), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
                     println!("{}", key.public().to_ss58check());
@@ -94,7 +99,8 @@ pub fn cmd<'a>(
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_keystore_path(matches), None).unwrap();
+                    let store =
+                        LocalKeystore::open(get_trusted_keystore_path(matches), None).unwrap();
                     info!("sr25519 keys:");
                     for pubkey in store
                         .public_keys::<sr25519::AppPublic>()
@@ -147,7 +153,7 @@ pub fn cmd<'a>(
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(matches, arg_from);
+                    let from = get_pair_from_str_trusted(matches, arg_from);
                     let to = get_accountid_from_str(arg_to);
                     let direct: bool = matches.is_present("direct");
                     info!("from ss58 is {}", from.public().to_ss58check());
@@ -160,24 +166,9 @@ pub fn cmd<'a>(
                         amount
                     );
                     let (mrenclave, shard) = get_identifiers(matches);
-                    // get nonce
                     let key_pair = sr25519_core::Pair::from(from.clone());
-                    let top: TrustedOperation =
-                        TrustedGetter::nonce(sr25519_core::Public::from(from.public()).into())
-                            .sign(&KeyPair::Sr25519(key_pair.clone()))
-                            .into();
-                    let res = perform_operation(matches, &top);
-                    let nonce: Index = if let Some(n) = res {
-                        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-                            nonce
-                        } else {
-                            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    debug!("got nonce: {:?}", nonce);
+                    let nonce = get_trusted_nonce(perform_operation, matches, &from, &key_pair);
+
                     let top: TrustedOperation = TrustedCall::balance_transfer(
                         sr25519_core::Public::from(from.public()).into(),
                         to,
@@ -212,8 +203,8 @@ pub fn cmd<'a>(
                     let arg_who = matches.value_of("account").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let who = get_pair_from_str(matches, arg_who);
-                    let signer = get_pair_from_str(matches, "//Alice");
+                    let who = get_pair_from_str_trusted(matches, arg_who);
+                    let signer = get_pair_from_str_trusted(matches, "//Alice");
                     let direct: bool = matches.is_present("direct");
                     info!("account ss58 is {}", who.public().to_ss58check());
 
@@ -224,24 +215,9 @@ pub fn cmd<'a>(
                     );
 
                     let (mrenclave, shard) = get_identifiers(matches);
-                    // get nonce
                     let key_pair = sr25519_core::Pair::from(who.clone());
-                    let top: TrustedOperation =
-                        TrustedGetter::nonce(sr25519_core::Public::from(who.public()).into())
-                            .sign(&KeyPair::Sr25519(key_pair.clone()))
-                            .into();
-                    let res = perform_operation(matches, &top);
-                    let nonce: Index = if let Some(n) = res {
-                        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-                            nonce
-                        } else {
-                            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    debug!("got nonce: {:?}", nonce);
+                    let nonce = get_trusted_nonce(perform_operation, matches, &who, &key_pair);
+
                     let top: TrustedOperation = TrustedCall::balance_set_balance(
                         sr25519_core::Public::from(signer.public()).into(),
                         sr25519_core::Public::from(who.public()).into(),
@@ -269,7 +245,7 @@ pub fn cmd<'a>(
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let arg_who = matches.value_of("accountid").unwrap();
                     info!("arg_who = {:?}", arg_who);
-                    let who = get_pair_from_str(matches, arg_who);
+                    let who = get_pair_from_str_trusted(matches, arg_who);
                     let key_pair = sr25519_core::Pair::from(who.clone());
                     let top: TrustedOperation = TrustedGetter::free_balance(
                         sr25519_core::Public::from(who.public()).into(),
@@ -329,7 +305,7 @@ pub fn cmd<'a>(
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(matches, arg_from);
+                    let from = get_pair_from_str_trusted(matches, arg_from);
                     let to = get_accountid_from_str(arg_to);
                     let direct: bool = matches.is_present("direct");
                     println!("from ss58 is {}", from.public().to_ss58check());
@@ -343,24 +319,9 @@ pub fn cmd<'a>(
                     );
 
                     let (mrenclave, shard) = get_identifiers(matches);
-                    // get nonce
                     let key_pair = sr25519_core::Pair::from(from.clone());
-                    let top: TrustedOperation =
-                        TrustedGetter::nonce(sr25519_core::Public::from(from.public()).into())
-                            .sign(&KeyPair::Sr25519(key_pair.clone()))
-                            .into();
-                    let res = perform_operation(matches, &top);
-                    let nonce: Index = if let Some(n) = res {
-                        if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
-                            nonce
-                        } else {
-                            info!("could not decode value. maybe hasn't been set? {:x?}", n);
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    debug!("got nonce: {:?}", nonce);
+                    let nonce = get_trusted_nonce(perform_operation, matches, &from, &key_pair);
+
                     let top: TrustedOperation = TrustedCall::balance_unshield(
                         sr25519_core::Public::from(from.public()).into(),
                         to,
@@ -374,70 +335,4 @@ pub fn cmd<'a>(
                 }),
         )
         .into_cmd("trusted")
-}
-
-fn get_keystore_path(matches: &ArgMatches<'_>) -> PathBuf {
-    let (_mrenclave, shard) = get_identifiers(matches);
-    PathBuf::from(&format!("{}/{}", KEYSTORE_PATH, shard.encode().to_base58()))
-}
-
-pub fn get_identifiers(matches: &ArgMatches<'_>) -> ([u8; 32], ShardIdentifier) {
-    let mut mrenclave = [0u8; 32];
-    if !matches.is_present("mrenclave") {
-        panic!("--mrenclave must be provided");
-    };
-    mrenclave.copy_from_slice(
-        &matches
-            .value_of("mrenclave")
-            .unwrap()
-            .from_base58()
-            .expect("mrenclave has to be base58 encoded"),
-    );
-    let shard = match matches.value_of("shard") {
-        Some(val) => {
-            ShardIdentifier::from_slice(&val.from_base58().expect("shard has to be base58 encoded"))
-        }
-        None => ShardIdentifier::from_slice(&mrenclave),
-    };
-    (mrenclave, shard)
-}
-
-// TODO this function is redundant with client::main
-fn get_accountid_from_str(account: &str) -> AccountId {
-    match &account[..2] {
-        "//" => sr25519::Pair::from_string(account, None)
-            .unwrap()
-            .public()
-            .into_account()
-            .into(),
-        _ => sr25519::Public::from_ss58check(account)
-            .unwrap()
-            .into_account()
-            .into(),
-    }
-}
-
-// TODO this function is redundant with client::main
-// get a pair either form keyring (well known keys) or from the store
-fn get_pair_from_str(matches: &ArgMatches<'_>, account: &str) -> sr25519::AppPair {
-    info!("getting pair for {}", account);
-    match &account[..2] {
-        "//" => sr25519::AppPair::from_string(account, None).unwrap(),
-        _ => {
-            info!("fetching from keystore at {}", &KEYSTORE_PATH);
-            // open store without password protection
-            let store =
-                LocalKeystore::open(get_keystore_path(matches), None).expect("store should exist");
-            info!("store opened");
-            let _pair = store
-                .key_pair::<sr25519::AppPair>(
-                    &sr25519::Public::from_ss58check(account).unwrap().into(),
-                )
-                .unwrap()
-                .unwrap();
-            info!("key pair fetched");
-            drop(store);
-            _pair
-        }
-    }
 }

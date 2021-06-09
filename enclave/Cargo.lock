@@ -2568,6 +2568,7 @@ dependencies = [
  "log",
  "pallet-balances",
  "parity-scale-codec",
+ "polkadex-sgx-primitives",
  "sgx-externalities",
  "sgx-runtime",
  "sgx_tstd",

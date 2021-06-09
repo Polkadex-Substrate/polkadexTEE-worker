@@ -23,35 +23,31 @@ extern crate clap;
 extern crate env_logger;
 extern crate log;
 
+mod ocex_commands;
+
 extern crate chrono;
 use chrono::{DateTime, Utc};
-use std::time::{Duration, UNIX_EPOCH};
-
-use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
-
-use sp_application_crypto::{ed25519, sr25519};
-use sp_keyring::AccountKeyring;
-use std::path::PathBuf;
 
 use base58::{FromBase58, ToBase58};
-
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
     pallet_substratee_registry::{Enclave, Request},
-    AccountId, BalancesCall, Call, Event, Hash, Signature,
+    AccountId, BalancesCall, Call, Event, Hash,
 };
+use polkadex_sgx_primitives::types::DirectRequest;
+use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
+use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
-use sp_runtime::{
-    traits::{IdentifyAccount, Verify},
-    MultiSignature,
-};
+use sp_keyring::AccountKeyring;
+use sp_runtime::MultiSignature;
 use std::convert::TryFrom;
 use std::result::Result as StdResult;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::{Duration, UNIX_EPOCH};
 use substrate_api_client::{
     compose_extrinsic, compose_extrinsic_offline,
     events::EventsDecoder,
@@ -60,14 +56,13 @@ use substrate_api_client::{
     utils::FromHexString,
     Api, XtStatus,
 };
-
 use substrate_client_keystore::LocalKeystore;
+use substratee_stf::cli_utils::account_parsing::*;
+use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 
-type AccountPublic = <Signature as Verify>::Signer;
-const KEYSTORE_PATH: &str = "my_keystore";
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -127,8 +122,8 @@ fn main() {
         .add_cmd(
             Command::new("new-account")
                 .description("generates a new account for the substraTEE chain")
-                .runner(|_args: &str, _matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None).unwrap();
+                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                    let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
                     println!("{}", key.public().to_ss58check());
@@ -138,8 +133,8 @@ fn main() {
         .add_cmd(
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
-                .runner(|_args: &str, _matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None).unwrap();
+                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                    let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
                     println!("sr25519 keys:");
                     for pubkey in store
                         .public_keys::<sr25519::AppPublic>()
@@ -273,7 +268,7 @@ fn main() {
                     let arg_to = matches.value_of("to").unwrap();
                     let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(arg_from);
+                    let from = get_pair_from_str_untrusted(arg_from);
                     let to = get_accountid_from_str(arg_to);
                     info!("from ss58 is {}", from.public().to_ss58check());
                     info!("to ss58 is {}", to.to_ss58check());
@@ -386,12 +381,12 @@ fn main() {
                     };
                     let shard = match shard_opt {
                         Ok(shard) => shard,
-                        Err(e) => panic!(e),
+                        Err(e) => panic!("{}", e),
                     };
 
                     // get the sender
                     let arg_from = matches.value_of("from").unwrap();
-                    let from = get_pair_from_str(arg_from);
+                    let from = get_pair_from_str_untrusted( arg_from);
                     let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
                     // get the recipient
@@ -399,7 +394,7 @@ fn main() {
                     let to = get_accountid_from_str(arg_to);
                     let (_to_encoded, to_encrypted) = match encode_encrypt(matches, to){
                         Ok((encoded, encrypted)) => (encoded, encrypted),
-                        Err(e) => panic!(e),
+                        Err(e) => panic!("{}", e),
                     };
                     // compose the extrinsic
                     let xt: UncheckedExtrinsicV4<([u8; 2], Vec<u8>, u128, H256)> = compose_extrinsic!(
@@ -418,6 +413,11 @@ fn main() {
                     Ok(())
                 }),
         )
+        .add_cmd(ocex_commands::register_account_command())
+        .add_cmd(ocex_commands::register_proxy_command())
+        .add_cmd(ocex_commands::remove_proxy_command())
+        .add_cmd(ocex_commands::withdraw_command())
+        .add_cmd(ocex_commands::deposit_command())
         .add_cmd(substratee_stf::cli::cmd(&perform_trusted_operation))
         .no_cmd(|_args, _matches| {
             println!("No subcommand matched");
@@ -441,14 +441,22 @@ fn get_chain_api(matches: &ArgMatches<'_>) -> Api<sr25519::Pair> {
 
 fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -> Option<Vec<u8>> {
     match top {
-        TrustedOperation::indirect_call(call) => send_request(matches, call.clone()),
-        TrustedOperation::direct_call(call) => {
-            send_direct_request(matches, TrustedOperation::direct_call(call.clone()))
+        TrustedOperation::indirect_call(call) => {
+            debug!("performing trusted operation - indirect call");
+            send_request(matches, call.clone())
         }
-        TrustedOperation::get(getter) => get_state(matches, TrustedOperation::get(getter.clone())),
+        TrustedOperation::direct_call(call) => {
+            debug!("performing trusted operation - direct call");
+            send_direct_request_encoded(matches, TrustedOperation::direct_call(call.clone()))
+        }
+        TrustedOperation::get(getter) => {
+            debug!("performing trusted operation - getter");
+            send_direct_request_encoded(matches, TrustedOperation::get(getter.clone()))
+        }
     }
 }
 
+#[allow(unused)]
 fn get_state(matches: &ArgMatches<'_>, getter: TrustedOperation) -> Option<Vec<u8>> {
     // TODO: ensure getter is signed?
     let (_operation_call_encoded, operation_call_encrypted) = match encode_encrypt(matches, getter)
@@ -532,7 +540,9 @@ fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec
     let shard = read_shard(matches).unwrap();
 
     let arg_signer = matches.value_of("xt-signer").unwrap();
-    let signer = get_pair_from_str(arg_signer);
+
+    // TODO: clarify: we're getting these account information from the untrusted key store, is that correct?
+    let signer = get_pair_from_str_untrusted(arg_signer);
     let _chain_api = chain_api.set_signer(sr25519_core::Pair::from(signer));
 
     let request = Request {
@@ -600,8 +610,46 @@ fn read_shard(matches: &ArgMatches<'_>) -> StdResult<ShardIdentifier, codec::Err
         },
     }
 }
+
+fn send_direct_request_encoded(
+    matches: &ArgMatches<'_>,
+    operation_call: TrustedOperation,
+) -> Option<Vec<u8>> {
+    let operation_call_encoded = operation_call.encode();
+
+    let shard = read_shard(matches).unwrap();
+
+    // compose jsonrpc call
+    let data = DirectRequest {
+        shard,
+        encoded_text: operation_call_encoded,
+    };
+
+    let rpc_method_str = match get_rpc_function_name_from_top(&operation_call) {
+        Some(str) => str,
+        None => {
+            println!("[Error]: This type of TrustedOperation is not supported");
+            return None;
+        }
+    };
+
+    debug!("Got trusted operation for RPC method {}", rpc_method_str);
+
+    let direct_invocation_call = RpcRequest {
+        jsonrpc: "2.0".to_owned(),
+        method: rpc_method_str,
+        params: data.encode(),
+        id: 1,
+    };
+
+    let direct_api = get_worker_api_direct(matches);
+
+    send_direct_request(direct_invocation_call, direct_api)
+}
+
 /// sends a rpc watch request to the worker api server
-fn send_direct_request(
+#[allow(unused)]
+fn send_direct_request_encrypted(
     matches: &ArgMatches<'_>,
     operation_call: TrustedOperation,
 ) -> Option<Vec<u8>> {
@@ -626,11 +674,17 @@ fn send_direct_request(
         params: data.encode(),
         id: 1,
     };
-    let jsonrpc_call: String = serde_json::to_string(&direct_invocation_call).unwrap();
 
     let direct_api = get_worker_api_direct(matches);
+
+    send_direct_request(direct_invocation_call, direct_api)
+}
+
+fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> Option<Vec<u8>> {
+    let jsonrpc_call: String = serde_json::to_string(&rpc_request).unwrap();
+
     let (sender, receiver) = channel();
-    match direct_api.watch(jsonrpc_call, sender) {
+    match worker_api.watch(jsonrpc_call, sender) {
         Ok(_) => {}
         Err(_) => panic!("Error when sending direct invocation call"),
     }
@@ -832,37 +886,6 @@ where
                     }
                 }
             }
-        }
-    }
-}
-
-fn get_accountid_from_str(account: &str) -> AccountId {
-    match &account[..2] {
-        "//" => AccountPublic::from(sr25519::Pair::from_string(account, None).unwrap().public())
-            .into_account(),
-        _ => AccountPublic::from(sr25519::Public::from_ss58check(account).unwrap()).into_account(),
-    }
-}
-
-// get a pair either form keyring (well known keys) or from the store
-fn get_pair_from_str(account: &str) -> sr25519::AppPair {
-    info!("getting pair for {}", account);
-    match &account[..2] {
-        "//" => sr25519::AppPair::from_string(account, None).unwrap(),
-        _ => {
-            info!("fetching from keystore at {}", &KEYSTORE_PATH);
-            // open store without password protection
-            let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None)
-                .expect("store should exist");
-            info!("store opened");
-            let _pair = store
-                .key_pair::<sr25519::AppPair>(
-                    &sr25519::Public::from_ss58check(account).unwrap().into(),
-                )
-                .unwrap()
-                .unwrap();
-            drop(store);
-            _pair
         }
     }
 }

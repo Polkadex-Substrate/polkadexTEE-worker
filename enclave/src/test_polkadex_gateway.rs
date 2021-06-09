@@ -69,7 +69,6 @@ pub fn test_place_limit_buy_order() {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: UNIT,
-        amount_reserved: UNIT,
         price: Some(UNIT),
     };
 
@@ -99,7 +98,6 @@ pub fn test_place_limit_sell_order() {
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
         quantity: UNIT,
-        amount_reserved: UNIT,
         price: Some(UNIT),
     };
 
@@ -129,7 +127,6 @@ pub fn test_place_market_buy_order() {
         order_type: OrderType::MARKET,
         side: OrderSide::BID,
         quantity: UNIT,
-        amount_reserved: UNIT,
         price: Some(UNIT),
     };
 
@@ -158,7 +155,6 @@ pub fn test_place_market_sell_order() {
         order_type: OrderType::MARKET,
         side: OrderSide::ASK,
         quantity: UNIT,
-        amount_reserved: UNIT,
         price: Some(UNIT),
     };
 
@@ -213,7 +209,6 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: UNIT,
-        amount_reserved: 2 * UNIT,
         price: Some(2 * UNIT),
     };
 
@@ -242,7 +237,6 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
         quantity: UNIT,
-        amount_reserved: UNIT,
         price: Some(UNIT),
     };
 
@@ -281,7 +275,7 @@ pub fn test_settle_trade_full_ask_limit() {
         trade_id: vec![],
         price: 0,
         amount: 1 * UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: buy_order_uuid,
         taker_order_id: vec![],
@@ -321,7 +315,6 @@ pub fn setup_place_buy_and_sell_order_partial_ask_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 4 * UNIT,
         quantity: 2 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -350,7 +343,6 @@ pub fn setup_place_buy_and_sell_order_partial_ask_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: UNIT,
         quantity: UNIT,
         price: Some(UNIT),
     };
@@ -388,7 +380,7 @@ pub fn test_settle_trade_partial_ask_limit() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 4 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: buy_order_uuid.clone(),
         taker_order_id: vec![],
@@ -426,7 +418,6 @@ pub fn test_settle_trade_partial_ask_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 3 * UNIT,
         quantity: 1 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -449,7 +440,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: 1 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -480,7 +470,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: 2 * UNIT,
         quantity: 2 * UNIT,
         price: Some(UNIT),
     };
@@ -525,7 +514,7 @@ pub fn test_settle_trade_partial_two_ask_limit() {
         trade_id: vec![],
         price: 0,
         amount: 1 * UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: buy_order_uuid.clone(),
         taker_order_id: vec![],
@@ -567,7 +556,6 @@ pub fn test_settle_trade_partial_two_ask_limit() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
-        amount_reserved: 1 * UNIT,
         side: OrderSide::ASK,
         quantity: 1 * UNIT,
         price: Some(UNIT),
@@ -593,7 +581,6 @@ pub fn setup_place_buy_and_sell_order_full_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: UNIT,
         price: Some(2 * UNIT),
     };
@@ -622,7 +609,6 @@ pub fn setup_place_buy_and_sell_order_full_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: UNIT,
         quantity: UNIT,
         price: Some(UNIT),
     };
@@ -661,7 +647,7 @@ pub fn test_settle_trade_full_buy_limit() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: sell_order_uuid,
         taker_order_id: vec![],
@@ -701,7 +687,6 @@ pub fn setup_place_buy_and_sell_order_partial_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 4 * UNIT,
         quantity: 2 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -729,7 +714,6 @@ pub fn setup_place_buy_and_sell_order_partial_buy_limit() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
-        amount_reserved: UNIT,
         side: OrderSide::ASK,
         quantity: UNIT,
         price: Some(UNIT),
@@ -770,7 +754,7 @@ pub fn test_settle_trade_partial_buy_limit() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 4 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: sell_order_uuid.clone(),
         taker_order_id: vec![],
@@ -808,7 +792,6 @@ pub fn test_settle_trade_partial_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 3 * UNIT,
         quantity: 1 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -831,7 +814,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: 1 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -862,7 +844,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: 2 * UNIT,
         quantity: 2 * UNIT,
         price: Some(UNIT),
     };
@@ -908,7 +889,7 @@ pub fn test_settle_trade_partial_two_buy_limit() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: sell_order_uuid.clone(),
         taker_order_id: vec![],
@@ -951,7 +932,6 @@ pub fn test_settle_trade_partial_two_buy_limit() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: 1 * UNIT,
         quantity: 1 * UNIT,
         price: Some(UNIT),
     };
@@ -976,7 +956,7 @@ pub fn setup_place_buy_and_sell_order_full_ask_market() {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: UNIT,
-        amount_reserved: 2 * UNIT,
+
         price: Some(2 * UNIT),
     };
 
@@ -1003,7 +983,6 @@ pub fn setup_place_buy_and_sell_order_full_ask_market() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
-        amount_reserved: UNIT,
         side: OrderSide::ASK,
         quantity: UNIT,
         price: None,
@@ -1032,7 +1011,7 @@ pub fn test_settle_trade_full_ask_market() {
         trade_id: vec![],
         price: 0,
         amount: 1 * UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: buy_order_uuid,
         taker_order_id: vec![],
@@ -1073,7 +1052,6 @@ pub fn setup_place_buy_and_sell_order_partial_ask_market() {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: 2 * UNIT,
-        amount_reserved: 4 * UNIT,
         price: Some(2 * UNIT),
     };
 
@@ -1100,7 +1078,6 @@ pub fn setup_place_buy_and_sell_order_partial_ask_market() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
-        amount_reserved: UNIT,
         side: OrderSide::ASK,
         quantity: UNIT,
         price: None,
@@ -1129,7 +1106,7 @@ pub fn test_settle_trade_partial_ask_market() {
         trade_id: vec![],
         price: 0,
         amount: 2 * UNIT,
-        funds: 0,
+        funds: 4 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: buy_order_uuid.clone(),
         taker_order_id: vec![],
@@ -1167,7 +1144,6 @@ pub fn test_settle_trade_partial_ask_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: 1 * UNIT,
         price: Some(2 * UNIT),
     };
@@ -1191,7 +1167,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_market() {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: 1 * UNIT,
-        amount_reserved: 2 * UNIT,
         price: Some(2 * UNIT),
     };
 
@@ -1218,7 +1193,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_market() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
-        amount_reserved: UNIT,
         side: OrderSide::ASK,
         quantity: 2 * UNIT,
         price: None,
@@ -1247,7 +1221,7 @@ pub fn test_settle_trade_partial_two_ask_market() {
         trade_id: vec![],
         price: 0,
         amount: 1 * UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: buy_order_uuid.clone(),
         taker_order_id: vec![],
@@ -1289,7 +1263,6 @@ pub fn test_settle_trade_partial_two_ask_market() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
-        amount_reserved: 1 * UNIT,
         side: OrderSide::ASK,
         quantity: 1 * UNIT,
         price: None,
@@ -1315,7 +1288,6 @@ pub fn setup_place_buy_and_sell_order_full_buy_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: UNIT,
         price: Some(2 * UNIT),
     };
@@ -1344,7 +1316,6 @@ pub fn setup_place_buy_and_sell_order_full_buy_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: UNIT,
         quantity: 2 * UNIT,
         price: Some(UNIT),
     };
@@ -1388,7 +1359,7 @@ pub fn test_settle_trade_full_buy_market() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: sell_order_uuid,
         taker_order_id: vec![],
@@ -1428,7 +1399,6 @@ pub fn setup_place_buy_and_sell_order_partial_bid_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: 2 * UNIT, //Remove later
         price: Some(2 * UNIT),
     };
@@ -1456,7 +1426,6 @@ pub fn setup_place_buy_and_sell_order_partial_bid_market() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
-        amount_reserved: UNIT,
         side: OrderSide::ASK,
         quantity: UNIT,
         price: Some(UNIT),
@@ -1497,7 +1466,7 @@ pub fn test_settle_trade_partial_bid_market() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: sell_order_uuid.clone(),
         taker_order_id: vec![],
@@ -1535,7 +1504,6 @@ pub fn test_settle_trade_partial_bid_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
         side: OrderSide::BID,
-        amount_reserved: 1 * UNIT,
         quantity: 2 * UNIT,
         price: Some(1 * UNIT),
     };
@@ -1558,7 +1526,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_bid_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
         side: OrderSide::BID,
-        amount_reserved: 2 * UNIT,
         quantity: 2 * UNIT, //Remove later
         price: Some(2 * UNIT),
     };
@@ -1586,7 +1553,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_bid_market() {
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
-        amount_reserved: 3 * UNIT,
         side: OrderSide::ASK,
         quantity: 3 * UNIT,
         price: Some(UNIT),
@@ -1632,7 +1598,7 @@ pub fn test_settle_trade_partial_two_bid_market() {
         trade_id: vec![],
         price: 0,
         amount: UNIT,
-        funds: 0,
+        funds: 2 * UNIT,
         maker_order_id: vec![],
         maker_order_uuid: sell_order_uuid.clone(),
         taker_order_id: vec![],
@@ -1670,7 +1636,6 @@ pub fn test_settle_trade_partial_two_bid_market() {
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
         side: OrderSide::ASK,
-        amount_reserved: 1 * UNIT,
         quantity: 1 * UNIT,
         price: Some(1 * UNIT),
     };
@@ -1678,4 +1643,101 @@ pub fn test_settle_trade_partial_two_bid_market() {
     assert_eq!(actual_order, expected_order);
 
     //TODO Also check if ask order is removed or not
+}
+
+pub fn setup_test_cancel_limit_bid_order() {
+    let buy_order_user: AccountId = get_account("test_place_limit_buy_order");
+    let mut new_order: Order = Order {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::LIMIT,
+        side: OrderSide::BID,
+        quantity: UNIT,
+        price: Some(2 * UNIT),
+    };
+
+    setup(buy_order_user.clone());
+    assert_eq!(
+        check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+        Ok(())
+    ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
+    assert!(place_order(buy_order_user.clone(), None, new_order.clone()).is_ok());
+    assert_eq!(
+        check_balance(98 * UNIT, 2 * UNIT, buy_order_user.clone(), AssetId::DOT),
+        Ok(())
+    ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
+    let buy_order_uuid: OrderUUID = (0..100).collect();
+    assert!(lock_storage_and_add_order(new_order, buy_order_uuid).is_ok());
+}
+
+pub fn test_cancel_limit_bid_order() {
+    setup_test_cancel_limit_bid_order();
+    let buy_order_uuid: OrderUUID = (0..100).collect();
+    let buy_order_user: AccountId = get_account("test_place_limit_buy_order");
+    assert_eq!(
+        cancel_order(buy_order_user.clone(), None, buy_order_uuid),
+        Ok(())
+    );
+    assert_eq!(
+        check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+        Ok(())
+    );
+}
+
+pub fn setup_test_cancel_ask_order() {
+    let sell_order_user: AccountId = get_account("test_place_limit_sell_order_partial");
+    let mut new_order: Order = Order {
+        user_uid: sell_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::LIMIT,
+        side: OrderSide::ASK,
+        quantity: UNIT,
+        price: Some(UNIT),
+    };
+
+    setup(sell_order_user.clone());
+    assert_eq!(
+        check_balance(
+            100 * UNIT,
+            0u128,
+            sell_order_user.clone(),
+            AssetId::POLKADEX,
+        ),
+        Ok(())
+    );
+    // Balance:  DOT = (100,0) where (free,reserved)
+    assert!(place_order(sell_order_user.clone(), None, new_order.clone()).is_ok());
+    assert_eq!(
+        check_balance(99 * UNIT, UNIT, sell_order_user.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    let sell_order_uuid: OrderUUID = (200..201).collect();
+    assert!(lock_storage_and_add_order(new_order, sell_order_uuid).is_ok());
+}
+
+pub fn test_cancel_ask_order() {
+    setup_test_cancel_ask_order();
+    let sell_order_user: AccountId = get_account("test_place_limit_sell_order_partial");
+    let sell_order_uuid: OrderUUID = (200..201).collect();
+    assert_eq!(
+        cancel_order(sell_order_user.clone(), None, sell_order_uuid),
+        Ok(())
+    );
+    assert_eq!(
+        check_balance(
+            100 * UNIT,
+            0u128,
+            sell_order_user.clone(),
+            AssetId::POLKADEX,
+        ),
+        Ok(())
+    );
 }

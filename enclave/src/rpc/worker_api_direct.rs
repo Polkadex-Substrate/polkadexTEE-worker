@@ -16,51 +16,53 @@
 */
 
 pub extern crate alloc;
+use crate::rpc::polkadex_rpc_gateway::PolkadexRpcGateway;
+use crate::rpc::return_value_encoding::{
+    compute_encoded_return_error, compute_encoded_return_value,
+};
+use crate::rpc::trusted_operation_verifier::{TrustedOperationExtractor, TrustedOperationVerifier};
+use crate::rpc::{
+    api::SideChainApi,
+    author::{Author, AuthorApi},
+    basic_pool::BasicPool,
+    io_handler_extensions,
+    rpc_call_encoder::RpcCall,
+    rpc_cancel_order::RpcCancelOrder,
+    rpc_get_balance::RpcGetBalance,
+    rpc_place_order::RpcPlaceOrder,
+    rpc_withdraw::RpcWithdraw,
+};
+use crate::rsa3072;
+use crate::top_pool::pool::Options as PoolOptions;
+use crate::utils::write_slice_and_whitespace_pad;
 use alloc::{
     borrow::ToOwned,
+    boxed::Box,
     format,
     slice::{from_raw_parts, from_raw_parts_mut},
     str,
     string::String,
     vec::Vec,
 };
+use base58::FromBase58;
+use chain_relay::Block;
+use codec::{Decode, Encode};
 use core::{ops::Deref, result::Result};
-
+use jsonrpc_core::futures::executor;
+use jsonrpc_core::Error as RpcError;
+use jsonrpc_core::*;
+use log::*;
+use serde_json::*;
 use sgx_types::*;
+use sp_core::H256 as Hash;
 use std::{
     sync::atomic::{AtomicPtr, Ordering},
     sync::{Arc, SgxMutex},
 };
-
-use sp_core::H256 as Hash;
-
-use codec::{Decode, Encode};
-use log::*;
-
-use crate::rpc::{
-    api::SideChainApi,
-    author::{Author, AuthorApi},
-    basic_pool::BasicPool,
-};
-
-use crate::top_pool::pool::Options as PoolOptions;
-
-use jsonrpc_core::futures::executor;
-use jsonrpc_core::Error as RpcError;
-use jsonrpc_core::*;
-use serde_json::*;
-
-use substratee_stf::ShardIdentifier;
-
-use base58::FromBase58;
-use chain_relay::Block;
-
 use substratee_node_primitives::Request;
+use substratee_stf::ShardIdentifier;
 use substratee_worker_primitives::RpcReturnValue;
 use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
-
-use crate::rsa3072;
-use crate::utils::write_slice_and_whitespace_pad;
 
 static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -106,18 +108,6 @@ pub fn load_top_pool() -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
-fn convert_vec_to_string(vec_methods: Vec<&str>) -> String {
-    let mut method_string = String::new();
-    for i in 0..vec_methods.len() {
-        method_string.push_str(vec_methods[i]);
-        if vec_methods.len() > (i + 1) {
-            method_string.push_str(", ");
-        }
-    }
-    format!("methods: [{}]", method_string)
-}
-
-// converts the rpc methods vector to a string and adds commas and brackets for readability
 fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, String> {
     let shard_vec = match shard_base58.from_base58() {
         Ok(vec) => vec,
@@ -130,159 +120,53 @@ fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, Str
     Ok(shard)
 }
 
-fn compute_encoded_return_error(error_msg: String) -> Vec<u8> {
-    let return_value = RpcReturnValue {
-        value: error_msg.encode(),
-        do_watch: false,
-        status: DirectRequestStatus::Error,
-    };
-    return_value.encode()
-}
-
 fn init_io_handler() -> IoHandler {
     let mut io = IoHandler::new();
-    let mut rpc_methods_vec: Vec<&str> = Vec::new();
 
-    // Add rpc methods
-    // author_submitAndWatchExtrinsic
-    let author_submit_and_watch_extrinsic_name: &str = "author_submitAndWatchExtrinsic";
-    rpc_methods_vec.push(author_submit_and_watch_extrinsic_name);
+    // PLACE ORDER
     io.add_sync_method(
-        author_submit_and_watch_extrinsic_name,
-        move |params: Params| {
-            match params.parse::<Vec<u8>>() {
-                Ok(encoded_params) => {
-                    // Aquire lock
-                    let tx_pool_mutex = load_top_pool().unwrap();
-                    let tx_pool_guard = tx_pool_mutex.lock().unwrap();
-                    let tx_pool = Arc::new(tx_pool_guard.deref());
-                    let author = Author::new(tx_pool);
-
-                    match Request::decode(&mut encoded_params.as_slice()) {
-                        Ok(request) => {
-                            let shard: ShardIdentifier = request.shard;
-                            let encrypted_trusted_call: Vec<u8> = request.cyphertext;
-                            let result = async {
-                                author
-                                    .watch_top(encrypted_trusted_call.clone(), shard)
-                                    .await
-                            };
-                            let response: Result<Hash, RpcError> = executor::block_on(result);
-                            let json_value = match response {
-                                Ok(hash_value) => RpcReturnValue {
-                                    do_watch: true,
-                                    value: hash_value.encode(),
-                                    status: DirectRequestStatus::TrustedOperationStatus(
-                                        TrustedOperationStatus::Submitted,
-                                    ),
-                                }
-                                .encode(),
-                                Err(rpc_error) => compute_encoded_return_error(rpc_error.message),
-                            };
-                            Ok(json!(json_value))
-                        }
-                        Err(_) => Ok(json!(compute_encoded_return_error(
-                            "Could not decode request".to_owned()
-                        ))),
-                    }
-                }
-                Err(e) => {
-                    let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                    Ok(json!(compute_encoded_return_error(error_msg)))
-                }
-            }
-        },
+        &RpcPlaceOrder::name(),
+        RpcPlaceOrder::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
     );
 
-    // author_submitExtrinsic
-    let author_submit_extrinsic_name: &str = "author_submitExtrinsic";
-    rpc_methods_vec.push(author_submit_extrinsic_name);
-    io.add_sync_method(author_submit_extrinsic_name, move |params: Params| {
-        match params.parse::<Vec<u8>>() {
-            Ok(encoded_params) => {
-                // Aquire lock
-                let tx_pool_mutex = load_top_pool().unwrap();
-                let tx_pool_guard = tx_pool_mutex.lock().unwrap();
-                let tx_pool = Arc::new(tx_pool_guard.deref());
-                let author = Author::new(tx_pool);
+    // CANCEL ORDER
+    io.add_sync_method(
+        &RpcCancelOrder::name(),
+        RpcCancelOrder::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
 
-                match Request::decode(&mut encoded_params.as_slice()) {
-                    Ok(request) => {
-                        let shard: ShardIdentifier = request.shard;
-                        let encrypted_trusted_op: Vec<u8> = request.cyphertext;
-                        let result =
-                            async { author.submit_top(encrypted_trusted_op.clone(), shard).await };
-                        let response: Result<Hash, RpcError> = executor::block_on(result);
-                        let json_value = match response {
-                            Ok(hash_value) => RpcReturnValue {
-                                do_watch: false,
-                                value: hash_value.encode(),
-                                status: DirectRequestStatus::TrustedOperationStatus(
-                                    TrustedOperationStatus::Submitted,
-                                ),
-                            }
-                            .encode(),
-                            Err(rpc_error) => compute_encoded_return_error(rpc_error.message),
-                        };
-                        Ok(json!(json_value))
-                    }
-                    Err(_) => Ok(json!(compute_encoded_return_error(
-                        "Could not decode request".to_owned()
-                    ))),
-                }
-            }
-            Err(e) => {
-                let error_msg: String = format!("Could not submit trusted call due to: {}", e);
-                Ok(json!(compute_encoded_return_error(error_msg)))
-            }
-        }
-    });
+    // WITHDRAW
+    io.add_sync_method(
+        &RpcWithdraw::name(),
+        RpcWithdraw::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
 
-    // author_pendingExtrinsics
-    let author_pending_extrinsic_name: &str = "author_pendingExtrinsics";
-    rpc_methods_vec.push(author_pending_extrinsic_name);
-    io.add_sync_method(author_pending_extrinsic_name, move |params: Params| {
-        match params.parse::<Vec<String>>() {
-            Ok(shards) => {
-                // Aquire tx_pool lock
-                let tx_pool_mutex = load_top_pool().unwrap();
-                let tx_pool_guard = tx_pool_mutex.lock().unwrap();
-                let tx_pool = Arc::new(tx_pool_guard.deref());
-                let author = Author::new(tx_pool);
-
-                let mut retrieved_operations = vec![];
-                for shard_base58 in shards.iter() {
-                    let shard = match decode_shard_from_base58(shard_base58.clone()) {
-                        Ok(id) => id,
-                        Err(msg) => return Ok(Value::String(msg)),
-                    };
-                    if let Ok(vec_of_operations) = author.pending_tops(shard) {
-                        retrieved_operations.push(vec_of_operations);
-                    }
-                }
-                let json_value = RpcReturnValue {
-                    do_watch: false,
-                    value: retrieved_operations.encode(),
-                    status: DirectRequestStatus::Ok,
-                };
-                Ok(json!(json_value.encode()))
-            }
-            Err(e) => {
-                let error_msg: String = format!("Could not retrieve pending calls due to: {}", e);
-                Ok(json!(compute_encoded_return_error(error_msg)))
-            }
-        }
-    });
+    // GET BALANCE
+    io.add_sync_method(
+        &RpcGetBalance::name(),
+        RpcGetBalance::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
 
     // author_getShieldingKey
     let rsa_pubkey_name: &str = "author_getShieldingKey";
-    rpc_methods_vec.push(rsa_pubkey_name);
     io.add_sync_method(rsa_pubkey_name, move |_: Params| {
         let rsa_pubkey = match rsa3072::unseal_pubkey() {
             Ok(key) => key,
             Err(status) => {
                 let error_msg: String = format!("Could not get rsa pubkey due to: {}", status);
-                return Ok(json!(compute_encoded_return_error(error_msg)));
+                return Ok(json!(compute_encoded_return_error(&error_msg)));
             }
         };
 
@@ -293,7 +177,7 @@ fn init_io_handler() -> IoHandler {
                     "[Enclave] can't serialize rsa_pubkey {:?} {}",
                     rsa_pubkey, x
                 );
-                return Ok(json!(compute_encoded_return_error(error_msg)));
+                return Ok(json!(compute_encoded_return_error(&error_msg)));
             }
         };
         let json_value =
@@ -301,64 +185,8 @@ fn init_io_handler() -> IoHandler {
         Ok(json!(json_value.encode()))
     });
 
-    // chain_subscribeAllHeads
-    let chain_subscribe_all_heads_name: &str = "chain_subscribeAllHeads";
-    rpc_methods_vec.push(chain_subscribe_all_heads_name);
-    io.add_sync_method(chain_subscribe_all_heads_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // state_getMetadata
-    let state_get_metadata_name: &str = "state_getMetadata";
-    rpc_methods_vec.push(state_get_metadata_name);
-    io.add_sync_method(state_get_metadata_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // state_getRuntimeVersion
-    let state_get_runtime_version_name: &str = "state_getRuntimeVersion";
-    rpc_methods_vec.push(state_get_runtime_version_name);
-    io.add_sync_method(state_get_runtime_version_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // state_get
-    let state_get_name: &str = "state_get";
-    rpc_methods_vec.push(state_get_name);
-    io.add_sync_method(state_get_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // system_health
-    let state_health_name: &str = "system_health";
-    rpc_methods_vec.push(state_health_name);
-    io.add_sync_method(state_health_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // system_name
-    let state_name_name: &str = "system_name";
-    rpc_methods_vec.push(state_name_name);
-    io.add_sync_method(state_name_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
-    // system_version
-    let state_version_name: &str = "system_version";
-    rpc_methods_vec.push(state_version_name);
-    io.add_sync_method(state_version_name, |_: Params| {
-        let parsed = "world";
-        Ok(Value::String(format!("hello, {}", parsed)))
-    });
-
     // returns all rpcs methods
-    let rpc_methods_string: String = convert_vec_to_string(rpc_methods_vec);
+    let rpc_methods_string: String = io_handler_extensions::get_all_rpc_methods_string(&io);
     io.add_sync_method("rpc_methods", move |_: Params| {
         Ok(Value::String(rpc_methods_string.to_owned()))
     });

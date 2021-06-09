@@ -22,7 +22,6 @@ pub fn get_dummy_orders() -> Vec<Order> {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: 10,
-        amount_reserved: 100000u128,
         price: Some(10000u128),
     };
     let second_order: Order = Order {
@@ -35,7 +34,6 @@ pub fn get_dummy_orders() -> Vec<Order> {
         order_type: OrderType::LIMIT,
         side: OrderSide::BID,
         quantity: 10,
-        amount_reserved: 100000u128,
         price: Some(10001u128),
     };
     vec![order, second_order]
