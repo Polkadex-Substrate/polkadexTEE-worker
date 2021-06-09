@@ -486,14 +486,14 @@ pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
 pub fn basic_order_checks(order: &Order) -> Result<(), GatewayError> {
     match (order.order_type, order.side) {
         (OrderType::LIMIT, OrderSide::BID) | (OrderType::LIMIT, OrderSide::ASK)
-            if order.price.unwrap() <= 0 || order.quantity <= 0 =>
+            if order.price.unwrap() == 0 || order.quantity == 0 =>
         {
             Err(GatewayError::BasicOrderCheckError)
         }
-        (OrderType::MARKET, OrderSide::BID) if order.price.unwrap() <= 0 => {
+        (OrderType::MARKET, OrderSide::BID) if order.price.unwrap() == 0 => {
             Err(GatewayError::BasicOrderCheckError)
         }
-        (OrderType::MARKET, OrderSide::ASK) if order.quantity <= 0 => {
+        (OrderType::MARKET, OrderSide::ASK) if order.quantity == 0 => {
             Err(GatewayError::BasicOrderCheckError)
         }
         _ => Ok(()),
