@@ -17,12 +17,11 @@ use crate::polkadex_balance_storage::{
 use crate::polkadex_gateway::{
     authenticate_user, cancel_order, initialize_polkadex_gateway,
     load_storage_check_nonce_in_insert_order_cache, load_storage_insert_order_cache, place_order,
-    process_create_order,
+    process_create_order, settle_trade,
 };
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
-    lock_storage_and_check_order_in_orderbook,
-
+    lock_storage_and_check_order_in_orderbook, lock_storage_and_get_order,
 };
 use crate::test_proxy::initialize_dummy;
 
