@@ -103,6 +103,7 @@ pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, Ga
 
 // TODO: Write test cases for this function
 
+
 pub fn lock_storage_and_add_order(
     order: Order,
     order_uuid: OrderUUID,
@@ -111,6 +112,15 @@ pub fn lock_storage_and_add_order(
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     Ok(orderbook.add_order(order_uuid, order))
+}
+
+
+pub fn lock_storage_and_check_order_in_orderbook(
+    order_uuid: OrderUUID,
+) -> Result<bool, GatewayError> {
+    let mutex = load_orderbook().unwrap();
+    let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+    Ok(orderbook.storage.contains_key(&order_uuid))
 }
 
 // Only for test

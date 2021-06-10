@@ -54,7 +54,7 @@ pub trait RpcGateway: Send + Sync {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<OrderUUID, GatewayError>;
+    ) -> Result<(), GatewayError>;
 
     /// cancel an order, identified by UUID
     fn cancel_order(
@@ -109,7 +109,8 @@ impl RpcGateway for PolkadexRpcGateway {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<OrderUUID, GatewayError> {
+    ) -> Result<(), GatewayError> {
+        // TODO @gj @bigna please confirm this
         place_order(main_account, proxy_acc, order)
     }
 
