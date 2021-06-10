@@ -23,6 +23,9 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, SgxMutex};
 use crate::polkadex_cache::cache_api::{RequestId, StaticStorageApi, CacheResult};
 
+use codec::{Encode, Decode};
+use std::string::{String, ToString};
+
 static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 
@@ -68,7 +71,7 @@ impl StaticStorageApi for CreateOrderCache {
 
 impl CreateOrderCache {
     /// removes the given order from the cache. Returns the value of
-    /// the key if previously present
+    /// the given key if previously present
     pub fn remove_order(&mut self, id: &RequestId) -> Option<Order> {
         self.order_map.remove(id)
     }
@@ -90,4 +93,111 @@ impl CreateOrderCache {
     fn increment_request_id(&mut self) {
         self.request_id = self.request_id.saturating_add(1)
     }
+}
+
+
+pub mod tests {
+    use super::*;
+    use crate::test_orderbook_storage;
+
+
+    pub fn test_initialize_and_lock_storage() {
+        // given
+        CreateOrderCache::initialize();
+
+        // when
+        let mutex = CreateOrderCache::load().unwrap();
+
+        // then
+        mutex.lock().unwrap();
+    }
+
+    pub fn test_insert_order_and_increment() {
+        // given
+        CreateOrderCache::initialize();
+        let mut cache = CreateOrderCache::load()
+            .unwrap()
+            .lock()
+            .unwrap();
+        let orders = test_orderbook_storage::get_dummy_orders();
+        assert_eq!(cache.request_id(), 0);
+
+        // when
+        let none = cache.insert_order(orders[0].clone());
+
+        // then
+        assert!(none.is_none()); // no previously inserted order should be there
+        assert_eq!(cache.request_id(), 1);
+    }
+
+    pub fn test_remove_order() {
+        // given
+        CreateOrderCache::initialize();
+        let mut cache = CreateOrderCache::load()
+            .unwrap()
+            .lock()
+            .unwrap();
+        let orders = test_orderbook_storage::get_dummy_orders();
+        let order_0_id = cache.request_id();
+        assert_eq!(order_0_id, 0);
+        cache.insert_order(orders[0].clone());
+        let order_1_id = cache.request_id();
+        assert_eq!(order_1_id, 1);
+        cache.insert_order(orders[1].clone());
+
+        // when
+        let order_1 = cache.remove_order(&order_1_id).unwrap();
+        let none = cache.remove_order(&order_1_id);
+
+        // then
+        assert!(none.is_none());
+        assert_eq!(order_1, orders[1]);
+        assert_eq!(cache.request_id(), 2);
+    }
+
+    pub fn test_reload_cache() {
+        // given
+        let orders = test_orderbook_storage::get_dummy_orders();
+        {
+            CreateOrderCache::initialize();
+        }
+        {
+            let mut cache = CreateOrderCache::load()
+                .unwrap()
+                .lock()
+                .unwrap();
+            let order_0_id = cache.request_id();
+            assert_eq!(order_0_id, 0);
+            cache.insert_order(orders[0].clone());
+            let order_1_id = cache.request_id();
+            assert_eq!(order_1_id, 1);
+            cache.insert_order(orders[1].clone());
+        }
+
+        // when
+        {
+            let mut cache = CreateOrderCache::load()
+                .unwrap()
+                .lock()
+                .unwrap();
+            let order_1 = cache.remove_order(&1).unwrap();
+            let none = cache.remove_order(&1);
+
+            assert!(none.is_none());
+            assert_eq!(order_1, orders[1]);
+        }
+
+
+        // then
+        let mut cache = CreateOrderCache::load()
+            .unwrap()
+            .lock()
+            .unwrap();
+        let order_1 = cache.remove_order(&1);
+        assert!(order_1.is_none());
+        let order_0 = cache.remove_order(&0).unwrap();
+        assert_eq!(order_0, orders[0]);
+        assert_eq!(cache.request_id(), 2);
+    }
+
 }
