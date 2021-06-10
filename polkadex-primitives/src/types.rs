@@ -1,16 +1,14 @@
 pub extern crate alloc;
 
+use crate::ShardIdentifier;
 use alloc::vec;
 use alloc::vec::Vec;
 use codec::{Decode, Encode, Error};
 use frame_support::sp_runtime::traits::Verify;
-
-use crate::ShardIdentifier;
+use polkadex_primitives::assets::AssetId;
+use polkadex_primitives::common_types::{AccountId, Balance};
 use sp_core::ed25519::Signature;
 use sp_core::{ed25519, Pair};
-use polkadex_primitives::common_types::{Balance, AccountId};
-use polkadex_primitives::assets::AssetId;
-
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = AccountId;
@@ -28,19 +26,18 @@ pub type MarketType = Vec<u8>;
 pub type CurrencyId = AssetId;
 
 /// Market identifier for order
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub struct MarketId {
     pub base: AssetId,
-    pub quote: AssetId
+    pub quote: AssetId,
 }
-
 
 /// The different Order Types
 /// - market: "m"
 /// - limit: "l"
 /// - Post only (Must not fill at all or is canceled): "p"
 /// - Fill or kill (Must fully match at a given price or iscanceled): "f"
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub enum OrderType {
     LIMIT,
     MARKET,
@@ -49,13 +46,13 @@ pub enum OrderType {
 }
 
 /// Used to specify order side, "buy" or "sell"
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub enum OrderSide {
     BID,
     ASK,
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, Copy)]
 pub enum OrderState {
     UNFILLED,
     PARTIAL,
@@ -116,7 +113,7 @@ impl Default for SignedOrder {
             order_id: vec![],
             order: Order {
                 user_uid: AccountId::default(),
-                market_id: MarketId{
+                market_id: MarketId {
                     base: AssetId::POLKADEX,
                     quote: AssetId::DOT,
                 },
@@ -229,27 +226,27 @@ pub struct OrderUpdate {
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct TradeEvent {
     // Market Unique Identifier
-    market_id: MarketId,
+    pub market_id: MarketId,
     // Unique Trade ID
-    trade_id: TradeId,
+    pub trade_id: TradeId,
     // Trade execution price
-    price: PriceAndQuantityType,
+    pub price: PriceAndQuantityType,
     // Trade execution amount
-    amount: PriceAndQuantityType,
+    pub amount: PriceAndQuantityType,
     // Trade Funds (amount*price)
-    funds: PriceAndQuantityType,
+    pub funds: PriceAndQuantityType,
     // Maker's trade Order Id
-    maker_order_id: OrderId,
+    pub maker_order_id: OrderId,
     // Maker's trade Order UUID
-    maker_order_uuid: OrderUUID,
+    pub maker_order_uuid: OrderUUID,
     // Taker's trade Order Id
-    taker_order_id: OrderId,
+    pub taker_order_id: OrderId,
     // Taker's trade Order UUID
-    taker_order_uuid: OrderUUID,
+    pub taker_order_uuid: OrderUUID,
     // Maker Order Side
-    maker_side: OrderSide,
+    pub maker_side: OrderSide,
     // Trade Timestamp
-    timestamp: Vec<u8>,
+    pub timestamp: Vec<u8>,
 }
 
 // DirectRequest for RPC

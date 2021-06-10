@@ -79,31 +79,41 @@ pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> Sg
 }
 
 /// Loads and Returns Orderbook under mutex from Static Atomics Pointer
-pub fn load_orderbook() -> SgxResult<&'static SgxMutex<OrderbookStorage>> {
+pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayError> {
     let ptr = GLOBAL_ORDERBOOK_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<OrderbookStorage>;
     if ptr.is_null() {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        return Err(GatewayError::UnableToLoadPointer);
     } else {
         Ok(unsafe { &*ptr })
     }
 }
 
 // TODO: Write test cases for this function
-pub fn remove_order(order_uuid: &OrderUUID) -> SgxResult<Option<Order>> {
+
+pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
-    Ok(orderbook.remove_order(order_uuid))
+    if let Some(order) = orderbook.remove_order(order_uuid) {
+        Ok(order)
+    } else {
+        Err(GatewayError::OrderNotFound)
+    }
 }
+
+// TODO: Write test cases for this function
+
 
 pub fn lock_storage_and_add_order(
     order: Order,
     order_uuid: OrderUUID,
 ) -> Result<Option<Order>, GatewayError> {
-    let mutex = load_orderbook().unwrap();
+    let mutex = load_orderbook()?;
+    // TODO: Handle this unwrap
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     Ok(orderbook.add_order(order_uuid, order))
 }
+
 
 pub fn lock_storage_and_check_order_in_orderbook(
     order_uuid: OrderUUID,
@@ -111,4 +121,12 @@ pub fn lock_storage_and_check_order_in_orderbook(
     let mutex = load_orderbook().unwrap();
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     Ok(orderbook.storage.contains_key(&order_uuid))
+}
+
+// Only for test
+pub fn lock_storage_and_get_order(order_uuid: OrderUUID) -> Result<Order, GatewayError> {
+    let mutex = load_orderbook()?;
+    let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+    let order = orderbook.read_order(&order_uuid).unwrap().clone();
+    Ok(order)
 }

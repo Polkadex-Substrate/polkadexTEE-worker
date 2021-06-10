@@ -13,6 +13,7 @@ use std::{
 use crate::polkadex;
 use crate::polkadex::EncodedAccountId;
 use crate::polkadex::PolkadexAccountsStorage;
+use crate::polkadex_gateway::GatewayError;
 
 pub fn get_dummy_map(storage: &mut SgxMutexGuard<PolkadexAccountsStorage>) {
     let main_account_one: AccountId = get_account("first_account");
@@ -73,7 +74,7 @@ pub fn test_check_if_proxy_registered() {
     );
     assert_eq!(
         polkadex::check_if_proxy_registered(main_account_false, dummy_account_false),
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        Err(GatewayError::MainAccountNotRegistered)
     );
 }
 

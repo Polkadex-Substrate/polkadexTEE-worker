@@ -1,4 +1,4 @@
-use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, SignedOrder, MarketId};
+use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
 use sgx_tstd::string::String;
 use sgx_tstd::sync::SgxMutexGuard;
 use sgx_tstd::vec::Vec;
@@ -8,15 +8,15 @@ use sp_core::ed25519::Signature;
 use crate::ed25519;
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
-use polkadex_sgx_primitives::AssetId;
 use polkadex_sgx_primitives::accounts::get_account;
+use polkadex_sgx_primitives::AssetId;
 
 pub fn get_dummy_orders() -> Vec<Order> {
     let order: Order = Order {
         user_uid: get_account("test_account"),
-        market_id: MarketId{
+        market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT
+            quote: AssetId::DOT,
         },
         market_type: String::from("trusted").into_bytes(),
         order_type: OrderType::LIMIT,
@@ -26,9 +26,9 @@ pub fn get_dummy_orders() -> Vec<Order> {
     };
     let second_order: Order = Order {
         user_uid: get_account("test_account"),
-        market_id: MarketId{
+        market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT
+            quote: AssetId::DOT,
         },
         market_type: String::from("trusted").into_bytes(),
         order_type: OrderType::LIMIT,
