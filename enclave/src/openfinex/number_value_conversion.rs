@@ -33,7 +33,7 @@ pub fn convert_to_integer(
     // block chains don't support floating point numbers
     // (this is required to ensure the deterministic nature of the runtime)
     // so we have to convert block chain quantities to OpenFinex decimals by dividing by a factor of 10^18
-    if decimal < 0.0 {
+    if decimal < 0.0f64 {
         return Err(OpenFinexApiError::FloatingPointConversionError(format!(
             "attempting to convert a negative floating point number ({}) into an unsigned integer",
             decimal
@@ -54,22 +54,36 @@ pub mod tests {
     use super::*;
 
     pub fn given_negative_floating_point_number_then_conversion_fails() {
-        assert!(convert_to_integer(-23.9).is_err());
-        assert!(convert_to_integer(-1e-92).is_err());
-        assert!(convert_to_integer(-1.0).is_err());
+        assert!(convert_to_integer(-23.9f64).is_err());
+        assert!(convert_to_integer(-1e-92f64).is_err());
+        assert!(convert_to_integer(-1.0f64).is_err());
         assert!(convert_to_integer(-OpenFinexDecimal::INFINITY).is_err());
     }
 
     pub fn given_positive_floating_point_number_then_convert_successfully() {
         assert_eq!(
-            convert_to_integer(23.719348).unwrap(),
+            convert_to_integer(23.719348f64).unwrap(),
             23_719_348_000_000_000_000
         );
-        assert_eq!(convert_to_integer(1.0).unwrap(), 1_000_000_000_000_000_000);
+        assert_eq!(
+            convert_to_integer(1.0f64).unwrap(),
+            1_000_000_000_000_000_000
+        );
     }
 
     pub fn given_integer_value_then_convert_with_factor() {
-        assert_eq!(convert_to_decimal(1), 1e-18);
-        assert_eq!(convert_to_decimal(9_851_674_235), 0.000_000_009_851_674_235);
+        assert!(floats_are_approximately_equal(
+            convert_to_decimal(1),
+            1e-18f64
+        ));
+
+        assert!(floats_are_approximately_equal(
+            convert_to_decimal(9_851_674_235),
+            0.000_000_009_851_674_235f64
+        ));
+    }
+
+    fn floats_are_approximately_equal(val1: f64, val2: f64) -> bool {
+        (val1 - val2).abs() < f64::EPSILON
     }
 }

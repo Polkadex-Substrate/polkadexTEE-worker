@@ -1694,7 +1694,7 @@ pub fn test_cancel_limit_bid_order() {
         order_id: buy_order_uuid.clone(),
     };
     assert_eq!(cancel_order(buy_order_user.clone(), None, order), Ok(()));
-    assert!(process_cancel_order(buy_order_uuid.clone()).is_ok());
+    assert!(process_cancel_order(buy_order_uuid).is_ok());
     assert_eq!(
         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
         Ok(())
@@ -1749,7 +1749,7 @@ pub fn test_cancel_ask_order() {
         order_id: sell_order_uuid.clone(),
     };
     assert_eq!(cancel_order(sell_order_user.clone(), None, order), Ok(()));
-    assert!(process_cancel_order(sell_order_uuid.clone()).is_ok());
+    assert!(process_cancel_order(sell_order_uuid).is_ok());
     assert_eq!(
         check_balance(
             100 * UNIT,
