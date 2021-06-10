@@ -17,7 +17,8 @@ use crate::polkadex_orderbook_storage;
 
 #[derive(Encode, Decode, Debug, Eq, PartialEq)]
 pub enum GatewayError {
-    UndefinedBehaviour1,
+    /// Nonce not present
+    NonceNotPresent,
     /// Price for limit Order not found
     LimitOrderPriceNotFound,
     /// Quantity zero for limit order,
@@ -62,7 +63,7 @@ pub fn place_order(
     main_account: AccountId,
     proxy_acc: Option<AccountId>,
     order: Order,
-) -> Result<OrderUUID, GatewayError> {
+) -> Result<(), GatewayError> {
     // Authentication
     authenticate_user(main_account.clone(), proxy_acc)?;
     // Mutate Balances
@@ -140,26 +141,17 @@ pub fn place_order(
     // Store the order
     // Order will be cached using incremental nonce and submitted to Openfinex with the nonce and it is stored to Orderbook
     // after nonce is replaced with OrderUUID from Openfinex
-    // if let Ok(nonce) = get_finex_nonce_and_increment() {
-    //     if let Ok(mutex) = load_create_cache_pointer() {
-    //         let mut cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
-    //         cache.insert(nonce, order);
-    //     } else {
-    //         error!("Unable to get new nonce for order");
-    //         return Err(GatewayError::UndefinedBehaviour);
-    //     }
-    // } else {
-    //     error!("Unable to get new nonce for order");
-    //     return Err(GatewayError::UndefinedBehaviour);
-    // }
-
-    let order_uuid: OrderUUID = send_order_to_open_finex(order.clone())?;
-    polkadex_orderbook_storage::add_order(order, order_uuid.clone())
-        .map_err(|_| GatewayError::UndefinedBehaviour)?; // TODO: Change the error type of add order to GateWay Error.
-    Ok(order_uuid)
+    if let Ok(nonce) = get_finex_nonce_and_increment() {
+        load_storage_insert_order_cache(nonce, order.clone())?;
+        send_order_to_open_finex(nonce, order.clone())?;
+        Ok(())
+    } else {
+        error!("Unable to get new nonce for order");
+        Err(GatewayError::UndefinedBehaviour)
+    }
 }
 
-fn send_order_to_open_finex(order: Order) -> Result<OrderUUID, GatewayError> {
+fn send_order_to_open_finex(nonce: u128, order: Order) -> Result<OrderUUID, GatewayError> {
     // TODO: Send order to Openfinex for inclusion ( this is a blocking call )
     Ok(OrderUUID::new())
 }
@@ -241,6 +233,18 @@ pub fn cancel_order(
     }
     // error!("Unable to load the cancel cache pointer"); //TODO: @gautham why we need this?
     // return Err(GatewayError::UndefinedBehaviour1);
+    Ok(())
+}
+
+pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+    let mutex = load_create_cache_pointer();
+    let mut cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
+    if let Some(order) = cache.remove(&nonce) {
+        // Inser order in orderbook
+        polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid);
+    } else {
+        return Err(GatewayError::NonceNotPresent);
+    }
     Ok(())
 }
 
@@ -332,64 +336,85 @@ pub fn authenticate_user(
     Ok(())
 }
 
-// static CREATE_ORDER_NONCE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-// static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-// static CANCEL_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+static CREATE_ORDER_NONCE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+static CANCEL_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
-// pub fn initialize_polkadex_gateway() {
-//     // let nonce: u128 = 0;
-//     // let create_nonce_storage_ptr = Arc::new(SgxMutex::<u128>::new(nonce));
-//     // let create_nonce_ptr = Arc::into_raw(create_nonce_storage_ptr);
-//     // CREATE_ORDER_NONCE.store(create_nonce_ptr as *mut (), Ordering::SeqCst);
-//     //
-//     // let cancel_cache: HashSet<OrderUUID> = HashSet::new();
-//     // let cancel_cache_storage_ptr = Arc::new(SgxMutex::new(cancel_cache));
-//     // let cancel_cache_ptr = Arc::into_raw(cancel_cache_storage_ptr);
-//     // CANCEL_ORDER_CACHE.store(cancel_cache_ptr as *mut (), Ordering::SeqCst);
-//     //
-//     // let create_cache: HashMap<u128, Order> = HashMap::new();
-//     // let create_cache_storage_ptr = Arc::new(SgxMutex::new(create_cache));
-//     // let create_cache_ptr = Arc::into_raw(create_cache_storage_ptr);
-//     // CREATE_ORDER_CACHE.store(create_cache_ptr as *mut (), Ordering::SeqCst);
-// }
+pub fn initialize_polkadex_gateway() {
+    // let nonce: u128 = 0;
+    // let create_nonce_storage_ptr = Arc::new(SgxMutex::<u128>::new(nonce));
+    // let create_nonce_ptr = Arc::into_raw(create_nonce_storage_ptr);
+    // CREATE_ORDER_NONCE.store(create_nonce_ptr as *mut (), Ordering::SeqCst);
+    //
+    // let cancel_cache: HashSet<OrderUUID> = HashSet::new();
+    // let cancel_cache_storage_ptr = Arc::new(SgxMutex::new(cancel_cache));
+    // let cancel_cache_ptr = Arc::into_raw(cancel_cache_storage_ptr);
+    // CANCEL_ORDER_CACHE.store(cancel_cache_ptr as *mut (), Ordering::SeqCst);
+    //
+    // let create_cache: HashMap<u128, Order> = HashMap::new();
+    // let create_cache_storage_ptr = Arc::new(SgxMutex::new(create_cache));
+    // let create_cache_ptr = Arc::into_raw(create_cache_storage_ptr);
+    // CREATE_ORDER_CACHE.store(create_cache_ptr as *mut (), Ordering::SeqCst);
+}
+
+fn load_finex_nonce_pointer() -> SgxResult<&'static SgxMutex<u128>> {
+    let ptr = CREATE_ORDER_NONCE.load(Ordering::SeqCst) as *mut SgxMutex<u128>;
+    if ptr.is_null() {
+        error!("Pointer is Null");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(unsafe { &*ptr })
+    }
+}
+
+fn load_cancel_cache_pointer() -> SgxResult<&'static SgxMutex<HashSet<OrderUUID>>> {
+    let ptr = CANCEL_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<HashSet<OrderUUID>>;
+    if ptr.is_null() {
+        error!("Pointer is Null");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(unsafe { &*ptr })
+    }
+}
+
+fn load_create_cache_pointer() -> SgxResult<&'static SgxMutex<HashMap<u128, Order>>> {
+    let ptr = CREATE_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<HashMap<u128, Order>>;
+    if ptr.is_null() {
+        error!("Pointer is Null");
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(unsafe { &*ptr })
+    }
+}
+
+pub fn load_storage_insert_order_cache(nonce: u128, order: Order) -> Result<(), GatewayError> {
+    if let Ok(mutex) = load_create_cache_pointer() {
+        let mut cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
+        cache.insert(nonce, order.clone());
+        Ok(())
+    } else {
+        error!("Unable to get new nonce for order");
+        return Err(GatewayError::UndefinedBehaviour);
+    }
+}
+
+pub fn load_storage_check_nonce_in_insert_order_cache(nonce: u128) -> Result<bool, GatewayError> {
+    if let Ok(mutex) = load_create_cache_pointer() {
+        let mut cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
+        Ok(cache.contains_key(&nonce))
+    } else {
+        error!("Unable to get new nonce for order");
+        return Err(GatewayError::UndefinedBehaviour);
+    }
+}
 //
-// fn load_finex_nonce_pointer() -> SgxResult<&'static SgxMutex<u128>> {
-//     let ptr = CREATE_ORDER_NONCE.load(Ordering::SeqCst) as *mut SgxMutex<u128>;
-//     if ptr.is_null() {
-//         error!("Pointer is Null");
-//         return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-//     } else {
-//         Ok(unsafe { &*ptr })
-//     }
-// }
-//
-// fn load_cancel_cache_pointer() -> SgxResult<&'static SgxMutex<HashSet<OrderUUID>>> {
-//     let ptr = CANCEL_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<HashSet<OrderUUID>>;
-//     if ptr.is_null() {
-//         error!("Pointer is Null");
-//         return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-//     } else {
-//         Ok(unsafe { &*ptr })
-//     }
-// }
-//
-// fn load_create_cache_pointer() -> SgxResult<&'static SgxMutex<HashMap<u128, Order>>> {
-//     let ptr = CREATE_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<HashMap<u128, Order>>;
-//     if ptr.is_null() {
-//         error!("Pointer is Null");
-//         return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-//     } else {
-//         Ok(unsafe { &*ptr })
-//     }
-// }
-//
-// fn get_finex_nonce_and_increment() -> SgxResult<u128> {
-//     let mutex = load_nonce_pointer()?;
-//     let mut nonce: SgxMutexGuard<u128> = mutex.lock().unwrap();
-//     let current_nonce = nonce.clone();
-//     nonce.saturating_add(1);
-//     Ok(current_nonce)
-// }
+fn get_finex_nonce_and_increment() -> SgxResult<u128> {
+    let mutex = load_finex_nonce_pointer()?;
+    let mut nonce: SgxMutexGuard<u128> = mutex.lock().unwrap();
+    let current_nonce = nonce.clone();
+    nonce.saturating_add(1);
+    Ok(current_nonce)
+}
 //
 //
 // pub fn remove_order_from_cache_and_store_in_ordermirror(nonce: u128, order_uuid: OrderUUID) -> SgxResult<()> {

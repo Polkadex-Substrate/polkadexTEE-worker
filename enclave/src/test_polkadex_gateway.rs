@@ -11,9 +11,13 @@ use crate::polkadex_balance_storage::{
     create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances,
     lock_storage_and_initialize_balance,
 };
-use crate::polkadex_gateway::{authenticate_user, cancel_order, place_order};
+use crate::polkadex_gateway::{
+    authenticate_user, cancel_order, load_storage_check_nonce_in_insert_order_cache,
+    load_storage_insert_order_cache, place_order, process_create_order,
+};
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
+    lock_storage_and_check_order_in_orderbook,
 };
 use crate::test_proxy::initialize_dummy;
 
@@ -281,5 +285,59 @@ pub fn test_cancel_ask_order() {
             AssetId::POLKADEX,
         ),
         Ok(())
+    );
+}
+
+pub fn setup_process_create_order() {
+    let sell_order_user: AccountId = get_account("test_place_limit_sell_order_partial");
+    let mut new_order: Order = Order {
+        user_uid: sell_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::LIMIT,
+        side: OrderSide::ASK,
+        quantity: UNIT,
+        price: Some(UNIT),
+    };
+
+    setup(sell_order_user.clone());
+    assert_eq!(
+        check_balance(
+            100 * UNIT,
+            0u128,
+            sell_order_user.clone(),
+            AssetId::POLKADEX,
+        ),
+        Ok(())
+    );
+    // Balance:  DOT = (100,0) where (free,reserved)
+    assert!(place_order(sell_order_user.clone(), None, new_order.clone()).is_ok());
+    assert_eq!(
+        check_balance(99 * UNIT, UNIT, sell_order_user.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    let nonce: u128 = 1;
+    load_storage_insert_order_cache(nonce, new_order);
+    assert_eq!(
+        load_storage_check_nonce_in_insert_order_cache(nonce),
+        Ok(true)
+    );
+}
+
+pub fn test_process_create_order() {
+    setup_process_create_order();
+    let nonce: u128 = 1;
+    let order_uuid: OrderUUID = (200..201).collect();
+    assert_eq!(process_create_order(nonce, order_uuid.clone()), Ok(()));
+    assert_eq!(
+        load_storage_check_nonce_in_insert_order_cache(nonce),
+        Ok(false)
+    );
+    assert_eq!(
+        lock_storage_and_check_order_in_orderbook(order_uuid),
+        Ok(true)
     );
 }
