@@ -77,11 +77,14 @@ impl CreateOrderCache {
     }
 
     /// inserts an order to the set and increments the request id.
-    /// Returns old value if it was previously present
-    pub fn insert_order(&mut self, order: Order) -> Option<Order> {
-        let result = self.order_map.insert(self.request_id, order);
+    /// Returns the request_id it order was stored at
+    pub fn insert_order(&mut self, order: Order) -> RequestId {
+        let current_requst_id = self.request_id;
+        if let Some(e) = self.order_map.insert(self.request_id, order) {
+            error!("A cache value was unexpectedly overwirrten: {:?}", e);
+        }
         self.increment_request_id();
-        result
+        current_requst_id
     }
 
     pub fn request_id(&self) -> RequestId {
@@ -123,10 +126,10 @@ pub mod tests {
         assert_eq!(cache.request_id(), 0);
 
         // when
-        let none = cache.insert_order(orders[0].clone());
+        let id = cache.insert_order(orders[0].clone());
 
         // then
-        assert!(none.is_none()); // no previously inserted order should be there
+        assert_eq!(id, 0);
         assert_eq!(cache.request_id(), 1);
     }
 
@@ -140,14 +143,16 @@ pub mod tests {
         let orders = test_orderbook_storage::get_dummy_orders();
         let order_0_id = cache.request_id();
         assert_eq!(order_0_id, 0);
-        cache.insert_order(orders[0].clone());
+        let id_0 = cache.insert_order(orders[0].clone());
+        assert_eq!(order_0_id, id_0);
         let order_1_id = cache.request_id();
         assert_eq!(order_1_id, 1);
-        cache.insert_order(orders[1].clone());
+        let id_1 = cache.insert_order(orders[1].clone());
+        assert_eq!(order_1_id, id_1);
 
         // when
-        let order_1 = cache.remove_order(&order_1_id).unwrap();
-        let none = cache.remove_order(&order_1_id);
+        let order_1 = cache.remove_order(&id_1).unwrap();
+        let none = cache.remove_order(&id_1);
 
         // then
         assert!(none.is_none());
@@ -168,10 +173,12 @@ pub mod tests {
                 .unwrap();
             let order_0_id = cache.request_id();
             assert_eq!(order_0_id, 0);
-            cache.insert_order(orders[0].clone());
+            let id_0 = cache.insert_order(orders[0].clone());
+            assert_eq!(order_0_id, id_0);
             let order_1_id = cache.request_id();
             assert_eq!(order_1_id, 1);
-            cache.insert_order(orders[1].clone());
+            let id_1 = cache.insert_order(orders[1].clone());
+            assert_eq!(order_1_id, id_1);
         }
 
         // when
