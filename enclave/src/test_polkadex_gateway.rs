@@ -13,7 +13,7 @@ use crate::polkadex_balance_storage::{
     create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances,
     lock_storage_and_initialize_balance,
 };
-use crate::polkadex_cache::cache_api::StaticStorageApi;
+use crate::polkadex_cache::cache_api::{StaticStorageApi, RequestId};
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_gateway::{
     authenticate_user, cancel_order, initialize_polkadex_gateway, place_order,
@@ -1792,32 +1792,29 @@ pub fn setup_process_create_order() {
         check_balance(99 * UNIT, UNIT, sell_order_user.clone(), AssetId::POLKADEX),
         Ok(())
     );
-    let nonce: u128 = 1;
-    insert_order_into_cache(nonce, new_order);
-    // assert_eq!(
-    //     load_storage_check_nonce_in_insert_order_cache(nonce),
-    //     Ok(true)
-    // );
+    let request_id = insert_order_into_cache(new_order).unwrap();
+    assert_eq!(
+         load_storage_check_id_in_insert_order_cache(request_id),
+         Ok(true)
+    );
 }
 
 pub fn test_process_create_order() {
     setup_process_create_order();
-    let nonce: u128 = 1;
+    let request_id: u128 = 1;
     let order_uuid: OrderUUID = (200..201).collect();
-    assert_eq!(process_create_order(nonce, order_uuid.clone()), Ok(()));
-    // assert_eq!(
-    //     load_storage_check_nonce_in_insert_order_cache(nonce),
-    //     Ok(false)
-    // );
+    assert_eq!(process_create_order(request_id, order_uuid.clone()), Ok(()));
+    assert_eq!(
+        load_storage_check_id_in_insert_order_cache(request_id),
+         Ok(false)
+    );
     assert_eq!(
         lock_storage_and_check_order_in_orderbook(order_uuid),
         Ok(true)
     );
 }
 
-// TODO @Bigna - these functions below will probably have to be refactored
-
-fn insert_order_into_cache(nonce: u128, order: Order) -> Result<bool, GatewayError> {
+fn insert_order_into_cache(order: Order) -> Result<RequestId, GatewayError> {
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
     let mut create_cache = match mutex.lock() {
         Ok(guard) => guard,
@@ -1826,11 +1823,23 @@ fn insert_order_into_cache(nonce: u128, order: Order) -> Result<bool, GatewayErr
             return Err(GatewayError::UnableToLock);
         }
     };
+    let current_request_id = create_cache.request_id();
     create_cache.insert_order(order);
-    Ok(true)
+    Ok(current_request_id)
 }
 
-fn load_storage_check_nonce_in_insert_order_cache(nonce: u128) -> Result<bool, GatewayError> {
-    // TODO need to revisit this
-    todo!()
+fn load_storage_check_id_in_insert_order_cache(request_id: RequestId) -> Result<bool, GatewayError> {
+    let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+    let mut create_cache = match mutex.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            error!("Could not acquire lock on cancel cache pointer: {}", e);
+            return Err(GatewayError::UnableToLock);
+        }
+
+    };
+    if let Some(_order) = create_cache.remove_order(&request_id) {
+        return Ok(true)
+    }
+    Ok(false)
 }
