@@ -12,8 +12,9 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_initialize_balance,
 };
 use crate::polkadex_gateway::{
-    authenticate_user, cancel_order, load_storage_check_nonce_in_insert_order_cache,
-    load_storage_insert_order_cache, place_order, process_create_order,
+    authenticate_user, cancel_order, initialize_polkadex_gateway,
+    load_storage_check_nonce_in_insert_order_cache, load_storage_insert_order_cache, place_order,
+    process_create_order,
 };
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
@@ -30,6 +31,7 @@ pub fn initialize_storage() {
     assert!(create_in_memory_balance_storage().is_ok());
     // Initialize Order Mirror
     assert!(create_in_memory_orderbook_storage(vec![]).is_ok());
+    initialize_polkadex_gateway();
 }
 
 fn setup(main: AccountId) {

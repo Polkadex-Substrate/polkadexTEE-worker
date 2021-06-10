@@ -237,7 +237,7 @@ pub fn cancel_order(
 }
 
 pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), GatewayError> {
-    let mutex = load_create_cache_pointer();
+    let mutex = load_create_cache_pointer().unwrap();
     let mut cache: SgxMutexGuard<HashMap<u128, Order>> = mutex.lock().unwrap();
     if let Some(order) = cache.remove(&nonce) {
         // Inser order in orderbook
@@ -341,20 +341,20 @@ static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 static CANCEL_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub fn initialize_polkadex_gateway() {
-    // let nonce: u128 = 0;
-    // let create_nonce_storage_ptr = Arc::new(SgxMutex::<u128>::new(nonce));
-    // let create_nonce_ptr = Arc::into_raw(create_nonce_storage_ptr);
-    // CREATE_ORDER_NONCE.store(create_nonce_ptr as *mut (), Ordering::SeqCst);
-    //
-    // let cancel_cache: HashSet<OrderUUID> = HashSet::new();
-    // let cancel_cache_storage_ptr = Arc::new(SgxMutex::new(cancel_cache));
-    // let cancel_cache_ptr = Arc::into_raw(cancel_cache_storage_ptr);
-    // CANCEL_ORDER_CACHE.store(cancel_cache_ptr as *mut (), Ordering::SeqCst);
-    //
-    // let create_cache: HashMap<u128, Order> = HashMap::new();
-    // let create_cache_storage_ptr = Arc::new(SgxMutex::new(create_cache));
-    // let create_cache_ptr = Arc::into_raw(create_cache_storage_ptr);
-    // CREATE_ORDER_CACHE.store(create_cache_ptr as *mut (), Ordering::SeqCst);
+    let nonce: u128 = 0;
+    let create_nonce_storage_ptr = Arc::new(SgxMutex::<u128>::new(nonce));
+    let create_nonce_ptr = Arc::into_raw(create_nonce_storage_ptr);
+    CREATE_ORDER_NONCE.store(create_nonce_ptr as *mut (), Ordering::SeqCst);
+
+    let cancel_cache: HashSet<OrderUUID> = HashSet::new();
+    let cancel_cache_storage_ptr = Arc::new(SgxMutex::new(cancel_cache));
+    let cancel_cache_ptr = Arc::into_raw(cancel_cache_storage_ptr);
+    CANCEL_ORDER_CACHE.store(cancel_cache_ptr as *mut (), Ordering::SeqCst);
+
+    let create_cache: HashMap<u128, Order> = HashMap::new();
+    let create_cache_storage_ptr = Arc::new(SgxMutex::new(create_cache));
+    let create_cache_ptr = Arc::into_raw(create_cache_storage_ptr);
+    CREATE_ORDER_CACHE.store(create_cache_ptr as *mut (), Ordering::SeqCst);
 }
 
 fn load_finex_nonce_pointer() -> SgxResult<&'static SgxMutex<u128>> {

@@ -109,9 +109,10 @@ impl RpcGateway for RpcGatewayMock {
         _main_account: AccountId,
         _proxy_acc: Option<AccountId>,
         _order: Order,
-    ) -> Result<OrderUUID, GatewayError> {
+    ) -> Result<(), GatewayError> {
         match &self.order_uuid {
-            Some(o) => Ok(o.clone()),
+            //FIXME @Bigna this file also
+            Some(o) => Ok(()),
             None => Err(GatewayError::OrderNotFound),
         }
     }

@@ -65,15 +65,16 @@ impl RpcPlaceOrder {
             TrustedCall::place_order(_, order, _) => Ok(order),
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
-
-        let order_uuid =
-            match self
-                .rpc_gateway
-                .place_order(main_account, proxy_account.clone(), order)
-            {
-                Ok(uuid) => Ok(uuid),
-                Err(e) => Err(String::from(e.to_string())),
-            }?;
+        // FIXME @bigna I need your help to fix this file
+        // Temp sol
+        let order_uuid = OrderUUID::new();
+        match self
+            .rpc_gateway
+            .place_order(main_account, proxy_account.clone(), order)
+        {
+            Ok(_) => Ok(()),
+            Err(e) => Err(String::from(e.to_string())),
+        }?;
 
         Ok((order_uuid, false, DirectRequestStatus::Ok))
     }
