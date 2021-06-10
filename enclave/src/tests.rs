@@ -81,6 +81,11 @@ pub extern "C" fn test_main_entrance() -> size_t {
         polkadex_cache::create_order_cache::tests::test_remove_order,
         polkadex_cache::create_order_cache::tests::test_reload_cache,
 
+        polkadex_cache::cancel_order_cache::tests::test_initialize_and_lock_storage,
+        polkadex_cache::cancel_order_cache::tests::test_insert_order_and_increment,
+        polkadex_cache::cancel_order_cache::tests::test_remove_order,
+        polkadex_cache::cancel_order_cache::tests::test_reload_cache,
+
         // Polkadex Gateway
         test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
         test_polkadex_gateway::test_authenticate_user,
