@@ -12,11 +12,12 @@ use std::{
 };
 
 use polkadex_sgx_primitives::accounts::get_account;
-use polkadex_sgx_primitives::{AccountId, AssetId, PolkadexAccount, Balance};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance, PolkadexAccount};
 
 use crate::polkadex;
 use crate::polkadex::PolkadexAccountsStorage;
 use crate::polkadex_balance_storage::*;
+use crate::polkadex_gateway::GatewayError;
 
 #[allow(unused)]
 pub fn dummy_map(balance_storage: &mut SgxMutexGuard<PolkadexBalanceStorage>) {
@@ -61,7 +62,7 @@ pub fn test_withdraw() {
     //Test Error
     assert_eq!(
         lock_storage_and_withdraw(main_account_one, AssetId::POLKADEX, 200u128),
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        Err(GatewayError::NotEnoughFreeBalance)
     );
 }
 

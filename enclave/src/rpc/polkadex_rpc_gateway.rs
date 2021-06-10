@@ -26,7 +26,7 @@ use crate::polkadex_gateway::{authenticate_user, cancel_order, place_order, Gate
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
-use sgx_types::SgxResult;
+use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
@@ -98,7 +98,10 @@ impl RpcGateway for PolkadexRpcGateway {
     }
 
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {
-        lock_storage_and_get_balances(main_account, asset_id)
+        match lock_storage_and_get_balances(main_account, asset_id) {
+            Ok(balance) => Ok(balance),
+            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
     }
 
     fn place_order(
@@ -120,6 +123,9 @@ impl RpcGateway for PolkadexRpcGateway {
     }
 
     fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
-        lock_storage_and_withdraw(main_account, token, amount)
+        match lock_storage_and_withdraw(main_account, token, amount) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
     }
 }

@@ -393,8 +393,8 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         return status;
     }
 
-    if let Err(status) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
-        return status;
+    if let Err(_) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
     sgx_status_t::SGX_SUCCESS
@@ -969,7 +969,11 @@ fn handle_ocex_register(
         call,
         main_acc.encode().to_base58(),
     );
-    polkadex::add_main_account(main_acc.into())
+    if let Err(_) = polkadex::add_main_account(main_acc.into()) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_add_proxy(
@@ -983,7 +987,11 @@ fn handle_ocex_add_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::add_proxy(main_acc.into(), proxy.into())
+    if let Err(_) = polkadex::add_proxy(main_acc.into(), proxy.into()) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_remove_proxy(
@@ -997,7 +1005,11 @@ fn handle_ocex_remove_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::remove_proxy(main_acc.into(), proxy.into())
+    if let Err(_) = polkadex::remove_proxy(main_acc.into(), proxy.into()) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_deposit(
@@ -1012,7 +1024,11 @@ fn handle_ocex_deposit(
         token.encode().to_base58(),
         amount
     );
-    polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount)
+    if let Err(_) = polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount) {
+        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    } else {
+        Ok(())
+    }
 }
 
 fn handle_ocex_withdraw(
@@ -1038,13 +1054,13 @@ fn handle_ocex_withdraw(
                     amount,
                 ) {
                     Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount), // TODO: How to get nonce?
-                    Err(e) => return Err(e),
+                    Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
                 }
             } else {
                 return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
             }
         }
-        Err(e) => return Err(e),
+        Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
     }
 }
 

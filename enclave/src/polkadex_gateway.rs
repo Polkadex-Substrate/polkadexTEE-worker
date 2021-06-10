@@ -1,10 +1,10 @@
 pub extern crate alloc;
 use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult};
-
 use codec::{Decode, Encode};
+use frame_support::ensure;
 use log::*;
-use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent};
-use polkadex_sgx_primitives::{AccountId, Balance};
+use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, OrderUUID, TradeEvent, UserId};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -15,9 +15,11 @@ use crate::polkadex;
 use crate::polkadex_balance_storage;
 use crate::polkadex_orderbook_storage;
 
-#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, PartialOrd, PartialEq)]
 pub enum GatewayError {
-    UndefinedBehaviour1,
+    TradeAmountIsNotAsExpected,
+    /// Trade amount is not as expected
+    BasicOrderCheckError,
     /// Price for limit Order not found
     LimitOrderPriceNotFound,
     /// Quantity zero for limit order,
@@ -42,6 +44,18 @@ pub enum GatewayError {
     MarketOrderPriceNotDefined,
     /// Error in cancelling the order
     UnableToCancelOrder,
+    /// MarketIds don't match for given trade, maker, and taker
+    MarketIdMismatch,
+    /// Maker OrderSide mismatch between TradeEvent and MakerOrder
+    MakerSideMismatch,
+    /// Unable to Load pointer
+    UnableToLoadPointer,
+    /// Not enough Free Balance
+    NotEnoughFreeBalance,
+    /// Not enough Reserved Balance,
+    NotEnoughReservedBalance,
+    /// Unable to find AcccountId or AssetId,
+    AccountIdOrAssetIdNotFound,
 }
 
 impl alloc::fmt::Display for GatewayError {
@@ -77,7 +91,7 @@ pub fn place_order(
                     OrderSide::BID => {
                         let amount =
                             ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
-                        match polkadex_balance_storage::reserve_balance(
+                        match polkadex_balance_storage::lock_storage_and_reserve_balance(
                             &main_account,
                             order.market_id.quote,
                             amount,
@@ -87,7 +101,7 @@ pub fn place_order(
                         };
                     }
                     OrderSide::ASK => {
-                        match polkadex_balance_storage::reserve_balance(
+                        match polkadex_balance_storage::lock_storage_and_reserve_balance(
                             &main_account,
                             order.market_id.base,
                             order.quantity,
@@ -107,7 +121,7 @@ pub fn place_order(
                 // User defines the max amount in quote they want to use for market buy, it is defined in price field of Order.
                 OrderSide::BID => {
                     if let Some(price) = order.price {
-                        match polkadex_balance_storage::reserve_balance(
+                        match polkadex_balance_storage::lock_storage_and_reserve_balance(
                             &main_account,
                             order.market_id.quote,
                             price,
@@ -120,7 +134,7 @@ pub fn place_order(
                     }
                 }
                 OrderSide::ASK => {
-                    match polkadex_balance_storage::reserve_balance(
+                    match polkadex_balance_storage::lock_storage_and_reserve_balance(
                         &main_account,
                         order.market_id.base,
                         order.quantity,
@@ -154,7 +168,7 @@ pub fn place_order(
     // }
 
     let order_uuid: OrderUUID = send_order_to_open_finex(order.clone())?;
-    polkadex_orderbook_storage::add_order(order, order_uuid.clone())
+    polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid.clone())
         .map_err(|_| GatewayError::UndefinedBehaviour)?; // TODO: Change the error type of add order to GateWay Error.
     Ok(order_uuid)
 }
@@ -186,63 +200,98 @@ pub fn cancel_order(
     //     // Send cancel order to Openfinex API
     // }
     send_cancel_request_to_openfinex(&order_uuid)?;
-    // Mutate Balances
-    if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid) {
-        match result {
-            Some(cancelled_order) => match cancelled_order.order_type {
-                OrderType::LIMIT => {
-                    if let Some(price) = cancelled_order.price {
-                        match cancelled_order.side {
-                            OrderSide::BID => {
-                                let amount = ((price as f64)
-                                    * ((cancelled_order.quantity as f64) / (UNIT as f64)))
-                                    as u128;
-                                match polkadex_balance_storage::unreserve_balance(
-                                    cancelled_order.user_uid,
-                                    cancelled_order.market_id.quote,
-                                    amount,
-                                ) {
-                                    Ok(()) => {}
-                                    Err(_) => return Err(GatewayError::FailedToUnReserveBalance),
-                                };
-                            }
-                            OrderSide::ASK => {
-                                match polkadex_balance_storage::unreserve_balance(
-                                    cancelled_order.user_uid,
-                                    cancelled_order.market_id.base,
-                                    cancelled_order.quantity,
-                                ) {
-                                    Ok(()) => {}
-                                    Err(_) => return Err(GatewayError::FailedToUnReserveBalance),
-                                };
-                            }
-                        }
-                    } else {
-                        error!("Unable to find price for limit order");
-                        return Err(GatewayError::LimitOrderPriceNotFound);
-                    }
-                }
-                OrderType::MARKET => {
-                    error!("Cancel Order is not applicable for Market Order");
-                    return Err(GatewayError::UndefinedBehaviour);
-                }
-                OrderType::FillOrKill | OrderType::PostOnly => {
-                    error!("OrderType is not implemented");
-                    return Err(GatewayError::NotImplementedYet);
-                }
-            },
-            None => {
-                error!("Unable to find order for given order_uuid");
-                return Err(GatewayError::OrderNotFound);
-            }
+    let cancelled_order = polkadex_orderbook_storage::lock_storage_and_remove_order(&order_uuid)?;
+    match (cancelled_order.order_type, cancelled_order.side) {
+        (OrderType::LIMIT, OrderSide::BID) => {
+            let price = cancelled_order
+                .price
+                .ok_or(GatewayError::LimitOrderPriceNotFound)?;
+            let amount =
+                ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
+            polkadex_balance_storage::lock_storage_unreserve_balance(
+                &cancelled_order.user_uid,
+                cancelled_order.market_id.quote,
+                amount,
+            )?;
         }
-    } else {
-        return Err(GatewayError::UnableToRemoveOrder);
-    }
-    // error!("Unable to load the cancel cache pointer"); //TODO: @gautham why we need this?
-    // return Err(GatewayError::UndefinedBehaviour1);
+
+        (OrderType::LIMIT, OrderSide::ASK) => {
+            polkadex_balance_storage::lock_storage_unreserve_balance(
+                &cancelled_order.user_uid,
+                cancelled_order.market_id.base,
+                cancelled_order.quantity,
+            )?;
+        }
+
+        (OrderType::MARKET, _) => {
+            error!("Cancel Order is not applicable for Market Order");
+            return Err(GatewayError::UndefinedBehaviour);
+        }
+
+        (OrderType::FillOrKill | OrderType::PostOnly, _) => {
+            error!("OrderType is not implemented");
+            return Err(GatewayError::NotImplementedYet);
+        }
+    };
     Ok(())
 }
+// TODO @gautham please verify cancel order logic
+// Mutate Balances
+//     if let Ok(result) = polkadex_orderbook_storage::remove_order(&order_uuid) {
+//         match result {
+//             Some(cancelled_order) => match cancelled_order.order_type {
+//                 OrderType::LIMIT => {
+//                     if let Some(price) = cancelled_order.price {
+//                         match cancelled_order.side {
+//                             OrderSide::BID => {
+//                                 let amount = ((price as f64)
+//                                     * ((cancelled_order.quantity as f64) / (UNIT as f64)))
+//                                     as u128;
+//                                 match polkadex_balance_storage::lock_storage_unreserve_balance(
+//                                     cancelled_order.user_uid,
+//                                     cancelled_order.market_id.quote,
+//                                     amount,
+//                                 ) {
+//                                     Ok(()) => {}
+//                                     Err(_) => return Err(GatewayError::FailedToUnReserveBalance),
+//                                 };
+//                             }
+//                             OrderSide::ASK => {
+//                                 match polkadex_balance_storage::lock_storage_unreserve_balance(
+//                                     cancelled_order.user_uid,
+//                                     cancelled_order.market_id.base,
+//                                     cancelled_order.quantity,
+//                                 ) {
+//                                     Ok(()) => {}
+//                                     Err(_) => return Err(GatewayError::FailedToUnReserveBalance),
+//                                 };
+//                             }
+//                         }
+//                     } else {
+//                         error!("Unable to find price for limit order");
+//                         return Err(GatewayError::LimitOrderPriceNotFound);
+//                     }
+//                 }
+//                 OrderType::MARKET => {
+//                     error!("Cancel Order is not applicable for Market Order");
+//                     return Err(GatewayError::UndefinedBehaviour);
+//                 }
+//                 OrderType::FillOrKill | OrderType::PostOnly => {
+//                     error!("OrderType is not implemented");
+//                     return Err(GatewayError::NotImplementedYet);
+//                 }
+//             },
+//             None => {
+//                 error!("Unable to find order for given order_uuid");
+//                 return Err(GatewayError::OrderNotFound);
+//             }
+//         }
+//     } else {
+//         return Err(GatewayError::UnableToRemoveOrder);
+//     }
+//     error!("Unable to load the cancel cache pointer");
+//     return Err(GatewayError::UndefinedBehaviour);
+// }
 
 // /// process_cancel_order does the following
 // /// 1. Checks the orderUUID with cancel request cache
@@ -404,3 +453,349 @@ pub fn authenticate_user(
 //     }
 //     Ok(())
 // }
+
+pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
+    // Check if both orders exist and get them
+    let mut maker =
+        polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.maker_order_uuid)?;
+    let mut taker =
+        polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.taker_order_uuid)?;
+    ensure!(
+        (maker.market_id == taker.market_id) & (maker.market_id == trade.market_id),
+        GatewayError::MarketIdMismatch
+    );
+    ensure!(
+        maker.side == trade.maker_side,
+        GatewayError::MakerSideMismatch
+    );
+    // Derive buyer and seller from maker and taker
+
+    basic_order_checks(&maker)?;
+    basic_order_checks(&taker)?;
+    consume_order(
+        trade.clone(),
+        taker,
+        maker,
+        trade.taker_order_uuid,
+        trade.maker_order_uuid,
+    )?;
+
+    Ok(())
+}
+
+pub fn basic_order_checks(order: &Order) -> Result<(), GatewayError> {
+    match (order.order_type, order.side) {
+        (OrderType::LIMIT, OrderSide::BID) | (OrderType::LIMIT, OrderSide::ASK)
+            if order.price.unwrap() == 0 || order.quantity == 0 =>
+        {
+            Err(GatewayError::BasicOrderCheckError)
+        }
+        (OrderType::MARKET, OrderSide::BID) if order.price.unwrap() == 0 => {
+            Err(GatewayError::BasicOrderCheckError)
+        }
+        (OrderType::MARKET, OrderSide::ASK) if order.quantity == 0 => {
+            Err(GatewayError::BasicOrderCheckError)
+        }
+        _ => Ok(()),
+    }
+}
+
+pub fn consume_order(
+    trade_event: TradeEvent,
+    mut current_order: Order,
+    mut counter_order: Order,
+    taker_order_uuid: OrderUUID,
+    maker_order_uuid: OrderUUID,
+) -> Result<(), GatewayError> {
+    match (current_order.order_type, current_order.side) {
+        (OrderType::LIMIT, OrderSide::BID) => {
+            do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount);
+            if counter_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order,
+                    maker_order_uuid,
+                )?;
+            }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order,
+                    taker_order_uuid,
+                )?;
+            } else {
+                let amount_to_unreserve = trade_event.funds - trade_event.amount;
+                polkadex_balance_storage::lock_storage_unreserve_balance(
+                    &current_order.user_uid,
+                    current_order.market_id.quote,
+                    amount_to_unreserve,
+                )?;
+            }
+            Ok(())
+        }
+
+        (OrderType::MARKET, OrderSide::BID) => {
+            do_asset_exchange_market(&mut current_order, &mut counter_order);
+            if counter_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order.clone(),
+                    maker_order_uuid,
+                )?;
+            }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order.clone(),
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
+        }
+
+        (OrderType::LIMIT, OrderSide::ASK) => {
+            do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
+            if counter_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order.clone(),
+                    maker_order_uuid,
+                )?;
+            } else {
+                let amount_to_unreserve = trade_event.funds - trade_event.amount;
+                polkadex_balance_storage::lock_storage_unreserve_balance(
+                    &counter_order.user_uid,
+                    counter_order.market_id.quote,
+                    amount_to_unreserve,
+                )?;
+            }
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order.clone(),
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
+        }
+
+        (OrderType::MARKET, OrderSide::ASK) => {
+            do_asset_exchange_market(&mut current_order, &mut counter_order)?;
+            if counter_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    counter_order.clone(),
+                    maker_order_uuid,
+                )?;
+            } // TODO : I think we need else case as well
+
+            if current_order.quantity > 0 {
+                polkadex_orderbook_storage::lock_storage_and_add_order(
+                    current_order.clone(),
+                    taker_order_uuid,
+                )?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+pub fn do_asset_exchange(
+    current_order: &mut Order,
+    counter_order: &mut Order,
+    expected_trade_amount: u128,
+) -> Result<(), GatewayError> {
+    match (current_order.order_type, current_order.side) {
+        (OrderType::LIMIT, OrderSide::BID) if current_order.quantity <= counter_order.quantity => {
+            let trade_amount = ((counter_order.price.unwrap() as f64)
+                * ((current_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            ensure!(
+                trade_amount == expected_trade_amount,
+                GatewayError::TradeAmountIsNotAsExpected
+            ); //FIXME Change error name
+
+            transfer_asset(
+                &current_order.market_id.quote,
+                trade_amount,
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
+            transfer_asset(
+                &current_order.market_id.base,
+                current_order.quantity,
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
+            counter_order.quantity = counter_order.quantity - current_order.quantity;
+            current_order.quantity = 0;
+            Ok(())
+        }
+
+        (OrderType::LIMIT, OrderSide::BID) if current_order.quantity > counter_order.quantity => {
+            let trade_amount = ((counter_order.price.unwrap() as f64)
+                * ((counter_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            ensure!(
+                trade_amount == expected_trade_amount,
+                GatewayError::TradeAmountIsNotAsExpected
+            ); //FIXME Change error name
+            transfer_asset(
+                &current_order.market_id.quote,
+                trade_amount,
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
+            transfer_asset(
+                &current_order.market_id.base,
+                counter_order.quantity,
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
+            current_order.quantity = current_order.quantity - counter_order.quantity;
+            counter_order.quantity = 0;
+            Ok(())
+        }
+
+        (OrderType::LIMIT, OrderSide::ASK) if current_order.quantity <= counter_order.quantity => {
+            let trade_amount = ((current_order.price.unwrap() as f64)
+                * ((current_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            ensure!(
+                trade_amount == expected_trade_amount,
+                GatewayError::TradeAmountIsNotAsExpected
+            ); //FIXME Change error name
+            transfer_asset(
+                &current_order.market_id.quote,
+                trade_amount,
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
+            transfer_asset(
+                &current_order.market_id.base,
+                current_order.quantity,
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
+            counter_order.quantity = counter_order.quantity - current_order.quantity;
+            current_order.quantity = 0;
+            Ok(())
+        }
+
+        (OrderType::LIMIT, OrderSide::ASK) if current_order.quantity > counter_order.quantity => {
+            let trade_amount = ((current_order.price.unwrap() as f64)
+                * ((counter_order.quantity as f64) / (UNIT as f64)))
+                as u128;
+            ensure!(
+                trade_amount == expected_trade_amount,
+                GatewayError::TradeAmountIsNotAsExpected
+            ); //FIXME Change error name
+            transfer_asset(
+                &current_order.market_id.quote,
+                trade_amount,
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
+            transfer_asset(
+                &current_order.market_id.base,
+                counter_order.quantity,
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
+            current_order.quantity = current_order.quantity - counter_order.quantity;
+            counter_order.quantity = 0;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+pub fn do_asset_exchange_market(
+    current_order: &mut Order,
+    counter_order: &mut Order,
+) -> Result<(), GatewayError> {
+    match (current_order.order_type, current_order.side) {
+        (OrderType::MARKET, OrderSide::BID) => {
+            let current_order_quantity =
+                (current_order.price.unwrap() / counter_order.price.unwrap()) * UNIT;
+            if current_order_quantity <= counter_order.quantity {
+                transfer_asset(
+                    &current_order.market_id.quote,
+                    current_order.price.unwrap(),
+                    &current_order.user_uid,
+                    &counter_order.user_uid,
+                )?;
+                transfer_asset(
+                    &current_order.market_id.base,
+                    current_order_quantity,
+                    &counter_order.user_uid,
+                    &current_order.user_uid,
+                )?;
+                counter_order.quantity = counter_order.quantity - current_order_quantity;
+                current_order.price = Some(0);
+            } else {
+                let trade_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
+                transfer_asset(
+                    &current_order.market_id.quote,
+                    trade_amount,
+                    &current_order.user_uid,
+                    &counter_order.user_uid,
+                )?;
+                transfer_asset(
+                    &current_order.market_id.base,
+                    counter_order.quantity,
+                    &counter_order.user_uid,
+                    &current_order.user_uid,
+                )?;
+                counter_order.quantity = 0;
+                current_order.price = Some(current_order.price.unwrap() - trade_amount);
+            }
+            Ok(())
+        }
+        (OrderType::MARKET, OrderSide::ASK) if current_order.quantity <= counter_order.quantity => {
+            let trade_amount = (counter_order.price.unwrap() * current_order.quantity) / UNIT;
+            transfer_asset(
+                &current_order.market_id.quote,
+                trade_amount,
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
+            transfer_asset(
+                &current_order.market_id.base,
+                current_order.quantity,
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
+            counter_order.quantity = counter_order.quantity - current_order.quantity;
+            current_order.quantity = 0;
+            Ok(())
+        }
+        (OrderType::MARKET, OrderSide::ASK) if current_order.quantity > counter_order.quantity => {
+            let trade_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
+            transfer_asset(
+                &current_order.market_id.quote,
+                trade_amount,
+                &counter_order.user_uid,
+                &current_order.user_uid,
+            )?;
+            transfer_asset(
+                &current_order.market_id.base,
+                counter_order.quantity,
+                &current_order.user_uid,
+                &counter_order.user_uid,
+            )?;
+            current_order.quantity = current_order.quantity - counter_order.quantity;
+            counter_order.quantity = 0;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+//
+pub fn transfer_asset(
+    asset_id: &AssetId,
+    amount: u128,
+    from: &UserId,
+    to: &UserId,
+) -> Result<(), GatewayError> {
+    polkadex_balance_storage::lock_storage_unreserve_balance(from, asset_id.clone(), amount)?;
+    polkadex_balance_storage::lock_storage_transfer_balance(from, to, asset_id.clone(), amount)?;
+    Ok(())
+}
