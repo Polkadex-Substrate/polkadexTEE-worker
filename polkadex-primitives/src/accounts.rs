@@ -1,4 +1,4 @@
-use polkadex_primitives::common_types::{AccountId, Signature};
+use polkadex_primitives::common_types::{AccountId};
 
 
 pub extern crate alloc;

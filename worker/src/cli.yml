@@ -26,7 +26,7 @@ args:
         default_value: "9944"
     - ws-external:
         long: ws-external
-        help: let worker api listen to external requests too      
+        help: let worker api listen to external requests too
     - mu-ra-port:
         short: r
         long: mu-ra-port
@@ -39,7 +39,20 @@ args:
         help: Set the websocket port where the worker rpc direct invocations port listens
         takes_value: true
         default_value: "2000"
-    
+    - openfinex-server:
+        short: f
+        long: openfinex-url
+        help: Set the openfinex server protocol and IP address
+        takes_value: true
+        default_value: "ws://127.0.0.1"
+    - openfinex-port:
+        short: F
+        long: openfinex-port
+        help: Set the websocket port to listen for openfinex events
+        takes_value: true
+        default_value: "4000"
+
+
 subcommands:
     - run:
         about: Start the substraTEE-worker

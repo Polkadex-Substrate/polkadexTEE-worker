@@ -22,7 +22,7 @@ use alloc::string::String;
 use crate::polkadex_balance_storage::Balances;
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
-use polkadex_sgx_primitives::types::{Order, OrderUUID};
+use polkadex_sgx_primitives::types::{CancelOrder, Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
@@ -111,8 +111,7 @@ impl RpcGateway for RpcGatewayMock {
         _order: Order,
     ) -> Result<(), GatewayError> {
         match &self.order_uuid {
-            //FIXME @Bigna this file also
-            Some(o) => Ok(()),
+            Some(_) => Ok(()),
             None => Err(GatewayError::OrderNotFound),
         }
     }
@@ -121,11 +120,11 @@ impl RpcGateway for RpcGatewayMock {
         &self,
         _main_account: AccountId,
         _proxy_acc: Option<AccountId>,
-        order_uuid: OrderUUID,
+        cancel_order: CancelOrder,
     ) -> Result<(), GatewayError> {
         match &self.order_uuid {
             Some(o) => {
-                return if o.eq(&order_uuid) {
+                return if o.eq(&cancel_order.order_id) {
                     Ok(())
                 } else {
                     Err(GatewayError::OrderNotFound)

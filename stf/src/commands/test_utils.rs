@@ -53,6 +53,15 @@ pub mod utils {
         vec![mrenclave_arg, shard_arg]
     }
 
+
+    pub fn create_market_id_args() -> Vec<String> {
+        let market_id_base_arg = format!("--{}=polkadex", MARKET_ID_BASE_ARG_NAME);
+        let market_id_quote_arg = format!("--{}=dot", MARKET_ID_QUOTE_ARG_NAME);
+
+        vec![market_id_base_arg,
+        market_id_quote_arg,]
+    }
+
     pub fn create_order_id_args() -> Vec<String> {
         let order_id_arg = format!("--{}=0l5j0j2lfam", ORDER_UUID_ARG_NAME);
 

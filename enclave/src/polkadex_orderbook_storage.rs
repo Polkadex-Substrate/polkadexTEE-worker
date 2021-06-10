@@ -2,10 +2,9 @@ use crate::ed25519;
 use crate::polkadex_gateway::GatewayError;
 use log::error;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
-use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
-use sp_core::{ed25519::Signature, Pair};
+use sgx_types::{sgx_status_t, SgxResult};
+use sp_core::{ed25519::Signature};
 use std::collections::HashMap;
-use std::string::String;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
@@ -55,7 +54,7 @@ impl OrderbookStorage {
             signature: Signature::default(),
         };
         signed_order.sign(&signer_pair);
-        crate::write_order_to_disk(signed_order);
+        crate::write_order_to_disk(signed_order)?;
         Ok(())
     }
 }

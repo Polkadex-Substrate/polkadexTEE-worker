@@ -1,11 +1,9 @@
-use codec::{Decode, Encode};
 use frame_support::PalletId;
 // TODO: Fix this import
 use my_node_runtime::Header;
 use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
 use sp_core::sr25519;
-use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::traits::AccountIdConversion;
 use substrate_api_client::Api;
 
 pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<PolkadexAccount> {

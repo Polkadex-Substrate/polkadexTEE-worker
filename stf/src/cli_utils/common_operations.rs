@@ -16,13 +16,14 @@
 */
 
 use crate::cli_utils::common_types::OperationRunner;
-use crate::{Index, KeyPair, TrustedGetter, TrustedOperation};
+//use crate::{KeyPair, TrustedGetter, TrustedOperation};
+use crate::Index;
 
 use clap::ArgMatches;
-use codec::Decode;
-use log::*;
+//use codec::Decode;
+//use log::*;
 use sp_application_crypto::sr25519;
-use sp_core::{sr25519 as sr25519_core, Pair};
+use sp_core::{sr25519 as sr25519_core};
 
 pub fn get_trusted_nonce(
     _perform_operation: OperationRunner<'_>,

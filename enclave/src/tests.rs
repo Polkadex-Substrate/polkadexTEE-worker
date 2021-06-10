@@ -17,6 +17,7 @@
 use crate::aes;
 use crate::attestation;
 use crate::ed25519;
+use crate::openfinex;
 use crate::rpc;
 use crate::rsa3072;
 use crate::state;
@@ -115,6 +116,34 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_orderbook_storage::test_read_orderbook,
         test_orderbook_storage::test_add_orderbook,
         test_orderbook_storage::test_remove_orderbook,
+
+        // OpenFinex API tests
+        openfinex::string_serialization::tests::test_market_type_encoded_returns_correct_string,
+        openfinex::string_serialization::tests::test_user_id_encoded_returns_correct_string,
+        openfinex::string_serialization::tests::test_map_asset_ids,
+        openfinex::string_serialization::tests::test_map_order_side,
+        openfinex::string_serialization::tests::test_map_order_type,
+        openfinex::string_serialization::tests::test_map_order_state,
+        openfinex::string_serialization::tests::test_map_market_id,
+        openfinex::number_value_conversion::tests::given_negative_floating_point_number_then_conversion_fails,
+        openfinex::number_value_conversion::tests::given_positive_floating_point_number_then_convert_successfully,
+        openfinex::number_value_conversion::tests::given_integer_value_then_convert_with_factor,
+        openfinex::response_lexer::tests::test_given_valid_delimited_string_then_return_result,
+        openfinex::response_lexer::tests::test_given_string_with_missing_delimiter_then_return_error,
+        openfinex::response_lexer::tests::test_given_valid_number_str_then_lex_correctly,
+        openfinex::response_lexer::tests::given_valid_response_string_then_return_lexed_items,
+        openfinex::tests::response_parser_tests::given_valid_create_order_response_then_parse_items,
+        openfinex::tests::response_parser_tests::given_valid_error_response_then_parse_items,
+        openfinex::tests::response_parser_tests::given_valid_response_with_nested_parameters_then_parse_items,
+        openfinex::tests::response_parser_tests::given_invalid_preamble_then_return_error,
+        openfinex::tests::response_parser_tests::given_valid_subscription_response_then_succeed,
+        openfinex::tests::response_parser_tests::given_valid_order_update_response_then_succeed,
+        openfinex::tests::response_parser_tests::given_valid_trade_events_response_then_succeed,
+        openfinex::tests::response_object_mapper_tests::test_given_parsed_error_then_map_to_error_object,
+        openfinex::tests::response_object_mapper_tests::test_subscribe_response,
+        openfinex::tests::response_object_mapper_tests::test_create_order_response,
+        openfinex::tests::response_object_mapper_tests::test_order_update_response,
+        openfinex::tests::response_object_mapper_tests::test_trade_event_response,
 
         // RPC API tests
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,

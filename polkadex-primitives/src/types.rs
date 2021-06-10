@@ -1,10 +1,11 @@
 pub extern crate alloc;
 
-use crate::ShardIdentifier;
 use alloc::vec;
 use alloc::vec::Vec;
 use codec::{Decode, Encode, Error};
 use frame_support::sp_runtime::traits::Verify;
+
+use crate::ShardIdentifier;
 use polkadex_primitives::assets::AssetId;
 use polkadex_primitives::common_types::{AccountId, Balance};
 use sp_core::ed25519::Signature;
@@ -13,17 +14,21 @@ use sp_core::{ed25519, Pair};
 /// User UID or nickname to identify the user (Wallet Address in our case)
 pub type UserId = AccountId;
 /// Unique order ID
-pub type OrderId = Vec<u8>;
+pub type OrderId = u128;
 /// Unique order uuid
 pub type OrderUUID = Vec<u8>;
 /// Unique trade ID
-pub type TradeId = Vec<u8>;
+pub type TradeId = u128;
 /// Date type for Price and Volume
 pub type PriceAndQuantityType = Balance;
 /// Market type ex: "trusted"
 pub type MarketType = Vec<u8>;
 /// Currency identifier
 pub type CurrencyId = AssetId;
+/// Timestamp
+pub type Timestamp = u128;
+/// Transaction ID
+pub type TransactionId = u128;
 
 /// Market identifier for order
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
@@ -52,12 +57,12 @@ pub enum OrderSide {
     ASK,
 }
 
-#[derive(Debug, Clone, Encode, Decode, Copy)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Copy)]
 pub enum OrderState {
-    UNFILLED,
-    PARTIAL,
-    FILLED,
-    CANCELLED,
+    DONE,
+    WAIT,
+    CANCEL,
+    REJECT,
 }
 
 // Create Order
@@ -140,40 +145,42 @@ pub struct CreateOrderResponse {
 }
 
 // Cancel Orders
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct CancelOrder {
     // User UID or nickname to identify the user
-    user_uid: UserId,
+    pub user_uid: UserId,
     // Market identifier for order ex: "btcusd"
-    market_id: MarketId,
+    pub market_id: MarketId,
     // List of order IDs or UUIDs to cancel
-    order_id: Vec<OrderId>,
+    //FIXME: For now only one cancel order per call is supported
+    //pub order_id: Vec<OrderId>,
+    pub order_id: OrderUUID,
 }
 
 // Deposit Funds
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct DepositFund {
     // User UID or nickname to identify the user
-    user_uid: UserId,
+    pub user_uid: UserId,
     // Currency identifier of the deposit
-    currency_id: CurrencyId,
+    pub currency_id: CurrencyId,
     // Amount to deposit
-    amount: PriceAndQuantityType,
+    pub amount: PriceAndQuantityType,
     // Transaction ID (optional)
-    tx_id: Option<Vec<u8>>,
+    pub tx_id: Option<TransactionId>,
 }
 
 // Withdraw Funds
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct WithdrawFund {
     // User UID or nickname to identify the user
-    user_id: UserId,
+    pub user_id: UserId,
     // Currency identifier of the deposit
-    currency_id: CurrencyId,
+    pub currency_id: CurrencyId,
     // Amount to deposit
-    amount: PriceAndQuantityType,
+    pub amount: PriceAndQuantityType,
     // Transaction ID (optional)
-    tx_id: Option<Vec<u8>>,
+    pub tx_id: Option<TransactionId>,
 }
 
 // Error
@@ -189,41 +196,38 @@ pub struct Response {
 }
 
 // Order Update Events
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct OrderUpdate {
     // Market unique identifier
-    market_id: MarketId,
+    pub market_id: MarketId,
     // Unique order ID
-    order_id: OrderId,
+    pub order_id: OrderId,
     // Unique order uuid
-    unique_order_id: OrderUUID,
-    // Why is there two order ids??
+    pub unique_order_id: OrderUUID, // Why is there two order ids??
     // "buy" or "sell"
-    side: OrderSide,
-    // "bid" or "ask"
-    kind: OrderSide,
+    pub side: OrderSide,
     // Current state of the order
-    state: OrderState,
+    pub state: OrderState,
     // Order type
-    order_type: OrderType,
+    pub order_type: OrderType,
     // Order price
-    price: PriceAndQuantityType,
+    pub price: PriceAndQuantityType,
     // Average execution price
-    avg_price: PriceAndQuantityType,
+    pub avg_price: PriceAndQuantityType,
     // Order volume
-    current_volume: PriceAndQuantityType,
+    pub order_volume: PriceAndQuantityType,
     // Origin Volume
-    original_volume: PriceAndQuantityType,
+    pub original_volume: PriceAndQuantityType,
     // Executed Volume
-    executed_volume: PriceAndQuantityType,
+    pub executed_volume: PriceAndQuantityType,
     // Trade Count
-    trade_count_order: PriceAndQuantityType,
+    pub trade_count_order: PriceAndQuantityType,
     // Order Creation Timestamp
-    timestamp: Vec<u8>,
+    pub timestamp: Timestamp,
 }
 
 // Trade Events
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct TradeEvent {
     // Market Unique Identifier
     pub market_id: MarketId,
@@ -246,7 +250,7 @@ pub struct TradeEvent {
     // Maker Order Side
     pub maker_side: OrderSide,
     // Trade Timestamp
-    pub timestamp: Vec<u8>,
+    pub timestamp: Timestamp,
 }
 
 // DirectRequest for RPC

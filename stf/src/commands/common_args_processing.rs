@@ -20,8 +20,7 @@ use crate::commands::common_args::{
     ORDER_TYPE_ARG_NAME, ORDER_UUID_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME, TOKEN_ID_ARG_NAME,
 };
 use clap::ArgMatches;
-use codec::Encode;
-use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, OrderUUID};
+use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, CancelOrder};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 
 pub fn get_order_from_matches(
@@ -34,36 +33,27 @@ pub fn get_order_from_matches(
         matches
             .value_of(ORDER_TYPE_ARG_NAME)
             .expect(format!("missing {} argument", ORDER_TYPE_ARG_NAME).as_str()),
-    );
-    if let Err(e) = arg_order_type {
-        return Err(e);
-    }
+    )?;
 
     let arg_order_side = get_order_side_from_str(
         matches
             .value_of(ORDER_SIDE_ARG_NAME)
             .expect(format!("missing {} argument", ORDER_SIDE_ARG_NAME).as_str()),
-    );
-    if let Err(e) = arg_order_side {
-        return Err(e);
-    }
+    )?;
 
     let arg_quantity = get_amount_from_matches(matches, QUANTITY_ARG_NAME);
     let arg_price = matches
         .value_of(PRICE_ARG_NAME)
         .map(|v| get_amount_from_str(v));
 
-    let market_id = match get_market_id_from_matches(matches) {
-        Ok(m) => m,
-        Err(e) => return Err(e),
-    };
+    let market_id = get_market_id_from_matches(matches)?;
 
     let order = Order {
         user_uid: main_account,
         market_id,
-        market_type: arg_market_type.encode(),
-        order_type: arg_order_type.unwrap(),
-        side: arg_order_side.unwrap(),
+        market_type: arg_market_type.to_string().into_bytes(), // use utf-8 encoding
+        order_type: arg_order_type,
+        side: arg_order_side,
         quantity: arg_quantity,
         price: arg_price,
     };
@@ -71,12 +61,22 @@ pub fn get_order_from_matches(
     return Ok(order);
 }
 
-pub fn get_order_id_from_matches(matches: &ArgMatches) -> Result<OrderUUID, String> {
-    let order_id_str = matches
+pub fn get_cancel_order_from_matches(matches: &ArgMatches, main_account: AccountId) -> Result<CancelOrder, String> {
+    let order_id = matches
         .value_of(ORDER_UUID_ARG_NAME)
-        .expect(format!("missing {} argument", ORDER_UUID_ARG_NAME).as_str());
+        .expect(format!("missing {} argument", ORDER_UUID_ARG_NAME).as_str())
+        .as_bytes()
+        .to_vec();
 
-    Ok(order_id_str.encode())
+    let market_id = get_market_id_from_matches(matches)?;
+
+    let order = CancelOrder {
+            user_uid: main_account,
+            market_id,
+            order_id,
+    };
+
+    Ok(order)
 }
 
 pub fn get_token_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<AssetId, String> {
@@ -97,23 +97,17 @@ pub fn get_quantity_from_matches(matches: &ArgMatches) -> Result<u128, String> {
 }
 
 fn get_market_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<MarketId, String> {
-    let market_id_base = match get_asset_id_from_str(
+    let market_id_base = get_asset_id_from_str(
         matches
             .value_of(MARKET_ID_BASE_ARG_NAME)
             .expect(format!("missing {} argument", MARKET_ID_BASE_ARG_NAME).as_str()),
-    ) {
-        Err(e) => return Err(e),
-        Ok(b) => b,
-    };
+    )?;
 
-    let market_id_quote = match get_asset_id_from_str(
+    let market_id_quote = get_asset_id_from_str(
         matches
             .value_of(MARKET_ID_QUOTE_ARG_NAME)
             .expect(format!("missing {} argument", MARKET_ID_QUOTE_ARG_NAME).as_str()),
-    ) {
-        Err(e) => return Err(e),
-        Ok(q) => q,
-    };
+    )?;
 
     Ok(MarketId {
         base: market_id_base,

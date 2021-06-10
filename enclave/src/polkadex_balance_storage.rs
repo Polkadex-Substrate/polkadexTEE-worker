@@ -1,13 +1,10 @@
 use crate::polkadex_gateway::GatewayError;
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::{AccountId, AssetId, Balance, PolkadexAccount};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_tstd::collections::HashMap;
-use sgx_tstd::hash::Hash;
-use sgx_tstd::hash::Hasher;
 use sgx_tstd::vec::Vec;
-use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
-use sp_core::blake2_256;
+use sgx_types::{sgx_status_t, SgxResult};
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
@@ -57,15 +54,15 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn read_balance(&self, token: AssetId, acc: AccountId) -> Option<&Balances> {
-        self.storage
-            .get(&PolkadexBalanceKey::from(token, acc).encode())
+        let key = PolkadexBalanceKey::from(token, acc).encode();
+        debug!("reading balance from key: {:?}", key);
+        self.storage.get(&key)
     }
 
-    pub fn initialize_balance(&mut self, token: AssetId, acc: AccountId) {
-        self.storage.insert(
-            PolkadexBalanceKey::from(token, acc).encode(),
-            Balances::from(0u128, 0u128),
-        );
+    pub fn initialize_balance(&mut self, token: AssetId, acc: AccountId, free: Balance) {
+        let key = PolkadexBalanceKey::from(token, acc).encode();
+        debug!("creating new entry for key: {:?}", key);
+        self.storage.insert(key, Balances::from(free, 0u128));
     }
 
     pub fn set_free_balance(
@@ -118,15 +115,16 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
         {
             Some(balance) => {
                 balance.free = balance.free.saturating_add(amt);
                 Ok(())
             }
             None => {
-                error!("Account Id or Asset Id not available [here]");
-                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+                debug!("No entry available for given token- and AccountId, creating new.");
+                self.initialize_balance(token, acc, amt);
+                Ok(())
             }
         }
     }
@@ -230,7 +228,7 @@ pub fn lock_storage_and_reserve_balance(
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    let mut balance = balance_storage
+    let balance = balance_storage
         .read_balance(token.clone(), main_acc.clone())
         .expect("Unable to read balance from balance storage")
         .clone();
@@ -261,7 +259,7 @@ pub fn lock_storage_unreserve_balance(
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    let mut balance = balance_storage
+    let balance = balance_storage
         .read_balance(token.clone(), main_acc.clone())
         .expect("Unable to read balance from balance storage")
         .clone();
@@ -325,7 +323,7 @@ pub fn lock_storage_and_initialize_balance(
 ) -> Result<(), GatewayError> {
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
-    balance_storage.initialize_balance(token, main_acc);
+    balance_storage.initialize_balance(token, main_acc, 0);
     Ok(())
 }
 
@@ -334,7 +332,7 @@ pub fn lock_storage_and_get_balances(
     token: AssetId,
 ) -> Result<Balances, GatewayError> {
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
+    let balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock().unwrap();
     if let Some(balance) = balance_storage.read_balance(token, main_acc).cloned() {
         Ok(balance)
     } else {

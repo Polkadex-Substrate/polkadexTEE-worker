@@ -327,7 +327,7 @@ impl Stf {
                         None
                     }
                 }
-                TrustedGetter::get_balance(signer, currency, option) => {
+                TrustedGetter::get_balance(_signer, _currency, _option) => {
                     // TODO call implementation
                     None
                 }

@@ -1,15 +1,10 @@
 use chain_relay::{storage_proof::StorageProofChecker, Header};
 use codec::Encode;
-use core::hash::Hasher;
-use core::ops::Deref;
 use frame_support::{metadata::StorageHasher, PalletId};
 use log::*;
-use multibase::Base;
 use polkadex_sgx_primitives::{AccountId, PolkadexAccount};
 use sgx_tstd::collections::HashMap;
-use sgx_tstd::hash::Hash;
-use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
-use sp_core::blake2_256;
+use sgx_types::{sgx_status_t, SgxResult};
 use sp_runtime::traits::{AccountIdConversion, Header as HeaderT};
 use sp_std::prelude::*;
 use std::sync::{
@@ -23,6 +18,16 @@ use crate::polkadex_gateway::GatewayError;
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 
 static GLOBAL_ACCOUNTS_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+
+#[derive(Eq, Debug, PartialEq, PartialOrd)]
+pub enum AccountRegistryError {
+    /// Could not load the registry for some reason
+    CouldNotLoadRegistry,
+    /// Could not get mutex
+    CouldNotGetMutex,
+    /// No registed main account for given proxy
+    MainAccountNoRegistedForGivenProxy,
+}
 
 pub fn verify_pdex_account_read_proofs(
     header: Header,
@@ -48,7 +53,7 @@ pub fn verify_pdex_account_read_proofs(
                     return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
                 }
                 if account.account.next.is_some() {
-                    last_account = account.account.next.clone().unwrap();
+                    last_account = account.account.current.clone();
                 } else {
                     break;
                 }
@@ -117,6 +122,7 @@ pub struct PolkadexAccountsStorage {
 }
 
 impl PolkadexAccountsStorage {
+    #[allow(unused)]
     pub fn from_hashmap(hashmap: HashMap<EncodedAccountId, Vec<AccountId>>) -> Self {
         Self { accounts: hashmap }
     }
@@ -174,62 +180,83 @@ impl PolkadexAccountsStorage {
     }
 }
 
-pub fn check_if_main_account_registered(acc: AccountId) -> Result<bool, GatewayError> {
-    // Aquire lock on proxy_registry
+pub fn check_if_main_account_registered(acc: AccountId) -> Result<bool, AccountRegistryError> {
+    // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    let proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
     Ok(proxy_storage.accounts.contains_key(&acc.encode()))
 }
 
 pub fn check_if_proxy_registered(
     main_acc: AccountId,
     proxy: AccountId,
-) -> Result<bool, GatewayError> {
+) -> Result<bool, AccountRegistryError> {
     // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    let proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
 
     if let Some(list_of_proxies) = proxy_storage.accounts.get(&main_acc.encode()) {
         Ok(list_of_proxies.contains(&proxy))
     } else {
-        warn!("Main account not present");
-        Err(GatewayError::MainAccountNotRegistered)
+        warn!("Main account not registered for given proxy");
+        Err(AccountRegistryError::MainAccountNoRegistedForGivenProxy)
     }
 }
 
-pub fn add_main_account(main_acc: AccountId) -> Result<(), GatewayError> {
+pub fn add_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
     Ok(proxy_storage.add_main_account(main_acc))
 }
 
-pub fn remove_main_account(main_acc: AccountId) -> Result<(), GatewayError> {
+pub fn remove_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
     Ok(proxy_storage.remove_main_account(main_acc))
 }
 
-pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), GatewayError> {
+pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
     Ok(proxy_storage.add_proxy(main_acc, proxy))
 }
 
-pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), GatewayError> {
+// pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
+//     // Aquire lock on proxy_registry
+//     let mutex = load_proxy_registry()?;
+//     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+//     Ok(proxy_storage.accounts.contains_key(&acc.encode()))
+// }
+
+pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
+    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
     Ok(proxy_storage.remove_proxy(main_acc, proxy))
 }
 
-pub fn load_proxy_registry() -> Result<&'static SgxMutex<PolkadexAccountsStorage>, GatewayError> {
+pub fn load_proxy_registry(
+) -> Result<&'static SgxMutex<PolkadexAccountsStorage>, AccountRegistryError> {
     let ptr =
         GLOBAL_ACCOUNTS_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<PolkadexAccountsStorage>;
     if ptr.is_null() {
-        return Err(GatewayError::UnableToLoadPointer);
+        error!("Null pointer to polkadex account registry");
+        return Err(AccountRegistryError::CouldNotLoadRegistry);
     } else {
         Ok(unsafe { &*ptr })
     }

@@ -22,7 +22,7 @@ pub static ENCLAVE_FILE: &str = "../bin/enclave.signed.so";
 pub static SHIELDING_KEY_FILE: &str = "enclave-shielding-pubkey.json";
 pub static SIGNING_KEY_FILE: &str = "enclave-signing-pubkey.bin";
 pub static ORDERBOOK_DB_FILE: &str = "polkadex-orderbook-mirror.bin";
-pub static ORDERBOOK_LAST_COUNTER: &str = "LAST_ORDER_COUNTER";
+//pub static ORDERBOOK_LAST_COUNTER: &str = "LAST_ORDER_COUNTER";
 
 #[cfg(feature = "production")]
 pub static RA_SPID_FILE: &str = "../bin/spid_production.txt";

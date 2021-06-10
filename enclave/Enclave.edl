@@ -26,6 +26,7 @@ enclave {
 	from "sgx_time.edl" import *;
 	from "sgx_env.edl" import *;
 	from "sgx_thread.edl" import *;
+	from "sgx_pipe.edl" import *;
 
 	include "sgx_quote.h"
 
@@ -88,6 +89,13 @@ enclave {
 		);
 
 		public size_t test_main_entrance();
+
+		public size_t tcp_client_new(int fd, [in, size=finex_uri_size] uint8_t* finex_uri, size_t finex_uri_size);
+        public int tcp_client_read(size_t session_id);
+        public int tcp_client_write(size_t session_id);
+        public void tcp_client_close(size_t session_id);
+		public int tcp_client_wants_read(size_t session_id);
+        public int tcp_client_wants_write(size_t session_id);
 	};
 
 	untrusted {
