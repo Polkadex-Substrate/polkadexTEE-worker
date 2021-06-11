@@ -61,7 +61,7 @@ impl KVStore for RocksDB {
         let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<RocksDB>;
         if ptr.is_null() {
             println!(" Unable to load the pointer");
-            return Err(PolkadexDBError::UnableToLoadPointer);
+            Err(PolkadexDBError::UnableToLoadPointer)
         } else {
             Ok(unsafe { &*ptr })
         }
@@ -85,7 +85,7 @@ impl KVStore for RocksDB {
         let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         println!("Searching for Key");
         match orderbook_mirror.db.get(k) {
-            Ok(Some(mut v)) => match SignedOrder::from_vec(&mut v.as_mut()) {
+            Ok(Some(v)) => match SignedOrder::from_vec(&v) {
                 Ok(order) => {
                     println!("Found Key");
                     Ok(Some(order))

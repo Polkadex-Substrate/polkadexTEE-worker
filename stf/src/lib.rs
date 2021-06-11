@@ -236,22 +236,14 @@ impl TrustedCall {
             TrustedCall::balance_unshield(_, _, _, _) => None,
             TrustedCall::balance_shield(_, _) => None,
 
-            TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
-                Some(_) => Some(signer.clone()),
-                None => None,
-            },
+            TrustedCall::place_order(signer, _, main_account_option) =>
+                main_account_option.as_ref().map(|_| signer.clone()),
 
-            TrustedCall::cancel_order(signer, _, main_account_option) => {
-                match main_account_option {
-                    Some(_) => Some(signer.clone()),
-                    None => None,
-                }
-            }
+            TrustedCall::cancel_order(signer, _, main_account_option) =>
+                main_account_option.as_ref().map(|_| signer.clone()),
 
-            TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
-                Some(_) => Some(signer.clone()),
-                None => None,
-            },
+            TrustedCall::withdraw(signer, _, _, main_account_option) =>
+                main_account_option.as_ref().map(|_| signer.clone()),
         }
     }
 
@@ -318,11 +310,8 @@ impl TrustedGetter {
             TrustedGetter::free_balance(_) => None,
             TrustedGetter::reserved_balance(_) => None,
             TrustedGetter::nonce(_) => None,
-            TrustedGetter::get_balance(signer, _, main_account_option) => match main_account_option
-            {
-                Some(_) => Some(signer.clone()),
-                None => None,
-            },
+            TrustedGetter::get_balance(signer, _, main_account_option) =>
+                main_account_option.as_ref().map(|_| signer.clone())
         }
     }
 

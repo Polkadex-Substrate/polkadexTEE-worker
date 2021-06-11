@@ -30,7 +30,7 @@ pub fn get_balance_cli_command<'a>(
 ) -> Command<'a, str> {
     Command::new("get_balance")
         .description("Get the balance")
-        .options(|app| add_command_args(app))
+        .options(add_command_args)
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             command_runner(matches, perform_operation)
         })
