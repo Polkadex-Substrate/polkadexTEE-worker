@@ -227,10 +227,9 @@ fn send_order_to_open_finex(order: Order, request_id: RequestId) -> Result<(), G
     let openfinex_api = OpenFinexApiImpl::new(
         OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
     );
-    // openfinex_api
-    //     .create_order(order, request_id)
-    //     .map_err(|e| GatewayError::OpenFinexApiError(e))
-    Ok(())
+     openfinex_api
+         .create_order(order, request_id)
+         .map_err(|e| GatewayError::OpenFinexApiError(e))
 }
 
 fn send_cancel_request_to_openfinex(
@@ -240,10 +239,9 @@ fn send_cancel_request_to_openfinex(
     let openfinex_api = OpenFinexApiImpl::new(
         OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
     );
-    // openfinex_api
-    //     .cancel_order(cancel_order, request_id)
-    //     .map_err(|e| GatewayError::OpenFinexApiError(e))
-    Ok(())
+    openfinex_api
+         .cancel_order(cancel_order, request_id)
+         .map_err(|e| GatewayError::OpenFinexApiError(e))
 }
 
 /// Cancel order function does the following
