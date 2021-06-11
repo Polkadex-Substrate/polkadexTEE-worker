@@ -157,7 +157,7 @@ impl TcpClient {
 
         if buffer[0] == 72 {
             // parse http response
-            error!(
+            debug!(
                 "Received Http response: {}",
                 String::from_utf8_lossy(&buffer)
             ); //FIXME: replace with debug

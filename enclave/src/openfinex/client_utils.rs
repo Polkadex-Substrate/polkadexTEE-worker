@@ -91,13 +91,15 @@ pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
     let (payload_length, payload_buf) = match pay_len {
         127 => {
             let slice: [u8; 8] = buffer[2 .. 7].to_vec().try_into().unwrap();
-            (u64::from_be_bytes(slice), buffer[8 ..].to_vec())
+            let length = u64::from_be_bytes(slice);
+            (length, buffer[8 .. (length+8) as usize].to_vec())
         },
         126 => {
             let slice: [u8; 2] = buffer[2 .. 3].to_vec().try_into().unwrap();
-            (u16::from_be_bytes(slice) as u64, buffer[4 ..].to_vec())
+            let length = u16::from_be_bytes(slice);
+            (length as u64, buffer[4 .. (length+4) as usize].to_vec())
         }
-        _   => (pay_len as u64, buffer[2 ..].to_vec())
+        _   => (pay_len as u64, buffer[2 .. (pay_len+2) as usize].to_vec())
     };
     debug!("payload_length: {}", payload_length);
 
@@ -118,18 +120,18 @@ pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
 
     let payload: Payload = match opcode {
         TextOp   => {
-            error!("Message: {}", String::from_utf8(payload_buf.to_vec()).unwrap());
+            debug!("Received TCP Text Message: {}", String::from_utf8(payload_buf.to_vec()).unwrap());
             Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap())
         },
         BinaryOp => Payload::Binary(payload_buf.to_vec()),
         CloseOp  => Payload::Empty,
         PingOp   => {
-            error!("Ping");
+            debug!("Ping");
             Payload::Binary(payload_buf.to_vec())
 
         },
         PongOp   => {
-            error!("Pong");
+            debug!("Pong");
             Payload::Binary(payload_buf.to_vec())
         },
         _        => unimplemented!(), // ContinuationOp
