@@ -58,8 +58,8 @@ impl OpenFinexApi for OpenFinexApiImpl {
 
         let request = self
             .create_builder(RequestType::CreateOrder, request_id)
-            .push_optional_parameter(Some(user_id))
-            .push_optional_parameter(None) // empty parameter for nickname
+            .push_optional_parameter(None) // empty parameter for uid
+            .push_optional_parameter(Some(user_id)) // nickname
             .push_parameter(market_id_to_request_string(order.market_id))
             .push_parameter(market_type)
             .push_parameter(order_type)
