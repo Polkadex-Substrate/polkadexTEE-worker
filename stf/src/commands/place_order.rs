@@ -35,7 +35,7 @@ pub fn place_order_cli_command<'a>(
 ) -> Command<'a, str> {
     Command::new("place_order")
         .description("Place order")
-        .options(|app| add_common_order_command_args(app))
+        .options(add_common_order_command_args)
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             command_runner(matches, perform_operation)
         })

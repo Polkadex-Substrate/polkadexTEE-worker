@@ -2,6 +2,7 @@ use log::*;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender as MpscSender;
 use std::thread;
+use std::fmt;
 
 use codec::Decode;
 
@@ -10,6 +11,18 @@ use ws::{connect, CloseCode, Handler, Handshake, Message, Result as ClientResult
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
+
+#[derive(Debug)]
+pub struct WsError;
+
+impl fmt::Display for WsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Could not connect to ws")
+    }
+}
+
+impl std::error::Error for WsError { }
+
 
 pub struct DirectWsClient {
     pub out: Sender,
@@ -48,7 +61,7 @@ impl DirectApi {
     }
 
     /// server connection with only one response
-    pub fn get(&self, request: String) -> Result<String, ()> {
+    pub fn get(&self, request: String) -> Result<String, WsError> {
         let url = self.url.clone();
         let (port_in, port_out) = channel();
 
@@ -72,26 +85,23 @@ impl DirectApi {
             Ok(p) => Ok(p),
             Err(_) => {
                 error!("[-] [WorkerApi Direct]: error while handling request, returning");
-                Err(())
+                Err(WsError)
             }
         }
     }
     /// server connection with more than one response
-    pub fn watch(&self, request: String, sender: MpscSender<String>) -> Result<(), ()> {
+    pub fn watch(&self, request: String, sender: MpscSender<String>) -> Result<(), WsError> {
         let url = self.url.clone();
 
         info!("[WorkerApi Direct]: Sending request: {:?}", request);
         thread::spawn(move || {
-            match connect(url, |out| DirectWsClient {
+            if let Err(e) = connect(url, |out| DirectWsClient {
                 out,
                 request: request.clone(),
                 result: sender.clone(),
                 do_watch: true,
             }) {
-                Ok(c) => c,
-                Err(_) => {
-                    error!("Could not connect to direct invoation server");
-                }
+                error!("Could not connect to direct invocation server {:?}", e);
             }
         });
         Ok(())

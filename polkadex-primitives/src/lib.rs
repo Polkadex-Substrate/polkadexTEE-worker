@@ -43,7 +43,7 @@ impl OpenFinexUri {
     ///         port_path_str, string containing at least the port
     ///             (e.g.: 8001/api/v2/ws or 8001)
     pub fn new(ip_str: &str, port_path_str: &str) -> Self {
-        let (port_str, path_str)  = if let Some(index) = port_path_str.find("/") {
+        let (port_str, path_str)  = if let Some(index) = port_path_str.find('/') {
             port_path_str.split_at(index)
         } else {
             (port_path_str, "/")

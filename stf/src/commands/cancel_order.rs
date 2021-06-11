@@ -31,7 +31,7 @@ use log::*;
 pub fn cancel_order_cli_command(perform_operation: OperationRunner) -> Command<str> {
     Command::new("cancel_order")
         .description("Cancel order")
-        .options(|app| add_app_args(app))
+        .options(add_app_args)
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             command_runner(matches, perform_operation)
         })

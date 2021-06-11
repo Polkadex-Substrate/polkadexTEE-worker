@@ -32,13 +32,13 @@ pub fn get_order_from_matches(
     let arg_order_type = get_order_type_from_str(
         matches
             .value_of(ORDER_TYPE_ARG_NAME)
-            .expect(format!("missing {} argument", ORDER_TYPE_ARG_NAME).as_str()),
+            .unwrap_or_else(|| panic!("missing {} argument", ORDER_TYPE_ARG_NAME)),
     )?;
 
     let arg_order_side = get_order_side_from_str(
         matches
             .value_of(ORDER_SIDE_ARG_NAME)
-            .expect(format!("missing {} argument", ORDER_SIDE_ARG_NAME).as_str()),
+            .unwrap_or_else(|| panic!("missing {} argument", ORDER_SIDE_ARG_NAME)),
     )?;
 
     let arg_quantity = get_amount_from_matches(matches, QUANTITY_ARG_NAME);
@@ -58,13 +58,13 @@ pub fn get_order_from_matches(
         price: arg_price,
     };
 
-    return Ok(order);
+    Ok(order)
 }
 
 pub fn get_cancel_order_from_matches(matches: &ArgMatches, main_account: AccountId) -> Result<CancelOrder, String> {
     let order_id = matches
         .value_of(ORDER_UUID_ARG_NAME)
-        .expect(format!("missing {} argument", ORDER_UUID_ARG_NAME).as_str())
+        .unwrap_or_else(|| panic!("missing {} argument", ORDER_UUID_ARG_NAME))
         .as_bytes()
         .to_vec();
 
@@ -82,7 +82,7 @@ pub fn get_cancel_order_from_matches(matches: &ArgMatches, main_account: Account
 pub fn get_token_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<AssetId, String> {
     let token_id_str = matches
         .value_of(TOKEN_ID_ARG_NAME)
-        .expect(format!("missing {} argument", TOKEN_ID_ARG_NAME).as_str());
+        .unwrap_or_else(|| panic!("missing {} argument", TOKEN_ID_ARG_NAME));
 
     get_asset_id_from_str(token_id_str)
 }
@@ -100,13 +100,13 @@ fn get_market_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<MarketI
     let market_id_base = get_asset_id_from_str(
         matches
             .value_of(MARKET_ID_BASE_ARG_NAME)
-            .expect(format!("missing {} argument", MARKET_ID_BASE_ARG_NAME).as_str()),
+            .unwrap_or_else(|| panic!("missing {} argument", MARKET_ID_BASE_ARG_NAME)),
     )?;
 
     let market_id_quote = get_asset_id_from_str(
         matches
             .value_of(MARKET_ID_QUOTE_ARG_NAME)
-            .expect(format!("missing {} argument", MARKET_ID_QUOTE_ARG_NAME).as_str()),
+            .unwrap_or_else(|| panic!("missing {} argument", MARKET_ID_QUOTE_ARG_NAME)),
     )?;
 
     Ok(MarketId {
@@ -120,7 +120,7 @@ fn get_amount_from_matches(matches: &ArgMatches<'_>, arg_name: &str) -> u128 {
 }
 
 fn get_amount_from_str(arg: &str) -> u128 {
-    u128::from_str_radix(arg, 10).expect(&format!("failed to convert {} into an integer", arg))
+    arg.parse::<u128>().unwrap_or_else(|_| panic!("failed to convert {} into an integer", arg))
 }
 
 fn get_asset_id_from_str(arg: &str) -> Result<AssetId, String> {
@@ -132,7 +132,7 @@ fn get_asset_id_from_str(arg: &str) -> Result<AssetId, String> {
     }
 }
 
-fn get_order_type_from_str<'a>(arg: &str) -> Result<OrderType, String> {
+fn get_order_type_from_str(arg: &str) -> Result<OrderType, String> {
     match arg.to_ascii_lowercase().as_ref() {
         "limit" => Ok(OrderType::LIMIT),
         "market" => Ok(OrderType::MARKET),
@@ -142,7 +142,7 @@ fn get_order_type_from_str<'a>(arg: &str) -> Result<OrderType, String> {
     }
 }
 
-fn get_order_side_from_str<'a>(arg: &str) -> Result<OrderSide, String> {
+fn get_order_side_from_str(arg: &str) -> Result<OrderSide, String> {
     match arg.to_ascii_lowercase().as_ref() {
         "bid" => Ok(OrderSide::BID),
         "ask" => Ok(OrderSide::ASK),

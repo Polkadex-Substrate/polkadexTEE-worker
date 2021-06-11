@@ -31,10 +31,8 @@ pub struct AccountDetails {
 
 impl AccountDetails {
     pub fn new(matches: &ArgMatches<'_>) -> Self {
-        let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME).expect(&format!(
-            "missing main account option ({})",
-            ACCOUNT_ID_ARG_NAME
-        ));
+        let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME)
+            .unwrap_or_else(|| panic!("missing main account option ({})", ACCOUNT_ID_ARG_NAME));
 
         let main_account_pair = get_pair_from_str_trusted(matches, arg_account);
 
@@ -56,7 +54,7 @@ impl AccountDetails {
     }
 
     pub fn signer_key_pair(&self) -> sr25519_core::Pair {
-        sr25519_core::Pair::from(self.signer_pair().clone())
+        sr25519_core::Pair::from(self.signer_pair())
     }
 
     pub fn signer_public_key(&self) -> sr25519_core::Public {
@@ -69,17 +67,14 @@ impl AccountDetails {
 
     /// returns a main account public key, IF the signer is a proxy, none otherwise
     pub fn main_account_public_key_if_not_signer(&self) -> Option<sr25519_core::Public> {
-        match &self.proxy_account {
-            Some(_) => Some(sr25519_core::Public::from(self.main_account.public())),
-            None => None,
-        }
+        self.proxy_account.as_ref().map(|_| sr25519_core::Public::from(self.main_account.public()))
     }
 
     #[cfg(test)]
     pub fn proxy_account_public_key(&self) -> Option<sr25519_core::Public> {
         self.proxy_account
-            .clone()
-            .map(|pa| sr25519_core::Public::from(pa.public()))
+            .as_ref()
+            .map(|_| sr25519_core::Public::from(self.main_account.public()))
     }
 }
 
