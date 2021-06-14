@@ -96,3 +96,115 @@ impl CancelOrderCache {
         self.request_id = self.request_id.saturating_add(1)
     }
 }
+
+
+
+pub mod tests {
+    use super::*;
+    use codec::Encode;
+
+
+    pub fn test_initialize_and_lock_storage() {
+        // given
+        CancelOrderCache::initialize();
+
+        // when
+        let mutex = CancelOrderCache::load().unwrap();
+
+        // then
+        mutex.lock().unwrap();
+    }
+
+    pub fn test_insert_order_and_increment() {
+        // given
+        CancelOrderCache::initialize();
+        let mut cache = CancelOrderCache::load()
+            .unwrap()
+            .lock()
+            .unwrap();
+        let order_uuid: OrderUUID = "hello_world".encode();
+        assert_eq!(cache.request_id(), 0);
+
+        // when
+        assert!(cache.insert_order(order_uuid.clone()));
+
+        // then
+        assert_eq!(cache.request_id(), 1);
+        assert!(cache.contains(&order_uuid));
+    }
+
+    /// inserts two orders
+    /// removes the second, but leaves the first
+    /// then checks if second was really removed
+    pub fn test_remove_order() {
+
+        // given
+        CancelOrderCache::initialize();
+        let mut cache = CancelOrderCache::load()
+            .unwrap()
+            .lock()
+            .unwrap();
+        let order_uuid_0: OrderUUID = "hello_world".encode();
+        let order_uuid_1: OrderUUID = "hello_world_two".encode();
+        let order_0_id = cache.request_id();
+        assert_eq!(order_0_id, 0);
+        assert!(cache.insert_order(order_uuid_0.clone()));
+        let order_1_id = cache.request_id();
+        assert_eq!(order_1_id, 1);
+        assert!(cache.insert_order(order_uuid_1.clone()));
+
+        // when
+        assert!(cache.remove_order(&order_uuid_1));
+
+        // then
+        assert!(!cache.contains(&order_uuid_1));
+        assert!(cache.contains(&order_uuid_0));
+        assert_eq!(cache.request_id(), 2);
+    }
+
+    /// inserts two orders
+    /// removes the second, but leaves the first
+    /// then checks if second was really removed
+    /// but with different cache loads to ensure
+    /// state is consisted between different threads
+    pub fn test_reload_cache() {
+        // given
+        let order_uuid_0: OrderUUID = "hello_world".encode();
+        let order_uuid_1: OrderUUID = "hello_world_two".encode();
+        {
+            CancelOrderCache::initialize();
+        }
+        {
+            let mut cache = CancelOrderCache::load()
+                .unwrap()
+                .lock()
+                .unwrap();
+            let order_0_id = cache.request_id();
+            assert_eq!(order_0_id, 0);
+            assert!(cache.insert_order(order_uuid_0.clone()));
+            let order_1_id = cache.request_id();
+            assert_eq!(order_1_id, 1);
+            assert!(cache.insert_order(order_uuid_1.clone()));
+        }
+
+        // when
+        {
+            let mut cache = CancelOrderCache::load()
+                .unwrap()
+                .lock()
+                .unwrap();
+            assert!(cache.remove_order(&order_uuid_1));
+        }
+
+
+        // then
+        let cache = CancelOrderCache::load()
+            .unwrap()
+            .lock()
+            .unwrap();
+        assert!(!cache.contains(&order_uuid_1));
+        assert!(cache.contains(&order_uuid_0));
+        assert_eq!(cache.request_id(), 2);
+    }
+
+}
