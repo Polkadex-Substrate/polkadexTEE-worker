@@ -122,7 +122,7 @@ fn main() {
         .add_cmd(
             Command::new("new-account")
                 .description("generates a new account for the substraTEE chain")
-                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                .runner(|_args: &str, _matches: &ArgMatches<'_>| {
                     let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
@@ -133,7 +133,7 @@ fn main() {
         .add_cmd(
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
-                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                .runner(|_args: &str, _matches: &ArgMatches<'_>| {
                     let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
                     println!("sr25519 keys:");
                     for pubkey in store
@@ -181,10 +181,9 @@ fn main() {
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
                     let api = get_chain_api(matches);
                     let _api = api.set_signer(AccountKeyring::Alice.pair());
-                    let accounts: Vec<_> = matches.values_of("accounts").unwrap().collect();
 
                     let mut nonce = _api.get_nonce().unwrap();
-                    for account in accounts.into_iter() {
+                    for account in matches.values_of("accounts").unwrap().into_iter() {
                         let to = get_accountid_from_str(account);
                         #[allow(clippy::redundant_clone)]
                         let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
@@ -266,7 +265,7 @@ fn main() {
                     let api = get_chain_api(matches);
                     let arg_from = matches.value_of("from").unwrap();
                     let arg_to = matches.value_of("to").unwrap();
-                    let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
+                    let amount =matches.value_of("amount").unwrap().parse::<u128>()
                         .expect("amount can be converted to u128");
                     let from = get_pair_from_str_untrusted(arg_from);
                     let to = get_accountid_from_str(arg_to);
@@ -369,7 +368,7 @@ fn main() {
                 })
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let chain_api = get_chain_api(matches);
-                    let amount = u128::from_str_radix(matches.value_of("amount").unwrap(), 10)
+                    let amount = matches.value_of("amount").unwrap().parse::<u128>()
                         .expect("amount can't be converted to u128");
 
                     let shard_opt = match matches.value_of("shard") {
