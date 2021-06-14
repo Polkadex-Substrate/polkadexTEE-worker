@@ -23,12 +23,14 @@ use log::error;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
-use crate::polkadex_gateway::{authenticate_user, cancel_order, place_order, GatewayError};
+use crate::polkadex_gateway::{authenticate_user, OpenfinexPolkaDexGateway, GatewayError};
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
+use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
+use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
 pub trait RpcGateway: Send + Sync {
@@ -117,7 +119,12 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_acc: Option<AccountId>,
         order: Order,
     ) -> Result<(), GatewayError> {
-        place_order(main_account, proxy_acc, order)
+        let gateway = OpenfinexPolkaDexGateway::new(
+            OpenFinexApiImpl::new(
+                OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+            )
+        );
+        gateway.place_order(main_account, proxy_acc, order)
     }
 
     fn cancel_order(
@@ -126,7 +133,12 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_acc: Option<AccountId>,
         order: CancelOrder,
     ) -> Result<(), GatewayError> {
-        cancel_order(main_account, proxy_acc, order)
+        let gateway = OpenfinexPolkaDexGateway::new(
+            OpenFinexApiImpl::new(
+                OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+            )
+        );
+        gateway.cancel_order(main_account, proxy_acc, order)
     }
 
     fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {

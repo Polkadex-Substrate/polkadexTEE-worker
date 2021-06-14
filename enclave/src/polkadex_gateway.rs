@@ -114,42 +114,85 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
     }
 }
 
-/// Place order function does the following
-/// 1. authenticate
-/// 2. mutate balances (reserve amount offered in order)
-/// 3. store_order (async)
-/// 4. send order to OpenFinex API
-/// 5. report OpenFinex API result to sender
-pub fn place_order(
-    main_account: AccountId,
-    proxy_acc: Option<AccountId>,
-    order: Order,
-) -> Result<(), GatewayError> {
-    // Authentication
-    if let Err(e) = authenticate_user(main_account.clone(), proxy_acc) {
-        error!("Could not authenticate user due to: {:?}", e);
-        return Err(e);
-    };
-    // Mutate Balances
-    match order.order_type {
-        OrderType::LIMIT => {
-            if order.quantity == 0 as Balance {
-                error!("Limit Order quantity Zero");
-                return Err(GatewayError::QuantityZeroInLimitOrder);
+/// All sendings to the openfinex server should go through
+/// this gateway. Necessary to mock unit tests
+pub struct OpenfinexPolkaDexGateway<B: OpenFinexApi> {
+    openfinex_api: B
+}
+impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
+    pub fn new(openfinex_api: B) -> Self {
+        OpenfinexPolkaDexGateway{openfinex_api}
+    }
+    /// Place order function does the following
+    /// 1. authenticate
+    /// 2. mutate balances (reserve amount offered in order)
+    /// 3. store_order (async)
+    /// 4. send order to OpenFinex API
+    /// 5. report OpenFinex API result to sender
+    pub fn place_order(
+        &self,
+        main_account: AccountId,
+        proxy_acc: Option<AccountId>,
+        order: Order,
+    ) -> Result<(), GatewayError> {
+        // Authentication
+        if let Err(e) = authenticate_user(main_account.clone(), proxy_acc) {
+            error!("Could not authenticate user due to: {:?}", e);
+            return Err(e);
+        };
+        // Mutate Balances
+        match order.order_type {
+            OrderType::LIMIT => {
+                if order.quantity == 0 as Balance {
+                    error!("Limit Order quantity Zero");
+                    return Err(GatewayError::QuantityZeroInLimitOrder);
+                }
+                if let Some(price) = order.price {
+                    match order.side {
+                        OrderSide::BID => {
+                            let amount =
+                                ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
+                            match polkadex_balance_storage::lock_storage_and_reserve_balance(
+                                &main_account,
+                                order.market_id.quote,
+                                amount,
+                            ) {
+                                Ok(()) => {}
+                                Err(_) => return Err(GatewayError::FailedToReserveBalance),
+                            };
+                        }
+                        OrderSide::ASK => {
+                            match polkadex_balance_storage::lock_storage_and_reserve_balance(
+                                &main_account,
+                                order.market_id.base,
+                                order.quantity,
+                            ) {
+                                Ok(()) => {}
+                                Err(_) => return Err(GatewayError::FailedToReserveBalance),
+                            };
+                        }
+                    }
+                } else {
+                    error!("Price not given for a limit order");
+                    return Err(GatewayError::LimitOrderPriceNotFound);
+                }
             }
-            if let Some(price) = order.price {
+            OrderType::MARKET => {
                 match order.side {
+                    // User defines the max amount in quote they want to use for market buy, it is defined in price field of Order.
                     OrderSide::BID => {
-                        let amount =
-                            ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
-                        match polkadex_balance_storage::lock_storage_and_reserve_balance(
-                            &main_account,
-                            order.market_id.quote,
-                            amount,
-                        ) {
-                            Ok(()) => {}
-                            Err(_) => return Err(GatewayError::FailedToReserveBalance),
-                        };
+                        if let Some(price) = order.price {
+                            match polkadex_balance_storage::lock_storage_and_reserve_balance(
+                                &main_account,
+                                order.market_id.quote,
+                                price,
+                            ) {
+                                Ok(()) => {}
+                                Err(_) => return Err(GatewayError::FailedToReserveBalance),
+                            };
+                        } else {
+                            return Err(GatewayError::MarketOrderPriceNotDefined);
+                        }
                     }
                     OrderSide::ASK => {
                         match polkadex_balance_storage::lock_storage_and_reserve_balance(
@@ -162,114 +205,82 @@ pub fn place_order(
                         };
                     }
                 }
-            } else {
-                error!("Price not given for a limit order");
-                return Err(GatewayError::LimitOrderPriceNotFound);
+            }
+            OrderType::FillOrKill | OrderType::PostOnly => {
+                error!("OrderType is not implemented");
+                return Err(GatewayError::NotImplementedYet);
             }
         }
-        OrderType::MARKET => {
-            match order.side {
-                // User defines the max amount in quote they want to use for market buy, it is defined in price field of Order.
-                OrderSide::BID => {
-                    if let Some(price) = order.price {
-                        match polkadex_balance_storage::lock_storage_and_reserve_balance(
-                            &main_account,
-                            order.market_id.quote,
-                            price,
-                        ) {
-                            Ok(()) => {}
-                            Err(_) => return Err(GatewayError::FailedToReserveBalance),
-                        };
-                    } else {
-                        return Err(GatewayError::MarketOrderPriceNotDefined);
-                    }
-                }
-                OrderSide::ASK => {
-                    match polkadex_balance_storage::lock_storage_and_reserve_balance(
-                        &main_account,
-                        order.market_id.base,
-                        order.quantity,
-                    ) {
-                        Ok(()) => {}
-                        Err(_) => return Err(GatewayError::FailedToReserveBalance),
-                    };
-                }
+
+        // Store the order
+        // Order will be cached using incremental nonce and submitted to Openfinex with the nonce and it is stored to Orderbook
+        // after nonce is replaced with OrderUUID from Openfinex
+        let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+        let mut cache = match mutex.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                error!(
+                    "Could not acquire lock on create order cache pointer: {}",
+                    e
+                );
+                return Err(GatewayError::UnableToLock);
             }
-        }
-        OrderType::FillOrKill | OrderType::PostOnly => {
-            error!("OrderType is not implemented");
-            return Err(GatewayError::NotImplementedYet);
-        }
+        };
+
+        self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
+        cache.insert_order(order);
+        Ok(())
     }
 
-    // Store the order
-    // Order will be cached using incremental nonce and submitted to Openfinex with the nonce and it is stored to Orderbook
-    // after nonce is replaced with OrderUUID from Openfinex
-    let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let mut cache = match mutex.lock() {
-        Ok(guard) => guard,
-        Err(e) => {
-            error!(
-                "Could not acquire lock on create order cache pointer: {}",
-                e
-            );
-            return Err(GatewayError::UnableToLock);
-        }
-    };
+    fn send_order_to_open_finex(&self, order: Order, request_id: RequestId) -> Result<(), GatewayError> {
+        // TODO: Send order to Openfinex for inclusion ( this is a non-blocking call )
+        /* let openfinex_api = OpenFinexApiImpl::new(
+            OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+        ); */
+        self.openfinex_api
+            .create_order(order, request_id)
+            .map_err(|e| GatewayError::OpenFinexApiError(e))
+    }
 
-    send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
-    cache.insert_order(order);
-    Ok(())
-}
+    fn send_cancel_request_to_openfinex(
+        &self,
+        cancel_order: CancelOrder,
+        request_id: RequestId,
+    ) -> Result<(), GatewayError> {
+        /* let openfinex_api = OpenFinexApiImpl::new(
+            OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+        ); */
+        self.openfinex_api
+            .cancel_order(cancel_order, request_id)
+            .map_err(|e| GatewayError::OpenFinexApiError(e))
+    }
 
-fn send_order_to_open_finex(order: Order, request_id: RequestId) -> Result<(), GatewayError> {
-    // TODO: Send order to Openfinex for inclusion ( this is a non-blocking call )
-    let openfinex_api = OpenFinexApiImpl::new(
-        OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
-    );
-    // openfinex_api
-    //     .create_order(order, request_id)
-    //     .map_err(|e| GatewayError::OpenFinexApiError(e))
-    Ok(())
-}
+    /// Cancel order function does the following
+    /// 1. authenticate
+    /// 2. Cache the cancel request
+    /// 3. send cancel_order to OpenFinex API
+    pub fn cancel_order(
+        &self,
+        main_account: AccountId,
+        proxy_acc: Option<AccountId>,
+        cancel_order: CancelOrder,
+    ) -> Result<(), GatewayError> {
+        // Authenticate
+        authenticate_user(main_account.clone(), proxy_acc)?;
+        let mutex = CancelOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+        let mut cache = match mutex.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                error!("Could not acquire lock on cancel cache pointer: {}", e);
+                return Err(GatewayError::UnableToLock);
+            }
+        };
 
-fn send_cancel_request_to_openfinex(
-    cancel_order: CancelOrder,
-    request_id: RequestId,
-) -> Result<(), GatewayError> {
-    let openfinex_api = OpenFinexApiImpl::new(
-        OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
-    );
-    // openfinex_api
-    //     .cancel_order(cancel_order, request_id)
-    //     .map_err(|e| GatewayError::OpenFinexApiError(e))
-    Ok(())
-}
+        self.send_cancel_request_to_openfinex(cancel_order.clone(), cache.request_id() as RequestId)?;
+        cache.insert_order(cancel_order.order_id);
 
-/// Cancel order function does the following
-/// 1. authenticate
-/// 2. Cache the cancel request
-/// 3. send cancel_order to OpenFinex API
-pub fn cancel_order(
-    main_account: AccountId,
-    proxy_acc: Option<AccountId>,
-    cancel_order: CancelOrder,
-) -> Result<(), GatewayError> {
-    // Authenticate
-    authenticate_user(main_account.clone(), proxy_acc)?;
-    let mutex = CancelOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let mut cache = match mutex.lock() {
-        Ok(guard) => guard,
-        Err(e) => {
-            error!("Could not acquire lock on cancel cache pointer: {}", e);
-            return Err(GatewayError::UnableToLock);
-        }
-    };
-
-    send_cancel_request_to_openfinex(cancel_order.clone(), cache.request_id() as RequestId)?;
-    cache.insert_order(cancel_order.order_id);
-
-    Ok(())
+        Ok(())
+    }
 }
 
 // /// process_cancel_order does the following
