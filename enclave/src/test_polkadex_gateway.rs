@@ -19,7 +19,6 @@ use crate::polkadex_gateway::{
     authenticate_user, initialize_polkadex_gateway, OpenfinexPolkaDexGateway,
     process_cancel_order, process_create_order, settle_trade, GatewayError,
 };
-use crate::openfinex::openfinex_types::RequestId;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
