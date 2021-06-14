@@ -92,6 +92,7 @@ mod polkadex_balance_storage;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
 mod rsa3072;
+mod ss58check;
 mod state;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
@@ -102,6 +103,8 @@ mod utils;
 pub mod cert;
 pub mod hex;
 pub mod nonce_handler;
+pub mod openfinex;
+pub mod polkadex_cache;
 pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
@@ -355,8 +358,8 @@ pub unsafe extern "C" fn init_chain_relay(
     }
 
     // Initializes the Order Nonce
-    // polkadex_gateway::initialize_polkadex_gateway();
-    // info!(" Polkadex Gateway Nonces and Cache Initialized");
+    polkadex_gateway::initialize_polkadex_gateway();
+    info!(" Polkadex Gateway Nonces and Cache Initialized");
 
     nonce_handler::create_in_memory_nonce_storage(); //FIXME Error handling required
     polkadex_balance_storage::create_in_memory_balance_storage();
@@ -379,7 +382,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         }
     };
 
-    let mut validator = match io::light_validation::unseal() {
+    let validator = match io::light_validation::unseal() {
         Ok(v) => v,
         Err(e) => return e,
     };
@@ -960,7 +963,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 }
 
 fn handle_ocex_register(
-    calls: &mut Vec<OpaqueCall>,
+    _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXRegisterFn>,
 ) -> SgxResult<()> {
     let (call, main_acc) = xt.function.clone(); // TODO: what to do in this case
@@ -969,15 +972,11 @@ fn handle_ocex_register(
         call,
         main_acc.encode().to_base58(),
     );
-    if let Err(_) = polkadex::add_main_account(main_acc.into()) {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-    } else {
-        Ok(())
-    }
+    polkadex::add_main_account(main_acc.into()).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_add_proxy(
-    calls: &mut Vec<OpaqueCall>,
+    _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXAddProxyFn>,
 ) -> SgxResult<()> {
     let (call, main_acc, proxy) = xt.function.clone();
@@ -987,15 +986,12 @@ fn handle_ocex_add_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    if let Err(_) = polkadex::add_proxy(main_acc.into(), proxy.into()) {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-    } else {
-        Ok(())
-    }
+    polkadex::add_proxy(main_acc.into(), proxy.into())
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_remove_proxy(
-    calls: &mut Vec<OpaqueCall>,
+    _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXRemoveProxyFn>,
 ) -> SgxResult<()> {
     let (call, main_acc, proxy) = xt.function.clone();
@@ -1005,15 +1001,12 @@ fn handle_ocex_remove_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    if let Err(_) = polkadex::remove_proxy(main_acc.into(), proxy.into()) {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
-    } else {
-        Ok(())
-    }
+    polkadex::remove_proxy(main_acc.into(), proxy.into())
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_deposit(
-    calls: &mut Vec<OpaqueCall>,
+    _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXDepositFn>,
 ) -> SgxResult<()> {
     let (call, main_acc, token, amount) = xt.function.clone();
@@ -1032,7 +1025,7 @@ fn handle_ocex_deposit(
 }
 
 fn handle_ocex_withdraw(
-    calls: &mut Vec<OpaqueCall>,
+    _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
 ) -> SgxResult<()> {
     let (call, main_acc, token, amount) = xt.function.clone();
@@ -1066,7 +1059,7 @@ fn handle_ocex_withdraw(
 
 fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
     // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
-    let mut validator = match io::light_validation::unseal() {
+    let validator = match io::light_validation::unseal() {
         Ok(v) => v,
         Err(e) => return Err(e),
     };

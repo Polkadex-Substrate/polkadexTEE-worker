@@ -51,6 +51,7 @@ use crate::enclave::api::{
     enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory,
     enclave_sync_chain,
 };
+use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
 use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
@@ -59,7 +60,7 @@ use enclave::api::{
 use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server};
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
 use polkadex_sgx_primitives::types::SignedOrder;
-use polkadex_sgx_primitives::{LinkedAccount, PolkadexAccount};
+use polkadex_sgx_primitives::{OpenFinexUri, PolkadexAccount};
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 mod constants;
 mod enclave;
@@ -67,8 +68,8 @@ mod ipfs;
 mod polkadex;
 mod polkadex_db;
 mod tests;
-#[cfg(test)]
-mod tests_polkadex_DB;
+//#[cfg(test)]
+//mod tests_polkadex_DB;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -95,6 +96,12 @@ fn main() {
     let mu_ra_port = matches.value_of("mu-ra-port").unwrap_or("3443");
 
     let worker_rpc_port = matches.value_of("worker-rpc-port").unwrap_or("2000");
+
+    let finex_ip = matches.value_of("openfinex-server").unwrap_or("127.0.0.1");
+    let finex_port_path = matches
+        .value_of("openfinex-port")
+        .unwrap_or("8001/api/v2/ws");
+    let finex_uri = OpenFinexUri::new(finex_ip, finex_port_path);
 
     if let Some(smatches) = matches.subcommand_matches("run") {
         println!("*** Starting substraTEE-worker");
@@ -126,6 +133,7 @@ fn main() {
         worker(
             w_ip,
             mu_ra_port,
+            finex_uri,
             &shard,
             &ext_api_url,
             worker_rpc_port,
@@ -265,6 +273,7 @@ fn main() {
 fn worker(
     w_ip: &str,
     mu_ra_port: &str,
+    finex_uri: OpenFinexUri,
     shard: &ShardIdentifier,
     ext_api_url: &str,
     worker_rpc_port: &str,
@@ -297,6 +306,16 @@ fn worker(
             &ra_url,
         )
     });
+
+    // ------------------------------------------------------------------------
+    // start open finex client
+    println!(
+        "OpenFinex Client listening on ws://{}:{}:{}",
+        finex_uri.ip(),
+        finex_uri.port(),
+        finex_uri.path()
+    );
+    thread::spawn(move || enclave_run_openfinex_client(eid, finex_uri));
 
     // ------------------------------------------------------------------------
     // start worker api direct invocation server
@@ -802,7 +821,7 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         polkadex_db::RocksDB::write(&orderbook_mirror, order_id, &signed_order)
     });
     status

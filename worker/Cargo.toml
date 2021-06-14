@@ -15,6 +15,7 @@ base58 = "0.1"
 rust-crypto = "0.2"
 clap = { version = "2.33", features = ["yaml"] }
 lazy_static = "1.4.0"
+mio = "0.6.21"
 
 dirs = "1.0.2"
 serde = "1.0"

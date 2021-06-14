@@ -1,8 +1,4 @@
 use log::*;
-use polkadex_sgx_primitives::{AccountId, AssetId};
-use sgx_tstd::collections::hash_map::HashMap;
-use sgx_tstd::collections::vec_deque::VecDeque;
-use sgx_tstd::vec::Vec;
 use sgx_types::{sgx_status_t, SgxResult};
 use std::sync::{
     atomic::{AtomicPtr, Ordering},

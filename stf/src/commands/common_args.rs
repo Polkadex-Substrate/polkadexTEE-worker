@@ -92,6 +92,26 @@ pub fn add_order_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     )
 }
 
+pub fn add_market_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+    app.arg(
+        Arg::with_name(MARKET_ID_BASE_ARG_NAME)
+            .long(MARKET_ID_BASE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
+    )
+    .arg(
+        Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
+            .long(MARKET_ID_QUOTE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
+    )
+}
+
+
 pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
         Arg::with_name(MARKET_ID_BASE_ARG_NAME)

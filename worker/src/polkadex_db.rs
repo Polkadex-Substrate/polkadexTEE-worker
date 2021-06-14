@@ -1,15 +1,12 @@
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread;
-use std::thread::JoinHandle;
 
 use codec::Encode;
-use log::error;
 use rocksdb::{
-    DBWithThreadMode, Error as RocksDBError, Error, IteratorMode, Options, SingleThreaded, DB,
+    DBWithThreadMode, Error as RocksDBError, IteratorMode, Options, SingleThreaded, DB,
 };
 
-use polkadex_sgx_primitives::types::{Order, SignedOrder};
+use polkadex_sgx_primitives::types::SignedOrder;
 
 ///
 /// Polkadex Orderbook Mirror Documentation
@@ -85,7 +82,7 @@ impl KVStore for RocksDB {
 
     fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         println!("Searching for Key");
         match orderbook_mirror.db.get(k) {
             Ok(Some(mut v)) => match SignedOrder::from_vec(&mut v.as_mut()) {
@@ -93,7 +90,7 @@ impl KVStore for RocksDB {
                     println!("Found Key");
                     Ok(Some(order))
                 }
-                Err(e) => {
+                Err(_) => {
                     println!("Unable to Deserialize ");
                     Err(PolkadexDBError::UnableToDeseralizeValue)
                 }
@@ -121,13 +118,13 @@ impl KVStore for RocksDB {
 
     fn read_all() -> Result<Vec<SignedOrder>, PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         let iterator = orderbook_mirror.db.iterator(IteratorMode::Start);
         let mut orders: Vec<SignedOrder> = vec![];
         for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
             match SignedOrder::from_vec(&*value) {
                 Ok(order) => orders.push(order),
-                Err(e) => {
+                Err(_) => {
                     println!("Unable to deserialize ");
                     return Err(PolkadexDBError::UnableToDeseralizeValue);
                 }

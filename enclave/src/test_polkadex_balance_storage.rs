@@ -1,21 +1,11 @@
 use codec::Encode;
-use log::*;
-use sgx_rand::{Rng, SeedableRng, StdRng};
-use sgx_tstd::collections::HashMap;
 use sgx_tstd::sync::SgxMutexGuard;
-use sgx_types::{sgx_status_t, SgxResult};
-use sp_core::blake2_256;
+use sgx_types::sgx_status_t;
 use sp_std::prelude::*;
-use std::{
-    sync::atomic::{AtomicPtr, Ordering},
-    sync::{Arc, SgxMutex},
-};
 
 use polkadex_sgx_primitives::accounts::get_account;
-use polkadex_sgx_primitives::{AccountId, AssetId, Balance, PolkadexAccount};
+use polkadex_sgx_primitives::{AccountId, AssetId};
 
-use crate::polkadex;
-use crate::polkadex::PolkadexAccountsStorage;
 use crate::polkadex_balance_storage::*;
 use crate::polkadex_gateway::GatewayError;
 

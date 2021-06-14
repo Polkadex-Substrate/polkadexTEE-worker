@@ -37,7 +37,7 @@ fn test_write_and_delete() {
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         RocksDB::write(
             &orderbook_mirror,
             "FIRST_ORDER".to_string().into_bytes(),
@@ -60,7 +60,7 @@ fn test_write_and_delete() {
 
     let delete_handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         RocksDB::delete(&orderbook_mirror, "FIRST_ORDER".to_string().into_bytes())
     });
 
@@ -130,7 +130,7 @@ fn test_read_all() {
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         RocksDB::write(
             &orderbook_mirror,
             "FIRST_ORDER1".to_string().into_bytes(),
@@ -143,7 +143,7 @@ fn test_read_all() {
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = RocksDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
         RocksDB::write(
             &orderbook_mirror,
             "SECOND_ORDER1".to_string().into_bytes(),

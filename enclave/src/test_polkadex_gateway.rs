@@ -1,7 +1,7 @@
 use log::*;
 use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{
-    MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
+    CancelOrder, MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
 };
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_tstd::vec::Vec;
@@ -13,11 +13,11 @@ use crate::polkadex_balance_storage::{
     create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances,
     lock_storage_and_initialize_balance,
 };
-
+use crate::polkadex_cache::cache_api::StaticStorageApi;
+use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_gateway::{
-    authenticate_user, cancel_order, initialize_polkadex_gateway,
-    load_storage_check_nonce_in_insert_order_cache, load_storage_insert_order_cache, place_order,
-    process_create_order, settle_trade,
+    authenticate_user, cancel_order, initialize_polkadex_gateway, place_order,
+    process_cancel_order, process_create_order, settle_trade, GatewayError,
 };
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
@@ -27,7 +27,7 @@ use crate::test_proxy::initialize_dummy;
 
 pub fn initialize_storage() {
     // Initialize Gateway
-    // initialize_polkadex_gateway();
+    initialize_polkadex_gateway();
     // Initialize Account Storage
     assert!(create_in_memory_account_storage(vec![]).is_ok());
     // Initialize Balance storage
@@ -279,16 +279,16 @@ pub fn test_settle_trade_full_ask_limit() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: 1 * UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: buy_order_uuid,
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: sell_order_uuid,
         maker_side: OrderSide::BID,
-        timestamp: vec![],
+        timestamp: 23,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -384,16 +384,16 @@ pub fn test_settle_trade_partial_ask_limit() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: UNIT,
         funds: 4 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: buy_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: sell_order_uuid,
         maker_side: OrderSide::BID,
-        timestamp: vec![],
+        timestamp: 23,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -518,16 +518,16 @@ pub fn test_settle_trade_partial_two_ask_limit() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: 1 * UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: buy_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: sell_order_uuid.clone(),
         maker_side: OrderSide::BID,
-        timestamp: vec![],
+        timestamp: 23,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -651,16 +651,16 @@ pub fn test_settle_trade_full_buy_limit() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: sell_order_uuid,
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: buy_order_uuid,
         maker_side: OrderSide::ASK,
-        timestamp: vec![],
+        timestamp: 255,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -758,16 +758,16 @@ pub fn test_settle_trade_partial_buy_limit() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: UNIT,
         funds: 4 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: sell_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: buy_order_uuid.clone(),
         maker_side: OrderSide::ASK,
-        timestamp: vec![],
+        timestamp: 623,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -893,16 +893,16 @@ pub fn test_settle_trade_partial_two_buy_limit() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: sell_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: buy_order_uuid.clone(),
         maker_side: OrderSide::ASK,
-        timestamp: vec![],
+        timestamp: 3465,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1015,16 +1015,16 @@ pub fn test_settle_trade_full_ask_market() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 7,
         price: 0,
         amount: 1 * UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 4,
         maker_order_uuid: buy_order_uuid,
-        taker_order_id: vec![],
+        taker_order_id: 5,
         taker_order_uuid: sell_order_uuid,
         maker_side: OrderSide::BID,
-        timestamp: vec![],
+        timestamp: 134,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1110,16 +1110,16 @@ pub fn test_settle_trade_partial_ask_market() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 1,
         price: 0,
         amount: 2 * UNIT,
         funds: 4 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: buy_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: sell_order_uuid,
         maker_side: OrderSide::BID,
-        timestamp: vec![],
+        timestamp: 2345,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1225,16 +1225,16 @@ pub fn test_settle_trade_partial_two_ask_market() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 12,
         price: 0,
         amount: 1 * UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 2354,
         maker_order_uuid: buy_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 324652,
         taker_order_uuid: sell_order_uuid.clone(),
         maker_side: OrderSide::BID,
-        timestamp: vec![],
+        timestamp: 724524,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1363,16 +1363,16 @@ pub fn test_settle_trade_full_buy_market() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 2345,
         price: 0,
         amount: UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: sell_order_uuid,
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: buy_order_uuid,
         maker_side: OrderSide::ASK,
-        timestamp: vec![],
+        timestamp: 6315435,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1470,16 +1470,16 @@ pub fn test_settle_trade_partial_bid_market() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 23,
         price: 0,
         amount: UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: sell_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: buy_order_uuid.clone(),
         maker_side: OrderSide::ASK,
-        timestamp: vec![],
+        timestamp: 265246,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1602,16 +1602,16 @@ pub fn test_settle_trade_partial_two_bid_market() {
             base: AssetId::POLKADEX,
             quote: AssetId::DOT,
         },
-        trade_id: vec![],
+        trade_id: 3,
         price: 0,
         amount: UNIT,
         funds: 2 * UNIT,
-        maker_order_id: vec![],
+        maker_order_id: 1,
         maker_order_uuid: sell_order_uuid.clone(),
-        taker_order_id: vec![],
+        taker_order_id: 2,
         taker_order_uuid: buy_order_uuid.clone(),
         maker_side: OrderSide::ASK,
-        timestamp: vec![],
+        timestamp: 2345,
     };
     assert_eq!(settle_trade(order_event), Ok(()));
     assert_eq!(
@@ -1654,7 +1654,7 @@ pub fn test_settle_trade_partial_two_bid_market() {
 
 pub fn setup_test_cancel_limit_bid_order() {
     let buy_order_user: AccountId = get_account("test_place_limit_buy_order");
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
@@ -1685,10 +1685,16 @@ pub fn test_cancel_limit_bid_order() {
     setup_test_cancel_limit_bid_order();
     let buy_order_uuid: OrderUUID = (0..100).collect();
     let buy_order_user: AccountId = get_account("test_place_limit_buy_order");
-    assert_eq!(
-        cancel_order(buy_order_user.clone(), None, buy_order_uuid),
-        Ok(())
-    );
+    let order = CancelOrder {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        order_id: buy_order_uuid.clone(),
+    };
+    assert_eq!(cancel_order(buy_order_user.clone(), None, order), Ok(()));
+    assert!(process_cancel_order(buy_order_uuid).is_ok());
     assert_eq!(
         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
         Ok(())
@@ -1697,7 +1703,7 @@ pub fn test_cancel_limit_bid_order() {
 
 pub fn setup_test_cancel_ask_order() {
     let sell_order_user: AccountId = get_account("test_place_limit_sell_order_partial");
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: sell_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
@@ -1734,10 +1740,16 @@ pub fn test_cancel_ask_order() {
     setup_test_cancel_ask_order();
     let sell_order_user: AccountId = get_account("test_place_limit_sell_order_partial");
     let sell_order_uuid: OrderUUID = (200..201).collect();
-    assert_eq!(
-        cancel_order(sell_order_user.clone(), None, sell_order_uuid),
-        Ok(())
-    );
+    let order = CancelOrder {
+        user_uid: sell_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        order_id: sell_order_uuid.clone(),
+    };
+    assert_eq!(cancel_order(sell_order_user.clone(), None, order), Ok(()));
+    assert!(process_cancel_order(sell_order_uuid).is_ok());
     assert_eq!(
         check_balance(
             100 * UNIT,
@@ -1781,11 +1793,11 @@ pub fn setup_process_create_order() {
         Ok(())
     );
     let nonce: u128 = 1;
-    load_storage_insert_order_cache(nonce, new_order);
-    assert_eq!(
-        load_storage_check_nonce_in_insert_order_cache(nonce),
-        Ok(true)
-    );
+    insert_order_into_cache(nonce, new_order);
+    // assert_eq!(
+    //     load_storage_check_nonce_in_insert_order_cache(nonce),
+    //     Ok(true)
+    // );
 }
 
 pub fn test_process_create_order() {
@@ -1793,12 +1805,32 @@ pub fn test_process_create_order() {
     let nonce: u128 = 1;
     let order_uuid: OrderUUID = (200..201).collect();
     assert_eq!(process_create_order(nonce, order_uuid.clone()), Ok(()));
-    assert_eq!(
-        load_storage_check_nonce_in_insert_order_cache(nonce),
-        Ok(false)
-    );
+    // assert_eq!(
+    //     load_storage_check_nonce_in_insert_order_cache(nonce),
+    //     Ok(false)
+    // );
     assert_eq!(
         lock_storage_and_check_order_in_orderbook(order_uuid),
         Ok(true)
     );
+}
+
+// TODO @Bigna - these functions below will probably have to be refactored
+
+fn insert_order_into_cache(nonce: u128, order: Order) -> Result<bool, GatewayError> {
+    let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+    let mut create_cache = match mutex.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            error!("Could not acquire lock on cancel cache pointer: {}", e);
+            return Err(GatewayError::UnableToLock);
+        }
+    };
+    create_cache.insert_order(order);
+    Ok(true)
+}
+
+fn load_storage_check_nonce_in_insert_order_cache(nonce: u128) -> Result<bool, GatewayError> {
+    // TODO need to revisit this
+    todo!()
 }

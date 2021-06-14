@@ -18,13 +18,14 @@
 
 pub extern crate alloc;
 use alloc::{string::String, string::ToString};
+use log::error;
 
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
 use crate::polkadex_gateway::{authenticate_user, cancel_order, place_order, GatewayError};
 use crate::rpc::rpc_info::RpcCallStatus;
-use polkadex_sgx_primitives::types::{Order, OrderUUID};
+use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
@@ -61,7 +62,7 @@ pub trait RpcGateway: Send + Sync {
         &self,
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
-        order_uuid: OrderUUID,
+        cancel_order: CancelOrder,
     ) -> Result<(), GatewayError>;
 
     /// withdraw funds from main account
@@ -85,7 +86,10 @@ impl RpcGateway for PolkadexRpcGateway {
     ) -> Result<TrustedCall, String> {
         let trusted_call = match trusted_operation {
             TrustedOperation::direct_call(tcs) => Ok(tcs.call),
-            _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
+            _ => {
+                error!("Trusted calls entering via RPC must be direct");
+                Err(RpcCallStatus::operation_type_mismatch.to_string())
+            }
         }?;
 
         let main_account = trusted_call.main_account().clone();
@@ -93,7 +97,10 @@ impl RpcGateway for PolkadexRpcGateway {
 
         match self.authorize_user(main_account.clone(), proxy_account.clone()) {
             Ok(()) => Ok(trusted_call),
-            Err(e) => Err(format!("Authorization error: {}", e)),
+            Err(e) => {
+                error!("Could not find account within registry");
+                Err(format!("Authorization error: {}", e))
+            }
         }
     }
 
@@ -110,7 +117,6 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_acc: Option<AccountId>,
         order: Order,
     ) -> Result<(), GatewayError> {
-        // TODO @gj @bigna please confirm this
         place_order(main_account, proxy_acc, order)
     }
 
@@ -118,9 +124,9 @@ impl RpcGateway for PolkadexRpcGateway {
         &self,
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
-        order_uuid: OrderUUID,
+        order: CancelOrder,
     ) -> Result<(), GatewayError> {
-        cancel_order(main_account, proxy_acc, order_uuid)
+        cancel_order(main_account, proxy_acc, order)
     }
 
     fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {

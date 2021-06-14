@@ -18,12 +18,11 @@
 pub extern crate alloc;
 use crate::rpc::polkadex_rpc_gateway::PolkadexRpcGateway;
 use crate::rpc::return_value_encoding::{
-    compute_encoded_return_error, compute_encoded_return_value,
+    compute_encoded_return_error
 };
-use crate::rpc::trusted_operation_verifier::{TrustedOperationExtractor, TrustedOperationVerifier};
+use crate::rpc::trusted_operation_verifier::{TrustedOperationVerifier};
 use crate::rpc::{
     api::SideChainApi,
-    author::{Author, AuthorApi},
     basic_pool::BasicPool,
     io_handler_extensions,
     rpc_call_encoder::RpcCall,
@@ -47,19 +46,15 @@ use alloc::{
 use base58::FromBase58;
 use chain_relay::Block;
 use codec::{Decode, Encode};
-use core::{ops::Deref, result::Result};
-use jsonrpc_core::futures::executor;
-use jsonrpc_core::Error as RpcError;
+use core::result::Result;
 use jsonrpc_core::*;
 use log::*;
 use serde_json::*;
 use sgx_types::*;
-use sp_core::H256 as Hash;
 use std::{
     sync::atomic::{AtomicPtr, Ordering},
     sync::{Arc, SgxMutex},
 };
-use substratee_node_primitives::Request;
 use substratee_stf::ShardIdentifier;
 use substratee_worker_primitives::RpcReturnValue;
 use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
@@ -108,6 +103,7 @@ pub fn load_top_pool() -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
+#[allow(unused)]
 fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, String> {
     let shard_vec = match shard_base58.from_base58() {
         Ok(vec) => vec,

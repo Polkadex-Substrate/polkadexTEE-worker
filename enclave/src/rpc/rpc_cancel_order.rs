@@ -26,6 +26,7 @@ use crate::rpc::trusted_operation_verifier::TrustedOperationExtractor;
 use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
 use polkadex_sgx_primitives::types::DirectRequest;
+use polkadex_sgx_primitives::types::OrderUUID;
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
@@ -92,11 +93,10 @@ pub mod tests {
 
     use super::*;
     use crate::rpc::mocks::dummy_builder::{
-        create_dummy_account, create_dummy_request, sign_trusted_call,
+        create_dummy_account, create_dummy_request, sign_trusted_call, create_dummy_cancel_order,
     };
     use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
     use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
-    use alloc::vec::Vec;
     use codec::Encode;
     use sp_core::Pair;
     use substratee_stf::AccountId;
@@ -105,11 +105,11 @@ pub mod tests {
         let order_id = "lojoif93j2lngfa".encode();
 
         let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_cancel_order_operation(&order_id)),
+            trusted_operation: Some(create_cancel_order_operation(order_id.clone())),
         });
 
         let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
-            Some(order_id.clone()),
+            Some(order_id),
             true,
         ));
 
@@ -126,7 +126,7 @@ pub mod tests {
         let order_id = "lojoif93j2lngfa".encode();
 
         let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_cancel_order_operation(&order_id)),
+            trusted_operation: Some(create_cancel_order_operation(order_id)),
         });
 
         let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
@@ -143,11 +143,12 @@ pub mod tests {
         assert!(result.is_err());
     }
 
-    fn create_cancel_order_operation(order_id: &Vec<u8>) -> TrustedOperation {
+    fn create_cancel_order_operation(order_id: OrderUUID) -> TrustedOperation {
         let key_pair = create_dummy_account();
         let account_id: AccountId = key_pair.public().into();
+        let cancel_order = create_dummy_cancel_order(account_id.clone(), order_id);
 
-        let trusted_call = TrustedCall::cancel_order(account_id.clone(), order_id.clone(), None);
+        let trusted_call = TrustedCall::cancel_order(account_id.clone(), cancel_order, None);
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
 
         TrustedOperation::direct_call(trusted_call_signed)

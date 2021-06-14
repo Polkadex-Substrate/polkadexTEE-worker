@@ -20,9 +20,9 @@ use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::{
-    add_main_account_args, add_order_id_args, add_proxy_account_args,
+    add_main_account_args, add_order_id_args, add_proxy_account_args, add_market_id_args,
 };
-use crate::commands::common_args_processing::{get_order_from_matches, get_order_id_from_matches};
+use crate::commands::common_args_processing::get_cancel_order_from_matches;
 use crate::{KeyPair, TrustedCall, TrustedOperation};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
@@ -40,7 +40,8 @@ pub fn cancel_order_cli_command(perform_operation: OperationRunner) -> Command<s
 fn add_app_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     let app_with_main_account = add_main_account_args(app);
     let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
-    add_order_id_args(app_with_proxy_account)
+    let app_with_market_id = add_market_id_args(app_with_proxy_account);
+    add_order_id_args(app_with_market_id)
 }
 
 fn command_runner<'a>(
@@ -56,13 +57,13 @@ fn command_runner<'a>(
 
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
-    let order_id = get_order_id_from_matches(matches).unwrap();
+    let cancel_order = get_cancel_order_from_matches(matches, account_details.main_account_public_key().into()).unwrap();
 
     let direct: bool = matches.is_present("direct");
 
     let cancel_order_top: TrustedOperation = TrustedCall::cancel_order(
         account_details.signer_public_key().into(),
-        order_id,
+        cancel_order,
         account_details
             .main_account_public_key_if_not_signer()
             .map(|pk| pk.into()),
@@ -91,7 +92,7 @@ mod tests {
 
     use crate::commands::test_utils::utils::{
         add_identifiers_app_args, create_identifier_args, create_main_account_args,
-        create_order_args, create_order_id_args, PerformOperationMock,
+        create_market_id_args, create_order_id_args, PerformOperationMock,
     };
     use clap::{App, AppSettings};
 
@@ -116,9 +117,12 @@ mod tests {
         let mut main_account_arg = create_main_account_args();
         let mut order_id_args = create_order_id_args();
         let mut identifier_args = create_identifier_args();
+        let mut market_id = create_market_id_args();
 
         main_account_arg.append(&mut order_id_args);
         main_account_arg.append(&mut identifier_args);
+        main_account_arg.append(&mut market_id);
+
 
         main_account_arg
     }
