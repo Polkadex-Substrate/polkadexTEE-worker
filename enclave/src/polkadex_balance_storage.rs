@@ -214,9 +214,9 @@ pub fn load_balance_storage() -> Result<&'static SgxMutex<PolkadexBalanceStorage
     if ptr.is_null() {
         error!("Pointer is Null");
         return Err(GatewayError::UnableToLoadPointer);
-    } else {
-        Ok(unsafe { &*ptr })
     }
+    Ok(unsafe { &*ptr })
+
 }
 
 // TODO: Write test cases for this function
@@ -227,14 +227,12 @@ pub fn lock_storage_and_reserve_balance(
 ) -> Result<(), GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
-    let balance = match balance_storage.read_balance(token.clone(), main_acc.clone()) {
+            GatewayError::UnableToLock
+        })?;
+   let balance = match balance_storage.read_balance(token.clone(), main_acc.clone()) {
         Some(balance) => balance.clone(),
         None => {
             error!("Account does not have a balance storage for this asset id yet");
@@ -266,13 +264,11 @@ pub fn lock_storage_unreserve_balance(
 ) -> Result<(), GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
+            GatewayError::UnableToLock
+        })?;
     let balance = match balance_storage.read_balance(token.clone(), main_acc.clone()) {
         Some(balance) => balance.clone(),
         None => {
@@ -304,13 +300,11 @@ pub fn lock_storage_and_deposit(
 ) -> Result<(), GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
+            GatewayError::UnableToLock
+        })?;
     balance_storage.deposit(token, main_acc, amt)
 }
 
@@ -321,13 +315,11 @@ pub fn lock_storage_and_withdraw(
 ) -> Result<(), GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
+            GatewayError::UnableToLock
+        })?;
     match balance_storage.read_balance(token.clone(), main_acc.clone()) {
         Some(balance) => {
             if balance.free >= amt {
@@ -351,13 +343,11 @@ pub fn lock_storage_and_initialize_balance(
     token: AssetId,
 ) -> Result<(), GatewayError> {
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
+            GatewayError::UnableToLock
+        })?;
     balance_storage.initialize_balance(token, main_acc, 0);
     Ok(())
 }
@@ -367,13 +357,11 @@ pub fn lock_storage_and_get_balances(
     token: AssetId,
 ) -> Result<Balances, GatewayError> {
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
+            GatewayError::UnableToLock
+        })?;
     if let Some(balance) = balance_storage.read_balance(token, main_acc).cloned() {
         Ok(balance)
     } else {
@@ -389,13 +377,11 @@ pub fn lock_storage_transfer_balance(
     amount: u128,
 ) -> Result<(), GatewayError> {
     let mutex = load_balance_storage()?;
-    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = match mutex.lock() {
-        Ok(storage) => storage,
-        Err(_) => {
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> = mutex.lock()
+        .map_err(|_| {
             error!("Could not lock mutex of balance storage");
-            return Err( GatewayError::UnableToLock)
-        },
-    };
+            GatewayError::UnableToLock
+        })?;
     balance_storage.reduce_free_balance(token.clone(), from.clone(), amount)?;
     balance_storage.increase_free_balance(token.clone(), to.clone(), amount)?;
     Ok(())
