@@ -73,8 +73,8 @@ impl AccountDetails {
     #[cfg(test)]
     pub fn proxy_account_public_key(&self) -> Option<sr25519_core::Public> {
         self.proxy_account
-            .as_ref()
-            .map(|_| sr25519_core::Public::from(self.main_account.public()))
+            .clone()
+            .map(|pa| sr25519_core::Public::from(pa.public()))
     }
 }
 
