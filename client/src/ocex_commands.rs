@@ -150,7 +150,7 @@ pub fn remove_proxy_command<'a>() -> Command<'a, str> {
 pub fn withdraw_command<'a>() -> Command<'a, str> {
     Command::new("withdraw")
         .description("withdraws the given amount of funds from the sender")
-        .options(|app| add_command_args(app))
+        .options(add_command_args)
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             let chain_api = crate::get_chain_api(matches);
 
@@ -191,7 +191,7 @@ fn add_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
 pub fn deposit_command<'a>() -> Command<'a, str> {
     Command::new("deposit")
         .description("deposits a given amount of funds from the sender")
-        .options(|app| add_command_args(app))
+        .options(add_command_args)
         .runner(move |_args: &str, matches: &ArgMatches<'_>| {
             let chain_api = crate::get_chain_api(matches);
 
