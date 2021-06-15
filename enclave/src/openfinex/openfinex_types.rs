@@ -19,11 +19,12 @@
 pub extern crate alloc;
 use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
 use alloc::{fmt::Result as FormatResult, string::String};
+use sp_runtime::FixedU128;
 
 pub type Preamble = u128;
 pub type RequestId = u128;
 pub type ResponseInteger = u128;
-pub type OpenFinexDecimal = f64;
+pub type OpenFinexDecimal = FixedU128;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RequestType {

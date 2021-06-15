@@ -17,9 +17,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
+use crate::openfinex::fixed_point_number_converter::FixedPointNumberConverter;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_client::OpenFinexClientInterface;
-use crate::openfinex::openfinex_types::{RequestId, RequestType};
+use crate::openfinex::openfinex_types::{OpenFinexDecimal, RequestId, RequestType};
 use crate::openfinex::request_builder::OpenFinexRequestBuilder;
 use crate::openfinex::string_serialization::{
     market_id_to_request_string, market_type_to_request_string, order_side_to_request_string,
@@ -27,7 +28,7 @@ use crate::openfinex::string_serialization::{
 };
 use alloc::sync::Arc;
 use log::*;
-use polkadex_sgx_primitives::types::{CancelOrder, Order};
+use polkadex_sgx_primitives::types::{CancelOrder, Order, PriceAndQuantityType};
 
 /// implementation of the OpenFinex API
 pub struct OpenFinexApiImpl {
@@ -56,6 +57,9 @@ impl OpenFinexApi for OpenFinexApiImpl {
         let order_type = order_type_to_request_string(order.order_type);
         let order_side = order_side_to_request_string(order.side);
 
+        let quantity_decimal = FixedPointNumberConverter::to_string(order.quantity);
+        let price_decimal = order.price.map(|p| FixedPointNumberConverter::to_string(p));
+
         let request = self
             .create_builder(RequestType::CreateOrder, request_id)
             .push_optional_parameter(None) // empty parameter for uid
@@ -64,8 +68,8 @@ impl OpenFinexApi for OpenFinexApiImpl {
             .push_parameter(market_type)
             .push_parameter(order_type)
             .push_parameter(order_side)
-            .push_price_or_quantity(order.quantity)
-            .push_optional_price_or_quantity(order.price)
+            .push_parameter(quantity_decimal)
+            .push_optional_parameter(price_decimal)
             .build();
         debug!(
             "Sending order to openfinex: {}",

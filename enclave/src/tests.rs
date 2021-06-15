@@ -18,6 +18,7 @@ use crate::aes;
 use crate::attestation;
 use crate::ed25519;
 use crate::openfinex;
+use crate::polkadex_cache;
 use crate::rpc;
 use crate::rsa3072;
 use crate::state;
@@ -25,7 +26,6 @@ use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
 use crate::test_proxy;
 use crate::top_pool;
-use crate::polkadex_cache;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
 use log::*;
@@ -130,6 +130,12 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_orderbook_storage::test_remove_orderbook,
 
         // OpenFinex API tests
+        openfinex::fixed_point_number_converter::tests::fail_to_parse_invalid_strings,
+        openfinex::fixed_point_number_converter::tests::fail_to_parse_scientific_notation,
+        openfinex::fixed_point_number_converter::tests::successfully_parse_numbers,
+        openfinex::fixed_point_number_converter::tests::fail_to_parse_if_number_exceeds_precision,
+        openfinex::fixed_point_number_converter::tests::convert_to_string,
+        openfinex::fixed_point_number_converter::tests::convert_to_string_and_back,
         openfinex::string_serialization::tests::test_market_type_encoded_returns_correct_string,
         openfinex::string_serialization::tests::test_user_id_encoded_returns_correct_string,
         openfinex::string_serialization::tests::test_map_asset_ids,
@@ -137,9 +143,6 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::string_serialization::tests::test_map_order_type,
         openfinex::string_serialization::tests::test_map_order_state,
         openfinex::string_serialization::tests::test_map_market_id,
-        openfinex::number_value_conversion::tests::given_negative_floating_point_number_then_conversion_fails,
-        openfinex::number_value_conversion::tests::given_positive_floating_point_number_then_convert_successfully,
-        openfinex::number_value_conversion::tests::given_integer_value_then_convert_with_factor,
         openfinex::response_lexer::tests::test_given_valid_delimited_string_then_return_result,
         openfinex::response_lexer::tests::test_given_string_with_missing_delimiter_then_return_error,
         openfinex::response_lexer::tests::test_given_valid_number_str_then_lex_correctly,

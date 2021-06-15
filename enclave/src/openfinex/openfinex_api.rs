@@ -34,7 +34,7 @@ pub enum OpenFinexApiError {
     ResponseParsingError(String),
 
     /// Errors related to the conversion between floating points and integers
-    FloatingPointConversionError(String),
+    FixedPointConversionError(String),
 }
 
 impl alloc::fmt::Display for OpenFinexApiError {
