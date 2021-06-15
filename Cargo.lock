@@ -2598,7 +2598,7 @@ dependencies = [
  "parity-scale-codec 2.1.1",
  "polkadex-fungible-assets",
  "polkadex-ocex",
- "polkadex-primitives",
+ "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop)",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
@@ -3360,7 +3360,7 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec 2.1.1",
- "polkadex-primitives",
+ "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop)",
  "rustc-hex",
  "serde",
  "sp-core",
@@ -3383,7 +3383,7 @@ dependencies = [
  "pallet-substratee-registry",
  "pallet-timestamp",
  "parity-scale-codec 2.1.1",
- "polkadex-primitives",
+ "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop)",
  "rustc-hex",
  "serde",
  "sp-core",
@@ -3404,12 +3404,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "polkadex-primitives"
+version = "0.1.0"
+source = "git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=main#b49a9a64b8659fbc7928c329fb7be726039c51c6"
+dependencies = [
+ "frame-system",
+ "parity-scale-codec 2.1.1",
+ "serde",
+ "sp-application-crypto",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
 name = "polkadex-sgx-primitives"
 version = "0.1.0"
 dependencies = [
  "frame-support",
  "parity-scale-codec 2.1.1",
- "polkadex-primitives",
+ "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=main)",
  "sgx_tstd",
  "sp-core",
  "sp-std",
@@ -5505,7 +5518,7 @@ dependencies = [
  "node-polkadex-runtime",
  "pallet-balances",
  "parity-scale-codec 2.1.1",
- "polkadex-primitives",
+ "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop)",
  "polkadex-sgx-primitives",
  "primitive-types 0.9.0",
  "rocksdb",
