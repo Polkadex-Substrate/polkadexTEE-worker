@@ -1489,9 +1489,11 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "polkadex-primitives"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#dab5521a7ae485af4fbce015a3d38c39bdb9e622"
+source = "git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=main#b49a9a64b8659fbc7928c329fb7be726039c51c6"
 dependencies = [
+ "frame-system",
  "parity-scale-codec",
+ "sp-application-crypto",
  "sp-core",
  "sp-runtime",
 ]

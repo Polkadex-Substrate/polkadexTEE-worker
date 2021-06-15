@@ -149,7 +149,8 @@ pub mod asset_id_mapping {
     const POLKADEX_ASSET_STR: &str = "pdx";
     const DOT_ASSET_STR: &str = "dot";
     const CHAIN_SAFE_ASSET_STR: &str = "chs";
-    const TOKEN_ASSET_STR: &str = "tkn";
+    const BTC_ASSET_STR: &str = "btc";
+	const USD_ASSET_STR: &str = "usd";
 
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
@@ -158,7 +159,8 @@ pub mod asset_id_mapping {
 
             // TODO: the string representation for these might have to include the hash?
             AssetId::CHAINSAFE(_) => CHAIN_SAFE_ASSET_STR.to_string(),
-            AssetId::TOKEN(_) => TOKEN_ASSET_STR.to_string(),
+            AssetId::BTC => BTC_ASSET_STR.to_string(),
+			AssetId::USD => USD_ASSET_STR.to_string()
         }
     }
 
@@ -171,7 +173,8 @@ pub mod asset_id_mapping {
             DOT_ASSET_STR => Ok(AssetId::DOT),
 
             CHAIN_SAFE_ASSET_STR => Ok(AssetId::CHAINSAFE(dummy_token_hash)),
-            TOKEN_ASSET_STR => Ok(AssetId::TOKEN(dummy_token_hash)),
+			BTC_ASSET_STR => Ok(AssetId::BTC),
+			USD_ASSET_STR => Ok(AssetId::USD),
             _ => Err(format!(
                 "unknown asset id string ({}), cannot map to AssetId",
                 asset_id_str
@@ -211,7 +214,8 @@ pub mod tests {
         let asset_ids = vec![
             AssetId::DOT,
             AssetId::POLKADEX,
-            AssetId::TOKEN(dummy_hash),
+			AssetId::USD,
+			AssetId::BTC,
             AssetId::CHAINSAFE(dummy_hash),
         ];
 
@@ -278,8 +282,16 @@ pub mod tests {
             },
             MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::TOKEN(asset_id_mapping::dummy_hash()),
+                quote: AssetId::BTC,
             },
+			MarketId {
+				base: AssetId::BTC,
+				quote: AssetId::USD,
+			},
+			MarketId {
+				base: AssetId::USD,
+				quote: AssetId::POLKADEX,
+			}
         ];
 
         for market_id in market_ids {
