@@ -17,7 +17,7 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
 
     while last_account.account.next != None {
         last_account = get_storage_and_proof(
-            last_account.account.next.clone().unwrap().into(),
+            last_account.account.next.clone().unwrap(),
             &header,
             api,
         );
@@ -39,7 +39,6 @@ pub fn get_storage_and_proof(
             Some(header.hash()),
         )
         .unwrap()
-        .map(|account: LinkedAccount| account)
         .unwrap();
 
     let last_acc_proof: Vec<Vec<u8>> = api

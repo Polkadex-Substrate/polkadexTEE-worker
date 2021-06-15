@@ -48,11 +48,6 @@ impl TcpClient {
 
         assert_eq!(ev.token(), CLIENT);
 
-        if ev.readiness().is_error() {
-            println!("Error");
-            return false;
-        }
-
         if ev.readiness().is_readable() {
             self.do_read();
         }
@@ -99,10 +94,10 @@ impl TcpClient {
 
         Option::Some(
             TcpClient {
-            enclave_id: enclave_id,
+            enclave_id,
             socket: sock,
             closing: false,
-            client_id: client_id,
+            client_id,
         })
     }
 
@@ -168,10 +163,7 @@ impl TcpClient {
                 return false;
             }
         }
-        match retval {
-            0 => false,
-            _ => true
-        }
+        !matches!(retval, 0)
     }
 
     fn wants_write(&self) -> bool {
@@ -189,10 +181,8 @@ impl TcpClient {
                 return false;
             }
         }
-        match retval {
-            0 => false,
-            _ => true
-        }
+        !matches!(retval, 0)
+
     }
 
     /// We're ready to do a read.
@@ -203,7 +193,6 @@ impl TcpClient {
         if rc == -1 {
             println!("TLS read error: {:?}", rc);
             self.closing = true;
-            return;
         }
     }
 
@@ -294,12 +283,8 @@ pub fn enclave_run_openfinex_client(
     // etablish TCP
     let sock = TcpStream::connect(&addr).expect("[-] Connect to websocket failed!");
     // create new HttpClient within enclave
-    let tcpclient: Option<TcpClient> = TcpClient::new(eid, sock, finex_uri);
-
-    if tcpclient.is_some() {
+    if let Some(mut client) = TcpClient::new(eid, sock, finex_uri) {
         println!("[+] Httpclient successfully created within enclave");
-
-        let mut client: TcpClient = tcpclient.unwrap();
         // write_all from io::Write (https://doc.rust-lang.org/std/io/trait.Write.html)
         // Attempts to write an entire buffer into this writer.
         //client.write_all(httpreq.as_bytes()).unwrap();

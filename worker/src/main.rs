@@ -591,8 +591,7 @@ pub fn sync_chain(
         return curr_head.block.header;
     }
 
-    let mut blocks_to_sync = Vec::<SignedBlock>::new();
-    blocks_to_sync.push(curr_head.clone());
+    let mut blocks_to_sync = vec![curr_head.clone()];
 
     // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
     let mut head = curr_head.clone();
@@ -827,6 +826,9 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     status
 }
 
+/// # Safety
+///
+/// FFI are always unsafe
 #[no_mangle]
 pub unsafe extern "C" fn ocall_send_release_extrinsic(
     extrinsic: *const u8,

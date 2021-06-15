@@ -95,7 +95,7 @@ pub struct SignedOrder {
 impl SignedOrder {
     pub fn sign(&mut self, key_pair: &ed25519::Pair) {
         let payload = self.encode();
-        self.signature = key_pair.sign(payload.as_slice()).into();
+        self.signature = key_pair.sign(payload.as_slice());
     }
 
     pub fn verify_signature(&self, key_pair: &ed25519::Pair) -> bool {
