@@ -136,6 +136,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::fixed_point_number_converter::tests::fail_to_parse_if_number_exceeds_precision,
         openfinex::fixed_point_number_converter::tests::convert_to_string,
         openfinex::fixed_point_number_converter::tests::convert_to_string_and_back,
+        openfinex::fixed_point_number_converter::tests::fail_to_parse_if_too_large,
         openfinex::string_serialization::tests::test_market_type_encoded_returns_correct_string,
         openfinex::string_serialization::tests::test_user_id_encoded_returns_correct_string,
         openfinex::string_serialization::tests::test_map_asset_ids,

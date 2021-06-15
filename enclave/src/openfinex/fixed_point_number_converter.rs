@@ -78,8 +78,8 @@ impl FixedPointNumberConverter {
             )));
         }
 
-        let integer_part = combine_integer_digits(&integer_digits);
-        let fraction_part = combine_fraction_digits(&fraction_digits);
+        let integer_part = combine_integer_digits(&integer_digits)?;
+        let fraction_part = combine_fraction_digits(&fraction_digits)?;
 
         Ok(integer_part + fraction_part)
     }
@@ -106,25 +106,42 @@ fn parse_number_sequence<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Ve
     digits
 }
 
-fn combine_integer_digits(digits: &Vec<u8>) -> ResponseInteger {
-    combine_digits(digits, &|order| UNIT * order)
+fn combine_integer_digits(digits: &Vec<u8>) -> OpenFinexApiResult<ResponseInteger> {
+    combine_digits(digits, &|order| UNIT.checked_mul(order))
 }
 
-fn combine_fraction_digits(digits: &Vec<u8>) -> ResponseInteger {
-    combine_digits(digits, &|order| UNIT / order / 10u128)
+fn combine_fraction_digits(digits: &Vec<u8>) -> OpenFinexApiResult<ResponseInteger> {
+    combine_digits(digits, &|order| (UNIT / 10u128).checked_div(order))
 }
 
-fn combine_digits(digits: &Vec<u8>, scale_fn: &dyn Fn(u128) -> u128) -> ResponseInteger {
+fn combine_digits(
+    digits: &Vec<u8>,
+    scale_fn: &dyn Fn(u128) -> Option<u128>,
+) -> OpenFinexApiResult<ResponseInteger> {
     let mut number: u128 = 0;
     let mut order: u128 = 1;
 
     for digit in digits {
-        let scale = (scale_fn)(order);
-        number += scale * (*digit as u128);
-        order *= 10u128;
+        // all operations are performed in 'checked' mode to prevent overflow errors
+
+        let scale = (scale_fn)(order).ok_or_else(|| {
+            OpenFinexApiError::FixedPointConversionError("Value overflow".to_string())
+        })?;
+
+        let digit_value = scale.checked_mul(*digit as u128).ok_or_else(|| {
+            OpenFinexApiError::FixedPointConversionError("Value overflow".to_string())
+        })?;
+
+        number = number.checked_add(digit_value).ok_or_else(|| {
+            OpenFinexApiError::FixedPointConversionError("Value overflow".to_string())
+        })?;
+
+        order = order.checked_mul(10u128).ok_or_else(|| {
+            OpenFinexApiError::FixedPointConversionError("Value overflow".to_string())
+        })?;
     }
 
-    number
+    Ok(number)
 }
 
 pub mod tests {
@@ -148,6 +165,15 @@ pub mod tests {
     pub fn fail_to_parse_scientific_notation() {
         assert!(FixedPointNumberConverter::parse_from_string(&format!("1.4e-3")).is_err());
         assert!(FixedPointNumberConverter::parse_from_string(&format!("9e8")).is_err());
+    }
+
+    pub fn fail_to_parse_if_too_large() {
+        // number in string is larger than what can be converted to u128 (with 18 digit shift)
+        // u128 max 340_282_366_920_938_463_463,,_374_607_431_768_211_455
+        assert!(
+            FixedPointNumberConverter::parse_from_string(&format!("340282366920938463464"))
+                .is_err()
+        );
     }
 
     pub fn successfully_parse_numbers() {
