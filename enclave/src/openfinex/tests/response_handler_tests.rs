@@ -18,13 +18,12 @@
 
 pub extern crate alloc;
 
-use crate::openfinex::number_value_conversion::alloc::prelude::v1::String;
 use crate::openfinex::openfinex_api::OpenFinexApiResult;
 use crate::openfinex::response_handler::PolkadexResponseHandler;
 use crate::openfinex::response_object_mapper::{OpenFinexResponse, OpenFinexResponseObjectMapper};
 use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::{GatewayError, PolkaDexGatewayCallback};
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc};
 use polkadex_sgx_primitives::types::OrderUUID;
 
 struct GatewayCallBackMock;

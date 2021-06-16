@@ -17,8 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use crate::openfinex::number_value_conversion::convert_to_decimal;
-use crate::openfinex::openfinex_types::{Preamble, RequestId, RequestType};
+use crate::openfinex::openfinex_types::{OpenFinexDecimal, Preamble, RequestId, RequestType};
 use crate::openfinex::request_id_generator::RequestIdGenerator;
 use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
 use polkadex_sgx_primitives::types::PriceAndQuantityType;
@@ -72,21 +71,6 @@ impl OpenFinexRequestBuilder {
     pub fn push_parameter(&mut self, param: String) -> &mut Self {
         (self).parameters.push(format!("\"{}\"", param)); // add enclosing double quotes "param"
         self
-    }
-
-    pub fn push_price_or_quantity(&mut self, param: PriceAndQuantityType) -> &mut Self {
-        let decimal_value = convert_to_decimal(param);
-        self.push_parameter(format!("{}", decimal_value))
-    }
-
-    pub fn push_optional_price_or_quantity(
-        &mut self,
-        param: Option<PriceAndQuantityType>,
-    ) -> &mut Self {
-        match param {
-            Some(p) => self.push_price_or_quantity(p),
-            None => self.push_parameter(OpenFinexRequestBuilder::empty_parameter()),
-        }
     }
 
     pub fn push_optional_parameter(&mut self, param: Option<String>) -> &mut Self {

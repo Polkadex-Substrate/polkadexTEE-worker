@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use crate::openfinex::number_value_conversion::convert_to_integer;
+use crate::openfinex::fixed_point_number_converter::FixedPointNumberConverter;
 use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_types::{
     OpenFinexDecimal, RequestId, RequestType, ResponseInteger,
@@ -328,22 +328,16 @@ fn extract_encoded_string_from_item(item: &ParameterItem) -> OpenFinexApiResult<
 }
 
 fn extract_decimal_from_item(item: &ParameterItem) -> OpenFinexApiResult<PriceAndQuantityType> {
-    let decimal_value = match item {
-        ParameterItem::String(s) => s.parse::<OpenFinexDecimal>().map_err(|_| {
-            OpenFinexApiError::ResponseParsingError(format!(
-                "Expected a decimal parameter, but found {}",
-                s
-            ))
-        }),
+    match item {
+        ParameterItem::String(s) => FixedPointNumberConverter::parse_from_string(s),
+
         // decimals in the response 'should' (according to OpenWare) always be wrapped in a string
         // so if we encounter a 'naked' number, this must be an error
         ParameterItem::Number(n) => Err(OpenFinexApiError::ResponseParsingError(format!(
             "Expected a decimal string parameter, but found {}",
             n
         ))),
-    }?;
-
-    convert_to_integer(decimal_value)
+    }
 }
 
 fn extract_integer_from_item(item: &ParameterItem) -> OpenFinexApiResult<ResponseInteger> {

@@ -19,7 +19,7 @@
 mod client_utils;
 mod jwt;
 
-pub mod number_value_conversion;
+pub mod fixed_point_number_converter;
 pub mod openfinex_api;
 pub mod openfinex_api_impl;
 pub mod openfinex_client;
