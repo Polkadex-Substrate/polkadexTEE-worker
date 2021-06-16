@@ -67,8 +67,7 @@ git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
 
 [dependencies.polkadex-primitives]
-git = "https://github.com/Polkadex-Substrate/Polkadex"
-branch = "develop"
+git = "https://github.com/Polkadex-Substrate/polkadex-primitives"
 
 [dependencies.sp-core]
 git = "https://github.com/paritytech/substrate.git"
