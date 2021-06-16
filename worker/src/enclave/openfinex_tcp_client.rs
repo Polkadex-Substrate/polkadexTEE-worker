@@ -263,7 +263,7 @@ fn get_socket_addr(uri: OpenFinexUri) -> SocketAddr {
     // can not start server wo port, panic i.o.
     let ip: &str = &uri.ip();
     let port = uri.port_u16();
-    error!("Connecting to: {}:{:?}", ip, port);
+    debug!("Connecting to: {}:{:?}", ip, port);
     let addrs = (ip, port).to_socket_addrs().unwrap();
     for addr in addrs {
         if let SocketAddr::V4(_) = addr {
