@@ -55,8 +55,8 @@ pub static OCEX_RELEASE: u8 = 1u8;
 pub static OCEX_WITHDRAW: u8 = 2u8;
 
 // bump this to be consistent with SubstraTEE-node runtime
-pub static RUNTIME_SPEC_VERSION: u32 = 100;
-pub static RUNTIME_TRANSACTION_VERSION: u32 = 1;
+pub static RUNTIME_SPEC_VERSION: u32 = 265;
+pub static RUNTIME_TRANSACTION_VERSION: u32 = 2;
 
 // timeouts for getter and call execution
 pub static CALLTIMEOUT: i64 = 300; // timeout in ms
