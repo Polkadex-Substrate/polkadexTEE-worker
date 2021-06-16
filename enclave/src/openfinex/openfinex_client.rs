@@ -149,10 +149,9 @@ impl TcpClient {
 
         // If we're ready but there's no data: EOF.
         if rc.unwrap() == 0 {
-            error!("EOF");
             //self.closing = true;
             //self.clean_closure = true;
-            return Ok(0);
+            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "EOF"));
         }
 
         if buffer[0] == 72 {

@@ -42,7 +42,7 @@ use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
 use sp_keyring::AccountKeyring;
-use sp_runtime::MultiSignature;
+use sp_runtime::{MultiSignature, MultiAddress};
 use std::convert::TryFrom;
 use std::result::Result as StdResult;
 use std::sync::mpsc::channel;
@@ -189,7 +189,7 @@ fn main() {
                         let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
                             _api.clone().signer.unwrap(),
                             Call::Balances(BalancesCall::transfer(
-                                GenericAddress::Id(to.clone()),
+                                MultiAddress::<AccountId,u32>::Id(to.clone()),
                                 PREFUNDING_AMOUNT
                             )),
                             nonce,
