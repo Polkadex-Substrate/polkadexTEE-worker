@@ -660,7 +660,6 @@ pub fn consume_order(
                 )?;
             } else {
 				let amount_to_unreserve = reserved_amount - trade_event.price;
-				error!(">>>>{:?}", amount_to_unreserve);
 				polkadex_balance_storage::lock_storage_unreserve_balance(
 					&counter_order.user_uid,
 					counter_order.market_id.quote,
