@@ -21,10 +21,7 @@ pub extern crate alloc;
 use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_types::{Preamble, RequestId, RequestType, ResponseInteger};
 use crate::openfinex::response_lexer::{LexItem, ResponseLexer};
-use alloc::{
-    fmt::Result as FormatResult, string::String, string::ToString,
-    vec::Vec,
-};
+use alloc::{fmt::Result as FormatResult, string::String, string::ToString, vec::Vec};
 use core::iter::Peekable;
 
 const RESPONSE_TO_REQUEST_PREAMBLE: Preamble = 2;
@@ -60,6 +57,7 @@ pub enum ParameterNode {
 pub enum ParameterItem {
     String(String),
     Number(ResponseInteger),
+    Json(String),
 }
 
 impl alloc::fmt::Display for ParameterItem {
@@ -250,11 +248,20 @@ fn token_parameter(lex_item: &LexItem) -> OpenFinexApiResult<ParameterItem> {
         return Ok(ParameterItem::Number(n));
     }
 
+    if let Ok(s) = token_json(lex_item) {
+        return Ok(ParameterItem::Json(s));
+    }
+
     let expected_string_item = LexItem::String("any".to_string());
     let expected_number_item = LexItem::Number(1);
+    let expected_json_item = LexItem::Json("{}".to_string());
 
     Err(unexpected_token_error_for_multiple(
-        &vec![&expected_string_item, &expected_number_item],
+        &vec![
+            &expected_string_item,
+            &expected_number_item,
+            &expected_json_item,
+        ],
         lex_item,
     ))
 }
@@ -271,6 +278,14 @@ fn token_number(lex_item: &LexItem) -> OpenFinexApiResult<ResponseInteger> {
     let expected_item = LexItem::Number(1);
     match lex_item {
         LexItem::Number(i) => Ok(*i),
+        _ => Err(unexpected_token_error(&expected_item, lex_item)),
+    }
+}
+
+fn token_json(lex_item: &LexItem) -> OpenFinexApiResult<String> {
+    let expected_item = LexItem::Json("{}".to_string());
+    match lex_item {
+        LexItem::Json(s) => Ok(s.clone()),
         _ => Err(unexpected_token_error(&expected_item, lex_item)),
     }
 }

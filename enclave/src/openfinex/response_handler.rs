@@ -18,15 +18,14 @@
 
 pub extern crate alloc;
 use crate::openfinex::client_utils::Payload;
-use crate::openfinex::openfinex_types::{RequestId, RequestType};
+use crate::openfinex::market_repo::MarketsRequestCallback;
+use crate::openfinex::openfinex_types::RequestId;
 use crate::openfinex::response_object_mapper::{
     OpenFinexResponse, OpenFinexResponseObjectMapper, RequestResponse,
 };
-use crate::openfinex::response_parser::{
-    ParameterNode, ParsedResponse, ResponseMethod, ResponseParser,
-};
+use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::PolkaDexGatewayCallback;
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::sync::Arc;
 use log::*;
 use polkadex_sgx_primitives::types::{OrderState, OrderUpdate, TradeEvent};
 
@@ -37,7 +36,8 @@ pub trait TcpResponseHandler {
 
 /// implementation for handling TCP responses from OpenFinex and processing them in the Polkadex Gateway
 pub struct PolkadexResponseHandler {
-    callback: Arc<dyn PolkaDexGatewayCallback>,
+    polkadex_gateway_callback: Arc<dyn PolkaDexGatewayCallback>,
+    markets_callback: Arc<dyn MarketsRequestCallback>,
     response_parser: Arc<dyn ResponseParser>,
     response_object_mapper: Arc<dyn OpenFinexResponseObjectMapper>,
 }
@@ -56,12 +56,14 @@ impl TcpResponseHandler for PolkadexResponseHandler {
 
 impl PolkadexResponseHandler {
     pub fn new(
-        callback: Arc<dyn PolkaDexGatewayCallback>,
+        polkadex_gateway_callback: Arc<dyn PolkaDexGatewayCallback>,
+        markets_callback: Arc<dyn MarketsRequestCallback>,
         response_parser: Arc<dyn ResponseParser>,
         response_object_mapper: Arc<dyn OpenFinexResponseObjectMapper>,
     ) -> Self {
         PolkadexResponseHandler {
-            callback,
+            polkadex_gateway_callback,
+            markets_callback,
             response_parser,
             response_object_mapper,
         }
@@ -98,7 +100,7 @@ impl PolkadexResponseHandler {
         match order_update.state {
             // cancel order
             OrderState::CANCEL => match self
-                .callback
+                .polkadex_gateway_callback
                 .process_cancel_order(order_update.unique_order_id)
             {
                 Ok(_) => {
@@ -116,11 +118,14 @@ impl PolkadexResponseHandler {
         debug!("Received trade event from OpenFinex");
     }
 
-    fn handle_request_response(&self, request_response: RequestResponse, _request_id: RequestId) {
+    fn handle_request_response(&self, request_response: RequestResponse, request_id: RequestId) {
         match request_response {
             RequestResponse::CreateOrder(cr) => {
                 debug!("Received a create order response from OpenFinex");
-                match self.callback.process_create_order(cr.order_id) {
+                match self
+                    .polkadex_gateway_callback
+                    .process_create_order(cr.order_id)
+                {
                     Ok(_) => {
                         debug!("Creating order succeeded")
                     }
@@ -137,6 +142,20 @@ impl PolkadexResponseHandler {
             }
             RequestResponse::WithdrawFunds(_wr) => {
                 debug!("Received a withdraw funds response from OpenFinex");
+            }
+            RequestResponse::GetMarkets(gmr) => {
+                debug!("Received a get_markets response from OpenFinex");
+                match self
+                    .markets_callback
+                    .update_markets(request_id, &gmr.json_content)
+                {
+                    Ok(_) => {
+                        debug!("Successfully update markets information")
+                    }
+                    Err(e) => {
+                        error!("Updating markets information failed: {}", e)
+                    }
+                }
             }
         }
     }

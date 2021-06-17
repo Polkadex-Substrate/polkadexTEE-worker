@@ -33,6 +33,7 @@ pub enum RequestType {
     CreateOrder,
     CancelOrder,
     Subscribe,
+    GetMarkets,
 }
 
 impl alloc::fmt::Display for RequestType {
@@ -47,6 +48,7 @@ impl RequestType {
     const CREATE_ORDER_STR: &'static str = "admin_create_order";
     const CANCEL_ORDER_STR: &'static str = "admin_cancel_order";
     const SUBSCRIBE_EVENTS_STR: &'static str = "subscribe";
+    const GET_MARKETS_STR: &'static str = "get_markets";
 
     pub fn to_request_string(&self) -> String {
         match &self {
@@ -55,6 +57,7 @@ impl RequestType {
             RequestType::CreateOrder => String::from(RequestType::CREATE_ORDER_STR),
             RequestType::CancelOrder => String::from(RequestType::CANCEL_ORDER_STR),
             RequestType::Subscribe => String::from(RequestType::SUBSCRIBE_EVENTS_STR),
+            RequestType::GetMarkets => String::from(RequestType::GET_MARKETS_STR),
         }
     }
 
@@ -65,6 +68,7 @@ impl RequestType {
             RequestType::CREATE_ORDER_STR => Ok(RequestType::CreateOrder),
             RequestType::CANCEL_ORDER_STR => Ok(RequestType::CancelOrder),
             RequestType::SUBSCRIBE_EVENTS_STR => Ok(RequestType::Subscribe),
+            RequestType::GET_MARKETS_STR => Ok(RequestType::GetMarkets),
             _ => Err(OpenFinexApiError::ResponseParsingError(format!(
                 "invalid method string {}",
                 input

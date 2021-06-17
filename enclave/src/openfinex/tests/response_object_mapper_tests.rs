@@ -18,17 +18,17 @@
 
 pub extern crate alloc;
 
-use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
-use crate::openfinex::openfinex_types::{RequestId, RequestType, ResponseInteger};
+use crate::openfinex::openfinex_types::{RequestType, ResponseInteger};
 use crate::openfinex::response_object_mapper::{
     OpenFinexResponse, OpenFinexResponseObjectMapper, RequestResponse, ResponseObjectMapper,
 };
 use crate::openfinex::response_parser::{
     ParameterItem, ParameterNode, ParsedResponse, ResponseMethod,
 };
-use alloc::{string::String, vec::Vec};
+use crate::openfinex::string_serialization::OpenFinexResponseDeserializer;
+use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
 use codec::Encode;
-use polkadex_sgx_primitives::types::{MarketId, OrderState, OrderType};
+use polkadex_sgx_primitives::types::{MarketId, OrderSide, OrderState, OrderType};
 use polkadex_sgx_primitives::AssetId;
 
 pub fn test_given_parsed_error_then_map_to_error_object() {
@@ -157,18 +157,8 @@ pub fn test_order_update_response() {
 
     match mapped_objects {
         OpenFinexResponse::OrderUpdate(ou) => {
-            assert_eq!(
-                ou.market_id,
-                MarketId {
-                    base: AssetId::DOT,
-                    quote: AssetId::POLKADEX
-                }
-            );
-
             assert_eq!(ou.order_id, order_id);
             assert_eq!(ou.unique_order_id, order_uuid.encode());
-            assert_eq!(ou.state, OrderState::DONE);
-            assert_eq!(ou.order_type, OrderType::LIMIT);
         }
         _ => {
             assert!(
@@ -212,14 +202,6 @@ pub fn test_trade_event_response() {
 
     match mapped_objects {
         OpenFinexResponse::TradeEvent(te) => {
-            assert_eq!(
-                te.market_id,
-                MarketId {
-                    base: AssetId::POLKADEX,
-                    quote: AssetId::DOT
-                }
-            );
-
             assert_eq!(te.trade_id, trade_id);
             assert_eq!(te.funds, 2_000_000_000_000_000_000_000);
             assert_eq!(te.maker_order_id, 2);
@@ -234,7 +216,66 @@ pub fn test_trade_event_response() {
     }
 }
 
+pub fn test_get_markets_response() {
+    let request_id: ResponseInteger = 4888721;
+    let get_markets_response = ParsedResponse {
+        response_method: ResponseMethod::FromRequestMethod(RequestType::GetMarkets, request_id),
+        response_preamble: 2,
+        parameters: vec![
+            ParameterNode::SingleParameter(ParameterItem::Json(r#"{"param":"value"}"#.to_string())),
+            ParameterNode::SingleParameter(ParameterItem::Json(r#"{"id":1234}"#.to_string())),
+            ParameterNode::SingleParameter(ParameterItem::Json(r#"{}"#.to_string())),
+        ],
+    };
+
+    let mapped_objects = map_to_objects(&get_markets_response);
+
+    match mapped_objects {
+        OpenFinexResponse::RequestResponse(rr, ri) => match rr {
+            RequestResponse::GetMarkets(gmr) => {
+                assert_eq!(ri, request_id);
+                assert_eq!(gmr.json_content.len(), 3);
+            }
+            _ => {
+                assert!(false, "Found unexpected RequestResponse");
+            }
+        },
+        _ => {
+            assert!(
+                false,
+                "Found unexpected response type, expected RequestResponse"
+            );
+        }
+    }
+}
+
 fn map_to_objects(response: &ParsedResponse) -> OpenFinexResponse {
-    let object_mapper = ResponseObjectMapper {};
+    struct ResponseDeserializerMock;
+    impl OpenFinexResponseDeserializer for ResponseDeserializerMock {
+        fn string_to_market_id(&self, _market_id_str: &String) -> Result<MarketId, String> {
+            Ok(MarketId {
+                base: AssetId::POLKADEX,
+                quote: AssetId::DOT,
+            })
+        }
+
+        fn string_to_order_type(&self, _order_type_str: &String) -> Result<OrderType, String> {
+            Ok(OrderType::LIMIT)
+        }
+
+        fn string_to_order_side(&self, _order_side_str: &String) -> Result<OrderSide, String> {
+            Ok(OrderSide::BID)
+        }
+
+        fn string_to_order_state(&self, _order_state_str: &String) -> Result<OrderState, String> {
+            Ok(OrderState::DONE)
+        }
+
+        fn string_to_asset_id(&self, _asset_id_str: &String) -> Result<AssetId, String> {
+            Ok(AssetId::DOT)
+        }
+    }
+
+    let object_mapper = ResponseObjectMapper::new(Arc::new(ResponseDeserializerMock {}));
     object_mapper.map_to_response_object(response).unwrap()
 }

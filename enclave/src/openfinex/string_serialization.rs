@@ -18,13 +18,72 @@
 
 pub extern crate alloc;
 use crate::openfinex::openfinex_api::OpenFinexApiError;
+use crate::polkadex_cache::cache_api::CacheProvider;
+use crate::polkadex_cache::market_cache::MarketCache;
 use crate::ss58check::account_id_to_ss58check;
-use alloc::{string::String, string::ToString};
+use alloc::{string::String, string::ToString, sync::Arc};
 use polkadex_sgx_primitives::types::{
     MarketId, MarketType, OrderSide, OrderState, OrderType, UserId,
 };
 use polkadex_sgx_primitives::AssetId;
 use sp_core::H160;
+
+pub trait OpenFinexResponseDeserializer {
+    fn string_to_market_id(&self, market_id_str: &String) -> Result<MarketId, String>;
+
+    fn string_to_order_type(&self, order_type_str: &String) -> Result<OrderType, String>;
+
+    fn string_to_order_side(&self, order_side_str: &String) -> Result<OrderSide, String>;
+
+    fn string_to_order_state(&self, order_state_str: &String) -> Result<OrderState, String>;
+
+    fn string_to_asset_id(&self, asset_id_str: &String) -> Result<AssetId, String>;
+}
+
+pub struct ResponseDeserializerImpl {
+    market_cache_provider: Arc<dyn CacheProvider<MarketCache>>,
+}
+
+impl ResponseDeserializerImpl {
+    pub fn new(
+        market_cache_provider: Arc<dyn CacheProvider<MarketCache>>,
+    ) -> ResponseDeserializerImpl {
+        ResponseDeserializerImpl {
+            market_cache_provider,
+        }
+    }
+}
+
+impl OpenFinexResponseDeserializer for ResponseDeserializerImpl {
+    fn string_to_market_id(&self, market_id_str: &String) -> Result<MarketId, String> {
+        let mutex = self
+            .market_cache_provider
+            .load()
+            .map_err(|_| "Failed to load market cache".to_string())?;
+
+        let cache = mutex
+            .lock()
+            .map_err(|e| format!("Could not acquire lock on market cache: {}", e))?;
+
+        string_to_market_id(market_id_str, &cache)
+    }
+
+    fn string_to_order_type(&self, order_type_str: &String) -> Result<OrderType, String> {
+        string_to_order_type(order_type_str)
+    }
+
+    fn string_to_order_side(&self, order_side_str: &String) -> Result<OrderSide, String> {
+        string_to_order_side(order_side_str)
+    }
+
+    fn string_to_order_state(&self, order_state_str: &String) -> Result<OrderState, String> {
+        string_to_order_state(order_state_str)
+    }
+
+    fn string_to_asset_id(&self, asset_id_str: &String) -> Result<AssetId, String> {
+        asset_id_mapping::string_to_asset_id(asset_id_str)
+    }
+}
 
 pub fn user_id_to_request_string(user_id: &UserId) -> String {
     account_id_to_ss58check(user_id)
@@ -38,20 +97,19 @@ pub fn market_id_to_request_string(market_id: MarketId) -> String {
     )
 }
 
-const EXPECTED_MARKET_ID_STR_LENGTH: usize = 6;
+fn string_to_market_id(
+    market_id_str: &String,
+    market_cache: &MarketCache,
+) -> Result<MarketId, String> {
+    let market = market_cache.get_market(market_id_str).ok_or_else(|| {
+        format!(
+            "Could not find a market object in cache for id '{}'",
+            market_id_str
+        )
+    })?;
 
-pub fn string_to_market_id(market_id_str: &String) -> Result<MarketId, String> {
-    // this mapping assumes the asset ids are always 3-characters
-    // that allows us to split the string into 2 parts which both must be an asset id
-    if market_id_str.len() != EXPECTED_MARKET_ID_STR_LENGTH {
-        return Err(format!(
-            "Market id string ({}) does not have the expected length of {} chars",
-            market_id_str, EXPECTED_MARKET_ID_STR_LENGTH
-        ));
-    }
-
-    let base_asset = asset_id_mapping::string_to_asset_id(&String::from(&market_id_str[0..3]))?;
-    let quote_asset = asset_id_mapping::string_to_asset_id(&String::from(&market_id_str[3..6]))?;
+    let base_asset = asset_id_mapping::string_to_asset_id(&market.base_unit)?;
+    let quote_asset = asset_id_mapping::string_to_asset_id(&market.quote_unit)?;
 
     Ok(MarketId {
         base: base_asset,
@@ -81,7 +139,7 @@ pub fn order_type_to_request_string(order_type: OrderType) -> String {
     }
 }
 
-pub fn string_to_order_type(order_type_str: &String) -> Result<OrderType, String> {
+fn string_to_order_type(order_type_str: &String) -> Result<OrderType, String> {
     match order_type_str.as_str() {
         MARKET_ORDER_TYPE_STR => Ok(OrderType::MARKET),
         LIMIT_ORDER_TYPE_STR => Ok(OrderType::LIMIT),
@@ -104,7 +162,7 @@ pub fn order_side_to_request_string(order_side: OrderSide) -> String {
     }
 }
 
-pub fn string_to_order_side(order_side_str: &String) -> Result<OrderSide, String> {
+fn string_to_order_side(order_side_str: &String) -> Result<OrderSide, String> {
     match order_side_str.as_str() {
         BID_ORDER_SIDE_STR => Ok(OrderSide::BID),
         ASK_ORDER_SIDE_STR => Ok(OrderSide::ASK),
@@ -129,7 +187,7 @@ pub fn order_state_to_request_string(order_state: OrderState) -> String {
     }
 }
 
-pub fn string_to_order_state(order_state_str: &String) -> Result<OrderState, String> {
+fn string_to_order_state(order_state_str: &String) -> Result<OrderState, String> {
     match order_state_str.as_str() {
         DONE_ORDER_STATE_STR => Ok(OrderState::DONE),
         WAIT_ORDER_STATE_STR => Ok(OrderState::WAIT),
@@ -150,7 +208,7 @@ pub mod asset_id_mapping {
     const DOT_ASSET_STR: &str = "dot";
     const CHAIN_SAFE_ASSET_STR: &str = "chs";
     const BTC_ASSET_STR: &str = "btc";
-	const USD_ASSET_STR: &str = "usd";
+    const USD_ASSET_STR: &str = "usd";
 
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
@@ -160,7 +218,7 @@ pub mod asset_id_mapping {
             // TODO: the string representation for these might have to include the hash?
             AssetId::CHAINSAFE(_) => CHAIN_SAFE_ASSET_STR.to_string(),
             AssetId::BTC => BTC_ASSET_STR.to_string(),
-			AssetId::USD => USD_ASSET_STR.to_string()
+            AssetId::USD => USD_ASSET_STR.to_string(),
         }
     }
 
@@ -173,8 +231,8 @@ pub mod asset_id_mapping {
             DOT_ASSET_STR => Ok(AssetId::DOT),
 
             CHAIN_SAFE_ASSET_STR => Ok(AssetId::CHAINSAFE(dummy_token_hash)),
-			BTC_ASSET_STR => Ok(AssetId::BTC),
-			USD_ASSET_STR => Ok(AssetId::USD),
+            BTC_ASSET_STR => Ok(AssetId::BTC),
+            USD_ASSET_STR => Ok(AssetId::USD),
             _ => Err(format!(
                 "unknown asset id string ({}), cannot map to AssetId",
                 asset_id_str
@@ -190,6 +248,7 @@ pub mod asset_id_mapping {
 pub mod tests {
 
     use super::*;
+    use crate::openfinex::market::{Market, MarketState};
     use sp_core::{ed25519 as ed25519_core, Pair};
 
     pub fn test_market_type_encoded_returns_correct_string() {
@@ -214,8 +273,8 @@ pub mod tests {
         let asset_ids = vec![
             AssetId::DOT,
             AssetId::POLKADEX,
-			AssetId::USD,
-			AssetId::BTC,
+            AssetId::USD,
+            AssetId::BTC,
             AssetId::CHAINSAFE(dummy_hash),
         ];
 
@@ -267,6 +326,19 @@ pub mod tests {
     }
 
     pub fn test_map_market_id() {
+        let mut market_cache = MarketCache::new();
+        market_cache.set_markets(
+            market_cache.request_id(),
+            vec![
+                create_market("dotdot", "dot", "dot"),
+                create_market("pdxdot", "pdx", "dot"),
+                create_market("chspdx", "chs", "pdx"),
+                create_market("pdxbtc", "pdx", "btc"),
+                create_market("btcusd", "btc", "usd"),
+                create_market("usdpdx", "usd", "pdx"),
+            ],
+        );
+
         let market_ids = vec![
             MarketId {
                 base: AssetId::DOT,
@@ -284,20 +356,32 @@ pub mod tests {
                 base: AssetId::POLKADEX,
                 quote: AssetId::BTC,
             },
-			MarketId {
-				base: AssetId::BTC,
-				quote: AssetId::USD,
-			},
-			MarketId {
-				base: AssetId::USD,
-				quote: AssetId::POLKADEX,
-			}
+            MarketId {
+                base: AssetId::BTC,
+                quote: AssetId::USD,
+            },
+            MarketId {
+                base: AssetId::USD,
+                quote: AssetId::POLKADEX,
+            },
         ];
 
         for market_id in market_ids {
             let market_id_str = market_id_to_request_string(market_id.clone());
-            let mapped_market_id = string_to_market_id(&market_id_str).unwrap();
+            let mapped_market_id = string_to_market_id(&market_id_str, &market_cache).unwrap();
             assert_eq!(market_id, mapped_market_id);
+        }
+    }
+
+    fn create_market(id: &str, base: &str, quote: &str) -> Market {
+        Market {
+            id: String::from(id),
+            base_unit: String::from(base),
+            quote_unit: String::from(quote),
+            state: MarketState::enabled,
+            price_precision: 4,
+            amount_precision: 4,
+            name: String::from(id),
         }
     }
 }

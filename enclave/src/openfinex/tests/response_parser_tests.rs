@@ -17,13 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use crate::openfinex::openfinex_api::OpenFinexApiError::ResponseParsingError;
-use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
-use crate::openfinex::openfinex_types::{Preamble, RequestId, RequestType};
+use crate::openfinex::openfinex_types::RequestType;
 use crate::openfinex::response_parser::{
     ParameterNode, ResponseMethod, ResponseParser, TcpResponseParser,
 };
-use alloc::{string::String, string::ToString, vec::Vec};
+use alloc::{string::String, string::ToString};
 
 pub fn given_valid_create_order_response_then_parse_items() {
     let response_string = "[2,42,\"admin_create_order\",[\"1245-2345-6798-123123\"]]".to_string();
@@ -37,6 +35,20 @@ pub fn given_valid_create_order_response_then_parse_items() {
         ResponseMethod::FromRequestMethod(RequestType::CreateOrder, 42)
     );
     assert_eq!(parsed_response.parameters.len(), 1);
+}
+
+pub fn given_valid_get_markets_response_then_parse_items() {
+    let response_string = (r#"[2,1,"get_markets",[{"id":"btcusd","name":"BTC/USD","base_unit":"btc","quote_unit":"usd","state":"enabled","amount_precision":4,"price_precision":4,"min_price":"0.0001","max_price":"0","min_amount":"0.0001","position":100,"filters":[]},{"id":"trsteth","name":"TRST/ETH","base_unit":"trst","quote_unit":"eth","state":"enabled","amount_precision":4,"price_precision":4,"min_price":"0.0001","max_price":"0","min_amount":"0.0001","position":105,"filters":[]}]]"#).to_string();
+
+    let parser = TcpResponseParser {};
+    let parsed_response = parser.parse_response_string(response_string).unwrap();
+
+    assert_eq!(parsed_response.response_preamble, 2);
+    assert_eq!(
+        parsed_response.response_method,
+        ResponseMethod::FromRequestMethod(RequestType::GetMarkets, 1)
+    );
+    assert_eq!(parsed_response.parameters.len(), 2);
 }
 
 pub fn given_valid_error_response_then_parse_items() {

@@ -13,12 +13,15 @@
 
 use crate::openfinex::client_utils;
 use crate::openfinex::jwt;
+use crate::openfinex::market_repo::{MarketRepository, MarketsRequestSender};
 use crate::openfinex::response_handler::{PolkadexResponseHandler, TcpResponseHandler};
 use crate::openfinex::response_object_mapper::ResponseObjectMapper;
 use crate::openfinex::response_parser::TcpResponseParser;
+use crate::openfinex::string_serialization::ResponseDeserializerImpl;
+use crate::polkadex_cache::market_cache::LocalMarketCacheFactory;
 use crate::polkadex_gateway::PolkaDexGatewayCallbackFactory;
-use client_utils::{Opcode};
-use codec::{Decode};
+use client_utils::Opcode;
+use codec::Decode;
 use lazy_static::lazy_static;
 use log::*;
 use polkadex_sgx_primitives::OpenFinexUri;
@@ -52,6 +55,7 @@ struct TcpClient {
     received_plaintext: Vec<u8>,
     sendable_plaintext: Vec<u8>,
     response_handler: Box<dyn TcpResponseHandler>,
+    markets_request_sender: Arc<dyn MarketsRequestSender>,
 }
 
 impl TcpClient {
@@ -59,6 +63,7 @@ impl TcpClient {
         socket_address: c_int,
         uri: OpenFinexUri,
         response_handler: Box<dyn TcpResponseHandler>,
+        markets_request_sender: Arc<dyn MarketsRequestSender>,
     ) -> TcpClient {
         TcpClient {
             socket: TcpStream::new(socket_address).unwrap(),
@@ -68,6 +73,7 @@ impl TcpClient {
             received_plaintext: Vec::new(),
             sendable_plaintext: Vec::new(),
             response_handler,
+            markets_request_sender,
         }
     }
 
@@ -95,7 +101,7 @@ impl TcpClient {
             host
         );
         debug!("Sending http request: {}", data);
-        if let Err(e) = self.socket.write(data.as_bytes()){
+        if let Err(e) = self.socket.write(data.as_bytes()) {
             error!("Could not handshake with openfinex server: {}", e);
         };
     }
@@ -159,9 +165,10 @@ impl TcpClient {
             debug!(
                 "Received Http response: {}",
                 String::from_utf8_lossy(&buffer)
-            ); //FIXME: replace with debug
-               // handshake successful, send a subscription:
+            );
+            // handshake successful, send a subscription:
             self.subscribe_matches();
+            self.send_markets_request();
         } else {
             // direct tcp message
             if let Some(message) = client_utils::read_tcp_buffer(buffer.to_vec()) {
@@ -210,6 +217,22 @@ impl TcpClient {
     fn subscribe_matches(&mut self) {
         let plaintext = r#"[1,51,"subscribe",["admin",["events.order","events.trade"]]]"#;
         let masked_request = client_utils::mask(plaintext.as_bytes(), Opcode::TextOp);
+        self.sendable_plaintext = masked_request;
+        self.do_write()
+    }
+
+    fn send_markets_request(&mut self) {
+        let request = match self.markets_request_sender.get_markets_ws_request() {
+            Ok(r) => r,
+            Err(e) => {
+                error!(
+                    "Failed to get markets request string: {}, will not send any request",
+                    e
+                );
+                return;
+            }
+        };
+        let masked_request = client_utils::mask(request.as_bytes(), Opcode::TextOp);
         self.sendable_plaintext = masked_request;
         self.do_write()
     }
@@ -285,13 +308,19 @@ pub unsafe extern "C" fn tcp_client_new(
         }
     };
 
+    let market_cache_provider = Arc::new(LocalMarketCacheFactory::create());
+    let market_repository = Arc::new(MarketRepository::new(market_cache_provider.clone()));
+
     let response_handler = Box::new(PolkadexResponseHandler::new(
         PolkaDexGatewayCallbackFactory::create(),
+        market_repository.clone(),
         Arc::new(TcpResponseParser {}),
-        Arc::new(ResponseObjectMapper {}),
+        Arc::new(ResponseObjectMapper::new(Arc::new(
+            ResponseDeserializerImpl::new(market_cache_provider),
+        ))),
     ));
 
-    let mut tcp_client = TcpClient::new(fd, finex_uri, response_handler);
+    let mut tcp_client = TcpClient::new(fd, finex_uri, response_handler, market_repository);
     tcp_client.jwt_handshake();
     let client_pointer: *mut TcpClient = Box::into_raw(Box::new(tcp_client));
 
@@ -310,7 +339,7 @@ pub extern "C" fn tcp_client_read(session_id: usize) -> c_int {
         let session = unsafe { &mut *session_ptr };
         if let Err(e) = session.do_read() {
             error!("Could not read from TCP stream: {}", e);
-            return -1
+            return -1;
         };
         1
     } else {

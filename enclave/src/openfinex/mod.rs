@@ -18,8 +18,15 @@
 
 mod client_utils;
 mod jwt;
+mod market_repo;
+mod response_object_mapper;
+mod response_parser;
 
+// most of these could be private, but because the tests are inside the same modules
+// and are not discovered using 'cargo test', they have to be public
+// in some cases we decided to have the tests in a separate file, those modules can be kept private
 pub mod fixed_point_number_converter;
+pub mod market;
 pub mod openfinex_api;
 pub mod openfinex_api_impl;
 pub mod openfinex_client;
@@ -28,8 +35,6 @@ pub mod request_builder;
 pub mod request_id_generator;
 pub mod response_handler;
 pub mod response_lexer;
-mod response_object_mapper;
-mod response_parser;
 pub mod string_serialization;
 
 pub mod tests;
