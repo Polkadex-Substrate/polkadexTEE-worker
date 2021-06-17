@@ -26,6 +26,7 @@ use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
 use crate::test_proxy;
 use crate::top_pool;
+use crate::ss58check;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
 use log::*;
@@ -188,6 +189,9 @@ pub extern "C" fn test_main_entrance() -> size_t {
         trusted_operation_verifier::tests::given_nonsense_text_in_request_then_decode_fails,
         trusted_operation_verifier::tests::given_valid_operation_with_invalid_signature_then_return_error,
         io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
+
+        // Utility
+        ss58check::tests::convert_account_id_to_and_from_ss58check,
 
         // Substratee Tests
         top_pool::base_pool::test_should_import_transaction_to_ready,
