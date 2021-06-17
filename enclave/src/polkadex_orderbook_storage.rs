@@ -29,6 +29,7 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
+use log::*;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -51,17 +52,20 @@ impl OrderbookStorage {
     /// If the orderbook did not have this order_uid present, [None] is returned.
     /// If the orderbook did have this order_uid present, the order is updated, and the old order is returned.
     pub fn add_order(&mut self, order_uid: OrderUUID, order: Order) -> Option<Order> {
+        debug!("Adding order with uid: {:?}", order_uid);
         self.storage.insert(order_uid, order)
     }
 
     /// Removes a order_uid from the orderbook,
     /// returning the value at the order_uid if the order_uid was previously in the map.
     pub fn remove_order(&mut self, order_uid: &OrderUUID) -> Option<Order> {
+        debug!("Removing order with uid: {:?}", order_uid);
         self.storage.remove(order_uid)
     }
 
     /// Returns a reference to the order corresponding to the order_uid.
     pub fn read_order(&self, order_uid: &OrderUUID) -> Option<&Order> {
+        debug!("Reading order with uid: {:?}", order_uid);
         self.storage.get(order_uid)
     }
 
