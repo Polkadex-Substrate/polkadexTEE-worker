@@ -898,7 +898,7 @@ pub unsafe extern "C" fn ocall_send_block_and_confirmation(
     }
 
     // handle blocks
-    let signed_blocks: Vec<SignedSidechainBlock> = match Decode::decode(&mut signed_blocks_slice) {
+    let _signed_blocks: Vec<SignedSidechainBlock> = match Decode::decode(&mut signed_blocks_slice) {
         Ok(blocks) => blocks,
         Err(_) => {
             error!("Could not decode confirmation calls");
@@ -906,7 +906,7 @@ pub unsafe extern "C" fn ocall_send_block_and_confirmation(
             vec![]
         }
     };
-    println! {"Received blocks: {:?}", signed_blocks};
+    //println! {"Received blocks: {:?}", signed_blocks};
     // TODO: M8.3: Store blocks
     // TODO: M8.3: broadcast blocks
     status
