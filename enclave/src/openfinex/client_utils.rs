@@ -30,7 +30,7 @@ use sgx_rand;
 pub use self::Payload::{Text, Binary, Empty};
 pub use self::Opcode::{ContinuationOp, TextOp, BinaryOp, CloseOp, PingOp, PongOp};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Payload {
     Text(String),
     Binary(Vec<u8>),
@@ -74,6 +74,18 @@ impl From<u8> for Opcode {
     }
 }
 
+/// returns true if last msg, false is more msgs follow
+/// = %x0 ; more frames of this message follow
+/// %x1 ; final frame of this message
+pub fn last_frame(byte: u8) -> bool {
+    let fin_bit = (byte >> 4) & 0b1000;
+    if fin_bit == 0 {
+        false
+    } else {
+        true
+    }
+}
+
 pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
     // https://stackoverflow.com/questions/41115870/is-binary-opcode-encoding-and-decoding-implementation-specific-in-websockets
     //let fin = buf1[0] >> 7; // TODO check this, required for handling fragmented messages
@@ -86,19 +98,24 @@ pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
     let opcode: Opcode = (buffer[0] & 0b0000_1111).into();
 
     //let mask    = buf1[1] & 0b1000_0000; TODO use this to determine whether to unmask or not
+    // Take the 2nd byte and read every bit except the Most significant bit
     let pay_len = buffer[1] & 0b0111_1111;
 
     let (payload_length, payload_buf) = match pay_len {
         127 => {
-            let slice: [u8; 8] = buffer[2 .. 7].to_vec().try_into().unwrap();
+            // Your length is a uint64 of byte 3 to 8
+            error!("buffer is too small for this long message..");
+            let slice: [u8; 8] = buffer[2 .. 8].to_vec().try_into().unwrap();
             let length = u64::from_be_bytes(slice);
             (length, buffer[8 .. (length+8) as usize].to_vec())
         },
         126 => {
-            let slice: [u8; 2] = buffer[2 .. 3].to_vec().try_into().unwrap();
+            // Your length is an uint16 of byte 3 and 4
+            let slice: [u8; 2] = buffer[2 .. 4].to_vec().try_into().unwrap();
             let length = u16::from_be_bytes(slice);
             (length as u64, buffer[4 .. (length+4) as usize].to_vec())
         }
+        // Byte is 125 or less thats your length
         _   => (pay_len as u64, buffer[2 .. (pay_len+2) as usize].to_vec())
     };
     debug!("payload_length: {}", payload_length);
@@ -119,10 +136,7 @@ pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
     let payload_buf = masked_payload_buf; */
 
     let payload: Payload = match opcode {
-        TextOp   => {
-            debug!("Received TCP Text Message: {}", String::from_utf8(payload_buf.to_vec()).unwrap());
-            Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap())
-        },
+        TextOp   => Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap()),
         BinaryOp => Payload::Binary(payload_buf.to_vec()),
         CloseOp  => Payload::Empty,
         PingOp   => {
@@ -134,7 +148,9 @@ pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
             debug!("Pong");
             Payload::Binary(payload_buf.to_vec())
         },
-        _        => unimplemented!(), // ContinuationOp
+        _        => {
+            Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap())
+        }, // ContinuationOp
     };
 
     // for now only take text option

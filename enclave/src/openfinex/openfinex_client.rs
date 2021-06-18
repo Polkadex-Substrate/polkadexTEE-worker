@@ -20,7 +20,7 @@ use crate::openfinex::response_parser::TcpResponseParser;
 use crate::openfinex::string_serialization::ResponseDeserializerImpl;
 use crate::polkadex_cache::market_cache::LocalMarketCacheFactory;
 use crate::polkadex_gateway::PolkaDexGatewayCallbackFactory;
-use client_utils::Opcode;
+use client_utils::{Opcode, Payload};
 use codec::Decode;
 use lazy_static::lazy_static;
 use log::*;
@@ -56,6 +56,7 @@ struct TcpClient {
     sendable_plaintext: Vec<u8>,
     response_handler: Box<dyn TcpResponseHandler>,
     markets_request_sender: Arc<dyn MarketsRequestSender>,
+    payload_string_buffer: String,
 }
 
 impl TcpClient {
@@ -74,6 +75,7 @@ impl TcpClient {
             sendable_plaintext: Vec::new(),
             response_handler,
             markets_request_sender,
+            payload_string_buffer: String::new(),
         }
     }
 
@@ -145,7 +147,7 @@ impl TcpClient {
     /// We're ready to do a read.
     fn do_read(&mut self) -> io::Result<usize> {
         //FIXME: maybe we can use up buffer read here?
-        let mut buffer = [0 as u8; 512]; // Dummy buffer. will not be necessary with tls client
+        let mut buffer = [0 as u8; 1028]; // Dummy buffer. will not be necessary with tls client
         let rc = self.socket.read(&mut buffer);
         if rc.is_err() {
             error!("TLS read error: {:?}", rc);
@@ -159,7 +161,6 @@ impl TcpClient {
             //self.clean_closure = true;
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "EOF"));
         }
-
         if buffer[0] == 72 {
             // parse http response
             debug!(
@@ -171,22 +172,43 @@ impl TcpClient {
             self.send_markets_request();
         } else {
             // direct tcp message
+            let fin = client_utils::last_frame(buffer[0]);
             if let Some(message) = client_utils::read_tcp_buffer(buffer.to_vec()) {
                 match message.opcode {
                     Opcode::PingOp => {
                         self.send_pong();
                     }
                     Opcode::TextOp => {
-                        debug!("received plaintext : {:?}", message.payload);
-                        self.response_handler.handle_text_op(message.payload);
-                    }
+                        if fin {
+                            debug!("Sending to handler : {:?}", message.payload);
+                            self.response_handler.handle_text_op(message.payload);
+                        } else {
+                            self.append_string_payload(message.payload)
+                        }
+                    },
+                    Opcode::ContinuationOp => {
+                        if fin {
+                            self.append_string_payload(message.payload);
+                            debug!("Sending to handler : {:?}", self.payload_string_buffer.clone());
+                            self.response_handler.handle_text_op(Payload::Text(self.payload_string_buffer.clone()));
+                            self.payload_string_buffer = String::new();
+                        } else {
+                            self.append_string_payload(message.payload)
+                        }
+                    },
                     _ => error!("received unexpected op: {:?}", message.opcode),
                 }
             }
+
         }
         Ok(buffer.len())
     }
-
+    fn append_string_payload(&mut self, payload: Payload) {
+        debug!("Appending to payload: {:?}", payload.clone());
+        if let Payload::Text(new_text) = payload {
+            self.payload_string_buffer.push_str(&new_text);
+        }
+    }
     /// write intern buffer to Tcpstream
     fn do_write(&mut self) {
         let request: &[u8] = &self.sendable_plaintext;
