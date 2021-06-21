@@ -26,8 +26,10 @@ use crate::openfinex::response_parser::{
     ParameterItem, ParameterNode, ParsedResponse, ResponseMethod,
 };
 use crate::openfinex::string_serialization::OpenFinexResponseDeserializer;
+use crate::ss58check::account_id_to_ss58check;
 use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
 use codec::Encode;
+use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{MarketId, OrderSide, OrderState, OrderType};
 use polkadex_sgx_primitives::AssetId;
 
@@ -131,12 +133,15 @@ pub fn test_order_update_response() {
     let order_uuid = format!("7acbbc84-939d-11eaa827-1831bf9834b0");
     let order_id = 2;
 
+    let account = get_account("order_update_test_account");
+    let account_nickname = account_id_to_ss58check(&account);
+
     let order_update_response = ParsedResponse {
         response_method: ResponseMethod::OrderUpdate,
         response_preamble: 5,
         parameters: vec![
             ParameterNode::SingleParameter(ParameterItem::String(format!("ABC000001"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("0x1234567890123456789"))),
+            ParameterNode::SingleParameter(ParameterItem::String(account_nickname)),
             ParameterNode::SingleParameter(ParameterItem::String(format!("dotpdx"))),
             ParameterNode::SingleParameter(ParameterItem::Number(order_id)),
             ParameterNode::SingleParameter(ParameterItem::String(order_uuid.clone())),
@@ -159,6 +164,7 @@ pub fn test_order_update_response() {
         OpenFinexResponse::OrderUpdate(ou) => {
             assert_eq!(ou.order_id, order_id);
             assert_eq!(ou.unique_order_id, order_uuid.encode());
+            assert_eq!(ou.user_id, account);
         }
         _ => {
             assert!(
@@ -171,6 +177,11 @@ pub fn test_order_update_response() {
 
 pub fn test_trade_event_response() {
     let trade_id = 98725621;
+
+    let maker_account = get_account("trade_event_maker_test_account");
+    let taker_account = get_account("trade_event_taker_test_account");
+    let maker_nickname = account_id_to_ss58check(&maker_account);
+    let taker_nickname = account_id_to_ss58check(&taker_account);
 
     let trade_event_response = ParsedResponse {
         response_method: ResponseMethod::TradeEvent,
@@ -186,13 +197,13 @@ pub fn test_trade_event_response() {
                 "55d78eee-939e-11ea-945f-1831bf9834b0"
             ))),
             ParameterNode::SingleParameter(ParameterItem::String(format!("A00001"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("0x000001"))),
+            ParameterNode::SingleParameter(ParameterItem::String(maker_nickname)),
             ParameterNode::SingleParameter(ParameterItem::Number(3)),
             ParameterNode::SingleParameter(ParameterItem::String(format!(
                 "55d78eee-939e-11ea-945f-1831bf9834as"
             ))),
             ParameterNode::SingleParameter(ParameterItem::String(format!("A00002"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("0x000002"))),
+            ParameterNode::SingleParameter(ParameterItem::String(taker_nickname)),
             ParameterNode::SingleParameter(ParameterItem::String(format!("buy"))),
             ParameterNode::SingleParameter(ParameterItem::Number(1589211884)),
         ],
@@ -206,6 +217,8 @@ pub fn test_trade_event_response() {
             assert_eq!(te.funds, 2_000_000_000_000_000_000_000);
             assert_eq!(te.maker_order_id, 2);
             assert_eq!(te.taker_order_id, 3);
+            assert_eq!(te.maker_user_id, maker_account);
+            assert_eq!(te.taker_user_id, taker_account);
         }
         _ => {
             assert!(

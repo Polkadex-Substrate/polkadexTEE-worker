@@ -24,6 +24,7 @@ use crate::openfinex::response_parser::{
     ParameterItem, ParameterNode, ParsedResponse, ResponseMethod,
 };
 use crate::openfinex::string_serialization::OpenFinexResponseDeserializer;
+use crate::ss58check::ss58check_to_account_id;
 use alloc::{string::String, sync::Arc, vec::Vec};
 use codec::Encode;
 use core::iter::Peekable;
@@ -190,13 +191,13 @@ impl ResponseObjectMapper {
         let maker_order_uuid =
             get_next_single_item(&mut param_iter, &extract_encoded_string_from_item)?;
         let _maker_uid = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
-        let _maker_nickname = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
+        let maker_nickname = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
 
         let taker_order_id = get_next_single_item(&mut param_iter, &extract_integer_from_item)?;
         let taker_order_uuid =
             get_next_single_item(&mut param_iter, &extract_encoded_string_from_item)?;
         let _taker_uid = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
-        let _taker_nickname = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
+        let taker_nickname = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
 
         let maker_order_side_str =
             get_next_single_item(&mut param_iter, &extract_string_from_item)?;
@@ -212,14 +213,23 @@ impl ResponseObjectMapper {
             .string_to_order_side(&maker_order_side_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
+        // we use the nickname to pass our user ID currently, see the request side
+        let maker_user_id = ss58check_to_account_id(maker_nickname.as_str())
+            .map_err(|e| OpenFinexApiError::ResponseParsingError(format!("{}", e)))?;
+
+        let taker_user_id = ss58check_to_account_id(taker_nickname.as_str())
+            .map_err(|e| OpenFinexApiError::ResponseParsingError(format!("{}", e)))?;
+
         Ok(OpenFinexResponse::TradeEvent(TradeEvent {
             market_id,
             trade_id,
             price,
             amount,
             funds,
+            maker_user_id,
             maker_order_id,
             maker_order_uuid,
+            taker_user_id,
             taker_order_id,
             taker_order_uuid,
             maker_side,
@@ -234,7 +244,7 @@ impl ResponseObjectMapper {
         let mut param_iter = parameters.iter().peekable();
 
         let _user_identifier = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
-        let _user_nickname = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
+        let user_nickname_str = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
         let market_id_str = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
         let order_id = get_next_single_item(&mut param_iter, &extract_integer_from_item)?;
         let order_uuid = get_next_single_item(&mut param_iter, &extract_encoded_string_from_item)?;
@@ -271,7 +281,13 @@ impl ResponseObjectMapper {
             .string_to_order_state(&order_state_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
+        // user ID is taken from nickname - has to match what we compose in the request, see
+        // openfinex_api_impl.rs
+        let user_id = ss58check_to_account_id(user_nickname_str.as_str())
+            .map_err(|e| OpenFinexApiError::ResponseParsingError(format!("{}", e)))?;
+
         Ok(OpenFinexResponse::OrderUpdate(OrderUpdate {
+            user_id,
             market_id,
             order_id,
             unique_order_id: order_uuid,
