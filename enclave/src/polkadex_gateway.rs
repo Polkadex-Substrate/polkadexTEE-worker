@@ -13,7 +13,7 @@ use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
 use crate::openfinex::openfinex_types::RequestId;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
-use crate::polkadex_cache::cache_api::{StaticCacheProvider, StaticStorageApi};
+use crate::polkadex_cache::cache_api::StaticStorageApi;
 use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_orderbook_storage;
@@ -428,7 +428,10 @@ pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), Ga
 
     if let Some(order) = create_cache.remove_order(&nonce) {
         // Insert order in order book
-        polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid);
+        if let Err(e) = polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid) {
+            error!("Locking storage and adding order failed. Error: {:?}", e);
+            return Err(GatewayError::UnableToLock); // TODO: Use the correct error / Handle in the function
+        };
     } else {
         return Err(GatewayError::NonceNotPresent);
     }
@@ -545,9 +548,9 @@ pub fn remove_order_from_cache_and_store_in_ordermirror(
 
 pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
     // Check if both orders exist and get them
-    let mut maker =
+    let maker =
         polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.maker_order_uuid)?;
-    let mut taker =
+    let taker =
         polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.taker_order_uuid)?;
     ensure!(
         (maker.market_id == taker.market_id) & (maker.market_id == trade.market_id),
@@ -597,7 +600,10 @@ pub fn consume_order(
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
-            do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount);
+            if let Err(e) = do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount) {
+                error!("Doing asset exchange failed. Error: {:?}", e);
+                return Err(GatewayError::UnableToLock); // TODO: Use the correct error
+            };
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order,
@@ -622,7 +628,10 @@ pub fn consume_order(
         }
 
         (OrderType::MARKET, OrderSide::BID) => {
-            do_asset_exchange_market(&mut current_order, &mut counter_order);
+            if let Err(e) = do_asset_exchange_market(&mut current_order, &mut counter_order) {
+                error!("Doing asset exchange market failed. Error: {:?}", e);
+                return Err(GatewayError::UnableToLock); // TODO: Use the correct error
+            };
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order.clone(),
@@ -697,7 +706,7 @@ pub fn consume_order(
 pub fn do_asset_exchange(
     current_order: &mut Order,
     counter_order: &mut Order,
-    expected_trade_amount: u128,
+    _expected_trade_amount: u128,
 ) -> Result<(), GatewayError> {
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) if current_order.quantity <= counter_order.quantity => {
