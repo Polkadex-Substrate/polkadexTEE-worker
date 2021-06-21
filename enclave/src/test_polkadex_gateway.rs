@@ -2048,6 +2048,24 @@ pub fn test_basic_order_checks() {
 
     assert_eq!(
         gateway.place_order(buy_order_user.clone(), None, new_order.clone()),
+        Err(GatewayError::QuantityZeroInMarketOrder)
+    );
+
+    let mut new_order: Order = Order {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::MARKET,
+        side: OrderSide::BID,
+        quantity: 0,
+        price: Some(0),
+    };
+
+    assert_eq!(
+        gateway.place_order(buy_order_user.clone(), None, new_order.clone()),
         Err(GatewayError::PriceZeroInMarketOrder)
     );
 }
