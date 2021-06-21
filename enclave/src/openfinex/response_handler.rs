@@ -124,7 +124,7 @@ impl PolkadexResponseHandler {
                 debug!("Received a create order response from OpenFinex");
                 match self
                     .polkadex_gateway_callback
-                    .process_create_order(cr.order_id)
+                    .process_create_order(request_id, cr.order_id)
                 {
                     Ok(_) => {
                         debug!("Creating order succeeded")

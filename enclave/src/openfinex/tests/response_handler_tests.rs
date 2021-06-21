@@ -20,6 +20,7 @@ pub extern crate alloc;
 
 use crate::openfinex::market_repo::{MarketRepositoryError, MarketsRequestCallback};
 use crate::openfinex::openfinex_api::OpenFinexApiResult;
+use crate::openfinex::openfinex_types::RequestId;
 use crate::openfinex::response_handler::PolkadexResponseHandler;
 use crate::openfinex::response_object_mapper::{OpenFinexResponse, OpenFinexResponseObjectMapper};
 use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
@@ -33,7 +34,11 @@ impl PolkaDexGatewayCallback for GatewayCallBackMock {
         todo!()
     }
 
-    fn process_create_order(&self, _order_uuid: OrderUUID) -> Result<(), GatewayError> {
+    fn process_create_order(
+        &self,
+        _request_id: RequestId,
+        _order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError> {
         todo!()
     }
 }

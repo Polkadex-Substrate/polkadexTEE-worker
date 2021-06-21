@@ -91,7 +91,11 @@ impl alloc::fmt::Display for GatewayError {
 pub trait PolkaDexGatewayCallback {
     fn process_cancel_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
+    fn process_create_order(
+        &self,
+        request_id: RequestId,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError>;
 }
 
 /// factory to create a callback impl, allows to hide implementation (keep private)
@@ -109,8 +113,12 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
         process_cancel_order(order_uuid)
     }
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError> {
-        Ok(())
+    fn process_create_order(
+        &self,
+        request_id: RequestId,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError> {
+        process_create_order(request_id, order_uuid)
     }
 }
 
@@ -317,8 +325,6 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
                 .price
                 .ok_or(GatewayError::LimitOrderPriceNotFound)?;
 
-            // TODO: Why are we converting the amounts here? The OpenFinex API is responsible for doing all the conversions?
-            // Even if we had to convert, we should not do a floating point conversion
             let amount =
                 ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
 
@@ -591,7 +597,7 @@ pub fn consume_order(
 ) -> Result<(), GatewayError> {
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
-			let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
+            let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount);
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -635,7 +641,7 @@ pub fn consume_order(
         }
 
         (OrderType::LIMIT, OrderSide::ASK) => {
-			let reserved_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
+            let reserved_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -661,7 +667,7 @@ pub fn consume_order(
         }
 
         (OrderType::MARKET, OrderSide::ASK) => {
-			let reserved_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
+            let reserved_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
             do_asset_exchange_market(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -669,13 +675,13 @@ pub fn consume_order(
                     maker_order_uuid,
                 )?;
             } else {
-				let amount_to_unreserve = reserved_amount - trade_event.price;
-				polkadex_balance_storage::lock_storage_unreserve_balance(
-					&counter_order.user_uid,
-					counter_order.market_id.quote,
-					amount_to_unreserve,
-				)?;
-			}
+                let amount_to_unreserve = reserved_amount - trade_event.price;
+                polkadex_balance_storage::lock_storage_unreserve_balance(
+                    &counter_order.user_uid,
+                    counter_order.market_id.quote,
+                    amount_to_unreserve,
+                )?;
+            }
 
             if current_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
