@@ -78,8 +78,7 @@ impl From<u8> for Opcode {
 /// = %x0 ; more frames of this message follow
 /// %x1 ; final frame of this message
 pub fn last_frame(byte: u8) -> bool {
-    let fin_bit = (byte >> 4) & 0b1000;
-    if fin_bit == 0 {
+    if byte >> 7 == 0 {
         false
     } else {
         true
