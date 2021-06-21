@@ -16,24 +16,24 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::polkadex_cache::cache_api::{CacheResult, RequestId, StaticStorageApi};
 use log::*;
 use polkadex_sgx_primitives::types::OrderUUID;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, SgxMutex};
-use crate::polkadex_cache::cache_api::{RequestId, StaticStorageApi, CacheResult};
 
 static CANCEL_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct CancelOrderCache {
-    /// The set of chached order uuids
+    /// The set of cached order uuids
     order_uuids: HashSet<OrderUUID>,
     /// Nonce / request_id (do wee need this in the cancel_order?)
     request_id: RequestId,
 }
 
-impl Default for CancelOrderCache{
+impl Default for CancelOrderCache {
     fn default() -> Self {
         CancelOrderCache {
             order_uuids: Default::default(),
@@ -41,7 +41,6 @@ impl Default for CancelOrderCache{
         }
     }
 }
-
 
 impl StaticStorageApi for CancelOrderCache {
     fn initialize() {
@@ -97,12 +96,9 @@ impl CancelOrderCache {
     }
 }
 
-
-
 pub mod tests {
     use super::*;
     use codec::Encode;
-
 
     pub fn test_initialize_and_lock_storage() {
         // given
@@ -118,10 +114,7 @@ pub mod tests {
     pub fn test_insert_order_and_increment() {
         // given
         CancelOrderCache::initialize();
-        let mut cache = CancelOrderCache::load()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let mut cache = CancelOrderCache::load().unwrap().lock().unwrap();
         let order_uuid: OrderUUID = "hello_world".encode();
         assert_eq!(cache.request_id(), 0);
 
@@ -137,13 +130,9 @@ pub mod tests {
     /// removes the second, but leaves the first
     /// then checks if second was really removed
     pub fn test_remove_order() {
-
         // given
         CancelOrderCache::initialize();
-        let mut cache = CancelOrderCache::load()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let mut cache = CancelOrderCache::load().unwrap().lock().unwrap();
         let order_uuid_0: OrderUUID = "hello_world".encode();
         let order_uuid_1: OrderUUID = "hello_world_two".encode();
         let order_0_id = cache.request_id();
@@ -175,10 +164,7 @@ pub mod tests {
             CancelOrderCache::initialize();
         }
         {
-            let mut cache = CancelOrderCache::load()
-                .unwrap()
-                .lock()
-                .unwrap();
+            let mut cache = CancelOrderCache::load().unwrap().lock().unwrap();
             let order_0_id = cache.request_id();
             assert_eq!(order_0_id, 0);
             assert!(cache.insert_order(order_uuid_0.clone()));
@@ -189,22 +175,14 @@ pub mod tests {
 
         // when
         {
-            let mut cache = CancelOrderCache::load()
-                .unwrap()
-                .lock()
-                .unwrap();
+            let mut cache = CancelOrderCache::load().unwrap().lock().unwrap();
             assert!(cache.remove_order(&order_uuid_1));
         }
 
-
         // then
-        let cache = CancelOrderCache::load()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let cache = CancelOrderCache::load().unwrap().lock().unwrap();
         assert!(!cache.contains(&order_uuid_1));
         assert!(cache.contains(&order_uuid_0));
         assert_eq!(cache.request_id(), 2);
     }
-
 }

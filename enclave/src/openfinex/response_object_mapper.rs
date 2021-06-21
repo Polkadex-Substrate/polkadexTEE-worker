@@ -19,16 +19,12 @@
 pub extern crate alloc;
 use crate::openfinex::fixed_point_number_converter::FixedPointNumberConverter;
 use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
-use crate::openfinex::openfinex_types::{
-    OpenFinexDecimal, RequestId, RequestType, ResponseInteger,
-};
+use crate::openfinex::openfinex_types::{RequestId, RequestType, ResponseInteger};
 use crate::openfinex::response_parser::{
     ParameterItem, ParameterNode, ParsedResponse, ResponseMethod,
 };
-use crate::openfinex::string_serialization::{
-    string_to_market_id, string_to_order_side, string_to_order_state, string_to_order_type,
-};
-use alloc::{string::String, vec::Vec};
+use crate::openfinex::string_serialization::OpenFinexResponseDeserializer;
+use alloc::{string::String, sync::Arc, vec::Vec};
 use codec::Encode;
 use core::iter::Peekable;
 use polkadex_sgx_primitives::types::{OrderUUID, OrderUpdate, PriceAndQuantityType, TradeEvent};
@@ -49,6 +45,7 @@ pub enum RequestResponse {
     WithdrawFunds(WithdrawResponse),
     CreateOrder(CreateOrderResponse),
     Subscription(SubscriptionResponse),
+    GetMarkets(GetMarketsResponse),
 }
 
 /// Deposit funds response
@@ -76,6 +73,12 @@ pub struct SubscriptionResponse {
     pub subscribed_events: Vec<String>,
 }
 
+/// Response to requesting markets information
+#[derive(Debug, Clone, PartialEq)]
+pub struct GetMarketsResponse {
+    pub json_content: Vec<String>, // strings containing JSON objects
+}
+
 pub trait OpenFinexResponseObjectMapper {
     fn map_to_response_object(
         &self,
@@ -83,7 +86,9 @@ pub trait OpenFinexResponseObjectMapper {
     ) -> OpenFinexApiResult<OpenFinexResponse>;
 }
 
-pub struct ResponseObjectMapper {}
+pub struct ResponseObjectMapper {
+    string_deserializer: Arc<dyn OpenFinexResponseDeserializer>,
+}
 
 impl OpenFinexResponseObjectMapper for ResponseObjectMapper {
     fn map_to_response_object(
@@ -93,20 +98,23 @@ impl OpenFinexResponseObjectMapper for ResponseObjectMapper {
         match &parsed_response.response_method {
             ResponseMethod::Error(s) => Ok(OpenFinexResponse::Error(s.clone())),
             ResponseMethod::FromRequestMethod(rt, ri) => {
-                ResponseObjectMapper::map_request_response(rt, ri, &parsed_response.parameters)
+                self.map_request_response(rt, ri, &parsed_response.parameters)
             }
-            ResponseMethod::TradeEvent => {
-                ResponseObjectMapper::map_trade_event(&parsed_response.parameters)
-            }
-            ResponseMethod::OrderUpdate => {
-                ResponseObjectMapper::map_order_update(&parsed_response.parameters)
-            }
+            ResponseMethod::TradeEvent => self.map_trade_event(&parsed_response.parameters),
+            ResponseMethod::OrderUpdate => self.map_order_update(&parsed_response.parameters),
         }
     }
 }
 
 impl ResponseObjectMapper {
+    pub fn new(string_deserializer: Arc<dyn OpenFinexResponseDeserializer>) -> Self {
+        ResponseObjectMapper {
+            string_deserializer,
+        }
+    }
+
     fn map_request_response(
+        &self,
         request_type: &RequestType,
         request_id: &RequestId,
         parameters: &Vec<ParameterNode>,
@@ -150,6 +158,15 @@ impl ResponseObjectMapper {
                     *request_id,
                 ))
             }
+            RequestType::GetMarkets => {
+                let json_string_objects = get_next_items(&mut param_iter, &extract_json_from_item)?;
+                Ok(OpenFinexResponse::RequestResponse(
+                    RequestResponse::GetMarkets(GetMarketsResponse {
+                        json_content: json_string_objects,
+                    }),
+                    *request_id,
+                ))
+            }
             _ => Err(OpenFinexApiError::ResponseParsingError(format!(
                 "Unknown or unsupported request type ({}), cannot map to response",
                 request_type
@@ -157,7 +174,10 @@ impl ResponseObjectMapper {
         }
     }
 
-    fn map_trade_event(parameters: &Vec<ParameterNode>) -> OpenFinexApiResult<OpenFinexResponse> {
+    fn map_trade_event(
+        &self,
+        parameters: &Vec<ParameterNode>,
+    ) -> OpenFinexApiResult<OpenFinexResponse> {
         let mut param_iter = parameters.iter().peekable();
 
         let market_id_str = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
@@ -182,10 +202,14 @@ impl ResponseObjectMapper {
             get_next_single_item(&mut param_iter, &extract_string_from_item)?;
         let timestamp = get_next_single_item(&mut param_iter, &extract_integer_from_item)?;
 
-        let market_id = string_to_market_id(&market_id_str)
+        let market_id = self
+            .string_deserializer
+            .string_to_market_id(&market_id_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
-        let maker_side = string_to_order_side(&maker_order_side_str)
+        let maker_side = self
+            .string_deserializer
+            .string_to_order_side(&maker_order_side_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
         Ok(OpenFinexResponse::TradeEvent(TradeEvent {
@@ -203,7 +227,10 @@ impl ResponseObjectMapper {
         }))
     }
 
-    fn map_order_update(parameters: &Vec<ParameterNode>) -> OpenFinexApiResult<OpenFinexResponse> {
+    fn map_order_update(
+        &self,
+        parameters: &Vec<ParameterNode>,
+    ) -> OpenFinexApiResult<OpenFinexResponse> {
         let mut param_iter = parameters.iter().peekable();
 
         let _user_identifier = get_next_single_item(&mut param_iter, &extract_string_from_item)?;
@@ -224,16 +251,24 @@ impl ResponseObjectMapper {
         let trades_count = get_next_single_item(&mut param_iter, &extract_integer_from_item)?;
         let timestamp = get_next_single_item(&mut param_iter, &extract_integer_from_item)?;
 
-        let market_id = string_to_market_id(&market_id_str)
+        let market_id = self
+            .string_deserializer
+            .string_to_market_id(&market_id_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
-        let order_side = string_to_order_side(&order_side_str)
+        let order_side = self
+            .string_deserializer
+            .string_to_order_side(&order_side_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
-        let order_type = string_to_order_type(&order_type_str)
+        let order_type = self
+            .string_deserializer
+            .string_to_order_type(&order_type_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
-        let order_state = string_to_order_state(&order_state_str)
+        let order_state = self
+            .string_deserializer
+            .string_to_order_state(&order_state_str)
             .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
 
         Ok(OpenFinexResponse::OrderUpdate(OrderUpdate {
@@ -292,6 +327,33 @@ fn get_next_item_list<'a, T: Iterator<Item = &'a ParameterNode>, R>(
     }
 }
 
+/// get as many items that match the extractor in a row
+fn get_next_items<'a, T: Iterator<Item = &'a ParameterNode>, R>(
+    iter: &mut Peekable<T>,
+    item_extractor: &dyn Fn(&ParameterItem) -> OpenFinexApiResult<R>,
+) -> OpenFinexApiResult<Vec<R>> {
+    let mut matched_items = Vec::<R>::new();
+    while let Some(&p) = iter.peek() {
+        let parameter_item = match extract_single_parameter_from_node(p) {
+            Ok(p) => p,
+            Err(_) => {
+                break;
+            }
+        };
+
+        match (item_extractor)(parameter_item) {
+            Ok(r) => {
+                matched_items.push(r);
+                iter.next();
+            }
+            Err(_) => {
+                break;
+            }
+        }
+    }
+    Ok(matched_items)
+}
+
 fn extract_single_parameter_from_node(node: &ParameterNode) -> OpenFinexApiResult<&ParameterItem> {
     match node {
         ParameterNode::SingleParameter(i) => Ok(i),
@@ -322,6 +384,16 @@ fn extract_string_from_item(item: &ParameterItem) -> OpenFinexApiResult<String> 
     }
 }
 
+fn extract_json_from_item(item: &ParameterItem) -> OpenFinexApiResult<String> {
+    match item {
+        ParameterItem::Json(s) => Ok(s.clone()),
+        _ => Err(OpenFinexApiError::ResponseParsingError(format!(
+            "Expected a JSON string parameter, but found {}",
+            item
+        ))),
+    }
+}
+
 fn extract_encoded_string_from_item(item: &ParameterItem) -> OpenFinexApiResult<Vec<u8>> {
     let item_as_string = extract_string_from_item(item)?;
     Ok(item_as_string.encode())
@@ -333,9 +405,9 @@ fn extract_decimal_from_item(item: &ParameterItem) -> OpenFinexApiResult<PriceAn
 
         // decimals in the response 'should' (according to OpenWare) always be wrapped in a string
         // so if we encounter a 'naked' number, this must be an error
-        ParameterItem::Number(n) => Err(OpenFinexApiError::ResponseParsingError(format!(
+        _ => Err(OpenFinexApiError::ResponseParsingError(format!(
             "Expected a decimal string parameter, but found {}",
-            n
+            item
         ))),
     }
 }
@@ -349,5 +421,9 @@ fn extract_integer_from_item(item: &ParameterItem) -> OpenFinexApiResult<Respons
             ))
         }),
         ParameterItem::Number(n) => Ok(*n),
+        _ => Err(OpenFinexApiError::ResponseParsingError(format!(
+            "Expected an integer parameter, but found {}",
+            item
+        ))),
     }
 }

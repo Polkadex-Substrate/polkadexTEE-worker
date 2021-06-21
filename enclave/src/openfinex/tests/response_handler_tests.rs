@@ -18,28 +18,40 @@
 
 pub extern crate alloc;
 
+use crate::openfinex::market_repo::{MarketRepositoryError, MarketsRequestCallback};
 use crate::openfinex::openfinex_api::OpenFinexApiResult;
 use crate::openfinex::response_handler::PolkadexResponseHandler;
 use crate::openfinex::response_object_mapper::{OpenFinexResponse, OpenFinexResponseObjectMapper};
 use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::{GatewayError, PolkaDexGatewayCallback};
-use alloc::{string::String, sync::Arc};
+use alloc::{string::String, sync::Arc, vec::Vec};
 use polkadex_sgx_primitives::types::OrderUUID;
 
 struct GatewayCallBackMock;
 impl PolkaDexGatewayCallback for GatewayCallBackMock {
-    fn process_cancel_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+    fn process_cancel_order(&self, _order_uuid: OrderUUID) -> Result<(), GatewayError> {
         todo!()
     }
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+    fn process_create_order(&self, _order_uuid: OrderUUID) -> Result<(), GatewayError> {
+        todo!()
+    }
+}
+
+struct MarketsRequestCallbackMock;
+impl MarketsRequestCallback for MarketsRequestCallbackMock {
+    fn update_markets(
+        &self,
+        _request_id: u128,
+        _json_strings: &Vec<String>,
+    ) -> Result<(), MarketRepositoryError> {
         todo!()
     }
 }
 
 struct ResponseParserMock;
 impl ResponseParser for ResponseParserMock {
-    fn parse_response_string(&self, response: String) -> OpenFinexApiResult<ParsedResponse> {
+    fn parse_response_string(&self, _response: String) -> OpenFinexApiResult<ParsedResponse> {
         todo!()
     }
 }
@@ -48,7 +60,7 @@ struct ResponseObjectMapperMock;
 impl OpenFinexResponseObjectMapper for ResponseObjectMapperMock {
     fn map_to_response_object(
         &self,
-        parsed_response: &ParsedResponse,
+        _parsed_response: &ParsedResponse,
     ) -> OpenFinexApiResult<OpenFinexResponse> {
         todo!()
     }
@@ -57,7 +69,12 @@ impl OpenFinexResponseObjectMapper for ResponseObjectMapperMock {
 fn create_response_handler() -> PolkadexResponseHandler {
     PolkadexResponseHandler::new(
         Arc::new(GatewayCallBackMock {}),
+        Arc::new(MarketsRequestCallbackMock {}),
         Arc::new(ResponseParserMock {}),
         Arc::new(ResponseObjectMapperMock {}),
     )
+}
+
+pub fn handle_request_response() {
+    let _response_handler = create_response_handler();
 }

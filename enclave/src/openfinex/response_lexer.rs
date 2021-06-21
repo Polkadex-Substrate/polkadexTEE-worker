@@ -18,10 +18,7 @@
 
 pub extern crate alloc;
 use crate::openfinex::openfinex_types::ResponseInteger;
-use alloc::{
-    fmt::Result as FormatResult, string::String, string::ToString,
-    vec::Vec,
-};
+use alloc::{fmt::Result as FormatResult, string::String, string::ToString, vec::Vec};
 use core::iter::Peekable;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,6 +26,7 @@ pub enum LexItem {
     Paren(char),
     Number(ResponseInteger),
     String(String),
+    Json(String),
 }
 
 impl alloc::fmt::Display for LexItem {
@@ -55,6 +53,10 @@ impl ResponseLexer {
                     result.push(LexItem::Paren(c));
                     it.next();
                 }
+                '{' => {
+                    let json_string = get_json(&mut it)?;
+                    result.push(LexItem::Json(json_string));
+                }
                 '"' => {
                     it.next();
                     let str = get_string(&mut it)?;
@@ -73,6 +75,54 @@ impl ResponseLexer {
         }
         Ok(result)
     }
+}
+
+/// lex json content as string
+fn get_json<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<String, String> {
+    let mut json_string = String::new();
+    let mut indentation_level = 0u128;
+
+    // match first curly braces
+    match iter.next() {
+        Some(c) => match c {
+            '{' => {
+                indentation_level = 1;
+                json_string.push(c);
+                Ok(())
+            }
+            _ => Err(format!("Expected '{{' but found {}", c)),
+        },
+        None => Err("Expected '{' but found end of input string".to_string()),
+    }?;
+
+    while let Some(&c) = iter.peek() {
+        if indentation_level < 1 {
+            break;
+        }
+
+        match c {
+            '{' => {
+                indentation_level += 1;
+            }
+            '}' => {
+                if indentation_level > 0 {
+                    indentation_level -= 1;
+                } else {
+                    return Err("Unexpected closing braces '}'".to_string());
+                }
+            }
+            _ => {}
+        }
+
+        json_string.push(c);
+        iter.next();
+    }
+
+    if indentation_level != 0 {
+        return Err("Missing closing braces for JSON string".to_string());
+    }
+
+    Ok(json_string)
 }
 
 fn get_number<T: Iterator<Item = char>>(
@@ -144,7 +194,7 @@ pub mod tests {
         );
     }
 
-    pub fn test_given_valid_delimited_string_then_return_result() {
+    pub fn given_valid_delimited_string_then_return_result() {
         verify_valid_string("test_string\"\"");
         verify_valid_string("hello world \" ");
         verify_valid_string("jike@«»12`_=-0\'");
@@ -169,7 +219,7 @@ pub mod tests {
         }
     }
 
-    pub fn test_given_string_with_missing_delimiter_then_return_error() {
+    pub fn given_string_with_missing_delimiter_then_return_error() {
         let test_strings = vec!["test_string", "hello world ", "jike@«»12`_=-0", ""];
 
         for test_string in test_strings {
@@ -179,7 +229,62 @@ pub mod tests {
         }
     }
 
-    pub fn test_given_valid_number_str_then_lex_correctly() {
+    pub fn parse_openfinex_example_json_parameter_correctly() {
+        let test_string = (r#"[2,1,"get_markets",[{"id":"btcusd","name":"BTC/USD","base_unit":"btc","quote_unit":"usd","state":"enabled","amount_precision":4,"price_precision":4,"min_price":"0.0001","max_price":"0","min_amount":"0.0001","position":100,"filters":[]},{"id":"trsteth","name":"TRST/ETH","base_unit":"trst","quote_unit":"eth","state":"enabled","amount_precision":4,"price_precision":4,"min_price":"0.0001","max_price":"0","min_amount":"0.0001","position":105,"filters":[]}]]"#).to_string();
+
+        let lexer = ResponseLexer {};
+        let lexed_items = lexer.lex(&test_string).unwrap();
+
+        assert_eq!(lexed_items.len(), 9);
+        verify_json_string(&lexed_items, 5, 215);
+        verify_json_string(&lexed_items, 6, 218);
+    }
+
+    pub fn parse_json_parameter_mixed_with_regular_parameters() {
+        let test_string =
+            (r#"[2,1,"get_markets",[{"id":"btcusd","name":"BTC/USD"},"param1","param2",{"id":"jsonid"},{}]]"#).to_string();
+
+        let lexer = ResponseLexer {};
+        let lexed_items = lexer.lex(&test_string).unwrap();
+
+        assert_eq!(lexed_items.len(), 12);
+        verify_json_string(&lexed_items, 5, 32);
+        verify_json_string(&lexed_items, 8, 15);
+        verify_json_string(&lexed_items, 9, 2);
+    }
+
+    fn verify_json_string(lex_items: &Vec<LexItem>, index: usize, expected_length: usize) {
+        let json_string = get_json_string(&lex_items, index).unwrap();
+        assert_eq!(json_string.len(), expected_length);
+        assert_eq!(json_string.chars().next().unwrap(), '{');
+        assert_eq!(json_string.chars().last().unwrap(), '}');
+    }
+
+    fn get_json_string(lex_items: &Vec<LexItem>, index: usize) -> Result<String, ()> {
+        match lex_items.get(index) {
+            None => Err(()),
+            Some(l) => match l {
+                LexItem::Json(s) => Ok(s.clone()),
+                _ => Err(()),
+            },
+        }
+    }
+
+    pub fn given_json_parameter_with_too_many_closing_braces_then_return_error() {
+        let test_string =
+            (r#"[2,1,"get_markets",[{"id":"btcusd","name":"BTC/USD"}}]]"#).to_string();
+        let lexer = ResponseLexer {};
+        assert!(lexer.lex(&test_string).is_err());
+    }
+
+    pub fn given_json_parameter_with_missing_closing_braces_then_return_error() {
+        let test_string =
+            (r#"[2,1,"get_markets",[{{"id":"btcusd","name":"BTC/USD"}]]"#).to_string();
+        let lexer = ResponseLexer {};
+        assert!(lexer.lex(&test_string).is_err());
+    }
+
+    pub fn given_valid_number_str_then_lex_correctly() {
         verify_number_parsed("1254", 1254);
         verify_number_parsed("08475", 8475);
         verify_number_parsed("4875]", 4875);

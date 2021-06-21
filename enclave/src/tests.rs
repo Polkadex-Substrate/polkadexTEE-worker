@@ -86,6 +86,11 @@ pub extern "C" fn test_main_entrance() -> size_t {
         polkadex_cache::cancel_order_cache::tests::test_remove_order,
         polkadex_cache::cancel_order_cache::tests::test_reload_cache,
 
+        polkadex_cache::market_cache::tests::set_markets_with_valid_request_id,
+        polkadex_cache::market_cache::tests::set_markets_with_invalid_request_id,
+        polkadex_cache::market_cache::tests::set_markets_repeatedly_clears_previous,
+        polkadex_cache::market_cache::tests::retrieve_previously_inserted_markets,
+
         // Polkadex Gateway
         test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
         test_polkadex_gateway::test_authenticate_user,
@@ -144,10 +149,16 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::string_serialization::tests::test_map_order_type,
         openfinex::string_serialization::tests::test_map_order_state,
         openfinex::string_serialization::tests::test_map_market_id,
-        openfinex::response_lexer::tests::test_given_valid_delimited_string_then_return_result,
-        openfinex::response_lexer::tests::test_given_string_with_missing_delimiter_then_return_error,
-        openfinex::response_lexer::tests::test_given_valid_number_str_then_lex_correctly,
+        openfinex::market::tests::test_deserialize_market_usdbtc,
+        openfinex::market::tests::test_deserialize_market_trsteth,
+        openfinex::response_lexer::tests::given_valid_delimited_string_then_return_result,
+        openfinex::response_lexer::tests::given_string_with_missing_delimiter_then_return_error,
+        openfinex::response_lexer::tests::given_valid_number_str_then_lex_correctly,
         openfinex::response_lexer::tests::given_valid_response_string_then_return_lexed_items,
+        openfinex::response_lexer::tests::parse_openfinex_example_json_parameter_correctly,
+        openfinex::response_lexer::tests::parse_json_parameter_mixed_with_regular_parameters,
+        openfinex::response_lexer::tests::given_json_parameter_with_too_many_closing_braces_then_return_error,
+        openfinex::response_lexer::tests::given_json_parameter_with_missing_closing_braces_then_return_error,
         openfinex::tests::response_parser_tests::given_valid_create_order_response_then_parse_items,
         openfinex::tests::response_parser_tests::given_valid_error_response_then_parse_items,
         openfinex::tests::response_parser_tests::given_valid_response_with_nested_parameters_then_parse_items,
@@ -155,11 +166,15 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::tests::response_parser_tests::given_valid_subscription_response_then_succeed,
         openfinex::tests::response_parser_tests::given_valid_order_update_response_then_succeed,
         openfinex::tests::response_parser_tests::given_valid_trade_events_response_then_succeed,
+        openfinex::tests::response_parser_tests::given_valid_get_markets_response_then_parse_items,
         openfinex::tests::response_object_mapper_tests::test_given_parsed_error_then_map_to_error_object,
         openfinex::tests::response_object_mapper_tests::test_subscribe_response,
         openfinex::tests::response_object_mapper_tests::test_create_order_response,
         openfinex::tests::response_object_mapper_tests::test_order_update_response,
         openfinex::tests::response_object_mapper_tests::test_trade_event_response,
+        openfinex::tests::response_object_mapper_tests::test_get_markets_response,
+        openfinex::tests::market_repo_tests::update_markets_from_json_strings,
+        openfinex::tests::response_handler_tests::handle_request_response,
 
         // RPC API tests
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,

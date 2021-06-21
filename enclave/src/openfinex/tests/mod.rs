@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod market_repo_tests;
 pub mod response_handler_tests;
 pub mod response_object_mapper_tests;
 pub mod response_parser_tests;
