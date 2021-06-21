@@ -27,6 +27,12 @@ use polkadex::AccountRegistryError;
 
 #[derive(Eq, Debug, PartialOrd, PartialEq)]
 pub enum GatewayError {
+	///Quantity zero in MarketOrder
+	QuantityZeroInMarketOrder,
+	///Price zero in MarketOrder
+	PriceZeroInMarketOrder,
+	///Quantity or Price zero in LimitOrder
+	QuantityOrPriceZeroInLimitOrder,
     /// Nonce not present
     NonceNotPresent,
     /// TradeAmountIsNotAsExpected
@@ -140,6 +146,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             error!("Could not authenticate user due to: {:?}", e);
             return Err(e);
         };
+		basic_order_checks(&order)?;
         // Mutate Balances
         match order.order_type {
             OrderType::LIMIT => {
@@ -552,8 +559,6 @@ pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
     );
     // Derive buyer and seller from maker and taker
 
-    basic_order_checks(&maker)?;
-    basic_order_checks(&taker)?;
     consume_order(
         trade.clone(),
         taker,
@@ -570,13 +575,13 @@ pub fn basic_order_checks(order: &Order) -> Result<(), GatewayError> {
         (OrderType::LIMIT, OrderSide::BID) | (OrderType::LIMIT, OrderSide::ASK)
             if order.price.unwrap() == 0 || order.quantity == 0 =>
         {
-            Err(GatewayError::BasicOrderCheckError)
+            Err(GatewayError::QuantityOrPriceZeroInLimitOrder)
         }
         (OrderType::MARKET, OrderSide::BID) if order.price.unwrap() == 0 => {
-            Err(GatewayError::BasicOrderCheckError)
+            Err(GatewayError::PriceZeroInMarketOrder)
         }
         (OrderType::MARKET, OrderSide::ASK) if order.quantity == 0 => {
-            Err(GatewayError::BasicOrderCheckError)
+            Err(GatewayError::QuantityZeroInMarketOrder)
         }
         _ => Ok(()),
     }
