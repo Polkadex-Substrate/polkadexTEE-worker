@@ -27,12 +27,12 @@ use std::sync::{
 static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub mod balance_storage;
-pub mod polkadex_balance_key;
 pub mod balances;
+pub mod polkadex_balance_key;
 
 pub use balance_storage::*;
-pub use polkadex_balance_key::*;
 pub use balances::*;
+pub use polkadex_balance_key::*;
 
 pub fn create_in_memory_balance_storage() -> Result<(), GatewayError> {
     let balances_storage = PolkadexBalanceStorage::create();
@@ -52,13 +52,12 @@ pub fn load_balance_storage() -> Result<&'static SgxMutex<PolkadexBalanceStorage
     Ok(unsafe { &*ptr })
 }
 
-// TODO: Write test cases for this function
 pub fn lock_storage_and_reserve_balance(
     main_acc: &AccountId,
     token: AssetId,
     amount: Balance,
 ) -> Result<(), GatewayError> {
-    // Acquire lock on balance_storage
+    // Acquire lock on balance_storagepolkadex_balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> =
         mutex.lock().map_err(|_| {
@@ -89,7 +88,6 @@ pub fn lock_storage_and_reserve_balance(
     Ok(())
 }
 
-// TODO: Write test cases for this function
 pub fn lock_storage_unreserve_balance(
     main_acc: &AccountId,
     token: AssetId,
@@ -170,7 +168,6 @@ pub fn lock_storage_and_withdraw(
     Ok(())
 }
 
-// TODO: Write Unit test for this function
 pub fn lock_storage_and_initialize_balance(
     main_acc: AccountId,
     token: AssetId,
