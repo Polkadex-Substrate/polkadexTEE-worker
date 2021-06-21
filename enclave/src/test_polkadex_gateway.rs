@@ -447,6 +447,7 @@ pub fn setup_place_buy_and_sell_order_partial_ask_limit() {
     let sell_order_uuid: OrderUUID = (200..202).collect();
     assert!(lock_storage_and_add_order(new_order, sell_order_uuid).is_ok());
 }
+
 #[allow(unused)]
 pub fn test_settle_trade_partial_ask_limit() {
     setup_place_buy_and_sell_order_partial_ask_limit();
@@ -588,6 +589,7 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_limit() {
     let sell_order_uuid: OrderUUID = (200..202).collect();
     assert!(lock_storage_and_add_order(new_order, sell_order_uuid).is_ok());
 }
+
 #[allow(unused)]
 pub fn test_settle_trade_partial_two_ask_limit() {
     setup_place_buy_and_sell_order_partial_two_ask_limit();
@@ -619,7 +621,7 @@ pub fn test_settle_trade_partial_two_ask_limit() {
             98 * UNIT,
             1 * UNIT,
             sell_order_user.clone(),
-            AssetId::POLKADEX
+            AssetId::POLKADEX,
         ),
         Ok(())
     );
@@ -1015,7 +1017,7 @@ pub fn test_settle_trade_partial_two_buy_limit() {
             98 * UNIT,
             1 * UNIT,
             sell_order_user.clone(),
-            AssetId::POLKADEX
+            AssetId::POLKADEX,
         ),
         Ok(())
     );
@@ -1368,7 +1370,7 @@ pub fn test_settle_trade_partial_two_ask_market() {
             98 * UNIT,
             1 * UNIT,
             sell_order_user.clone(),
-            AssetId::POLKADEX
+            AssetId::POLKADEX,
         ),
         Ok(())
     );
@@ -1474,7 +1476,7 @@ pub fn setup_place_buy_and_sell_order_full_buy_market() {
             98 * UNIT,
             2 * UNIT,
             sell_order_user.clone(),
-            AssetId::POLKADEX
+            AssetId::POLKADEX,
         ),
         Ok(())
     );
@@ -1727,7 +1729,7 @@ pub fn setup_place_buy_and_sell_order_partial_two_bid_market() {
             97 * UNIT,
             3 * UNIT,
             sell_order_user.clone(),
-            AssetId::POLKADEX
+            AssetId::POLKADEX,
         ),
         Ok(())
     );
@@ -2007,4 +2009,87 @@ fn load_storage_check_id_in_insert_order_cache(
         return Ok(true);
     }
     Ok(false)
+}
+
+pub fn test_basic_order_checks() {
+    let gateway = create_mock_gateway();
+    let buy_order_user: AccountId = get_account("test_place_limit_buy_order_partial");
+    let mut new_order: Order = Order {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::LIMIT,
+        side: OrderSide::BID,
+        quantity: 0,
+        price: Some(2 * UNIT),
+    };
+
+    setup(buy_order_user.clone());
+    assert_eq!(
+        check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+        Ok(())
+    ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
+    assert_eq!(
+        gateway.place_order(buy_order_user.clone(), None, new_order.clone()),
+        Err(GatewayError::QuantityOrPriceZeroInLimitOrder)
+    );
+
+    // BID MARKET ORDER
+
+    let mut new_order: Order = Order {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::MARKET,
+        side: OrderSide::BID,
+        quantity: 0,
+        price: Some(0),
+    };
+
+    assert_eq!(
+        gateway.place_order(buy_order_user.clone(), None, new_order.clone()),
+        Err(GatewayError::PriceZeroInMarketOrder)
+    );
+
+    let mut new_order: Order = Order {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::MARKET,
+        side: OrderSide::ASK,
+        quantity: 0,
+        price: Some(0),
+    };
+
+    assert_eq!(
+        gateway.place_order(buy_order_user.clone(), None, new_order.clone()),
+        Err(GatewayError::QuantityZeroInMarketOrder)
+    );
+
+    let mut new_order: Order = Order {
+        user_uid: buy_order_user.clone(),
+        market_id: MarketId {
+            base: AssetId::POLKADEX,
+            quote: AssetId::DOT,
+        },
+        market_type: Vec::from("trusted"),
+        order_type: OrderType::MARKET,
+        side: OrderSide::BID,
+        quantity: 0,
+        price: Some(0),
+    };
+
+    assert_eq!(
+        gateway.place_order(buy_order_user.clone(), None, new_order.clone()),
+        Err(GatewayError::PriceZeroInMarketOrder)
+    );
 }
