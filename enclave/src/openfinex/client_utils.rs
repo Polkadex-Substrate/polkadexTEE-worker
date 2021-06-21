@@ -104,13 +104,15 @@ pub fn read_tcp_buffer(buffer: Vec<u8>) -> Option<Message> {
         127 => {
             // Your length is a uint64 of byte 3 to 8
             error!("buffer is too small for this long message..");
-            let slice: [u8; 8] = buffer[2 .. 8].to_vec().try_into().unwrap();
+            let slice: [u8; 8] = buffer[2 .. 10].to_vec().try_into()
+                .unwrap_or_else( |_| {error!("Invalid payload length"); [0; 8]});
             let length = u64::from_be_bytes(slice);
-            (length, buffer[8 .. (length+8) as usize].to_vec())
+            (length, buffer[10 .. (length+10) as usize].to_vec())
         },
         126 => {
             // Your length is an uint16 of byte 3 and 4
-            let slice: [u8; 2] = buffer[2 .. 4].to_vec().try_into().unwrap();
+            let slice: [u8; 2] = buffer[2 .. 4].to_vec().try_into()
+                .unwrap_or_else( |_| {error!("Invalid payload length"); [0; 2]});
             let length = u16::from_be_bytes(slice);
             (length as u64, buffer[4 .. (length+4) as usize].to_vec())
         }
