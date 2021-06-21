@@ -16,7 +16,7 @@
 // limitations under the License.
 
 pub extern crate alloc;
-use alloc::string::String;
+use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult, string::String};
 use base58::{FromBase58, ToBase58};
 use blake2_rfc::blake2b::{Blake2b, Blake2bResult};
 use core::convert::AsMut;
@@ -31,6 +31,12 @@ pub enum SS58CheckError {
     UnknownVersion,
     FormatNotAllowed,
     InvalidChecksum,
+}
+
+impl Display for SS58CheckError {
+    fn fmt(&self, f: &mut Formatter) -> FormatResult {
+        write!(f, "{:?}", self)
+    }
 }
 
 /// utility function to get the ss58check string representation for an AccountId32
