@@ -17,10 +17,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use crate::openfinex::openfinex_types::{OpenFinexDecimal, Preamble, RequestId, RequestType};
-use crate::openfinex::request_id_generator::RequestIdGenerator;
-use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
-use polkadex_sgx_primitives::types::PriceAndQuantityType;
+use crate::openfinex::openfinex_types::{Preamble, RequestId, RequestType};
+use alloc::{string::String, string::ToString, vec::Vec};
 
 #[derive(Debug, Clone)]
 pub struct OpenFinexRequest {

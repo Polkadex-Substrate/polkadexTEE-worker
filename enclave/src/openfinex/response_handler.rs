@@ -18,15 +18,13 @@
 
 pub extern crate alloc;
 use crate::openfinex::client_utils::Payload;
-use crate::openfinex::openfinex_types::{RequestId, RequestType};
+use crate::openfinex::openfinex_types::RequestId;
 use crate::openfinex::response_object_mapper::{
     OpenFinexResponse, OpenFinexResponseObjectMapper, RequestResponse,
 };
-use crate::openfinex::response_parser::{
-    ParameterNode, ParsedResponse, ResponseMethod, ResponseParser,
-};
+use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::PolkaDexGatewayCallback;
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::sync::Arc;
 use log::*;
 use polkadex_sgx_primitives::types::{OrderState, OrderUpdate, TradeEvent};
 

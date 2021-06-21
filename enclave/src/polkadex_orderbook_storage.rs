@@ -2,8 +2,8 @@ use crate::ed25519;
 use crate::polkadex_gateway::GatewayError;
 use log::error;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
-use sgx_types::{sgx_status_t, SgxResult};
-use sp_core::{ed25519::Signature};
+use sgx_types::SgxResult;
+use sp_core::ed25519::Signature;
 use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -102,7 +102,6 @@ pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, Ga
 
 // TODO: Write test cases for this function
 
-
 pub fn lock_storage_and_add_order(
     order: Order,
     order_uuid: OrderUUID,
@@ -112,7 +111,6 @@ pub fn lock_storage_and_add_order(
     let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     Ok(orderbook.add_order(order_uuid, order))
 }
-
 
 pub fn lock_storage_and_check_order_in_orderbook(
     order_uuid: OrderUUID,

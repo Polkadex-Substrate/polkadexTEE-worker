@@ -18,8 +18,7 @@
 
 pub extern crate alloc;
 
-use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
-use crate::openfinex::openfinex_types::{RequestId, RequestType, ResponseInteger};
+use crate::openfinex::openfinex_types::{RequestType, ResponseInteger};
 use crate::openfinex::response_object_mapper::{
     OpenFinexResponse, OpenFinexResponseObjectMapper, RequestResponse, ResponseObjectMapper,
 };

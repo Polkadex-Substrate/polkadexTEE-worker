@@ -20,15 +20,14 @@ pub extern crate alloc;
 use crate::openfinex::fixed_point_number_converter::FixedPointNumberConverter;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_client::OpenFinexClientInterface;
-use crate::openfinex::openfinex_types::{OpenFinexDecimal, RequestId, RequestType};
+use crate::openfinex::openfinex_types::{RequestId, RequestType};
 use crate::openfinex::request_builder::OpenFinexRequestBuilder;
 use crate::openfinex::string_serialization::{
     market_id_to_request_string, market_type_to_request_string, order_side_to_request_string,
     order_type_to_request_string, order_uuid_to_request_string, user_id_to_request_string,
 };
-use alloc::sync::Arc;
 use log::*;
-use polkadex_sgx_primitives::types::{CancelOrder, Order, PriceAndQuantityType};
+use polkadex_sgx_primitives::types::{CancelOrder, Order};
 
 /// implementation of the OpenFinex API
 pub struct OpenFinexApiImpl {

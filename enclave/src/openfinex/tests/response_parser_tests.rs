@@ -17,13 +17,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use crate::openfinex::openfinex_api::OpenFinexApiError::ResponseParsingError;
-use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
-use crate::openfinex::openfinex_types::{Preamble, RequestId, RequestType};
+use crate::openfinex::openfinex_types::RequestType;
 use crate::openfinex::response_parser::{
     ParameterNode, ResponseMethod, ResponseParser, TcpResponseParser,
 };
-use alloc::{string::String, string::ToString, vec::Vec};
+use alloc::{string::String, string::ToString};
 
 pub fn given_valid_create_order_response_then_parse_items() {
     let response_string = "[2,42,\"admin_create_order\",[\"1245-2345-6798-123123\"]]".to_string();

@@ -1,6 +1,5 @@
 use codec::Encode;
 use sgx_tstd::sync::SgxMutexGuard;
-use sgx_types::sgx_status_t;
 use sp_std::prelude::*;
 
 use polkadex_sgx_primitives::accounts::get_account;

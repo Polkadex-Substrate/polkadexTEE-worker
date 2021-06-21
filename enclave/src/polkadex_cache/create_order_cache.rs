@@ -16,18 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::polkadex_cache::cache_api::{CacheResult, RequestId, StaticStorageApi};
 use log::*;
 use polkadex_sgx_primitives::types::Order;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, SgxMutex};
-use crate::polkadex_cache::cache_api::{RequestId, StaticStorageApi, CacheResult};
-
-use codec::{Encode, Decode};
-use std::string::{String, ToString};
 
 static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-
 
 #[derive(Debug)]
 pub struct CreateOrderCache {
@@ -37,7 +33,7 @@ pub struct CreateOrderCache {
     request_id: RequestId,
 }
 
-impl Default for CreateOrderCache{
+impl Default for CreateOrderCache {
     fn default() -> Self {
         CreateOrderCache {
             order_map: Default::default(),
@@ -68,7 +64,6 @@ impl StaticStorageApi for CreateOrderCache {
     }
 }
 
-
 impl CreateOrderCache {
     /// removes the given order from the cache. Returns the value of
     /// the given key if previously present
@@ -98,11 +93,9 @@ impl CreateOrderCache {
     }
 }
 
-
 pub mod tests {
     use super::*;
     use crate::test_orderbook_storage;
-
 
     pub fn test_initialize_and_lock_storage() {
         // given
@@ -118,10 +111,7 @@ pub mod tests {
     pub fn test_insert_order_and_increment() {
         // given
         CreateOrderCache::initialize();
-        let mut cache = CreateOrderCache::load()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let mut cache = CreateOrderCache::load().unwrap().lock().unwrap();
         let orders = test_orderbook_storage::get_dummy_orders();
         assert_eq!(cache.request_id(), 0);
 
@@ -136,10 +126,7 @@ pub mod tests {
     pub fn test_remove_order() {
         // given
         CreateOrderCache::initialize();
-        let mut cache = CreateOrderCache::load()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let mut cache = CreateOrderCache::load().unwrap().lock().unwrap();
         let orders = test_orderbook_storage::get_dummy_orders();
         let order_0_id = cache.request_id();
         assert_eq!(order_0_id, 0);
@@ -167,10 +154,7 @@ pub mod tests {
             CreateOrderCache::initialize();
         }
         {
-            let mut cache = CreateOrderCache::load()
-                .unwrap()
-                .lock()
-                .unwrap();
+            let mut cache = CreateOrderCache::load().unwrap().lock().unwrap();
             let order_0_id = cache.request_id();
             assert_eq!(order_0_id, 0);
             let id_0 = cache.insert_order(orders[0].clone());
@@ -183,10 +167,7 @@ pub mod tests {
 
         // when
         {
-            let mut cache = CreateOrderCache::load()
-                .unwrap()
-                .lock()
-                .unwrap();
+            let mut cache = CreateOrderCache::load().unwrap().lock().unwrap();
             let order_1 = cache.remove_order(&1).unwrap();
             let none = cache.remove_order(&1);
 
@@ -194,17 +175,12 @@ pub mod tests {
             assert_eq!(order_1, orders[1]);
         }
 
-
         // then
-        let mut cache = CreateOrderCache::load()
-            .unwrap()
-            .lock()
-            .unwrap();
+        let mut cache = CreateOrderCache::load().unwrap().lock().unwrap();
         let order_1 = cache.remove_order(&1);
         assert!(order_1.is_none());
         let order_0 = cache.remove_order(&0).unwrap();
         assert_eq!(order_0, orders[0]);
         assert_eq!(cache.request_id(), 2);
     }
-
 }

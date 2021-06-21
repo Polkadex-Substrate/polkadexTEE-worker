@@ -20,7 +20,7 @@ pub extern crate alloc;
 use crate::openfinex::fixed_point_number_converter::FixedPointNumberConverter;
 use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_types::{
-    OpenFinexDecimal, RequestId, RequestType, ResponseInteger,
+    RequestId, RequestType, ResponseInteger,
 };
 use crate::openfinex::response_parser::{
     ParameterItem, ParameterNode, ParsedResponse, ResponseMethod,

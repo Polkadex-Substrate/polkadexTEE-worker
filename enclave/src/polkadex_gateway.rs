@@ -1,21 +1,15 @@
 pub extern crate alloc;
-use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult};
-use codec::{Decode, Encode};
+use alloc::fmt::Result as FormatResult;
 use frame_support::ensure;
 use log::*;
 use polkadex_sgx_primitives::types::{
     CancelOrder, Order, OrderSide, OrderType, OrderUUID, TradeEvent, UserId,
 };
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
-use sgx_types::{sgx_status_t, SgxResult};
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicPtr, Ordering};
-use std::sync::{Arc, SgxMutex, SgxMutexGuard};
+use std::sync::Arc;
 
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
-use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
-use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::openfinex::openfinex_types::RequestId;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
@@ -117,11 +111,11 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
 /// All sendings to the openfinex server should go through
 /// this gateway. Necessary to mock unit tests
 pub struct OpenfinexPolkaDexGateway<B: OpenFinexApi> {
-    openfinex_api: B
+    openfinex_api: B,
 }
 impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
     pub fn new(openfinex_api: B) -> Self {
-        OpenfinexPolkaDexGateway{openfinex_api}
+        OpenfinexPolkaDexGateway { openfinex_api }
     }
     /// Place order function does the following
     /// 1. authenticate
@@ -150,8 +144,9 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
                 if let Some(price) = order.price {
                     match order.side {
                         OrderSide::BID => {
-                            let amount =
-                                ((price as f64) * ((order.quantity as f64) / (UNIT as f64))) as u128;
+                            let amount = ((price as f64)
+                                * ((order.quantity as f64) / (UNIT as f64)))
+                                as u128;
                             match polkadex_balance_storage::lock_storage_and_reserve_balance(
                                 &main_account,
                                 order.market_id.quote,
@@ -232,7 +227,11 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         Ok(())
     }
 
-    fn send_order_to_open_finex(&self, order: Order, request_id: RequestId) -> Result<(), GatewayError> {
+    fn send_order_to_open_finex(
+        &self,
+        order: Order,
+        request_id: RequestId,
+    ) -> Result<(), GatewayError> {
         // TODO: Send order to Openfinex for inclusion ( this is a non-blocking call )
         /* let openfinex_api = OpenFinexApiImpl::new(
             OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
@@ -276,7 +275,10 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             }
         };
 
-        self.send_cancel_request_to_openfinex(cancel_order.clone(), cache.request_id() as RequestId)?;
+        self.send_cancel_request_to_openfinex(
+            cancel_order.clone(),
+            cache.request_id() as RequestId,
+        )?;
         cache.insert_order(cancel_order.order_id);
 
         Ok(())
