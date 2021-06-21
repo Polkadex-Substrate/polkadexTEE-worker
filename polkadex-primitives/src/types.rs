@@ -198,6 +198,8 @@ pub struct Response {
 // Order Update Events
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct OrderUpdate {
+    // User ID
+    pub user_id: AccountId,
     // Market unique identifier
     pub market_id: MarketId,
     // Unique order ID
@@ -239,10 +241,14 @@ pub struct TradeEvent {
     pub amount: PriceAndQuantityType,
     // Trade Funds (amount*price)
     pub funds: PriceAndQuantityType,
+    // Maker's account ID
+    pub maker_user_id: AccountId,
     // Maker's trade Order Id
     pub maker_order_id: OrderId,
     // Maker's trade Order UUID
     pub maker_order_uuid: OrderUUID,
+    // Taker's account ID
+    pub taker_user_id: AccountId,
     // Taker's trade Order Id
     pub taker_order_id: OrderId,
     // Taker's trade Order UUID

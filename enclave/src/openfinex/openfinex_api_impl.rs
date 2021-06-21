@@ -103,11 +103,11 @@ impl OpenFinexApi for OpenFinexApiImpl {
             .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)))
     }
 
-    fn withdraw_funds(&self, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn withdraw_funds(&self, _request_id: RequestId) -> OpenFinexApiResult<()> {
         todo!()
     }
 
-    fn deposit_funds(&self, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn deposit_funds(&self, _request_id: RequestId) -> OpenFinexApiResult<()> {
         todo!()
     }
 }

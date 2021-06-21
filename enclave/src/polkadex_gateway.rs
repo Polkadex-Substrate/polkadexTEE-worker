@@ -13,7 +13,7 @@ use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
 use crate::openfinex::openfinex_types::RequestId;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
-use crate::polkadex_cache::cache_api::StaticStorageApi;
+use crate::polkadex_cache::cache_api::{StaticCacheProvider, StaticStorageApi};
 use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_orderbook_storage;
@@ -21,6 +21,12 @@ use polkadex::AccountRegistryError;
 
 #[derive(Eq, Debug, PartialOrd, PartialEq)]
 pub enum GatewayError {
+	///Quantity zero in MarketOrder
+	QuantityZeroInMarketOrder,
+	///Price zero in MarketOrder
+	PriceZeroInMarketOrder,
+	///Quantity or Price zero in LimitOrder
+	QuantityOrPriceZeroInLimitOrder,
     /// Nonce not present
     NonceNotPresent,
     /// TradeAmountIsNotAsExpected
@@ -85,7 +91,11 @@ impl alloc::fmt::Display for GatewayError {
 pub trait PolkaDexGatewayCallback {
     fn process_cancel_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
+    fn process_create_order(
+        &self,
+        request_id: RequestId,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError>;
 }
 
 /// factory to create a callback impl, allows to hide implementation (keep private)
@@ -103,8 +113,12 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
         process_cancel_order(order_uuid)
     }
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError> {
-        Ok(())
+    fn process_create_order(
+        &self,
+        request_id: RequestId,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError> {
+        process_create_order(request_id, order_uuid)
     }
 }
 
@@ -134,6 +148,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             error!("Could not authenticate user due to: {:?}", e);
             return Err(e);
         };
+		basic_order_checks(&order)?;
         // Mutate Balances
         match order.order_type {
             OrderType::LIMIT => {
@@ -311,8 +326,6 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
                 .price
                 .ok_or(GatewayError::LimitOrderPriceNotFound)?;
 
-            // TODO: Why are we converting the amounts here? The OpenFinex API is responsible for doing all the conversions?
-            // Even if we had to convert, we should not do a floating point conversion
             let amount =
                 ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
 
@@ -465,6 +478,8 @@ pub fn initialize_polkadex_gateway() {
     let cancel_cache_storage_ptr = Arc::new(SgxMutex::new(cancel_cache));
     let cancel_cache_ptr = Arc::into_raw(cancel_cache_storage_ptr);
     CANCEL_ORDER_CACHE.store(cancel_cache_ptr as *mut (), Ordering::SeqCst); */
+
+    // TODO revisit this once these caches are using the new CacheProvider trait and implementation
     CancelOrderCache::initialize();
     CreateOrderCache::initialize();
 
@@ -544,8 +559,6 @@ pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
     );
     // Derive buyer and seller from maker and taker
 
-    basic_order_checks(&maker)?;
-    basic_order_checks(&taker)?;
     consume_order(
         trade.clone(),
         taker,
@@ -562,13 +575,13 @@ pub fn basic_order_checks(order: &Order) -> Result<(), GatewayError> {
         (OrderType::LIMIT, OrderSide::BID) | (OrderType::LIMIT, OrderSide::ASK)
             if order.price.unwrap() == 0 || order.quantity == 0 =>
         {
-            Err(GatewayError::BasicOrderCheckError)
+            Err(GatewayError::QuantityOrPriceZeroInLimitOrder)
         }
         (OrderType::MARKET, OrderSide::BID) if order.price.unwrap() == 0 => {
-            Err(GatewayError::BasicOrderCheckError)
+            Err(GatewayError::PriceZeroInMarketOrder)
         }
         (OrderType::MARKET, OrderSide::ASK) if order.quantity == 0 => {
-            Err(GatewayError::BasicOrderCheckError)
+            Err(GatewayError::QuantityZeroInMarketOrder)
         }
         _ => Ok(()),
     }
@@ -583,6 +596,7 @@ pub fn consume_order(
 ) -> Result<(), GatewayError> {
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
+            let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount);
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -597,7 +611,7 @@ pub fn consume_order(
                     taker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = trade_event.funds - trade_event.amount;
+                let amount_to_unreserve = reserved_amount - trade_event.price;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &current_order.user_uid,
                     current_order.market_id.quote,
@@ -626,6 +640,7 @@ pub fn consume_order(
         }
 
         (OrderType::LIMIT, OrderSide::ASK) => {
+            let reserved_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -633,7 +648,7 @@ pub fn consume_order(
                     maker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = trade_event.funds - trade_event.amount;
+                let amount_to_unreserve = reserved_amount - trade_event.price;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
@@ -651,13 +666,21 @@ pub fn consume_order(
         }
 
         (OrderType::MARKET, OrderSide::ASK) => {
+            let reserved_amount = (counter_order.price.unwrap() * counter_order.quantity) / UNIT;
             do_asset_exchange_market(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order.clone(),
                     maker_order_uuid,
                 )?;
-            } // TODO : I think we need else case as well
+            } else {
+                let amount_to_unreserve = reserved_amount - trade_event.price;
+                polkadex_balance_storage::lock_storage_unreserve_balance(
+                    &counter_order.user_uid,
+                    counter_order.market_id.quote,
+                    amount_to_unreserve,
+                )?;
+            }
 
             if current_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -681,10 +704,6 @@ pub fn do_asset_exchange(
             let trade_amount = ((counter_order.price.unwrap() as f64)
                 * ((current_order.quantity as f64) / (UNIT as f64)))
                 as u128;
-            ensure!(
-                trade_amount == expected_trade_amount,
-                GatewayError::TradeAmountIsNotAsExpected
-            ); //FIXME Change error name
 
             transfer_asset(
                 &current_order.market_id.quote,
@@ -707,10 +726,7 @@ pub fn do_asset_exchange(
             let trade_amount = ((counter_order.price.unwrap() as f64)
                 * ((counter_order.quantity as f64) / (UNIT as f64)))
                 as u128;
-            ensure!(
-                trade_amount == expected_trade_amount,
-                GatewayError::TradeAmountIsNotAsExpected
-            ); //FIXME Change error name
+
             transfer_asset(
                 &current_order.market_id.quote,
                 trade_amount,
@@ -732,10 +748,7 @@ pub fn do_asset_exchange(
             let trade_amount = ((current_order.price.unwrap() as f64)
                 * ((current_order.quantity as f64) / (UNIT as f64)))
                 as u128;
-            ensure!(
-                trade_amount == expected_trade_amount,
-                GatewayError::TradeAmountIsNotAsExpected
-            ); //FIXME Change error name
+
             transfer_asset(
                 &current_order.market_id.quote,
                 trade_amount,
@@ -757,10 +770,7 @@ pub fn do_asset_exchange(
             let trade_amount = ((current_order.price.unwrap() as f64)
                 * ((counter_order.quantity as f64) / (UNIT as f64)))
                 as u128;
-            ensure!(
-                trade_amount == expected_trade_amount,
-                GatewayError::TradeAmountIsNotAsExpected
-            ); //FIXME Change error name
+
             transfer_asset(
                 &current_order.market_id.quote,
                 trade_amount,

@@ -37,6 +37,20 @@ pub fn given_valid_create_order_response_then_parse_items() {
     assert_eq!(parsed_response.parameters.len(), 1);
 }
 
+pub fn given_valid_get_markets_response_then_parse_items() {
+    let response_string = (r#"[2,1,"get_markets",[{"id":"btcusd","name":"BTC/USD","base_unit":"btc","quote_unit":"usd","state":"enabled","amount_precision":4,"price_precision":4,"min_price":"0.0001","max_price":"0","min_amount":"0.0001","position":100,"filters":[]},{"id":"trsteth","name":"TRST/ETH","base_unit":"trst","quote_unit":"eth","state":"enabled","amount_precision":4,"price_precision":4,"min_price":"0.0001","max_price":"0","min_amount":"0.0001","position":105,"filters":[]}]]"#).to_string();
+
+    let parser = TcpResponseParser {};
+    let parsed_response = parser.parse_response_string(response_string).unwrap();
+
+    assert_eq!(parsed_response.response_preamble, 2);
+    assert_eq!(
+        parsed_response.response_method,
+        ResponseMethod::FromRequestMethod(RequestType::GetMarkets, 1)
+    );
+    assert_eq!(parsed_response.parameters.len(), 2);
+}
+
 pub fn given_valid_error_response_then_parse_items() {
     let error_description = String::from("Message describing the error");
     let response_string = format!("[2,42,\"error\",[\"{}\"]]", error_description).to_string();

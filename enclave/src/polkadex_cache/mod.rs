@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod cache_api;
 pub mod cancel_order_cache;
 pub mod create_order_cache;
-pub mod cache_api;
+pub mod market_cache;

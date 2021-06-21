@@ -27,7 +27,7 @@ static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct CreateOrderCache {
-    /// The set of chached order uuids
+    /// The set of cached order uuids
     order_map: HashMap<RequestId, Order>,
     /// Nonce / request_id
     request_id: RequestId,
@@ -74,12 +74,12 @@ impl CreateOrderCache {
     /// inserts an order to the set and increments the request id.
     /// Returns the request_id it order was stored at
     pub fn insert_order(&mut self, order: Order) -> RequestId {
-        let current_requst_id = self.request_id;
+        let current_request_id = self.request_id;
         if let Some(e) = self.order_map.insert(self.request_id, order) {
             error!("A cache value was unexpectedly overwirrten: {:?}", e);
         }
         self.increment_request_id();
-        current_requst_id
+        current_request_id
     }
 
     pub fn request_id(&self) -> RequestId {
