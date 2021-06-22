@@ -19,16 +19,6 @@ use crate::utils::UnwrapOrSgxErrorUnexpected;
 
 static GLOBAL_ACCOUNTS_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
-#[derive(Eq, Debug, PartialEq, PartialOrd)]
-pub enum AccountRegistryError {
-    /// Could not load the registry for some reason
-    CouldNotLoadRegistry,
-    /// Could not get mutex
-    CouldNotGetMutex,
-    /// No registed main account for given proxy
-    MainAccountNoRegistedForGivenProxy,
-}
-
 pub fn verify_pdex_account_read_proofs(
     header: Header,
     accounts: Vec<PolkadexAccount>,
@@ -260,4 +250,14 @@ pub fn load_proxy_registry(
     } else {
         Ok(unsafe { &*ptr })
     }
+}
+
+#[derive(Eq, Debug, PartialEq, PartialOrd)]
+pub enum AccountRegistryError {
+    /// Could not load the registry for some reason
+    CouldNotLoadRegistry,
+    /// Could not get mutex
+    CouldNotGetMutex,
+    /// No registed main account for given proxy
+    MainAccountNoRegistedForGivenProxy,
 }
