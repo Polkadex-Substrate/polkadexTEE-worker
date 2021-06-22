@@ -86,6 +86,7 @@ impl RpcGetBalance {
             Ok(b) => Ok(b),
             Err(e) => Err(String::from(e.as_str())),
         }?;
+        debug!("Received balance: {:?}", balances);
 
         Ok((balances, false, DirectRequestStatus::Ok))
     }

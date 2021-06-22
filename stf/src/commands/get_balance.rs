@@ -24,6 +24,8 @@ use clap::{App, ArgMatches};
 use clap_nested::Command;
 use core::option::Option;
 use log::*;
+use polkadex_sgx_primitives::Balance;
+use codec::Decode;
 
 pub fn get_balance_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
@@ -64,9 +66,17 @@ fn command_runner<'a>(
 
     debug!("Successfully built get_balance trusted operation, dispatching now to enclave");
 
-    let _ = perform_operation(matches, &get_balance_top);
-
-    debug!("get_balance trusted operation was executed");
+    let bal = if let Some(v) = perform_operation(matches, &get_balance_top) {
+        if let Ok(vd) = Balance::decode(&mut v.as_slice()) {
+            vd
+        } else {
+            info!("could not decode value. maybe hasn't been set? {:x?}", v);
+            0
+        }
+    } else {
+        0
+    };
+    println!("{}", bal);
 
     Ok(())
 }

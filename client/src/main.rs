@@ -708,7 +708,10 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
                         _ => return None,
                     }
                     if !return_value.do_watch {
-                        return None;
+                        return match Option::decode(&mut return_value.value.as_slice()) {
+                            Ok(value_opt) => value_opt,
+                            Err(_) => panic!("Error when decoding response"),
+                        };
                     }
                 };
             }
