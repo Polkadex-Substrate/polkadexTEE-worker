@@ -15,6 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 use codec::{Decode, Encode};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 

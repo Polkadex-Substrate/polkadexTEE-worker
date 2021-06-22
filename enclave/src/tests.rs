@@ -71,8 +71,8 @@ use sp_core::ed25519 as spEd25519;
 use rpc::author::{Author, AuthorApi};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use rpc::{
-    io_handler_extensions, rpc_call_encoder, rpc_cancel_order, rpc_get_balance, rpc_place_order,
-    rpc_withdraw, trusted_operation_verifier,
+    io_handler_extensions, rpc_call_encoder, rpc_cancel_order, rpc_get_balance, rpc_withdraw,
+    trusted_operation_verifier,
 };
 
 #[no_mangle]

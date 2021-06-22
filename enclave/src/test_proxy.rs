@@ -21,9 +21,8 @@ use polkadex_sgx_primitives::{accounts::get_account, AccountId};
 use sgx_tstd::sync::SgxMutexGuard;
 
 use crate::polkadex;
+use crate::polkadex::AccountRegistryError;
 use crate::polkadex::PolkadexAccountsStorage;
-use crate::polkadex::{AccountRegistryError, EncodedAccountId};
-use crate::polkadex_gateway::GatewayError;
 
 pub fn get_dummy_map(storage: &mut SgxMutexGuard<PolkadexAccountsStorage>) {
     let main_account_one: AccountId = get_account("first_account");

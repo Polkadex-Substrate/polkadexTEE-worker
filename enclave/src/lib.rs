@@ -363,8 +363,17 @@ pub unsafe extern "C" fn init_chain_relay(
     polkadex_gateway::initialize_polkadex_gateway();
     info!(" Polkadex Gateway Nonces and Cache Initialized");
 
-    nonce_handler::create_in_memory_nonce_storage(); //FIXME Error handling required
-    polkadex_balance_storage::create_in_memory_balance_storage();
+    if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
+        error!("Creating in memory nonce storage failed. Error: {:?}", e);
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+    };
+
+    if let Err(e) = polkadex_balance_storage::create_in_memory_balance_storage() {
+        error!("Creating in memory balance storage failed. Error: {:?}", e);
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+    };
 
     sgx_status_t::SGX_SUCCESS
 }
@@ -452,7 +461,10 @@ pub unsafe extern "C" fn sync_chain(
 
     let mut calls = Vec::<OpaqueCall>::new();
 
-    nonce_handler::lock_and_update_nonce(*nonce); //FIXME - Error handling
+    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
+        error!("Locking and updating nonce failed. Error: {:?}", e);
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
 
     debug!("Syncing chain relay!");
     if !blocks_to_sync.is_empty() {
@@ -1371,7 +1383,7 @@ fn worker_request<V: Encode + Decode>(
     Ok(Decode::decode(&mut resp.as_slice()).unwrap())
 }
 
-fn write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
+fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
 
     let res = unsafe {

@@ -53,23 +53,23 @@ impl OpenFinexApiMock {
 }
 
 impl OpenFinexApi for OpenFinexApiMock {
-    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn create_order(&self, _order: Order, _request_id: RequestId) -> OpenFinexApiResult<()> {
         Ok(())
     }
 
     fn cancel_order(
         &self,
-        cancel_order: CancelOrder,
-        request_id: RequestId,
+        _cancel_order: CancelOrder,
+        _request_id: RequestId,
     ) -> OpenFinexApiResult<()> {
         Ok(())
     }
 
-    fn withdraw_funds(&self, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn withdraw_funds(&self, _request_id: RequestId) -> OpenFinexApiResult<()> {
         Ok(())
     }
 
-    fn deposit_funds(&self, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn deposit_funds(&self, _request_id: RequestId) -> OpenFinexApiResult<()> {
         Ok(())
     }
 }
@@ -1945,7 +1945,7 @@ pub fn test_cancel_ask_order() {
 pub fn setup_process_create_order() {
     let gateway = create_mock_gateway();
     let sell_order_user: AccountId = get_account("test_place_limit_sell_order_partial");
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: sell_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
@@ -2032,7 +2032,7 @@ fn load_storage_check_id_in_insert_order_cache(
 pub fn test_basic_order_checks() {
     let gateway = create_mock_gateway();
     let buy_order_user: AccountId = get_account("test_place_limit_buy_order_partial");
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
@@ -2057,7 +2057,7 @@ pub fn test_basic_order_checks() {
 
     // BID MARKET ORDER
 
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
@@ -2075,7 +2075,7 @@ pub fn test_basic_order_checks() {
         Err(GatewayError::PriceZeroInMarketOrder)
     );
 
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
@@ -2093,7 +2093,7 @@ pub fn test_basic_order_checks() {
         Err(GatewayError::QuantityZeroInMarketOrder)
     );
 
-    let mut new_order: Order = Order {
+    let new_order: Order = Order {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,

@@ -18,10 +18,11 @@
 
 use crate::ed25519;
 use crate::polkadex_gateway::GatewayError;
+use crate::_write_order_to_disk;
 use log::error;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
-use sgx_types::{sgx_status_t, SgxResult};
-use sp_core::{ed25519::Signature};
+use sgx_types::SgxResult;
+use sp_core::ed25519::Signature;
 use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -64,7 +65,7 @@ impl OrderbookStorage {
         self.storage.get(order_uid)
     }
 
-    pub fn write_orderbook_to_db(order_id: OrderUUID, order: Order) -> SgxResult<()> {
+    pub fn _write_orderbook_to_db(order_id: OrderUUID, order: Order) -> SgxResult<()> {
         let signer_pair = ed25519::unseal_pair()?;
         let mut signed_order = SignedOrder {
             order_id,
@@ -72,7 +73,7 @@ impl OrderbookStorage {
             signature: Signature::default(),
         };
         signed_order.sign(&signer_pair);
-        crate::write_order_to_disk(signed_order)?;
+        _write_order_to_disk(signed_order)?;
         Ok(())
     }
 }
@@ -120,7 +121,6 @@ pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, Ga
 
 // TODO: Write test cases for this function
 
-
 pub fn lock_storage_and_add_order(
     order: Order,
     order_uuid: OrderUUID,
@@ -131,19 +131,18 @@ pub fn lock_storage_and_add_order(
     Ok(orderbook.add_order(order_uuid, order))
 }
 
-
 pub fn lock_storage_and_check_order_in_orderbook(
     order_uuid: OrderUUID,
 ) -> Result<bool, GatewayError> {
     let mutex = load_orderbook().unwrap();
-    let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+    let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     Ok(orderbook.storage.contains_key(&order_uuid))
 }
 
 // Only for test
 pub fn lock_storage_and_get_order(order_uuid: OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;
-    let mut orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+    let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     let order = orderbook.read_order(&order_uuid).unwrap().clone();
     Ok(order)
 }
