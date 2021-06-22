@@ -691,8 +691,10 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
     loop {
         match receiver.recv() {
             Ok(response) => {
+                debug!("Recevied respsonse: {:?}",  response);
                 let response: RpcResponse = serde_json::from_str(&response).unwrap();
                 if let Ok(return_value) = RpcReturnValue::decode(&mut response.result.as_slice()) {
+                    debug!("Return value: {:?}", return_value);
                     match return_value.status {
                         DirectRequestStatus::Error => {
                             if let Ok(value) = String::decode(&mut return_value.value.as_slice()) {
@@ -705,10 +707,11 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
                                 println!("Trusted call {:?} is {:?}", value, status);
                             }
                         }
-                        _ => return None,
-                    }
-                    if !return_value.do_watch {
-                        return None;
+                        DirectRequestStatus::Ok => {
+                            if !return_value.do_watch {
+                                return Some(return_value.value)
+                            }
+                        },
                     }
                 };
             }

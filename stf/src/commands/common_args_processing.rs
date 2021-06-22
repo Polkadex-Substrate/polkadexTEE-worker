@@ -128,6 +128,8 @@ fn get_asset_id_from_str(arg: &str) -> Result<AssetId, String> {
     match arg.to_ascii_lowercase().as_ref() {
         "polkadex" => Ok(AssetId::POLKADEX),
         "dot" => Ok(AssetId::DOT),
+        "btc" => Ok(AssetId::BTC),
+        "usd" => Ok(AssetId::USD),
         _ => Err("invalid or unsupported asset ID".to_string()),
     }
 }

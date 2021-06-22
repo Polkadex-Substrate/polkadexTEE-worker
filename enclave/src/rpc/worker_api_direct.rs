@@ -210,7 +210,7 @@ pub unsafe extern "C" fn call_rpc_methods(
     };
     // Rpc Response String
     let response_string = io.handle_request_sync(request_string).unwrap();
-
+    debug!("Response String: {:?}", response_string);
     // update response outside of enclave
     let response_slice = from_raw_parts_mut(response, response_len as usize);
     write_slice_and_whitespace_pad(response_slice, response_string.as_bytes().to_vec());
