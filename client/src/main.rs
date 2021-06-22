@@ -1,16 +1,16 @@
-//  Copyright (c) 2019 Alain Brenzikofer
-//
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
-//
-//       http://www.apache.org/licenses/LICENSE-2.0
-//
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
+// This file is part of Polkadex.
+// Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! an RPC client to substraTEE using websockets
 //!
@@ -691,8 +691,10 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
     loop {
         match receiver.recv() {
             Ok(response) => {
+                debug!("Recevied respsonse: {:?}",  response);
                 let response: RpcResponse = serde_json::from_str(&response).unwrap();
                 if let Ok(return_value) = RpcReturnValue::decode(&mut response.result.as_slice()) {
+                    debug!("Return value: {:?}", return_value);
                     match return_value.status {
                         DirectRequestStatus::Error => {
                             if let Ok(value) = String::decode(&mut return_value.value.as_slice()) {
@@ -705,10 +707,11 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
                                 println!("Trusted call {:?} is {:?}", value, status);
                             }
                         }
-                        _ => return None,
-                    }
-                    if !return_value.do_watch {
-                        return None;
+                        DirectRequestStatus::Ok => {
+                            if !return_value.do_watch {
+                                return Some(return_value.value)
+                            }
+                        },
                     }
                 };
             }
