@@ -1,4 +1,20 @@
 #!/usr/bin/env python3
+
+#  This file is part of Polkadex.
+#  Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
+#  SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU General Public License
+#  along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+
 """
 demo script running happy flow openfinex commands
 """
@@ -14,11 +30,12 @@ alice = '//Alice'
 bob = '//Bob'
 aliceIco = '//AliceIcognito'
 bobIco = '//BobIcognito'
-tokenA = 'usd'
-tokenB = 'btc'
+tokenA = 'btc'
+tokenB = 'usd'
 direct = '--direct'
-markettype = ['--markettype=trusted']
+markettype = ['--markettype=spot']
 cli = ["../bin/substratee-client"]
+PRECISION = 1_000_000_000_000_000_000
 
 def direct_tail():
     return ["--mrenclave=" + MRENCLAVE, direct]
@@ -93,7 +110,7 @@ def register_proxy(acc, proxy):
 
 def deposit(acc, quantity, token):
     """ ./substratee-client -p 9994 -P 2094 deposit --accountid=//Alice --tokenid=polkadex --quantity=10000 """
-    print("Deposit " + str(quantity) + " " + token + " to " + acc)
+    print("Deposit " + str(quantity/PRECISION) + " " + token + " to " + acc)
     ret = subprocess.run(cli + ["deposit"] + acc_arg(acc) + quantity_arg(quantity) + token_arg(token), stdout=subprocess.PIPE)
     #print(ret.stdout.strip())
     await_block()
@@ -112,7 +129,7 @@ def direct_get_balance(acc, token):
     --mrenclave $MRENCLAVE --direct
     """
     ret = subprocess.run(cli + ["trusted", "get_balance"] + acc_arg(acc) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
-    print("Balance of " + acc + " " + ret.stdout)
+    print("Balance of " + acc + " " + str(ret.stdout))
     return ret.stdout.decode("utf-8").strip()
 
 def direct_place_order(acc, proxy, base, quote, side, quantity, ordertype, price):
@@ -171,25 +188,29 @@ if __name__ == '__main__':
     #1: Alice and Bob both create an account and receive funds from faucet (some native tokens as well
     # as 200 tokenA for Alice and 200 tokenB for Bob)
     register_account(alice)
-    #register_account(bob)
+    register_account(bob)
 
     #2 Alice and Bob both create and register a proxy account
     register_proxy(alice, aliceIco)
-    #register_proxy(bob, bobIco)
+    register_proxy(bob, bobIco)
 
     #3 Alice deposits 100 tokenA
-    deposit(alice, 100, tokenA)
+    deposit(alice, 100_000_000_000_000_000_000, tokenA)
 
     #4 Bob deposits 100 tokenB
-    #deposit(bob, 100, tokenB)
+    deposit(bob, 100_000_000_000_000_000_000, tokenB)
+
+    await_block() # wait some time to ensure enclave has read new block from main chain
+    direct_get_balance(alice, tokenA)
+    direct_get_balance(bob, tokenB)
 
     #5 Alice places a limit order selling 50 tokenA at a limit of 40 tokenB
-    direct_place_order(alice, None, tokenA, tokenB, 'ask', 50, 'limit', 40)
+    direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 40_000_000_000_000_000_000)
 
     #6 Bob places a limit order buying 50 tokenA at a limit of 60 tokenB
-    #direct_place_order(bob, None, tokenA, tokenB, 'bid', 50, 'limit', 60)
+    direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 60_000_000_000_000_000_000)
 
-    #7 Bob places a limit order buying 50 tokenA at a limit of 60 tokenB
+    #7 The matching engine clears the match, sends it to the gateway
 
     #8 The gateway settles the match, publishes all details
 
