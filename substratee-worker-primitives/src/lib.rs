@@ -55,7 +55,7 @@ pub enum TrustedOperationStatus {
     Invalid,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Debug)]
 pub struct RpcReturnValue {
     pub value: Vec<u8>,
     pub do_watch: bool,
