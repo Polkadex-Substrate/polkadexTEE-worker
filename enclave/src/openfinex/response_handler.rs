@@ -25,6 +25,7 @@ use crate::openfinex::response_object_mapper::{
 };
 use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::PolkaDexGatewayCallback;
+use crate::polkadex_gateway;
 use alloc::sync::Arc;
 use log::*;
 use polkadex_sgx_primitives::types::{OrderState, OrderUpdate, TradeEvent};
@@ -114,8 +115,12 @@ impl PolkadexResponseHandler {
         }
     }
 
-    fn handle_trade_event(&self, _trade_event: TradeEvent) {
+    fn handle_trade_event(&self, trade_event: TradeEvent) {
         debug!("Received trade event from OpenFinex");
+        if let Err(e) = polkadex_gateway::settle_trade(trade_event) {
+            error!("[Error] in polkadex gateway settle trade: {:?}", e);
+        };
+
     }
 
     fn handle_request_response(&self, request_response: RequestResponse, request_id: RequestId) {
