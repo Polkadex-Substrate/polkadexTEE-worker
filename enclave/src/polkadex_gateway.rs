@@ -37,7 +37,11 @@ impl alloc::fmt::Display for GatewayError {
 pub trait PolkaDexGatewayCallback {
     fn process_cancel_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
+    fn process_create_order(
+        &self,
+        request_id: RequestId,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError>;
 }
 
 /// factory to create a callback impl, allows to hide implementation (keep private)
@@ -55,8 +59,12 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
         process_cancel_order(order_uuid)
     }
 
-    fn process_create_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError> {
-        Ok(())
+    fn process_create_order(
+        &self,
+        request_id: RequestId,
+        order_uuid: OrderUUID,
+    ) -> Result<(), GatewayError> {
+        process_create_order(request_id, order_uuid)
     }
 }
 
@@ -81,11 +89,6 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         proxy_acc: Option<AccountId>,
         order: Order,
     ) -> Result<(), GatewayError> {
-        // Authentication
-        // if let Err(e) = authenticate_user(main_account.clone(), proxy_acc) {
-        //     error!("Could not authenticate user due to: {:?}", e);
-        //     return Err(e);
-        // }; //TODO KSR Remove this
         authenticate_user(main_account.clone(), proxy_acc)?;
         basic_order_checks(&order)?;
         // Mutate Balances
@@ -230,8 +233,6 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
                 .price
                 .ok_or(GatewayError::LimitOrderPriceNotFound)?;
 
-            // TODO: Why are we converting the amounts here? The OpenFinex API is responsible for doing all the conversions?
-            // Even if we had to convert, we should not do a floating point conversion
             let amount =
                 ((price as f64) * ((cancelled_order.quantity as f64) / (UNIT as f64))) as u128;
 
