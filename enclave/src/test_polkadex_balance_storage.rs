@@ -96,3 +96,115 @@ pub fn test_set_reserve_balance() {
         .unwrap();
     assert_eq!(balance.reserved, 100u128);
 }
+
+//Test PolkadexBalanceStorage lock Methods
+#[allow(unused)]
+pub fn test_lock_storage_and_reserve_balance() {
+    initialize_dummy();
+    let main_account: AccountId = get_account("first_account");
+    let mut polkadex_balance_storage = PolkadexBalanceStorage::create();
+    polkadex_balance_storage.set_free_balance(AssetId::POLKADEX, main_account.clone(), 100u128);
+    lock_storage_and_reserve_balance(&main_account.clone(), AssetId::POLKADEX, 50u128);
+    assert_eq!(
+        lock_storage_and_get_balances(main_account, AssetId::POLKADEX),
+        Ok(Balances::from(50u128, 50u128))
+    )
+}
+
+#[allow(unused)]
+pub fn test_lock_storage_unreserve_balance() {
+    initialize_dummy();
+    let main_account: AccountId = get_account("first_account");
+    assert_eq!(
+        lock_storage_and_reserve_balance(&main_account.clone(), AssetId::POLKADEX, 100u128),
+        Ok(())
+    );
+    lock_storage_unreserve_balance(&main_account.clone(), AssetId::POLKADEX, 50u128);
+    assert_eq!(
+        lock_storage_and_get_balances(main_account, AssetId::POLKADEX),
+        Ok(Balances::from(50u128, 50u128))
+    )
+}
+
+#[allow(unused)]
+pub fn test_lock_storage_and_initialize_balance() {
+    initialize_dummy();
+    let main_account: AccountId = get_account("first_account");
+    assert_eq!(
+        lock_storage_and_initialize_balance(main_account.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    assert_eq!(
+        lock_storage_and_get_balances(main_account, AssetId::POLKADEX),
+        Ok(Balances::from(0u128, 0u128))
+    )
+}
+
+#[allow(unused)]
+pub fn test_lock_storage_and_deposit() {
+    initialize_dummy();
+    let main_account: AccountId = get_account("first_account");
+    assert_eq!(
+        lock_storage_and_initialize_balance(main_account.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    lock_storage_and_deposit(main_account.clone(), AssetId::POLKADEX, 50u128);
+    assert_eq!(
+        lock_storage_and_get_balances(main_account, AssetId::POLKADEX),
+        Ok(Balances::from(50u128, 0u128))
+    )
+}
+
+#[allow(unused)]
+pub fn test_lock_storage_and_withdraw() {
+    initialize_dummy();
+    let main_account: AccountId = get_account("first_account");
+    assert_eq!(
+        lock_storage_and_initialize_balance(main_account.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    assert_eq!(
+        lock_storage_and_deposit(main_account.clone(), AssetId::POLKADEX, 100u128),
+        Ok(())
+    );
+    lock_storage_and_withdraw(main_account.clone(), AssetId::POLKADEX, 50u128);
+    assert_eq!(
+        lock_storage_and_get_balances(main_account, AssetId::POLKADEX),
+        Ok(Balances::from(50u128, 0u128))
+    )
+}
+
+#[allow(unused)]
+pub fn test_lock_storage_transfer_balance() {
+    initialize_dummy();
+    let main_account: AccountId = get_account("first_account");
+    let secondary_account: AccountId = get_account("second_account");
+    assert_eq!(
+        lock_storage_and_initialize_balance(main_account.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    assert_eq!(
+        lock_storage_and_initialize_balance(secondary_account.clone(), AssetId::POLKADEX),
+        Ok(())
+    );
+    assert_eq!(
+        lock_storage_and_deposit(main_account.clone(), AssetId::POLKADEX, 100u128),
+        Ok(())
+    );
+    lock_storage_transfer_balance(
+        &main_account.clone(),
+        &secondary_account.clone(),
+        AssetId::POLKADEX,
+        50u128,
+    );
+    assert_eq!(
+        (
+            lock_storage_and_get_balances(main_account, AssetId::POLKADEX),
+            lock_storage_and_get_balances(secondary_account, AssetId::POLKADEX)
+        ),
+        (
+            Ok(Balances::from(50u128, 0u128)),
+            Ok(Balances::from(50u128, 0u128))
+        )
+    )
+}

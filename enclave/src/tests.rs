@@ -122,6 +122,12 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_polkadex_balance_storage::test_withdraw,
         test_polkadex_balance_storage::test_set_free_balance,
         test_polkadex_balance_storage::test_set_reserve_balance,
+        test_polkadex_balance_storage::test_lock_storage_and_initialize_balance,
+        test_polkadex_balance_storage::test_lock_storage_and_reserve_balance,
+        test_polkadex_balance_storage::test_lock_storage_unreserve_balance,
+        test_polkadex_balance_storage::test_lock_storage_and_deposit,
+        test_polkadex_balance_storage::test_lock_storage_and_withdraw,
+        test_polkadex_balance_storage::test_lock_storage_transfer_balance,
         // Polkadex Proxy Storage Test Cases
         test_proxy::test_check_if_main_account_registered,
         test_proxy::test_check_if_proxy_registered,
