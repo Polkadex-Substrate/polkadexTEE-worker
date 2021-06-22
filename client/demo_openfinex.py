@@ -191,32 +191,37 @@ if __name__ == '__main__':
     register_account(bob)
 
     #2 Alice and Bob both create and register a proxy account
-    register_proxy(alice, aliceIco)
-    register_proxy(bob, bobIco)
+    #register_proxy(alice, aliceIco)
+    #register_proxy(bob, bobIco)
 
     #3 Alice deposits 100 tokenA
-    deposit(alice, 100_000_000_000_000_000_000, tokenA)
+    deposit(alice, 500_000_000_000_000_000_000, tokenA)
+    deposit(alice, 0, tokenB)
 
     #4 Bob deposits 100 tokenB
-    deposit(bob, 100_000_000_000_000_000_000, tokenB)
+    deposit(bob, 500_000_000_000_000_000_000, tokenB)
+    deposit(bob, 0, tokenA)
 
-    await_block() # wait some time to ensure enclave has read new block from main chain
+    #await_block() # wait some time to ensure enclave has read new block from main chain
     direct_get_balance(alice, tokenA)
     direct_get_balance(bob, tokenB)
 
     #5 Alice places a limit order selling 50 tokenA at a limit of 40 tokenB
-    direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 40_000_000_000_000_000_000)
+    direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
 
     #6 Bob places a limit order buying 50 tokenA at a limit of 60 tokenB
-    direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 60_000_000_000_000_000_000)
+    direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
 
     #7 The matching engine clears the match, sends it to the gateway
-
     #8 The gateway settles the match, publishes all details
 
+    #await_block() # wait some time to matching engine had some time
     #9 The offchain balance of Alice is 50 tokenA plus 50 tokenB
-
+    direct_get_balance(alice, tokenA)
+    direct_get_balance(alice, tokenB)
     #10 The offchain balance of Bob is 50 tokenA plus 50 tokenB
+    direct_get_balance(bob, tokenA)
+    direct_get_balance(bob, tokenB)
 
     #11 Alice withdraws all her tokenB through direct call to gateway
 

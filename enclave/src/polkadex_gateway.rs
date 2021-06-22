@@ -114,6 +114,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         proxy_acc: Option<AccountId>,
         order: Order,
     ) -> Result<(), GatewayError> {
+        debug!("Received Order: {:?}", order);
         authenticate_user(main_account.clone(), proxy_acc)?;
         basic_order_checks(&order)?;
         // Mutate Balances
