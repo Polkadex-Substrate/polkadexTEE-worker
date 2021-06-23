@@ -199,38 +199,38 @@ if __name__ == '__main__':
 
     #3 Alice deposits 100 tokenA
     deposit(alice, 500_000_000_000_000_000_000, tokenA)
-    deposit(alice, 500_000_000_000_000_000_000, tokenB)
 
     #4 Bob deposits 100 tokenB
     deposit(bob, 500_000_000_000_000_000_000, tokenB)
-    deposit(bob, 500_000_000_000_000_000_000, tokenA)
 
     #await_block() # wait some time to ensure enclave has read new block from main chain
     direct_get_balance(alice, tokenA)
     direct_get_balance(bob, tokenB)
 
     #5 Alice places a limit order selling 50 tokenA at a limit of 40 tokenB
-     #direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
+    direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
+    await_block()
 
     #6 Bob places a limit order buying 50 tokenA at a limit of 60 tokenB
-     #direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
+    direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
+    await_block()
 
     #7 The matching engine clears the match, sends it to the gateway
     #8 The gateway settles the match, publishes all details
 
-    #await_block() # wait some time to matching engine had some time
+    await_block() # wait some time to matching engine had some time
     #9 The offchain balance of Alice is 50 tokenA plus 50 tokenB
-    #direct_get_balance(alice, tokenA)
-    #direct_get_balance(alice, tokenB)
+    direct_get_balance(alice, tokenA)
+    direct_get_balance(alice, tokenB)
     #10 The offchain balance of Bob is 50 tokenA plus 50 tokenB
-    #direct_get_balance(bob, tokenA)
-    #direct_get_balance(bob, tokenB)
+    direct_get_balance(bob, tokenA)
+    direct_get_balance(bob, tokenB)
 
     #11 Alice withdraws all her tokenB through direct call to gateway
-    direct_withdraw(alice, None, tokenB, 50_000_000_000_000_000_000)
+    #direct_withdraw(alice, None, tokenB, 50_000_000_000_000_000_000)
 
     #12 Bob withdraws all his tokenA through indirect extrinsic
-    withdraw(bob, tokenA, 50_000_000_000_000_000_000)
+    #withdraw(bob, tokenA, 50_000_000_000_000_000_000)
 
     #13 The offchain balance of Alice is zero tokenB and Bob is zero tokenA
     direct_get_balance(alice, tokenB)
