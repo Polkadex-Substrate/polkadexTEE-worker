@@ -23,12 +23,13 @@ use log::*;
 use polkadex_sgx_primitives::types::{
     CancelOrder, Order, OrderSide, OrderType, OrderUUID, PriceAndQuantityType, TradeEvent, UserId,
 };
-use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
+use polkadex_sgx_primitives::{AccountId, AssetId};
 use std::sync::Arc;
 
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
 use crate::openfinex::openfinex_types::RequestId;
+use crate::polkadex_gateway;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
 use crate::polkadex_cache::cache_api::StaticStorageApi;
@@ -54,6 +55,11 @@ pub trait PolkaDexGatewayCallback {
         request_id: RequestId,
         order_uuid: OrderUUID,
     ) -> Result<(), GatewayError>;
+
+    fn settle_trade(
+        &self,
+        trade_event: TradeEvent
+    ) -> Result<(), GatewayError>;
 }
 
 /// factory to create a callback impl, allows to hide implementation (keep private)
@@ -77,6 +83,13 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
         order_uuid: OrderUUID,
     ) -> Result<(), GatewayError> {
         process_create_order(request_id, order_uuid)
+    }
+
+    fn settle_trade(
+        &self,
+        trade_event: TradeEvent,
+    ) -> Result<(), GatewayError> {
+        polkadex_gateway::settle_trade(trade_event)
     }
 }
 
