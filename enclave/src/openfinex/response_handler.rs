@@ -114,8 +114,12 @@ impl PolkadexResponseHandler {
         }
     }
 
-    fn handle_trade_event(&self, _trade_event: TradeEvent) {
+    fn handle_trade_event(&self, trade_event: TradeEvent) {
         debug!("Received trade event from OpenFinex");
+        if let Err(e) = self.polkadex_gateway_callback.settle_trade(trade_event) {
+            error!("[Error] in polkadex gateway settle trade: {:?}", e);
+        };
+
     }
 
     fn handle_request_response(&self, request_response: RequestResponse, request_id: RequestId) {

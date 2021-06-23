@@ -216,6 +216,9 @@ fn create_extrinsics(
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
         .map(|call| {
@@ -234,6 +237,9 @@ fn create_extrinsics(
             xt
         })
         .collect();
+
+    // update nonce storage
+    nonce_storage.update(nonce);
 
     Ok(extrinsics_buffer)
 }
@@ -444,6 +450,15 @@ pub unsafe extern "C" fn sync_chain(
     blocks_to_sync_size: usize,
     nonce: *const u32,
 ) -> sgx_status_t {
+
+    // FIXME: This design needs some more thoughts.
+    // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
+    // otherwise some extrsincs have high chance of being invalid.. not really good
+    // update nonce storage
+    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
+        error!("Locking and updating nonce failed. Error: {:?}", e);
+    };
+
     let mut blocks_to_sync_slice = slice::from_raw_parts(blocks_to_sync, blocks_to_sync_size);
 
     let blocks_to_sync: Vec<SignedBlock<Block>> = match Decode::decode(&mut blocks_to_sync_slice) {
@@ -460,11 +475,6 @@ pub unsafe extern "C" fn sync_chain(
     };
 
     let mut calls = Vec::<OpaqueCall>::new();
-
-    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
-        error!("Locking and updating nonce failed. Error: {:?}", e);
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
 
     debug!("Syncing chain relay!");
     if !blocks_to_sync.is_empty() {
@@ -1039,7 +1049,7 @@ fn handle_ocex_deposit(
 }
 
 fn handle_ocex_withdraw(
-    _calls: &mut Vec<OpaqueCall>,
+    calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
 ) -> SgxResult<()> {
     let (call, main_acc, token, amount) = xt.function.clone();
@@ -1060,7 +1070,12 @@ fn handle_ocex_withdraw(
                     token.clone(),
                     amount,
                 ) {
-                    Ok(()) => execute_ocex_release_extrinsic(main_acc.clone(), token, amount), // TODO: How to get nonce?
+                    Ok(()) =>  {
+                        // Compose the release extrinsic
+                        let xt_block = [OCEX_MODULE, OCEX_RELEASE];
+                        calls.push(OpaqueCall((xt_block, token, amount, main_acc).encode()));
+                        return Ok(())
+                    },
                     Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
                 }
             } else {

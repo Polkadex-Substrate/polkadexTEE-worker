@@ -41,6 +41,10 @@ impl NonceHandler {
     pub fn increment(&mut self) {
         self.nonce += 1;
     }
+
+    pub fn update(&mut self, nonce: u32) {
+        self.nonce = nonce;
+    }
 }
 
 pub fn create_in_memory_nonce_storage() -> SgxResult<()> {
@@ -64,6 +68,7 @@ pub fn load_nonce_storage() -> SgxResult<&'static SgxMutex<NonceHandler>> {
 pub fn lock_and_update_nonce(nonce: u32) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    debug!("update to new nonce: {:?}", nonce);
     if let false = nonce_storage.is_initialized {
         nonce_storage.nonce = nonce;
         nonce_storage.is_initialized = true;
