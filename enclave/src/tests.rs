@@ -23,12 +23,12 @@ use crate::openfinex;
 use crate::polkadex_cache;
 use crate::rpc;
 use crate::rsa3072;
+use crate::ss58check;
 use crate::state;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
 use crate::test_proxy;
 use crate::top_pool;
-use crate::ss58check;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
 use log::*;
@@ -130,6 +130,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_polkadex_balance_storage::test_lock_storage_and_deposit,
         test_polkadex_balance_storage::test_lock_storage_and_withdraw,
         test_polkadex_balance_storage::test_lock_storage_transfer_balance,
+		test_polkadex_balance_storage::test_increase_free_balance,
         // Polkadex Proxy Storage Test Cases
         test_proxy::test_check_if_main_account_registered,
         test_proxy::test_check_if_proxy_registered,

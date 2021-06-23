@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-
 use crate::polkadex_gateway::GatewayError;
 use codec::Encode;
 use log::*;
@@ -24,9 +23,8 @@ use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::vec::Vec;
 
-use crate::polkadex_balance_storage::polkadex_balance_key::*;
 use crate::polkadex_balance_storage::balances::*;
-
+use crate::polkadex_balance_storage::polkadex_balance_key::*;
 
 pub type EncodedKey = Vec<u8>;
 
@@ -171,7 +169,7 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
         {
             Some(balance) => {
                 balance.free = balance
@@ -181,8 +179,8 @@ impl PolkadexBalanceStorage {
                 Ok(())
             }
             None => {
-                error!("Account Id or Asset Id not available [here]");
-                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+                self.initialize_balance(token, acc, amt);
+                Ok(())
             }
         }
     }

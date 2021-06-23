@@ -215,3 +215,18 @@ pub fn lock_storage_transfer_balance(
     balance_storage.increase_free_balance(token.clone(), to.clone(), amount)?;
     Ok(())
 }
+// Ony for testing
+pub fn lock_storage_increase_free_balance(
+    token: AssetId,
+    account: AccountId,
+    amount: u128,
+) -> Result<(), GatewayError> {
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> =
+        mutex.lock().map_err(|_| {
+            error!("Could not lock mutex of balance storage");
+            GatewayError::UnableToLock
+        })?;
+    balance_storage.increase_free_balance(token.clone(), account.clone(), amount)?;
+    Ok(())
+}
