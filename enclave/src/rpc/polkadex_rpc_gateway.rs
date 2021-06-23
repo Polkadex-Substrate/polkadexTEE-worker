@@ -24,6 +24,7 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
 use crate::polkadex_gateway::{authenticate_user, OpenfinexPolkaDexGateway, GatewayError};
+use crate::execute_ocex_release_extrinsic;
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
@@ -142,8 +143,8 @@ impl RpcGateway for PolkadexRpcGateway {
     }
 
     fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
-        match lock_storage_and_withdraw(main_account, token, amount) {
-            Ok(_) => Ok(()),
+        match lock_storage_and_withdraw(main_account.clone(), token, amount) {
+            Ok(_) => execute_ocex_release_extrinsic(main_account.clone(), token, amount),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
     }
