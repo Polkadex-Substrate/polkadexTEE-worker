@@ -92,11 +92,16 @@ def read_mrenclave():
 def await_block():
     subprocess.run(cli + ["listen", "-b", "1"], stdout=subprocess.PIPE)
 
+def balance(acc):
+    """ ./substratee-client -p 9994 -P 2094 balance //Alice """
+    ret = subprocess.run(cli + ["balance"] + [acc], stdout=subprocess.PIPE)
+    print("Balance of " + acc + " " + str(ret.stdout))
+    return ret.stdout.decode("utf-8").strip()
+
 def register_account(acc):
     """ ./substratee-client -p 9994 -P 2094 register-account //Alice """
     print("Registering " + acc)
     ret = subprocess.run(cli + ["register-account"] + [acc], stdout=subprocess.PIPE)
-    #print(ret.stdout.strip())
     await_block()
     return ret.stdout.decode("utf-8").strip()
 
@@ -104,7 +109,6 @@ def register_proxy(acc, proxy):
     """ ./substratee-client -p 9994 -P 2094 register-proxy //Alice //AliceIcognito"""
     print("Registering proxy account " + proxy + " for " + acc)
     ret = subprocess.run(cli + ["register-proxy"] + [acc] + [proxy], stdout=subprocess.PIPE)
-    #print(ret.stdout.strip())
     await_block()
     return ret.stdout.decode("utf-8").strip()
 
@@ -112,11 +116,10 @@ def deposit(acc, quantity, token):
     """ ./substratee-client -p 9994 -P 2094 deposit --accountid=//Alice --tokenid=polkadex --quantity=10000 """
     print("Deposit " + str(quantity/PRECISION) + " " + token + " to " + acc)
     ret = subprocess.run(cli + ["deposit"] + acc_arg(acc) + quantity_arg(quantity) + token_arg(token), stdout=subprocess.PIPE)
-    #print(ret.stdout.strip())
     await_block()
     return ret.stdout.decode("utf-8").strip()
 
-def withdraw(acc, quantity, token):
+def withdraw(acc, token, quantity):
     """  ./substratee-client -p 9994 -P 2094 withdraw --accountid=//Bob --tokenid=dot --quantity=1000 """
     print("Withdraw " + str(quantity) + " " + token + " from " + acc)
     ret = subprocess.run(cli + ["withdraw"] + acc_arg(acc) + quantity_arg(quantity) + token_arg(token), stdout=subprocess.PIPE)
@@ -148,7 +151,7 @@ def direct_place_order(acc, proxy, base, quote, side, quantity, ordertype, price
 
 def direct_cancel_order(acc, proxy, base, quote, orderid):
     """ ./substratee-client -p 9994 -P 2094 trusted cancel_order --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
-    --orderid=oijef03jaf --mrenclave $MRENCLAVE --direct """
+    --orderid=oijef03jaf --marketbase=polkadex --marketquote=dot --mrenclave $MRENCLAVE --direct """
     if proxy:
         accs = acc_arg(acc) + proxy_arg(proxy)
     else:
@@ -156,7 +159,7 @@ def direct_cancel_order(acc, proxy, base, quote, orderid):
     market_args = base_arg(base) + quote_arg(quote) + markettype
     order_args = orderid_arg(orderid)
 
-    ret = subprocess.run(cli + ["trusted", "place_order"] + accs + market_args + order_args + direct_tail(), stdout=subprocess.PIPE)
+    ret = subprocess.run(cli + ["trusted", "cancel_order"] + accs + market_args + order_args + direct_tail(), stdout=subprocess.PIPE)
     print(ret.stdout)
     return ret.stdout.decode("utf-8").strip()
 
@@ -170,7 +173,7 @@ def direct_withdraw(acc, proxy, token, quantity):
         print("Withdrawing " + str(quantity) + token + " from " + acc)
         accs = acc_arg(acc)
 
-    ret = subprocess.run(cli + ["trusted", "place_order"] + accs + quantity_arg(quantity) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
+    ret = subprocess.run(cli + ["trusted", "withdraw"] + accs + quantity_arg(quantity) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
     print(ret.stdout)
     return ret.stdout.decode("utf-8").strip()
 
@@ -196,37 +199,43 @@ if __name__ == '__main__':
 
     #3 Alice deposits 100 tokenA
     deposit(alice, 500_000_000_000_000_000_000, tokenA)
-    deposit(alice, 0, tokenB)
+    deposit(alice, 500_000_000_000_000_000_000, tokenB)
 
     #4 Bob deposits 100 tokenB
     deposit(bob, 500_000_000_000_000_000_000, tokenB)
-    deposit(bob, 0, tokenA)
+    deposit(bob, 500_000_000_000_000_000_000, tokenA)
 
     #await_block() # wait some time to ensure enclave has read new block from main chain
     direct_get_balance(alice, tokenA)
     direct_get_balance(bob, tokenB)
 
     #5 Alice places a limit order selling 50 tokenA at a limit of 40 tokenB
-    direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
+     #direct_place_order(alice, None, tokenA, tokenB, 'ask', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
 
     #6 Bob places a limit order buying 50 tokenA at a limit of 60 tokenB
-    direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
+     #direct_place_order(bob, None, tokenA, tokenB, 'bid', 50_000_000_000_000_000_000, 'limit', 1_000_000_000_000_000_000)
 
     #7 The matching engine clears the match, sends it to the gateway
     #8 The gateway settles the match, publishes all details
 
     #await_block() # wait some time to matching engine had some time
     #9 The offchain balance of Alice is 50 tokenA plus 50 tokenB
-    direct_get_balance(alice, tokenA)
-    direct_get_balance(alice, tokenB)
+    #direct_get_balance(alice, tokenA)
+    #direct_get_balance(alice, tokenB)
     #10 The offchain balance of Bob is 50 tokenA plus 50 tokenB
-    direct_get_balance(bob, tokenA)
-    direct_get_balance(bob, tokenB)
+    #direct_get_balance(bob, tokenA)
+    #direct_get_balance(bob, tokenB)
 
     #11 Alice withdraws all her tokenB through direct call to gateway
+    direct_withdraw(alice, None, tokenB, 50_000_000_000_000_000_000)
 
     #12 Bob withdraws all his tokenA through indirect extrinsic
+    withdraw(bob, tokenA, 50_000_000_000_000_000_000)
 
     #13 The offchain balance of Alice is zero tokenB and Bob is zero tokenA
+    direct_get_balance(alice, tokenB)
+    direct_get_balance(bob, tokenA)
 
     #14 The onchain balance of Alice is 50 tokenB and Bob is 50 tokenA
+    balance(alice)
+    balance(bob)
