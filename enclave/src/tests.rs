@@ -19,6 +19,7 @@
 use crate::aes;
 use crate::attestation;
 use crate::ed25519;
+use crate::happy_path;
 use crate::openfinex;
 use crate::polkadex_cache;
 use crate::rpc;
@@ -138,6 +139,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,
         test_proxy::test_remove_main_account,
+		happy_path::test_happy_path,
 
         // Polkadex Orderbook Storage Test Cases
         test_orderbook_storage::test_create_orderbook_storage,

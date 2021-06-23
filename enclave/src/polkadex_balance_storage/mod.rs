@@ -72,7 +72,10 @@ pub fn lock_storage_and_reserve_balance(
         }
     };
     if balance.free < amount {
-        error!("Not enough free balance: Expected {:?}, available: {:?} of token {:?}", amount, balance.free, token);
+        error!(
+            "Not enough free balance: Expected {:?}, available: {:?} of token {:?}",
+            amount, balance.free, token
+        );
         return Err(GatewayError::NotEnoughFreeBalance);
     }
     balance_storage.set_free_balance(
@@ -107,6 +110,7 @@ pub fn lock_storage_unreserve_balance(
             return Err(GatewayError::NotEnoughFreeBalance);
         }
     };
+    error!(">>{:?} > {:?}", balance.reserved.clone(), amount.clone());
     if balance.reserved < amount {
         error!("Unable to un-reserve balance greater than reserved balance");
         return Err(GatewayError::NotEnoughReservedBalance);
