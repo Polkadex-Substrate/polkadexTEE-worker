@@ -3,7 +3,8 @@ use crate::polkadex::add_main_account;
 use crate::polkadex_balance_storage::{
     lock_storage_and_deposit, lock_storage_and_initialize_balance,
 };
-use crate::polkadex_gateway::settle_trade;
+use crate::polkadex_gateway::lock_storage_get_cache_nonce;
+use crate::polkadex_gateway::{process_create_order, settle_trade};
 use crate::polkadex_orderbook_storage::lock_storage_and_add_order;
 use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
 use polkadex_sgx_primitives::accounts::get_account;
@@ -75,17 +76,18 @@ pub fn test_happy_path() {
         .place_order(alice.clone(), None, ask_limit_order.clone())
         .is_ok());
 
+    let ask_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
+    let ask_limit_order_uuid: OrderUUID = (200..202).collect();
+    process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone());
+
     // Place Bid Limit Order
     assert!(gateway
         .place_order(bob.clone(), None, buy_limit_order.clone())
         .is_ok());
 
-    //Add Orders into orderbook
-    let ask_limit_order_uuid: OrderUUID = (200..202).collect();
-    assert!(lock_storage_and_add_order(ask_limit_order, ask_limit_order_uuid.clone()).is_ok());
-
+    let bid_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let buy_limit_order_uuid: OrderUUID = (202..204).collect();
-    assert!(lock_storage_and_add_order(buy_limit_order, buy_limit_order_uuid.clone()).is_ok());
+    process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone());
 
     //Order Event
     let order_event = TradeEvent {
