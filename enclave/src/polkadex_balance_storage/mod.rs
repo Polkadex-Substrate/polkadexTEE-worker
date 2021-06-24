@@ -110,7 +110,6 @@ pub fn lock_storage_unreserve_balance(
             return Err(GatewayError::NotEnoughFreeBalance);
         }
     };
-    error!(">>{:?} > {:?}", balance.reserved.clone(), amount.clone());
     if balance.reserved < amount {
         error!("Unable to un-reserve balance greater than reserved balance");
         return Err(GatewayError::NotEnoughReservedBalance);
