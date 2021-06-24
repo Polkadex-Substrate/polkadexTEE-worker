@@ -85,6 +85,10 @@ impl CreateOrderCache {
     pub fn request_id(&self) -> RequestId {
         self.request_id
     }
+
+    pub fn get_order(&self, request_id: RequestId) -> Option<Order> {
+        self.order_map.get(&request_id).cloned()
+    }
 }
 
 impl CreateOrderCache {

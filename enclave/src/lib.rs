@@ -85,14 +85,21 @@ use utils::write_slice_and_whitespace_pad;
 
 mod aes;
 mod attestation;
+pub mod cert;
 mod constants;
 mod ed25519;
+mod happy_path;
+pub mod hex;
 mod io;
 mod ipfs;
+pub mod nonce_handler;
+pub mod openfinex;
 mod polkadex;
 mod polkadex_balance_storage;
+pub mod polkadex_cache;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
+pub mod rpc;
 mod rsa3072;
 mod ss58check;
 mod state;
@@ -100,17 +107,10 @@ mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
 mod test_polkadex_gateway;
 mod test_proxy;
-mod utils;
-
-pub mod cert;
-pub mod hex;
-pub mod nonce_handler;
-pub mod openfinex;
-pub mod polkadex_cache;
-pub mod rpc;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
+mod utils;
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 
@@ -372,13 +372,11 @@ pub unsafe extern "C" fn init_chain_relay(
     if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
         error!("Creating in memory nonce storage failed. Error: {:?}", e);
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
-
     };
 
     if let Err(e) = polkadex_balance_storage::create_in_memory_balance_storage() {
         error!("Creating in memory balance storage failed. Error: {:?}", e);
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
-
     };
 
     sgx_status_t::SGX_SUCCESS
@@ -450,7 +448,6 @@ pub unsafe extern "C" fn sync_chain(
     blocks_to_sync_size: usize,
     nonce: *const u32,
 ) -> sgx_status_t {
-
     // FIXME: This design needs some more thoughts.
     // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
     // otherwise some extrsincs have high chance of being invalid.. not really good
@@ -1070,12 +1067,12 @@ fn handle_ocex_withdraw(
                     token.clone(),
                     amount,
                 ) {
-                    Ok(()) =>  {
+                    Ok(()) => {
                         // Compose the release extrinsic
                         let xt_block = [OCEX_MODULE, OCEX_RELEASE];
                         calls.push(OpaqueCall((xt_block, token, amount, main_acc).encode()));
-                        return Ok(())
-                    },
+                        return Ok(());
+                    }
                     Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
                 }
             } else {

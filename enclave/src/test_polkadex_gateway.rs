@@ -101,7 +101,12 @@ fn setup(main: AccountId) {
     assert!(lock_storage_and_deposit(main.clone(), AssetId::DOT, 100 * UNIT).is_ok());
 }
 
-fn check_balance(free: u128, reserved: u128, main: AccountId, token: AssetId) -> Result<(), u32> {
+pub fn check_balance(
+    free: u128,
+    reserved: u128,
+    main: AccountId,
+    token: AssetId,
+) -> Result<(), u32> {
     let balance = lock_storage_and_get_balances(main, token).unwrap();
     if balance.free != free {
         error!("Expected Free balance: {}, Given: {}", balance.free, free);
