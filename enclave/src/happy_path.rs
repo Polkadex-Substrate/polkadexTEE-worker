@@ -90,7 +90,7 @@ pub fn test_happy_path() {
     process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone());
 
     //Order Event
-    let order_event = TradeEvent {
+    let trade_event = TradeEvent {
         market_id: MarketId {
             base: token_a,
             quote: token_b,
