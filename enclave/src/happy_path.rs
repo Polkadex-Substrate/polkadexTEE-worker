@@ -108,7 +108,7 @@ pub fn test_happy_path() {
         maker_side: OrderSide::ASK,             //Ask
         timestamp: 23,
     };
-    assert_eq!(settle_trade(order_event), Ok(()));
+    assert_eq!(settle_trade(trade_event), Ok(()));
     assert_eq!(check_balance(450 * UNIT, 0, alice.clone(), token_a), Ok(()));
 
     assert_eq!(
