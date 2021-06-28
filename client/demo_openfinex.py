@@ -204,6 +204,7 @@ if __name__ == '__main__':
     deposit(bob, 500_000_000_000_000_000_000, tokenB)
 
     #await_block() # wait some time to ensure enclave has read new block from main chain
+    await_block()
     direct_get_balance(alice, tokenA)
     direct_get_balance(bob, tokenB)
 
@@ -227,10 +228,11 @@ if __name__ == '__main__':
     direct_get_balance(bob, tokenB)
 
     #11 Alice withdraws all her tokenB through direct call to gateway
-    #direct_withdraw(alice, None, tokenB, 50_000_000_000_000_000_000)
+    direct_withdraw(alice, None, tokenB, 50_000_000_000_000_000_000)
 
     #12 Bob withdraws all his tokenA through indirect extrinsic
-    #withdraw(bob, tokenA, 50_000_000_000_000_000_000)
+    withdraw(bob, tokenA, 50_000_000_000_000_000_000)
+    await_block() # wait some time to matching engine had some time
 
     #13 The offchain balance of Alice is zero tokenB and Bob is zero tokenA
     direct_get_balance(alice, tokenB)
