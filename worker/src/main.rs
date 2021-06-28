@@ -678,7 +678,7 @@ fn init_shard(shard: &ShardIdentifier) {
 // get the public signing key of the TEE
 fn enclave_account(eid: sgx_enclave_id_t) -> AccountId32 {
     let tee_public = enclave_signing_key(eid).unwrap();
-    trace!(
+    debug!(
         "[+] Got ed25519 account of TEE = {}",
         tee_public.to_ss58check()
     );
@@ -706,7 +706,7 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair>, accountid: &AccountId3
         api.signer = Some(alice);
 
         println!("[+] bootstrap funding Enclave form Alice's funds");
-        let xt = api.balance_transfer(GenericAddress::Id(accountid.clone()), 1_000_000_000_000);
+        let xt = api.balance_transfer(GenericAddress::Id(accountid.clone()), 1000);
         let xt_hash = api
             .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
             .unwrap();
