@@ -23,7 +23,7 @@ use crate::openfinex::response_parser::TcpResponseParser;
 use crate::openfinex::string_serialization::ResponseDeserializerImpl;
 use crate::polkadex_cache::market_cache::LocalMarketCacheFactory;
 use crate::polkadex_gateway::PolkaDexGatewayCallbackFactory;
-use client_utils::{Opcode, Payload};
+use client_utils::{Opcode, Payload, Message};
 use codec::Decode;
 use lazy_static::lazy_static;
 use log::*;
@@ -150,8 +150,9 @@ impl TcpClient {
     /// We're ready to do a read.
     fn do_read(&mut self) -> io::Result<usize> {
         //FIXME: maybe we can use up buffer read here?
-        let mut buffer = [0 as u8; 1028]; // Dummy buffer. will not be necessary with tls client
-        let rc = self.socket.read(&mut buffer);
+        //let mut buffer = [0 as u8; 1028]; // Dummy buffer. will not be necessary with tls client
+        let mut start_bytes = [0 as u8; 2];
+        let rc = self.socket.read(&mut start_bytes);
         if rc.is_err() {
             error!("TLS read error: {:?}", rc);
             //self.closing = true;
@@ -164,10 +165,13 @@ impl TcpClient {
             //self.clean_closure = true;
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "EOF"));
         }
-        if buffer[0] == 72 {
+        if start_bytes[0] == 72 {
             // parse http response
+            let mut buffer = [0 as u8; 512];
+            self.socket.read(&mut buffer);
+
             debug!(
-                "Received Http response: {}",
+                "Received Http response: HT{}",
                 String::from_utf8_lossy(&buffer)
             );
             // handshake successful, send a subscription:
@@ -175,8 +179,8 @@ impl TcpClient {
             self.send_markets_request();
         } else {
             // direct tcp message
-            let fin = client_utils::last_frame(buffer[0]);
-            if let Some(message) = client_utils::read_tcp_buffer(buffer.to_vec()) {
+            let fin = client_utils::last_frame(start_bytes[0]);
+            if let Some(message) = self.read_tcp_buffer(start_bytes.to_vec()) {
                 match message.opcode {
                     Opcode::PingOp => {
                         self.send_pong();
@@ -204,8 +208,109 @@ impl TcpClient {
             }
 
         }
-        Ok(buffer.len())
+        Ok(start_bytes.len())
     }
+
+    fn read_tcp_buffer(&mut self, start_bytes: Vec<u8>) -> Option<Message> {
+        // https://stackoverflow.com/questions/41115870/is-binary-opcode-encoding-and-decoding-implementation-specific-in-websockets
+        //let fin = buf1[0] >> 7; // TODO check this, required for handling fragmented messages
+        let rsv = (start_bytes[0] >> 4) & 0b0111;
+        if rsv != 0 {
+            return None;
+        }
+        let opcode: Opcode = (start_bytes[0] & 0b0000_1111).into();
+
+        // Take the 2nd byte and read every bit except the Most significant bit
+        let pay_len = start_bytes[1] & 0b0111_1111;
+
+        let payload_length: u64 = match pay_len {
+            127 => {
+                // Your length is a uint64 of byte 3 to 8
+                let mut length_buffer = [0 as u8; 8];
+                if let Err(rc) = self.socket.read(&mut length_buffer) {
+                    error!("TLS read error: {:?}", rc);
+                    return None;
+                };
+                 u64::from_be_bytes(length_buffer)
+            },
+            126 => {
+                // Your length is an uint16 of byte 3 and 4
+                let mut length_buffer = [0 as u8; 2];
+                if let Err(rc) = self.socket.read(&mut length_buffer) {
+                    error!("TLS read error: {:?}", rc);
+                    return None;
+                };
+                u16::from_be_bytes(length_buffer) as u64
+            },
+            // Byte is 125 or less thats your length
+            _ => pay_len as u64
+        };
+
+        /* let (payload_length, payload_buf) = match pay_len {
+            127 => {
+                // Your length is a uint64 of byte 3 to 8
+                error!("buffer is too small for this long message..")
+                let slice: [u8; 8] = buffer[2 .. 10].to_vec().try_into()
+                    .unwrap_or_else( |_| {error!("Invalid payload length"); [0; 8]});
+                let length = u64::from_be_bytes(slice);
+                (length, buffer[10 .. (length+10) as usize].to_vec())
+            },
+            126 => {
+                // Your length is an uint16 of byte 3 and 4
+                let slice: [u8; 2] = buffer[2 .. 4].to_vec().try_into()
+                    .unwrap_or_else( |_| {error!("Invalid payload length"); [0; 2]});
+                let length = u16::from_be_bytes(slice);
+                (length as u64, buffer[4 .. (length+4) as usize].to_vec())
+            }
+            // Byte is 125 or less thats your length
+            _   => (pay_len as u64, buffer[2 .. (pay_len+2) as usize].to_vec())
+        }; */
+        debug!("payload_length: {}", payload_length);
+        let mut payload_buf = vec![0; payload_length as usize];
+        if payload_length > 0 {
+            if let Err(rc) = self.socket.read(&mut payload_buf) {
+                error!("TLS read error: {:?}", rc);
+                return None;
+            };
+        }
+
+        // payloads larger than 125 bytes are not allowed for control frames
+        match opcode {
+            Opcode::CloseOp | Opcode::PingOp if payload_length > 125 => panic!(),
+            _ => ()
+        }
+
+        // No mask from server
+        /* let masking_key = try!(stream.read_exact(4));
+        let mut masked_payload_buf = try!(stream.read_exact(payload_length as uint));
+        // unmask the payload in-place
+        for (i, octet) in masked_payload_buf.iter_mut().enumerate() {
+            *octet = *octet ^ masking_key[i % 4];
+        }
+        let payload_buf = masked_payload_buf; */
+
+        let payload: Payload = match opcode {
+            Opcode::TextOp   => Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap()),
+            Opcode::BinaryOp => Payload::Binary(payload_buf.to_vec()),
+            Opcode::CloseOp  => Payload::Empty,
+            Opcode::PingOp   => {
+                debug!("Ping");
+                Payload::Binary(payload_buf.to_vec())
+
+            },
+            Opcode::PongOp   => {
+                debug!("Pong");
+                Payload::Binary(payload_buf.to_vec())
+            },
+            _        => {
+                Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap())
+            }, // ContinuationOp
+        };
+
+        // for now only take text option
+        return Some(Message::new(payload, opcode))
+    }
+
     fn append_string_payload(&mut self, payload: Payload) {
         debug!("Appending to payload: {:?}", payload.clone());
         if let Payload::Text(new_text) = payload {
