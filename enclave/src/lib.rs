@@ -33,7 +33,7 @@ extern crate sgx_tstd as std;
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
-use crate::nonce_handler::NonceHandler;
+use crate::nonce_handler::{NonceHandler, lock_storage_and_get_nonce};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -216,8 +216,8 @@ fn create_extrinsics(
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
-    let mutex = nonce_handler::load_nonce_storage()?;
-    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+  //  let mutex = nonce_handler::load_nonce_storage()?;
+  //  let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
 
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
@@ -239,7 +239,7 @@ fn create_extrinsics(
         .collect();
 
     // update nonce storage
-    nonce_storage.update(nonce);
+  //  nonce_storage.update(nonce);
 
     Ok(extrinsics_buffer)
 }
@@ -452,9 +452,10 @@ pub unsafe extern "C" fn sync_chain(
     // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
     // otherwise some extrsincs have high chance of being invalid.. not really good
     // update nonce storage
-    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
-        error!("Locking and updating nonce failed. Error: {:?}", e);
-    };
+
+  //  if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
+  //      error!("Locking and updating nonce failed. Error: {:?}", e);
+  //  };
 
     let mut blocks_to_sync_slice = slice::from_raw_parts(blocks_to_sync, blocks_to_sync_size);
 
@@ -1092,14 +1093,15 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     // Compose the release extrinsic
     let xt_block = [OCEX_MODULE, OCEX_RELEASE];
     let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
-    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
+    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc.clone()).encode());
 
     // Load the enclave's key pair
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
-    let mutex = nonce_handler::load_nonce_storage()?;
-    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    //let mutex = nonce_handler::load_nonce_storage()?;
+    //let &mut nonce_storage: &mut NonceHandler = mutex.lock().unwrap().read_nonce(acc).unwrap(); //TODO: Error handling
+    let mut nonce_storage = lock_storage_and_get_nonce(acc).unwrap();
     let nonce = nonce_storage.nonce;
 
     let xt: Vec<u8> = compose_extrinsic_offline!(

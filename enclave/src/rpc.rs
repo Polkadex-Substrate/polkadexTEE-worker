@@ -31,6 +31,8 @@ pub mod rpc_info;
 mod polkadex_rpc_gateway;
 pub mod rpc_cancel_order;
 pub mod rpc_get_balance;
+pub mod rpc_get_nonce;
+pub mod rpc_increment_nonce;
 pub mod rpc_place_order;
 pub mod rpc_withdraw;
 pub mod trusted_operation_verifier;

@@ -23,15 +23,18 @@ use log::error;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
-use crate::polkadex_gateway::{authenticate_user, OpenfinexPolkaDexGateway, GatewayError};
+
+use crate::nonce_handler::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
+
 use crate::execute_ocex_release_extrinsic;
+use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
+use crate::openfinex::openfinex_client::OpenFinexClientInterface;
+use crate::polkadex_gateway::{authenticate_user, GatewayError, OpenfinexPolkaDexGateway};
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
-use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
-use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
 pub trait RpcGateway: Send + Sync {
@@ -51,6 +54,12 @@ pub trait RpcGateway: Send + Sync {
 
     /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
+
+    /// get the nonce for a given account
+    fn get_nonce(&self, main_account: AccountId) -> SgxResult<u32>;
+
+    /// increment the nonce for a given account and returns the new one
+    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<u32>;
 
     /// place an order
     fn place_order(
@@ -114,17 +123,42 @@ impl RpcGateway for PolkadexRpcGateway {
         }
     }
 
+    fn get_nonce(&self, main_account: AccountId) -> SgxResult<u32> {
+        match lock_storage_and_get_nonce(main_account) {
+            Ok(nonce) => {
+                if let true = nonce.is_initialized {
+                    Ok(nonce.nonce)
+                } else {
+                    Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+                }
+            }
+            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
+    }
+
+    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<u32> {
+        lock_storage_and_increment_nonce(main_account.clone());
+        match lock_storage_and_get_nonce(main_account) {
+            Ok(nonce) => {
+                if let true = nonce.is_initialized {
+                    Ok(nonce.nonce)
+                } else {
+                    Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+                }
+            }
+            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
+    }
+
     fn place_order(
         &self,
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
     ) -> Result<(), GatewayError> {
-        let gateway = OpenfinexPolkaDexGateway::new(
-            OpenFinexApiImpl::new(
-                OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
-            )
-        );
+        let gateway = OpenfinexPolkaDexGateway::new(OpenFinexApiImpl::new(
+            OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+        ));
         gateway.place_order(main_account, proxy_acc, order)
     }
 
@@ -134,11 +168,9 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_acc: Option<AccountId>,
         order: CancelOrder,
     ) -> Result<(), GatewayError> {
-        let gateway = OpenfinexPolkaDexGateway::new(
-            OpenFinexApiImpl::new(
-                OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
-            )
-        );
+        let gateway = OpenfinexPolkaDexGateway::new(OpenFinexApiImpl::new(
+            OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+        ));
         gateway.cancel_order(main_account, proxy_acc, order)
     }
 

@@ -31,6 +31,7 @@ use substratee_stf::{TrustedCall, TrustedOperation};
 pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
+    pub nonce_to_return: u32,
     pub order_uuid: Option<OrderUUID>,
 }
 
@@ -40,6 +41,7 @@ impl RpcGatewayMock {
         RpcGatewayMock {
             do_authorize: false,
             balance_to_return: None,
+            nonce_to_return: 0,
             order_uuid: None,
         }
     }
@@ -49,6 +51,13 @@ impl RpcGatewayMock {
         get_balances_mock.balance_to_return = balances;
         get_balances_mock.do_authorize = do_authorize;
         get_balances_mock
+    }
+
+    pub fn mock_nonce(nonce: u32, do_authorize: bool) -> Self {
+        let mut get_nonce_mock = RpcGatewayMock::default();
+        get_nonce_mock.nonce_to_return = nonce;
+        get_nonce_mock.do_authorize = do_authorize;
+        get_nonce_mock
     }
 
     pub fn mock_place_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
@@ -102,6 +111,15 @@ impl RpcGateway for RpcGatewayMock {
             Some(b) => Ok(b.clone()),
             None => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
+    }
+
+    fn get_nonce(&self, _main_account: AccountId) -> SgxResult<u32> {
+        Ok(self.nonce_to_return)
+    }
+
+    fn increment_nonce(&self, _main_account: AccountId) -> SgxResult<u32> {
+        Ok(self.nonce_to_return)
+
     }
 
     fn place_order(
