@@ -28,6 +28,7 @@ git = "https://github.com/Polkadex-Substrate/substrate-api-client"
 [dependencies.substrate-client-keystore]
 git = "https://github.com/Polkadex-Substrate/substrate-api-client"
 
+
 [dependencies.serde]
 features = ["derive"]
 version = "1.0"
@@ -84,6 +85,10 @@ version = "3.0.0"
 
 [dependencies.polkadex-sgx-primitives]
 path = "../polkadex-primitives"
+
+[dependencies.orml-tokens]
+git = "https://github.com/Polkadex-Substrate/open-runtime-module-library.git"
+default-features = false
 
 #[patch.crates-io]
 #ed25519-dalek = { git = "https://github.com/scs/ed25519-dalek.git", branch = "no_std_sgx"}

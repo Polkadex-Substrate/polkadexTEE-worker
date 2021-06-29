@@ -35,14 +35,14 @@ use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
     pallet_substratee_registry::{Enclave, Request},
-    AccountId, BalancesCall, Call, Event, Hash,
+    AccountId, Call, Event, Hash, BalancesCall,
 };
 use polkadex_sgx_primitives::types::DirectRequest;
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
 use sp_keyring::AccountKeyring;
-use sp_runtime::{MultiSignature, MultiAddress};
+use sp_runtime::MultiSignature;
 use std::convert::TryFrom;
 use std::result::Result as StdResult;
 use std::sync::mpsc::channel;
@@ -56,12 +56,16 @@ use substrate_api_client::{
     utils::FromHexString,
     Api, XtStatus,
 };
+use orml_tokens::AccountData;
 use substrate_client_keystore::LocalKeystore;
 use substratee_stf::cli_utils::account_parsing::*;
+use substratee_stf::commands::{common_args, common_args_processing};
 use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
+use polkadex_sgx_primitives::{Balance, AssetId, AccountId as PolkadexAccountId};
+
 
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -231,6 +235,45 @@ fn main() {
                         0
                     };
                     println!("{}", balance);
+                    Ok(())
+                }),
+        )
+        .add_cmd(
+            Command::new("token-balance")
+                .description("query on-chain token balance for AccountId of specific token")
+                .options(|app| {
+                    app.setting(AppSettings::ColoredHelp)
+                    .arg(
+                        Arg::with_name("AccountId")
+                            .takes_value(true)
+                            .required(true)
+                            .value_name("SS58")
+                            .help("AccountId in ss58check format"),
+                    )
+                    .arg(
+                        Arg::with_name(common_args::TOKEN_ID_ARG_NAME)
+                            .takes_value(true)
+                            .required(true)
+                            .value_name("STRING")
+                            .help("Token (i.e. currency)"),
+                    )
+                })
+                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                    let api = get_chain_api(matches);
+                    let account = matches.value_of("AccountId").unwrap();
+                    let accountid: PolkadexAccountId = get_accountid_from_str(account);
+
+                    let token_id = common_args_processing::get_token_id_from_matches(matches).unwrap();
+
+                    let balance = if let Some(data) = api
+                        .get_storage_double_map::<PolkadexAccountId, AssetId, AccountData<Balance>>("Tokens", "Accounts", accountid, token_id, None)
+                        .unwrap() {
+                            data.free
+                        } else {
+                            error!("Account does not seem to be registered on this pallet");
+                            0
+                    };
+                    println!("{:?}", balance);
                     Ok(())
                 }),
         )

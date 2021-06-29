@@ -127,6 +127,12 @@ def withdraw(acc, token, quantity):
     await_block()
     return ret.stdout.decode("utf-8").strip()
 
+def token_balance(acc, token):
+    """ ./substratee-client -p 9994 -P 2094 token-balance //Alice btc"""
+    ret = subprocess.run(cli + ["token-balance"] + [acc] + [token], stdout=subprocess.PIPE)
+    print("Balance of " + acc + " in " + token + ": "+ str(ret.stdout))
+    return ret.stdout.decode("utf-8").strip()
+
 def direct_get_balance(acc, token):
     """ ./substratee-client -p 9994 -P 2094 trusted get_balance --accountid=//AliceIncognito --tokenid=dot \
     --mrenclave $MRENCLAVE --direct
@@ -239,5 +245,5 @@ if __name__ == '__main__':
     direct_get_balance(bob, tokenA)
 
     #14 The onchain balance of Alice is 50 tokenB and Bob is 50 tokenA
-    balance(alice)
-    balance(bob)
+    token_balance(alice, tokenB)
+    token_balance(bob, tokenA)
