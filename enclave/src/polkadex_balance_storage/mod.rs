@@ -72,7 +72,10 @@ pub fn lock_storage_and_reserve_balance(
         }
     };
     if balance.free < amount {
-        error!("Not enough free balance");
+        error!(
+            "Not enough free balance: Expected {:?}, available: {:?} of token {:?}",
+            amount, balance.free, token
+        );
         return Err(GatewayError::NotEnoughFreeBalance);
     }
     balance_storage.set_free_balance(

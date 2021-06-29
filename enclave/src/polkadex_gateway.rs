@@ -29,12 +29,12 @@ use std::sync::Arc;
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
 use crate::openfinex::openfinex_types::RequestId;
-use crate::polkadex_gateway;
 use crate::polkadex;
 use crate::polkadex_balance_storage;
 use crate::polkadex_cache::cache_api::StaticStorageApi;
 use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
+use crate::polkadex_gateway;
 use crate::polkadex_orderbook_storage;
 use polkadex::AccountRegistryError;
 
@@ -56,10 +56,7 @@ pub trait PolkaDexGatewayCallback {
         order_uuid: OrderUUID,
     ) -> Result<(), GatewayError>;
 
-    fn settle_trade(
-        &self,
-        trade_event: TradeEvent
-    ) -> Result<(), GatewayError>;
+    fn settle_trade(&self, trade_event: TradeEvent) -> Result<(), GatewayError>;
 }
 
 /// factory to create a callback impl, allows to hide implementation (keep private)
@@ -85,10 +82,7 @@ impl PolkaDexGatewayCallback for PolkaDexGatewayCallbackImpl {
         process_create_order(request_id, order_uuid)
     }
 
-    fn settle_trade(
-        &self,
-        trade_event: TradeEvent,
-    ) -> Result<(), GatewayError> {
+    fn settle_trade(&self, trade_event: TradeEvent) -> Result<(), GatewayError> {
         polkadex_gateway::settle_trade(trade_event)
     }
 }
@@ -230,6 +224,39 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
 
         Ok(())
     }
+}
+//Only for test
+pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
+    let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+    let mut cache = match mutex.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            error!(
+                "Could not acquire lock on create order cache pointer: {}",
+                e
+            );
+            return Err(GatewayError::UnableToLock);
+        }
+    };
+    Ok(cache.request_id())
+}
+
+// Only for test
+pub fn lock_storage_get_order(request_id: RequestId) -> Result<Order, GatewayError> {
+    let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+    let mut cache = match mutex.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            error!(
+                "Could not acquire lock on create order cache pointer: {}",
+                e
+            );
+            return Err(GatewayError::UnableToLock);
+        }
+    };
+    cache
+        .get_order(request_id)
+        .ok_or(GatewayError::NonceNotPresent)
 }
 
 // /// process_cancel_order does the following
@@ -422,10 +449,8 @@ pub fn remove_order_from_cache_and_store_in_ordermirror(
 
 pub fn settle_trade(trade: TradeEvent) -> Result<(), GatewayError> {
     // Check if both orders exist and get them
-    let maker =
-        polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.maker_order_uuid)?;
-    let taker =
-        polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.taker_order_uuid)?;
+    let maker = polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.maker_order_uuid)?;
+    let taker = polkadex_orderbook_storage::lock_storage_and_remove_order(&trade.taker_order_uuid)?;
     ensure!(
         (maker.market_id == taker.market_id) & (maker.market_id == trade.market_id),
         GatewayError::MarketIdMismatch
@@ -474,7 +499,10 @@ pub fn consume_order(
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
-            if let Err(e) = do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount) {
+            let trade_amount = (current_order.quantity * trade_event.price) / UNIT;
+            if let Err(e) =
+                do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)
+            {
                 error!("Doing asset exchange failed. Error: {:?}", e);
                 return Err(GatewayError::UnableToLock); // TODO: Use the correct error
             };
@@ -492,7 +520,7 @@ pub fn consume_order(
                     taker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = reserved_amount - trade_event.price;
+                let amount_to_unreserve = reserved_amount - trade_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &current_order.user_uid,
                     current_order.market_id.quote,
@@ -525,6 +553,7 @@ pub fn consume_order(
 
         (OrderType::LIMIT, OrderSide::ASK) => {
             let reserved_amount = (get_price(counter_order.price)? * counter_order.quantity) / UNIT;
+            let trade_amount = (trade_event.price * counter_order.quantity) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -532,7 +561,7 @@ pub fn consume_order(
                     maker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = reserved_amount - trade_event.price;
+                let amount_to_unreserve = reserved_amount - trade_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
@@ -551,6 +580,7 @@ pub fn consume_order(
 
         (OrderType::MARKET, OrderSide::ASK) => {
             let reserved_amount = (get_price(counter_order.price)? * counter_order.quantity) / UNIT;
+            let trade_amount = (trade_event.price * counter_order.quantity) / UNIT;
             do_asset_exchange_market(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -558,7 +588,7 @@ pub fn consume_order(
                     maker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = reserved_amount - trade_event.price;
+                let amount_to_unreserve = reserved_amount - trade_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
