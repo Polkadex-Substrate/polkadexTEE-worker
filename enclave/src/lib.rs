@@ -871,7 +871,7 @@ pub fn update_states(header: Header) -> SgxResult<()> {
                     state::write(state, &s)?;
                 }
             }
-            None => info!("No shards are on the chain yet"),
+            None => debug!("No shards are on the chain yet"),
         };
     };
     Ok(())
