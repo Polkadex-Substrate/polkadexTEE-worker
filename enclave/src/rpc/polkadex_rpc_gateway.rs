@@ -24,7 +24,7 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
 
-use crate::nonce_handler::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
+use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce, NonceHandler};
 
 use crate::execute_ocex_release_extrinsic;
 use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
@@ -56,10 +56,10 @@ pub trait RpcGateway: Send + Sync {
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
 
     /// get the nonce for a given account
-    fn get_nonce(&self, main_account: AccountId) -> SgxResult<u32>;
+    fn get_nonce(&self, main_account: AccountId) -> SgxResult<NonceHandler>;
 
-    /// increment the nonce for a given account and returns the new one
-    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<u32>;
+    /// increment the nonce for a given account
+    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<()>;
 
     /// place an order
     fn place_order(
@@ -123,31 +123,15 @@ impl RpcGateway for PolkadexRpcGateway {
         }
     }
 
-    fn get_nonce(&self, main_account: AccountId) -> SgxResult<u32> {
-        match lock_storage_and_get_nonce(main_account) {
-            Ok(nonce) => {
-                if let true = nonce.is_initialized {
-                    Ok(nonce.nonce)
-                } else {
-                    Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
-                }
-            }
+    fn get_nonce(&self, main_account: AccountId) -> SgxResult<NonceHandler> {
+        match lock_storage_and_get_nonce(main_account.clone()) {
+            Ok(nonce) => Ok(nonce),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
     }
 
-    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<u32> {
-        lock_storage_and_increment_nonce(main_account.clone());
-        match lock_storage_and_get_nonce(main_account) {
-            Ok(nonce) => {
-                if let true = nonce.is_initialized {
-                    Ok(nonce.nonce)
-                } else {
-                    Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
-                }
-            }
-            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
-        }
+    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<()> {
+        lock_storage_and_increment_nonce(main_account.clone())
     }
 
     fn place_order(

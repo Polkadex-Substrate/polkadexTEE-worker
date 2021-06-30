@@ -24,54 +24,14 @@ use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
-use codec::{Decode, Encode};
-use sgx_tstd::collections::HashMap;
-use sgx_tstd::vec::Vec;
+
+pub mod nonce_storage;
+pub mod nonce_handler;
+
+pub use nonce_storage::*;
+pub use nonce_handler::*;
 
 static GLOBAL_POLKADEX_NONCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-
-pub type EncodedKey = Vec<u8>;
-
-pub struct PolkadexNonceStorage {
-    /// map AccountId -> NonceHandler
-    pub storage: HashMap<EncodedKey, NonceHandler>,
-}
-
-impl PolkadexNonceStorage {
-    pub fn create() -> PolkadexNonceStorage {
-        PolkadexNonceStorage {
-            storage: HashMap::new(),
-        }
-    }
-
-    pub fn read_nonce(&self, acc: AccountId) -> Option<&NonceHandler> {
-        debug!("reading nonce from acc: {:?}", acc);
-        self.storage.get(&acc.encode())
-    }
-}
-
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub struct NonceHandler {
-    pub nonce: u32,
-    pub is_initialized: bool,
-}
-
-impl NonceHandler {
-    pub fn create() -> Self {
-        Self {
-            nonce: 0u32, //We can also use option
-            is_initialized: false,
-        }
-    }
-
-    pub fn increment(&mut self) {
-        self.nonce += 1;
-    }
-
-    pub fn update(&mut self, nonce: u32) {
-        self.nonce = nonce;
-    }
-}
 
 pub fn create_in_memory_nonce_storage() -> Result<(), GatewayError> {
     let nonce_storage = PolkadexNonceStorage::create();
@@ -95,54 +55,55 @@ pub fn lock_storage_and_get_nonce(
     main_acc: AccountId,
 ) -> SgxResult<NonceHandler> {
     let mutex = load_nonce_storage()?;
-    let nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock()
+    let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock()
         //.map_err(|_| {
-       // error!("Could not lock mutex of balance storage");
-       // Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
-    //})
+        // error!("Could not lock mutex of balance storage");
+        // Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        //})
         .unwrap();
-    if let Some(nonce) = nonce_storage.read_nonce(main_acc).cloned() {
+    if let Some(nonce) = nonce_storage.read_nonce(main_acc.clone()).cloned() {
         Ok(nonce)
     } else {
-        error!("Account Id or Asset Id is not available");
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        nonce_storage.initialize_nonce(main_acc.clone());
+        //Ok(nonce_storage.read_nonce(main_acc.clone()).cloned().unwrap())
+        Ok(NonceHandler {nonce: Some(0u32)})
+        //error!("Account Id or Asset Id is not available");
+        //Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
     }
 }
 
 pub fn lock_and_update_nonce(nonce: u32, acc: AccountId) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock().unwrap();
-    if let Some(mut nonce_handler) = nonce_storage.read_nonce(acc).cloned() {
-        debug!("update to new nonce: {:?}", nonce);
-        if let false = nonce_handler.is_initialized {
-            nonce_handler.nonce = nonce;
-            nonce_handler.is_initialized = true;
-            Ok(())
-        } else {
-            Ok(())
-        }
-    } else {
-        error!("Account Id or Asset Id is not available");
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
-    }
+    nonce_storage.set_nonce(nonce, acc);
+    Ok(())
+    // if let Some(mut nonce_handler) = nonce_storage.read_nonce(acc).cloned() {
+    //     debug!("update to new nonce: {:?}", nonce);
+    //     nonce_handler.nonce = Some(nonce);
+    //     Ok(())
+    // } else {
+    //     error!("Account Id or Asset Id is not available");
+    //     Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+    // }
 
 }
 
 pub fn lock_storage_and_increment_nonce(acc: AccountId) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock().unwrap();
-    if let Some(mut nonce_handler) = nonce_storage.read_nonce(acc).cloned() {
-        if let false = nonce_handler.is_initialized {
-            nonce_handler.nonce = 0;
-            nonce_handler.is_initialized = true;
+    if let Some(mut nonce_handler) = nonce_storage.read_nonce(acc.clone()).cloned() {
+        if let Some(inner_nonce) = nonce_handler.nonce {
+            nonce_storage.set_nonce(inner_nonce + 1u32, acc);
             Ok(())
         } else {
-            nonce_handler.nonce += 1;
+            nonce_handler.nonce = Some(0u32);
             Ok(())
         }
     } else {
-        error!("Account Id or Asset Id is not available");
-        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+        nonce_storage.initialize_nonce(acc.clone());
+        Ok(())
+        //error!("Account Id or Asset Id is not available");
+        //Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
     }
 
 }

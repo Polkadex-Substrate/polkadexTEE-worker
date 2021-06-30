@@ -33,7 +33,7 @@ extern crate sgx_tstd as std;
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
-use crate::nonce_handler::{NonceHandler, lock_storage_and_get_nonce};
+use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -92,7 +92,7 @@ mod happy_path;
 pub mod hex;
 mod io;
 mod ipfs;
-pub mod nonce_handler;
+pub mod polkadex_nonce_storage;
 pub mod openfinex;
 mod polkadex;
 mod polkadex_balance_storage;
@@ -369,7 +369,7 @@ pub unsafe extern "C" fn init_chain_relay(
     polkadex_gateway::initialize_polkadex_gateway();
     info!(" Polkadex Gateway Nonces and Cache Initialized");
 
-    if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
+    if let Err(e) = polkadex_nonce_storage::create_in_memory_nonce_storage() {
         error!("Creating in memory nonce storage failed. Error: {:?}", e);
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
@@ -1101,13 +1101,17 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
 
     //let mutex = nonce_handler::load_nonce_storage()?;
     //let &mut nonce_storage: &mut NonceHandler = mutex.lock().unwrap().read_nonce(acc).unwrap(); //TODO: Error handling
-    let mut nonce_storage = lock_storage_and_get_nonce(acc).unwrap();
-    let nonce = nonce_storage.nonce;
+    //let mut nonce_storage = lock_storage_and_get_nonce(acc).unwrap();
+    //let nonce = nonce_storage.get_nonce() // TODO: Error handling
+    let nonce = match lock_storage_and_get_nonce(acc.clone()) {
+        Ok(nonce) => Ok(nonce),
+        Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+    }?;
 
     let xt: Vec<u8> = compose_extrinsic_offline!(
         signer.clone(),
         call,
-        nonce, // TODO: Where is this?
+        nonce.nonce.unwrap(), // TODO: Where is this?
         Era::Immortal,
         genesis_hash,
         genesis_hash, // FIXME: Shouldn't this be the latest head?
@@ -1115,7 +1119,9 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
         RUNTIME_TRANSACTION_VERSION
     )
     .encode();
-    nonce_storage.increment();
+
+    lock_storage_and_increment_nonce(acc.clone()).unwrap(); //TODO: Error handling
+    //nonce_storage.increment();
 
     // TODO: We need to send this using ocall to Polkadex network
     send_release_extrinsic(xt)?;

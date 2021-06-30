@@ -193,7 +193,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         rpc_get_balance::tests::test_given_valid_top_return_balances,
         rpc_get_nonce::tests::test_given_valid_top_return_nonce,
-        rpc_increment_nonce::tests::test_given_valid_top_return_incremented_nonce,
+        rpc_increment_nonce::tests::test_given_valid_top_increment_nonce,
         //rpc_place_order::tests::test_given_valid_call_return_order_uuid, TODO: @Bigna this test case is failing ... I need your help with this
         rpc_cancel_order::tests::test_given_valid_order_id_return_success,
         rpc_cancel_order::tests::test_given_order_id_mismatch_then_fail,
