@@ -64,7 +64,8 @@ use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
-use polkadex_sgx_primitives::{Balance, AssetId, AccountId as PolkadexAccountId};
+use polkadex_sgx_primitives::{Balance, AssetId};
+
 
 
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
@@ -261,12 +262,11 @@ fn main() {
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
                     let api = get_chain_api(matches);
                     let account = matches.value_of("AccountId").unwrap();
-                    let accountid: PolkadexAccountId = get_accountid_from_str(account);
-
+                    let accountid = get_accountid_from_str(account);
                     let token_id = common_args_processing::get_token_id_from_matches(matches).unwrap();
 
                     let balance = if let Some(data) = api
-                        .get_storage_double_map::<PolkadexAccountId, AssetId, AccountData<Balance>>("Tokens", "Accounts", accountid, token_id, None)
+                        .get_storage_double_map::<AccountId, AssetId, AccountData<Balance>>("Tokens", "Accounts", accountid, token_id, None)
                         .unwrap() {
                             data.free
                         } else {
