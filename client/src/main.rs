@@ -65,6 +65,9 @@ use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 use polkadex_sgx_primitives::{Balance, AssetId, AccountId as PolkadexAccountId};
+use substrate_api_client::AccountInfo;
+
+type CurrencyId = AssetId;
 
 
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
@@ -263,17 +266,39 @@ fn main() {
                     let account = matches.value_of("AccountId").unwrap();
                     let accountid: PolkadexAccountId = get_accountid_from_str(account);
 
-                    let token_id = common_args_processing::get_token_id_from_matches(matches).unwrap();
+                    //let token_id = common_args_processing::get_token_id_from_matches(matches).unwrap();
+                    let token_id = AssetId::BTC;
 
                     let balance = if let Some(data) = api
-                        .get_storage_double_map::<PolkadexAccountId, AssetId, AccountData<Balance>>("Tokens", "Accounts", accountid, token_id, None)
+                        .get_storage_double_map::<PolkadexAccountId, CurrencyId, AccountData<Balance>>("Tokens", "Accounts", accountid.clone(), token_id, None)
                         .unwrap() {
                             data.free
                         } else {
                             error!("Account does not seem to be registered on this pallet");
                             0
                     };
+
+                    let total_balance = if let Some(data) = api
+                        .get_storage_map::<CurrencyId, Balance>("Tokens", "TotalIssuance", token_id, None)
+                        .unwrap() {
+                            data
+                        } else {
+                            error!("Account does not seem to be registered on this pallet");
+                            0
+                    };
+
+                    let actual_balance = if let Some(data) = api
+                        .get_storage_map::<PolkadexAccountId, AccountInfo>("System", "Account", accountid, None)
+                        .unwrap() {
+                            data.data.free
+                        } else {
+                            error!("Account does not seem to be registered on this pallet");
+                            0
+                    };
+
                     println!("{:?}", balance);
+                    println!("{:?}", actual_balance);
+                    println!("{:?}", total_balance);
                     Ok(())
                 }),
         )
