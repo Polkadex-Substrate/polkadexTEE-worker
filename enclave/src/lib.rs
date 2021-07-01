@@ -1083,8 +1083,8 @@ fn handle_ocex_withdraw(
     }
 }
 
+/// compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
 fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
-    // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
     let validator = match io::light_validation::unseal() {
         Ok(v) => v,
         Err(e) => return Err(e),
@@ -1105,17 +1105,16 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     let xt: Vec<u8> = compose_extrinsic_offline!(
         signer.clone(),
         call,
-        nonce, // TODO: Where is this?
+        nonce,
         Era::Immortal,
         genesis_hash,
-        genesis_hash, // FIXME: Shouldn't this be the latest head?
+        genesis_hash,
         RUNTIME_SPEC_VERSION,
         RUNTIME_TRANSACTION_VERSION
     )
     .encode();
     nonce_storage.increment();
 
-    // TODO: We need to send this using ocall to Polkadex network
     send_release_extrinsic(xt)?;
     Ok(())
 }
@@ -1416,6 +1415,7 @@ fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
     Ok(())
 }
 
+/// sends an release extrsinic per ocall to the node
 fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
     let res = unsafe {
