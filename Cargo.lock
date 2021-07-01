@@ -243,12 +243,11 @@ dependencies = [
 
 [[package]]
 name = "async-io"
-version = "1.4.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bbfd5cf2794b1e908ea8457e6c45f8f8f1f6ec5f74617bf4662623f47503c3b"
+checksum = "a811e6a479f2439f0c04038796b5cfb3d2ad56c230e0f2d3f7b04d68cfee607b"
 dependencies = [
  "concurrent-queue",
- "fastrand",
  "futures-lite",
  "libc",
  "log 0.4.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1174,7 +1173,7 @@ dependencies = [
  "impl-rlp",
  "impl-serde",
  "primitive-types 0.9.0",
- "uint 0.9.0",
+ "uint 0.9.1",
 ]
 
 [[package]]
@@ -1691,7 +1690,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
  "libc",
- "wasi 0.10.2+wasi-snapshot-preview1",
+ "wasi 0.10.0+wasi-snapshot-preview1",
  "wasm-bindgen",
 ]
 
@@ -4254,7 +4253,7 @@ dependencies = [
  "impl-codec 0.5.0",
  "impl-rlp",
  "impl-serde",
- "uint 0.9.0",
+ "uint 0.9.1",
 ]
 
 [[package]]
@@ -6257,7 +6256,7 @@ dependencies = [
 [[package]]
 name = "substrate-api-client"
 version = "0.5.0"
-source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#a279398a4ec5e1688f0e07d68b239f713472a146"
+source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#c048828ad971c35dee45b873448d3712fccf76ea"
 dependencies = [
  "env_logger 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "frame-metadata",
@@ -6295,7 +6294,7 @@ dependencies = [
 [[package]]
 name = "substrate-client-keystore"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#a279398a4ec5e1688f0e07d68b239f713472a146"
+source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#c048828ad971c35dee45b873448d3712fccf76ea"
 dependencies = [
  "async-trait",
  "hex 0.4.3",
@@ -6648,11 +6647,12 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
+checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
 dependencies = [
  "libc",
+ "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi 0.3.9",
 ]
 
@@ -6992,9 +6992,9 @@ dependencies = [
 
 [[package]]
 name = "uint"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e11fe9a9348741cf134085ad57c249508345fe16411b3d7fb4ff2da2f1d6382e"
+checksum = "6470ab50f482bde894a037a57064480a246dbfdd5960bd65a44824693f08da5f"
 dependencies = [
  "byteorder",
  "crunchy",
@@ -7163,9 +7163,9 @@ checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
 
 [[package]]
 name = "wasi"
-version = "0.10.2+wasi-snapshot-preview1"
+version = "0.10.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
+checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasm-bindgen"
