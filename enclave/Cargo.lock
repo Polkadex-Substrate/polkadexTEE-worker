@@ -2563,7 +2563,7 @@ dependencies = [
 [[package]]
 name = "substrate-api-client"
 version = "0.5.0"
-source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#a279398a4ec5e1688f0e07d68b239f713472a146"
+source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#c048828ad971c35dee45b873448d3712fccf76ea"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -2853,9 +2853,9 @@ checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
 
 [[package]]
 name = "uint"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e11fe9a9348741cf134085ad57c249508345fe16411b3d7fb4ff2da2f1d6382e"
+checksum = "6470ab50f482bde894a037a57064480a246dbfdd5960bd65a44824693f08da5f"
 dependencies = [
  "byteorder",
  "crunchy",
