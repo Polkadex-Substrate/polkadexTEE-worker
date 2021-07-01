@@ -95,7 +95,7 @@ def await_block():
 def balance(acc):
     """ ./substratee-client -p 9994 -P 2094 balance //Alice """
     ret = subprocess.run(cli + ["balance"] + [acc], stdout=subprocess.PIPE)
-    print("Balance of " + acc + " " + str(ret.stdout))
+    print("Balance of " + acc + " " + str(int(ret.stdout)/PRECISION))
     return ret.stdout.decode("utf-8").strip()
 
 def register_account(acc):
@@ -121,7 +121,7 @@ def deposit(acc, quantity, token):
 
 def withdraw(acc, token, quantity):
     """  ./substratee-client -p 9994 -P 2094 withdraw --accountid=//Bob --tokenid=dot --quantity=1000 """
-    print("Withdraw " + str(quantity) + " " + token + " from " + acc)
+    print("Withdrawing " + str(quantity/PRECISION) + " " + token + " from " + acc)
     ret = subprocess.run(cli + ["withdraw"] + acc_arg(acc) + quantity_arg(quantity) + token_arg(token), stdout=subprocess.PIPE)
     print(ret.stdout.strip())
     await_block()
@@ -130,7 +130,7 @@ def withdraw(acc, token, quantity):
 def token_balance(acc, token):
     """ ./substratee-client -p 9994 -P 2094 token-balance //Alice btc"""
     ret = subprocess.run(cli + ["token-balance"] + [acc] + [token], stdout=subprocess.PIPE)
-    print("Balance of " + acc + " in " + token + ": "+ str(ret.stdout))
+    print("Balance of " + acc + " in " + token + ": " + str(int(ret.stdout)/PRECISION))
     return ret.stdout.decode("utf-8").strip()
 
 def direct_get_balance(acc, token):
@@ -138,7 +138,7 @@ def direct_get_balance(acc, token):
     --mrenclave $MRENCLAVE --direct
     """
     ret = subprocess.run(cli + ["trusted", "get_balance"] + acc_arg(acc) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
-    print("Balance of " + acc + " " + str(ret.stdout))
+    print("Balance of " + acc + " " + str(int(ret.stdout)/PRECISION))
     return ret.stdout.decode("utf-8").strip()
 
 def direct_place_order(acc, proxy, base, quote, side, quantity, ordertype, price):
@@ -173,10 +173,10 @@ def direct_withdraw(acc, proxy, token, quantity):
     """ ./substratee-client -p 9994 -P 2094 trusted withdraw --accountid=//AliceIncognito --proxyaccountid=//AliceIncognitoProxy \
     --tokenid=dot --quantity=293 --mrenclave $MRENCLAVE --direct """
     if proxy:
-        print("Withdrawing " + str(quantity) + token + " from " + proxy)
+        print("Withdrawing " + str(quantity/PRECISION) + " " + token + " from " + proxy)
         accs = acc_arg(acc) + proxy_arg(proxy)
     else:
-        print("Withdrawing " + str(quantity) + token + " from " + acc)
+        print("Withdrawing " + str(quantity/PRECISION) + " " + token + " from " + acc)
         accs = acc_arg(acc)
 
     ret = subprocess.run(cli + ["trusted", "withdraw"] + accs + quantity_arg(quantity) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
@@ -200,8 +200,8 @@ if __name__ == '__main__':
     register_account(bob)
 
     #2 Alice and Bob both create and register a proxy account
-    #register_proxy(alice, aliceIco)
-    #register_proxy(bob, bobIco)
+    register_proxy(alice, aliceIco)
+    register_proxy(bob, bobIco)
 
     #3 Alice deposits 100 tokenA
     deposit(alice, 500_000_000_000_000_000_000, tokenA)
