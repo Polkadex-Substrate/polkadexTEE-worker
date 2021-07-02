@@ -59,21 +59,19 @@ pub fn load_nonce_storage() -> SgxResult<&'static SgxMutex<NonceHandler>> {
     let ptr = GLOBAL_POLKADEX_NONCE_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<NonceHandler>;
     if ptr.is_null() {
         error!("Pointer is Null");
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
     } else {
         Ok(unsafe { &*ptr })
     }
 }
 
-pub fn lock_and_update_nonce(nonce: u32) -> SgxResult<()> {
+pub fn lock_and_update_nonce(new_nonce: u32) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
-    debug!("update to new nonce: {:?}", nonce);
-    if let false = nonce_storage.is_initialized {
-        nonce_storage.nonce = nonce;
-        nonce_storage.is_initialized = true;
-        Ok(())
-    } else {
-        Ok(())
+    // only update if new nonce is actually an update
+    if new_nonce > nonce_storage.nonce  {
+        debug!("update to new nonce: {:?}", new_nonce);
+        nonce_storage.update(new_nonce);
     }
+    Ok(())
 }
