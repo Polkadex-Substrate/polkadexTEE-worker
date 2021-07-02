@@ -48,11 +48,6 @@ if __name__ == '__main__':
     register_account(alice)
     register_account(bob)
 
-    #2 Alice and Bob both create and register a proxy account
-    register_proxy(alice, aliceIco)
-    register_proxy(bob, bobIco)
-
-
     print("Checking balance of Alice onchain:")
     token_balance(alice, tokenA)
     token_balance(alice, tokenB)
@@ -104,10 +99,10 @@ if __name__ == '__main__':
     direct_withdraw(alice, None, tokenB, 50_000_000_000_000_000)
 
     #12 Bob withdraws all his tokenA through indirect extrinsic
-    withdraw(bob, tokenA, 50_000_000_000_000_000)
+    withdraw(bob, tokenA, 60_000_000_000_000_000)
 
     #13 The offchain balance of Alice is zero tokenB and Bob is zero tokenA
-    print("Chech if transfer from offchain to onchain was successful:")
+    print("Chech if transfer from offchain to onchain was unsuccessful:")
     direct_get_balance(alice, tokenB)
     direct_get_balance(bob, tokenA)
 
