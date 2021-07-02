@@ -62,6 +62,7 @@ bin2/enclave-shielding-pubkey.json
 # client
 client/my_keystore
 client/my_trusted_keystore
+client/__pycache__
 bin/chain_relay_db.bin.1
 
 #worker
