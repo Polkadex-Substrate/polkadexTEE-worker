@@ -16,8 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::polkadex_nonce_storage::lock_storage_and_get_nonce;
+use crate::ShardIdentifier;
 use codec::Encode;
-use polkadex_sgx_primitives::types::{DirectRequest, MarketId, Order, CancelOrder, OrderSide, OrderType, OrderUUID};
+use polkadex_sgx_primitives::types::{
+    CancelOrder, DirectRequest, MarketId, Order, OrderSide, OrderType, OrderUUID,
+};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sp_core::{ed25519 as ed25519_core, Pair, H256};
 use substratee_stf::{KeyPair, TrustedCall, TrustedCallSigned};
@@ -31,6 +35,10 @@ pub fn create_dummy_request() -> DirectRequest {
 
 pub fn create_dummy_account() -> ed25519_core::Pair {
     ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+}
+
+pub fn create_secondary_dummy_account() -> ed25519_core::Pair {
+    ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
 }
 
 pub fn create_dummy_order(account: AccountId) -> Order {
@@ -55,7 +63,7 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
             quote: AssetId::DOT,
             base: AssetId::POLKADEX,
         },
-        order_id
+        order_id,
     }
 }
 
@@ -64,8 +72,16 @@ pub fn sign_trusted_call(
     trusted_call: TrustedCall,
     signer: ed25519_core::Pair,
 ) -> TrustedCallSigned {
-    let mr_enclave = [2u8; 32];
-    let shard_identifier = H256::from(mr_enclave);
+    let mr_enclave = [0u8; 32];
+    let shard_identifier = ShardIdentifier::default();
 
-    trusted_call.sign(&KeyPair::Ed25519(signer), 0, &mr_enclave, &shard_identifier)
+    trusted_call.sign(
+        &KeyPair::Ed25519(signer.clone()),
+        lock_storage_and_get_nonce(signer.public().into())
+           .unwrap()
+           .nonce
+           .unwrap(), //TODO: Error handling
+        &mr_enclave,
+        &shard_identifier,
+    )
 }

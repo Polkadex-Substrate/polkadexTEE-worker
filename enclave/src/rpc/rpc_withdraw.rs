@@ -29,6 +29,8 @@ use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
+use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce, NonceHandler};
+
 pub struct RpcWithdraw {
     top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
     rpc_gateway: Box<dyn RpcGateway + 'static>,
@@ -68,6 +70,8 @@ impl RpcWithdraw {
         let asset_id = asset_with_amount.0;
         let amount = asset_with_amount.1;
 
+        //lock_storage_and_increment_nonce(main_account.clone()).unwrap();
+
         match self.rpc_gateway.withdraw(main_account, asset_id, amount) {
             Ok(()) => Ok(((), false, DirectRequestStatus::Ok)),
             Err(e) => Err(format!("Failed to withdraw: {}", e.as_str())),
@@ -91,12 +95,13 @@ pub mod tests {
 
     use super::*;
     use crate::rpc::mocks::dummy_builder::{
-        create_dummy_account, create_dummy_request, sign_trusted_call,
+        create_dummy_account, create_secondary_dummy_account, create_dummy_request, sign_trusted_call,
     };
     use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
     use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
     use polkadex_sgx_primitives::{AccountId, AssetId};
     use sp_core::Pair;
+    use crate::polkadex_nonce_storage::lock_storage_and_get_nonce;
 
     pub fn test_given_valid_call_then_succeed() {
         let top_extractor = Box::new(TrustedOperationExtractorMock {
@@ -110,6 +115,30 @@ pub mod tests {
         let result = rpc_withdraw.method_impl(create_dummy_request());
 
         assert!(result.is_ok());
+    }
+
+    pub fn test_incrementing_nonce_wont_match() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_secondary_withdraw_order_operation()),
+        });
+
+        let top_extractor1 = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_secondary_withdraw_order_operation()),
+        });
+
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
+
+        let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
+        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway);
+
+        assert_eq!(Some(0), lock_storage_and_get_nonce(create_secondary_dummy_account().public().into()).unwrap().nonce);
+        let result = rpc_withdraw.method_impl(create_dummy_request());
+
+        assert_eq!(Some(1), lock_storage_and_get_nonce(create_secondary_dummy_account().public().into()).unwrap().nonce);
+
+        let result1 = rpc_withdraw1.method_impl(create_dummy_request());
+
+        assert!(result1.is_err());
     }
 
     pub fn test_given_unauthorized_access_then_return_error() {
@@ -128,6 +157,17 @@ pub mod tests {
 
     fn create_withdraw_order_operation() -> TrustedOperation {
         let key_pair = create_dummy_account();
+        let account_id: AccountId = key_pair.public().into();
+
+        let trusted_call = TrustedCall::withdraw(account_id.clone(), AssetId::DOT, 1000, None);
+
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+
+        TrustedOperation::direct_call(trusted_call_signed)
+    }
+
+    fn create_secondary_withdraw_order_operation() -> TrustedOperation {
+        let key_pair = create_secondary_dummy_account();
         let account_id: AccountId = key_pair.public().into();
 
         let trusted_call = TrustedCall::withdraw(account_id.clone(), AssetId::DOT, 1000, None);

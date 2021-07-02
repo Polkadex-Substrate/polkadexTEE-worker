@@ -210,14 +210,13 @@ pub unsafe extern "C" fn get_ecc_signing_pubkey(pubkey: *mut u8, pubkey_size: u3
 fn create_extrinsics(
     validator: LightValidation,
     calls_buffer: Vec<OpaqueCall>,
-    mut nonce: u32,
+    mut _nonce: u32,
 ) -> SgxResult<Vec<Vec<u8>>> {
     // get information for composing the extrinsic
     let signer = ed25519::unseal_pair()?;
-    debug!("Restored ECC pubkey: {:?}", signer.public());
+    debug!("Restored ECC pubkey: {:?}", signer.public().clone());
 
-  //  let mutex = nonce_handler::load_nonce_storage()?;
-  //  let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let mut nonce = polkadex_nonce_storage::lock_storage_and_get_nonce(signer.public().clone().into()).unwrap().nonce.unwrap(); //TODO: Error handling
 
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
@@ -239,7 +238,7 @@ fn create_extrinsics(
         .collect();
 
     // update nonce storage
-  //  nonce_storage.update(nonce);
+    polkadex_nonce_storage::lock_and_update_nonce(nonce, signer.public().into()).unwrap(); //TODO: Error handling
 
     Ok(extrinsics_buffer)
 }

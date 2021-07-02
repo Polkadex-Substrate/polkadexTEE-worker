@@ -52,6 +52,11 @@ pub trait RpcGateway: Send + Sync {
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String>;
 
+    fn validate_trusted_call_nonce(
+        &self,
+        trusted_operation: TrustedOperation,
+    ) -> Result<(), String>;
+
     /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
 
@@ -96,6 +101,9 @@ impl RpcGateway for PolkadexRpcGateway {
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
+
+        self.validate_trusted_call_nonce(trusted_operation.clone())?;
+
         let trusted_call = match trusted_operation {
             TrustedOperation::direct_call(tcs) => Ok(tcs.call),
             _ => {
@@ -113,6 +121,29 @@ impl RpcGateway for PolkadexRpcGateway {
                 error!("Could not find account within registry");
                 Err(format!("Authorization error: {}", e))
             }
+        }
+    }
+
+    fn validate_trusted_call_nonce(
+        &self,
+        trusted_operation: TrustedOperation,
+    ) -> Result<(), String> {
+        let call = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => Ok((tcs.clone().nonce, tcs.call.main_account().clone())),
+            _ => {
+                Err(String::from("not direct call"))
+            }
+        }?;
+
+        //println!("nonce from call: {}", call.clone().0);
+
+        if self.get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
+            lock_storage_and_increment_nonce(call.clone().1).unwrap();
+            Ok(())
+        }
+        else {
+            //println!("failed cause nonce doesn't match");
+            Err(String::from("failed cause nonce doesn't match"))
         }
     }
 

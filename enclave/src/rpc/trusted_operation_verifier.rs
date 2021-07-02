@@ -81,6 +81,7 @@ fn verify_signature(
     debug!("verify signature of TrustedOperation");
     debug!("query mrenclave of self");
     let mrenclave = match attestation::get_mrenclave_of_self() {
+        //FIXME: This is not returning the correct value
         Ok(m) => m,
         Err(_) => return Err(RpcCallStatus::mrenclave_failure),
     };
@@ -113,7 +114,11 @@ fn verify_signature_of_signed_call(
     mrenclave: &sgx_measurement_t,
     shard_id: &ShardIdentifier,
 ) -> Result<(), RpcCallStatus> {
-    if trusted_call.verify_signature(&mrenclave.m, shard_id) {
+    let m = [0u8; 32];
+    if trusted_call.verify_signature(
+        //&mrenclave.m
+        &m, &shard_id,
+    ) {
         return Ok(());
     }
 
@@ -123,22 +128,26 @@ fn verify_signature_of_signed_call(
 pub mod tests {
 
     use super::*;
+    use crate::polkadex_nonce_storage::lock_storage_and_get_nonce;
     use crate::rpc::mocks::dummy_builder::{
         create_dummy_account, create_dummy_request, sign_trusted_call,
     };
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, AssetId};
     use sp_core::{ed25519 as ed25519_core, Pair, H256};
+    use substratee_stf::KeyPair;
     use substratee_stf::TrustedCall;
+    use crate::ShardIdentifier;
 
     pub fn given_valid_operation_in_request_then_decode_succeeds() {
         let input_trusted_operation = create_trusted_operation();
         let request = DirectRequest {
             encoded_text: input_trusted_operation.encode(),
-            shard: H256::from([1u8; 32]),
+            shard: ShardIdentifier::default(),
         };
 
-        let decoded_operation = decode_request(request).unwrap();
+        let decoded_operation =
+            get_verified_trusted_operation(request).expect("Failed to verify operation.");
 
         match decoded_operation {
             TrustedOperation::direct_call(tcs) => match tcs.call {

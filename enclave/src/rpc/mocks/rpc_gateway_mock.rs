@@ -28,12 +28,14 @@ use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
 
+#[derive(Clone)]
 /// Mock implementation to be used in unit testing
 pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
     pub order_uuid: Option<OrderUUID>,
 }
+
 
 /// constructors
 impl RpcGatewayMock {
@@ -96,12 +98,36 @@ impl RpcGateway for RpcGatewayMock {
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
+        self.validate_trusted_call_nonce(trusted_operation.clone())?;
         match self.do_authorize {
             true => match trusted_operation {
                 TrustedOperation::direct_call(tcs) => Ok(tcs.call),
                 _ => Err(String::from("Trusted operation is not a direct call")),
             },
             false => Err(String::from("Authorization failed")),
+        }
+    }
+
+    fn validate_trusted_call_nonce(
+        &self,
+        trusted_operation: TrustedOperation,
+    ) -> Result<(), String> {
+        let call = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => Ok((tcs.clone().nonce, tcs.call.main_account().clone())),
+            _ => {
+                Err(String::from("not direct call"))
+            }
+        }?;
+
+        println!("nonce from call: {}", call.clone().0);
+
+        if self.get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
+            lock_storage_and_increment_nonce(call.clone().1).unwrap();
+            Ok(())
+        }
+        else {
+            println!("failed cause nonce doesn't match");
+            Err(String::from("failed cause nonce doesn't match"))
         }
     }
 
