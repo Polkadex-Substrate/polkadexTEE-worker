@@ -886,7 +886,7 @@ fn listen(matches: &ArgMatches<'_>) {
                     }
                 }
             }
-            Err(_) => error!("couldn't decode event record list"),
+            Err(_) => debug!("couldn't decode event record list"),
         }
     }
 }
