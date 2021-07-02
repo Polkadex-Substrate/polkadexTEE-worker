@@ -210,7 +210,7 @@ pub unsafe extern "C" fn get_ecc_signing_pubkey(pubkey: *mut u8, pubkey_size: u3
 fn create_extrinsics(
     validator: LightValidation,
     calls_buffer: Vec<OpaqueCall>,
-    mut nonce: u32,
+    mut _nonce: u32,
 ) -> SgxResult<Vec<Vec<u8>>> {
     // get information for composing the extrinsic
     let signer = ed25519::unseal_pair()?;
@@ -218,6 +218,7 @@ fn create_extrinsics(
 
     let mutex = nonce_handler::load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let mut nonce = nonce_storage.nonce;
 
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
@@ -239,6 +240,7 @@ fn create_extrinsics(
         .collect();
 
     // update nonce storage
+    debug!("Update to new new nonce: {:?}", nonce);
     nonce_storage.update(nonce);
 
     Ok(extrinsics_buffer)
@@ -1061,7 +1063,7 @@ fn handle_ocex_withdraw(
     match polkadex::check_if_main_account_registered(main_acc.clone().into()) {
         // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
-            if exists == true {
+            if exists {
                 match polkadex_balance_storage::lock_storage_and_withdraw(
                     main_acc.clone(),
                     token.clone(),
@@ -1083,8 +1085,8 @@ fn handle_ocex_withdraw(
     }
 }
 
+/// compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
 fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
-    // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
     let validator = match io::light_validation::unseal() {
         Ok(v) => v,
         Err(e) => return Err(e),
@@ -1101,21 +1103,21 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     let mutex = nonce_handler::load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
     let nonce = nonce_storage.nonce;
+    debug!("using nonce for ocex release: {:?}", nonce);
 
     let xt: Vec<u8> = compose_extrinsic_offline!(
-        signer.clone(),
+        signer,
         call,
-        nonce, // TODO: Where is this?
+        nonce,
         Era::Immortal,
         genesis_hash,
-        genesis_hash, // FIXME: Shouldn't this be the latest head?
+        genesis_hash,
         RUNTIME_SPEC_VERSION,
         RUNTIME_TRANSACTION_VERSION
     )
     .encode();
     nonce_storage.increment();
 
-    // TODO: We need to send this using ocall to Polkadex network
     send_release_extrinsic(xt)?;
     Ok(())
 }
@@ -1416,6 +1418,7 @@ fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
     Ok(())
 }
 
+/// sends an release extrsinic per ocall to the node
 fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
     let res = unsafe {
