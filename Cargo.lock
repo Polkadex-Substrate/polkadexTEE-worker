@@ -1115,7 +1115,7 @@ dependencies = [
 [[package]]
 name = "erc20-pdex-migration-pallet"
 version = "1.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#f508b8f293e81fcf6ccba29bc653bdf330b26294"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2014,7 +2014,7 @@ dependencies = [
 [[package]]
 name = "ias-verify"
 version = "0.1.4"
-source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry.git#860097f21141fb6cd5eb455d8ca9e8adb7031c7d"
+source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry#b41581c4bbebdb3b6a21e722bcd791a90a09c48d"
 dependencies = [
  "base64 0.11.0",
  "chrono",
@@ -2824,7 +2824,7 @@ dependencies = [
 [[package]]
 name = "node-polkadex-runtime"
 version = "3.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#f508b8f293e81fcf6ccba29bc653bdf330b26294"
 dependencies = [
  "artemis-basic-channel",
  "artemis-core",
@@ -2871,8 +2871,8 @@ dependencies = [
  "pallet-society",
  "pallet-staking",
  "pallet-staking-reward-curve",
- "pallet-substratee-registry",
  "pallet-sudo",
+ "pallet-teerex",
  "pallet-timestamp",
  "pallet-tips",
  "pallet-transaction-payment",
@@ -3649,9 +3649,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-substratee-registry"
-version = "0.8.0"
-source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry.git#860097f21141fb6cd5eb455d8ca9e8adb7031c7d"
+name = "pallet-sudo"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/substrate.git#e5437efefa82bd8eb567f1245f0a7443ac4e4fe7"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 2.1.3",
+ "sp-io 3.0.0",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-teerex"
+version = "0.9.0"
+source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry#b41581c4bbebdb3b6a21e722bcd791a90a09c48d"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3661,19 +3674,6 @@ dependencies = [
  "parity-scale-codec 2.1.3",
  "serde",
  "sp-core",
- "sp-io 3.0.0",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-sudo"
-version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate.git#e5437efefa82bd8eb567f1245f0a7443ac4e4fe7"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec 2.1.3",
  "sp-io 3.0.0",
  "sp-runtime",
  "sp-std",
@@ -4112,7 +4112,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "polkadex-fungible-assets"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#f508b8f293e81fcf6ccba29bc653bdf330b26294"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4133,7 +4133,7 @@ dependencies = [
 [[package]]
 name = "polkadex-ido"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#f508b8f293e81fcf6ccba29bc653bdf330b26294"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4155,7 +4155,7 @@ dependencies = [
 [[package]]
 name = "polkadex-ocex"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#f508b8f293e81fcf6ccba29bc653bdf330b26294"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4163,7 +4163,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-substratee-registry",
+ "pallet-teerex",
  "pallet-timestamp",
  "parity-scale-codec 2.1.3",
  "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=main)",
@@ -6725,7 +6725,7 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 [[package]]
 name = "token-faucet-pallet"
 version = "1.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#f508b8f293e81fcf6ccba29bc653bdf330b26294"
 dependencies = [
  "frame-support",
  "frame-system",
