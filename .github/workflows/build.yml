@@ -41,8 +41,8 @@ jobs:
       - name: Test Enclave
         run: cd bin && ./substratee-worker test --unit
       - name: Clippy Client
-        run: cd client  && cargo clippy
+        run: cd client  && cargo clippy -- -D warnings
       - name: Clippy Worker
-        run: cd worker  && cargo clippy
+        run: cd worker  && cargo clippy -- -D warnings
       - name: Clippy Enclave
-        run: cd enclave  && cargo clippy
+        run: cd enclave  && cargo clippy -- -D warnings
