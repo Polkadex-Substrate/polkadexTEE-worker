@@ -225,10 +225,13 @@ mrsigner:
 
 .PHONY: update
 update:
+
 	@echo "Running cargo update.."
 	@cargo update
 	@echo "cargo update in enclave directory"
 	@cd enclave && cargo update
+	@cd enclave && cargo update -p jsonrpc-core --precise e5ee60bc30dedf513743843be2523dc384bbcae1
+	@cd enclave && cargo update -p jsonrpc-core --precise e5ee60bc30dedf513743843be2523dc384bbcae1
 	@cd enclave && cargo update -p sp-std --precise e5437efefa82bd8eb567f1245f0a7443ac4e4fe7
 	@cd enclave && cargo update -p sp-std --precise e5437efefa82bd8eb567f1245f0a7443ac4e4fe7
 	@cd enclave && cargo update -p sgx_tstd --precise ed9e7cce4fd40efd7a256d5c4be1c5f00778a5bb

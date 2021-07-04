@@ -22,6 +22,7 @@ use blake2_rfc::blake2b::{Blake2b, Blake2bResult};
 use core::convert::AsMut;
 use sp_core::crypto::{AccountId32, Ss58AddressFormat};
 use sp_core::sp_std::convert::TryInto;
+use log::*;
 
 /// errors related to the conversion to/from SS58Check format
 #[derive(Debug, Clone, PartialEq, Copy)]
@@ -98,6 +99,7 @@ fn ss58hash(data: &[u8]) -> Blake2bResult {
 fn from_ss58check_with_version(
     s: &str,
 ) -> Result<(AccountId32, Ss58AddressFormat), SS58CheckError> {
+    debug!("Decoding: {}", s);
     const CHECKSUM_LEN: usize = 2;
     let mut res = AccountId32::default();
 
