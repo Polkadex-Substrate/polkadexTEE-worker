@@ -1,0 +1,10 @@
+services:
+  polkadex-node:
+    build: DockeFilePolkadex
+    ports:
+      - 9994:9994
+  polkadex-worker:
+    depends_on: polkadex-node
+    build: DockeFileEnclave
+    ports:
+      - 9995:9995
