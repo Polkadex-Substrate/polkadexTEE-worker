@@ -368,7 +368,7 @@ pub unsafe extern "C" fn init_chain_relay(
     polkadex_gateway::initialize_polkadex_gateway();
     info!(" Polkadex Gateway Nonces and Cache Initialized");
 
-    if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
+    if let Err(e) = polkadex_nonce_storage::create_in_memory_nonce_storage() {
         error!("Creating in memory nonce storage failed. Error: {:?}", e);
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
