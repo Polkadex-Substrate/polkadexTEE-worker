@@ -1,0 +1,50 @@
+version: "3"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.8-management
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  database:
+    image: mysql:5.7
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./structure.sql:/docker-entrypoint-initdb.d/dump.sql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: finex_development
+
+  vault:
+    image: vault:1.6.1
+    ports:
+      - "8200:8200"
+    environment:
+      SKIP_SETCAP: 1
+      VAULT_TOKEN: changeme
+      VAULT_DEV_ROOT_TOKEN_ID: changeme
+      VAULT_ADDR: http://vault:8200
+
+  engine:
+    #image: quay.io/openware/finex:3.0.0-7c1c4e3
+    image: finex:polkadex
+    volumes:
+      - ../config/config.yaml:/app/config/config.yaml
+
+  api:
+    #image: quay.io/openware/finex:3.0.0-7c1c4e3
+    image: finex:polkadex
+    command: ./orderapi
+    environment:
+      FINEX_GRPC_HOST: engine:50051
+    ports:
+      - "8001:8080"
+    volumes:
+      - ../config/rsa-key.pub:/app/config/rsa-key.pub
+      - ../config/config.yaml:/app/config/config.yaml
+
+volumes:
+  rabbitmq_data:
+  db_data:
