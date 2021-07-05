@@ -229,7 +229,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
 //Only for test
 pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let mut cache = match mutex.lock() {
+    let cache = match mutex.lock() {
         Ok(guard) => guard,
         Err(e) => {
             error!(
@@ -243,9 +243,9 @@ pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
 }
 
 // Only for test
-pub fn lock_storage_get_order(request_id: RequestId) -> Result<Order, GatewayError> {
+pub fn _lock_storage_get_order(request_id: RequestId) -> Result<Order, GatewayError> {
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let mut cache = match mutex.lock() {
+    let cache = match mutex.lock() {
         Ok(guard) => guard,
         Err(e) => {
             error!(

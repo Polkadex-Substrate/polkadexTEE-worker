@@ -168,7 +168,7 @@ impl TcpClient {
         if start_bytes[0] == 72 {
             // parse http response
             let mut buffer = [0 as u8; 512];
-            self.socket.read(&mut buffer);
+            self.socket.read(&mut buffer).unwrap(); //TODO: Proper Error handling
 
             debug!(
                 "Received Http response: HT{}",

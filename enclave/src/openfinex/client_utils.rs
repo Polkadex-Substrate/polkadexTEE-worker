@@ -24,7 +24,6 @@ DEALINGS IN THE SOFTWARE. */
 use std::vec::Vec;
 use std::string::String;
 use log::*;
-use core::convert::TryInto;
 use sgx_rand;
 
 pub use self::Payload::{Text, Binary, Empty};
