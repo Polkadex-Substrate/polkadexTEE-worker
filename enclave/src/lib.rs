@@ -451,9 +451,9 @@ pub unsafe extern "C" fn sync_chain(
     // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
     // otherwise some extrsincs have high chance of being invalid.. not really good
     // update nonce storage
-    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
-        error!("Locking and updating nonce failed. Error: {:?}", e);
-    };
+    //if let Err(e) = polkadex_nonce_storage::lock_and_update_nonce(*nonce) {
+    //    error!("Locking and updating nonce failed. Error: {:?}", e);
+    //};
 
     let mut blocks_to_sync_slice = slice::from_raw_parts(blocks_to_sync, blocks_to_sync_size);
 
