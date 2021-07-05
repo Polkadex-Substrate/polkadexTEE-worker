@@ -1,5 +1,6 @@
-# Script assumes that host system has go-lang installed
+# Script assumes that host system has go-lang installed and polkadex.tar file is present in the same directory as this script
 # The script assumes that openfinex opens it's port on 8001
+
 
 git clone https://github.com/openware/barong-jwt.git
 cd barong-jwt || exit
