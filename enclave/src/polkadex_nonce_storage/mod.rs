@@ -46,9 +46,10 @@ pub fn load_nonce_storage() -> SgxResult<&'static SgxMutex<PolkadexNonceStorage>
         as *mut SgxMutex<PolkadexNonceStorage>;
     if ptr.is_null() {
         error!("Pointer is Null");
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+    } else {
+        Ok(unsafe { &*ptr })
     }
-    Ok(unsafe { &*ptr })
 }
 
 pub fn lock_storage_and_get_nonce(
@@ -65,10 +66,13 @@ pub fn lock_storage_and_get_nonce(
     }
 }
 
-pub fn lock_and_update_nonce(nonce: u32, acc: AccountId) -> SgxResult<()> {
+pub fn lock_and_update_nonce(new_nonce: u32, acc: AccountId) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock().unwrap();
-    nonce_storage.set_nonce(nonce, acc);
+    if new_nonce > nonce_storage.read_nonce(acc.clone()).unwrap().nonce.unwrap()  {
+        debug!("update to new nonce: {:?}", new_nonce);
+        nonce_storage.set_nonce(new_nonce, acc);
+    }
     Ok(())
 }
 
