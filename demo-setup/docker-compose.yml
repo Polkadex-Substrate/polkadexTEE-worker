@@ -1,10 +1,14 @@
 services:
   polkadex-node:
-    build: DockeFilePolkadex
+    build:
+      context: .
+      dockerfile: ./polkadex/DockeFile
     ports:
       - 9994:9994
   polkadex-worker:
-    depends_on: polkadex-node
-    build: DockeFileEnclave
+    build:
+      context: .
+      dockerfile: ./gateway/DockeFile
     ports:
       - 9995:9995
+    depends_on: [polkadex-node]

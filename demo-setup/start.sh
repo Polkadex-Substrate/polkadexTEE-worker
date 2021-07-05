@@ -1,6 +1,6 @@
-# Script assumes that host system has go-lang installed and polkadex.tar file is present in the same directory as this script
+# Script assumes that host system has go-lang installed and polkadex.tar is present in the same directory and config.yaml
 # The script assumes that openfinex opens it's port on 8001
-# It also assumes that config.yaml is inside config folder,
+# It also assumes that config.yaml is inside config folder.
 
 
 git clone https://github.com/openware/barong-jwt.git
