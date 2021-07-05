@@ -70,8 +70,6 @@ impl RpcWithdraw {
         let asset_id = asset_with_amount.0;
         let amount = asset_with_amount.1;
 
-        //lock_storage_and_increment_nonce(main_account.clone()).unwrap();
-
         match self.rpc_gateway.withdraw(main_account, asset_id, amount) {
             Ok(()) => Ok(((), false, DirectRequestStatus::Ok)),
             Err(e) => Err(format!("Failed to withdraw: {}", e.as_str())),

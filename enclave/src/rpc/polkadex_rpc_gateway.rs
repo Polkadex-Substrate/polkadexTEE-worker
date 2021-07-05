@@ -135,14 +135,11 @@ impl RpcGateway for PolkadexRpcGateway {
             }
         }?;
 
-        //println!("nonce from call: {}", call.clone().0);
-
         if self.get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
             lock_storage_and_increment_nonce(call.clone().1).unwrap();
             Ok(())
         }
         else {
-            //println!("failed cause nonce doesn't match");
             Err(String::from("failed cause nonce doesn't match"))
         }
     }
