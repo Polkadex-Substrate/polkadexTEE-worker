@@ -368,7 +368,7 @@ pub unsafe extern "C" fn init_chain_relay(
     polkadex_gateway::initialize_polkadex_gateway();
     info!(" Polkadex Gateway Nonces and Cache Initialized");
 
-    if let Err(e) = polkadex_nonce_storage::create_in_memory_nonce_storage() {
+    if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
         error!("Creating in memory nonce storage failed. Error: {:?}", e);
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
@@ -451,10 +451,9 @@ pub unsafe extern "C" fn sync_chain(
     // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
     // otherwise some extrsincs have high chance of being invalid.. not really good
     // update nonce storage
-
-  //  if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
-  //      error!("Locking and updating nonce failed. Error: {:?}", e);
-  //  };
+    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
+        error!("Locking and updating nonce failed. Error: {:?}", e);
+    };
 
     let mut blocks_to_sync_slice = slice::from_raw_parts(blocks_to_sync, blocks_to_sync_size);
 
@@ -1083,8 +1082,8 @@ fn handle_ocex_withdraw(
     }
 }
 
-/// compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
 fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
+    // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
     let validator = match io::light_validation::unseal() {
         Ok(v) => v,
         Err(e) => return Err(e),
@@ -1421,7 +1420,6 @@ fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
     Ok(())
 }
 
-/// sends an release extrsinic per ocall to the node
 fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
     let res = unsafe {
