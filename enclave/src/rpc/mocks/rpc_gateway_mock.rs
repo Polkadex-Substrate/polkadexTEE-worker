@@ -20,7 +20,7 @@ pub extern crate alloc;
 use alloc::string::String;
 
 use crate::polkadex_balance_storage::Balances;
-use crate::polkadex_nonce_storage::{NonceHandler, lock_storage_and_get_nonce, create_in_memory_nonce_storage, lock_storage_and_increment_nonce};
+use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, create_in_memory_nonce_storage, lock_storage_and_increment_nonce};
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use polkadex_sgx_primitives::types::{CancelOrder, Order, OrderUUID};
@@ -54,14 +54,8 @@ impl RpcGatewayMock {
         get_balances_mock
     }
 
-    pub fn mock_nonce(do_authorize: bool) -> Self {
-        let mut get_nonce_mock = RpcGatewayMock::default();
-        create_in_memory_nonce_storage().unwrap();
-        get_nonce_mock.do_authorize = do_authorize;
-        get_nonce_mock
-    }
-
     pub fn mock_place_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
+        create_in_memory_nonce_storage().unwrap();
         let mut get_place_order_mock = RpcGatewayMock::default();
         get_place_order_mock.order_uuid = order_uuid;
         get_place_order_mock.do_authorize = do_authorize;
@@ -69,6 +63,7 @@ impl RpcGatewayMock {
     }
 
     pub fn mock_cancel_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
+        create_in_memory_nonce_storage().unwrap();
         let mut get_place_order_mock = RpcGatewayMock::default();
         get_place_order_mock.order_uuid = order_uuid;
         get_place_order_mock.do_authorize = do_authorize;
@@ -76,6 +71,7 @@ impl RpcGatewayMock {
     }
 
     pub fn mock_withdraw(do_authorize: bool) -> Self {
+        create_in_memory_nonce_storage().unwrap();
         let mut withdraw_mock = RpcGatewayMock::default();
         withdraw_mock.do_authorize = do_authorize;
         withdraw_mock
@@ -119,7 +115,7 @@ impl RpcGateway for RpcGatewayMock {
             }
         }?;
 
-        if self.get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
+        if lock_storage_and_get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
             lock_storage_and_increment_nonce(call.clone().1).unwrap();
             Ok(())
         }
@@ -133,18 +129,6 @@ impl RpcGateway for RpcGatewayMock {
             Some(b) => Ok(b.clone()),
             None => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
-    }
-
-    fn get_nonce(&self, main_account: AccountId) -> SgxResult<NonceHandler> {
-        match lock_storage_and_get_nonce(main_account.clone()) {
-            Ok(nonce) => Ok(nonce),
-            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
-        }
-    }
-
-    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<()> {
-        lock_storage_and_increment_nonce(main_account.clone())?;
-        Ok(())
     }
 
     fn place_order(

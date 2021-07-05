@@ -24,7 +24,7 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
 
-use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce, NonceHandler};
+use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
 
 use crate::execute_ocex_release_extrinsic;
 use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
@@ -59,12 +59,6 @@ pub trait RpcGateway: Send + Sync {
 
     /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
-
-    /// get the nonce for a given account
-    fn get_nonce(&self, main_account: AccountId) -> SgxResult<NonceHandler>;
-
-    /// increment the nonce for a given account
-    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<()>;
 
     /// place an order
     fn place_order(
@@ -135,7 +129,7 @@ impl RpcGateway for PolkadexRpcGateway {
             }
         }?;
 
-        if self.get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
+        if lock_storage_and_get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
             lock_storage_and_increment_nonce(call.clone().1).unwrap();
             Ok(())
         }
@@ -149,17 +143,6 @@ impl RpcGateway for PolkadexRpcGateway {
             Ok(balance) => Ok(balance),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
-    }
-
-    fn get_nonce(&self, main_account: AccountId) -> SgxResult<NonceHandler> {
-        match lock_storage_and_get_nonce(main_account.clone()) {
-            Ok(nonce) => Ok(nonce),
-            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
-        }
-    }
-
-    fn increment_nonce(&self, main_account: AccountId) -> SgxResult<()> {
-        lock_storage_and_increment_nonce(main_account.clone())
     }
 
     fn place_order(

@@ -104,14 +104,14 @@ pub mod tests {
     pub fn test_given_valid_order_id_return_success() {
         let order_id = "lojoif93j2lngfa".encode();
 
-        let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_cancel_order_operation(order_id.clone())),
-        });
-
         let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
-            Some(order_id),
+            Some(order_id.clone()),
             true,
         ));
+
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_cancel_order_operation(order_id)),
+        });
 
         let request = create_dummy_request();
 
@@ -125,14 +125,14 @@ pub mod tests {
     pub fn test_given_order_id_mismatch_then_fail() {
         let order_id = "lojoif93j2lngfa".encode();
 
-        let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_cancel_order_operation(order_id)),
-        });
-
         let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
             Some("other_id_that_doesnt_match".encode()),
             true,
         ));
+
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_cancel_order_operation(order_id)),
+        });
 
         let request = create_dummy_request();
 

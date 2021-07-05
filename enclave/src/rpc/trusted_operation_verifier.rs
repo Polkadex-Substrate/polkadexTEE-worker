@@ -111,7 +111,7 @@ fn verify_signature(
 
 fn verify_signature_of_signed_call(
     trusted_call: &TrustedCallSigned,
-    mrenclave: &sgx_measurement_t,
+    _mrenclave: &sgx_measurement_t,
     shard_id: &ShardIdentifier,
 ) -> Result<(), RpcCallStatus> {
     let m = [0u8; 32];
@@ -128,14 +128,12 @@ fn verify_signature_of_signed_call(
 pub mod tests {
 
     use super::*;
-    use crate::polkadex_nonce_storage::lock_storage_and_get_nonce;
     use crate::rpc::mocks::dummy_builder::{
         create_dummy_account, create_dummy_request, sign_trusted_call,
     };
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, AssetId};
     use sp_core::{ed25519 as ed25519_core, Pair, H256};
-    use substratee_stf::KeyPair;
     use substratee_stf::TrustedCall;
     use crate::ShardIdentifier;
 
