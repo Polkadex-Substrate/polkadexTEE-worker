@@ -66,3 +66,8 @@ bin/chain_relay_db.bin.1
 
 #worker
 worker/polkadex-orderbook-mirror.bin
+
+#demo
+demo-setup/barong-jwt
+demo-setup/config
+demo-setup/polkadex.tar
