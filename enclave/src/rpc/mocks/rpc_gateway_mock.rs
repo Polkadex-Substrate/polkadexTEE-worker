@@ -118,8 +118,6 @@ impl RpcGateway for RpcGatewayMock {
             }
         }?;
 
-        println!("nonce from call: {}", call.clone().0);
-
         if self.nonce == call.clone().0 {
             Ok(())
         }
