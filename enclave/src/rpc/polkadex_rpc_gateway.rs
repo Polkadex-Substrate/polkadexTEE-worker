@@ -129,7 +129,7 @@ impl RpcGateway for PolkadexRpcGateway {
             }
         }?;
 
-        if lock_storage_and_get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
+        if lock_storage_and_get_nonce(call.clone().1).unwrap() == call.clone().0 {
             lock_storage_and_increment_nonce(call.clone().1).unwrap();
             Ok(())
         }

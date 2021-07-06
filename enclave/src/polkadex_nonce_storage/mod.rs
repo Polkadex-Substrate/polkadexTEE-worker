@@ -26,23 +26,21 @@ use std::sync::{
 };
 
 pub mod nonce_storage;
-pub mod nonce_handler;
 
 pub use nonce_storage::*;
-pub use nonce_handler::*;
 
-static GLOBAL_POLKADEX_NONCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+static GLOBAL_POLKADEX_USER_NONCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub fn create_in_memory_nonce_storage() -> Result<(), GatewayError> {
     let nonce_storage = PolkadexNonceStorage::create();
     let storage_ptr = Arc::new(SgxMutex::<PolkadexNonceStorage>::new(nonce_storage));
     let ptr = Arc::into_raw(storage_ptr);
-    GLOBAL_POLKADEX_NONCE_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
+    GLOBAL_POLKADEX_USER_NONCE_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
     Ok(())
 }
 
 pub fn load_nonce_storage() -> SgxResult<&'static SgxMutex<PolkadexNonceStorage>> {
-    let ptr = GLOBAL_POLKADEX_NONCE_STORAGE.load(Ordering::SeqCst)
+    let ptr = GLOBAL_POLKADEX_USER_NONCE_STORAGE.load(Ordering::SeqCst)
         as *mut SgxMutex<PolkadexNonceStorage>;
     if ptr.is_null() {
         error!("Pointer is Null");
@@ -53,43 +51,26 @@ pub fn load_nonce_storage() -> SgxResult<&'static SgxMutex<PolkadexNonceStorage>
 }
 
 pub fn lock_storage_and_get_nonce(
-    main_acc: AccountId,
-) -> SgxResult<NonceHandler> {
+    acc: AccountId,
+) -> SgxResult<u32> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock()
         .unwrap(); //TODO: Error handling
-    if let Some(nonce) = nonce_storage.read_nonce(main_acc.clone()).cloned() {
-        Ok(nonce)
-    } else {
-        nonce_storage.initialize_nonce(main_acc.clone());
-        Ok(NonceHandler {nonce: Some(0u32)})
-    }
+    Ok(nonce_storage.read_nonce(acc))
 }
 
-pub fn lock_and_update_nonce(new_nonce: u32, acc: AccountId) -> SgxResult<()> {
-    let mutex = load_nonce_storage()?;
-    let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock().unwrap();
-    if new_nonce > nonce_storage.read_nonce(acc.clone()).unwrap().nonce.unwrap()  {
-        debug!("update to new nonce: {:?}", new_nonce);
-        nonce_storage.set_nonce(new_nonce, acc);
-    }
-    Ok(())
-}
+// pub fn lock_and_update_nonce(new_nonce: u32, acc: AccountId) -> SgxResult<()> {
+//     let mutex = load_nonce_storage()?;
+//     let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock().unwrap();
+//     if new_nonce > nonce_storage.read_nonce(acc.clone()).unwrap().nonce.unwrap()  {
+//         debug!("update to new nonce: {:?}", new_nonce);
+//         nonce_storage.set_nonce(new_nonce, acc);
+//     }
+//     Ok(())
+// }
 
 pub fn lock_storage_and_increment_nonce(acc: AccountId) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<PolkadexNonceStorage> = mutex.lock().unwrap();
-    if let Some(mut nonce_handler) = nonce_storage.read_nonce(acc.clone()).cloned() {
-        if let Some(inner_nonce) = nonce_handler.nonce {
-            nonce_storage.set_nonce(inner_nonce + 1u32, acc);
-            Ok(())
-        } else {
-            nonce_handler.nonce = Some(0u32);
-            Ok(())
-        }
-    } else {
-        nonce_storage.initialize_nonce(acc.clone());
-        Ok(())
-    }
-
+    Ok(nonce_storage.increment_nonce(acc))
 }

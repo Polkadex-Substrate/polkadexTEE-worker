@@ -34,6 +34,7 @@ pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
     pub order_uuid: Option<OrderUUID>,
+    pub nonce: u32,
 }
 
 
@@ -44,6 +45,7 @@ impl RpcGatewayMock {
             do_authorize: false,
             balance_to_return: None,
             order_uuid: None,
+            nonce: 0u32,
         }
     }
 
@@ -55,7 +57,6 @@ impl RpcGatewayMock {
     }
 
     pub fn mock_place_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
-        create_in_memory_nonce_storage().unwrap();
         let mut get_place_order_mock = RpcGatewayMock::default();
         get_place_order_mock.order_uuid = order_uuid;
         get_place_order_mock.do_authorize = do_authorize;
@@ -63,7 +64,6 @@ impl RpcGatewayMock {
     }
 
     pub fn mock_cancel_order(order_uuid: Option<OrderUUID>, do_authorize: bool) -> Self {
-        create_in_memory_nonce_storage().unwrap();
         let mut get_place_order_mock = RpcGatewayMock::default();
         get_place_order_mock.order_uuid = order_uuid;
         get_place_order_mock.do_authorize = do_authorize;
@@ -71,10 +71,13 @@ impl RpcGatewayMock {
     }
 
     pub fn mock_withdraw(do_authorize: bool) -> Self {
-        create_in_memory_nonce_storage().unwrap();
         let mut withdraw_mock = RpcGatewayMock::default();
         withdraw_mock.do_authorize = do_authorize;
         withdraw_mock
+    }
+
+    pub fn increment_nonce(&mut self) {
+        self.nonce += 1u32;
     }
 }
 
@@ -115,8 +118,9 @@ impl RpcGateway for RpcGatewayMock {
             }
         }?;
 
-        if lock_storage_and_get_nonce(call.clone().1).unwrap().nonce.unwrap() == call.clone().0 { //TODO: Error handling
-            lock_storage_and_increment_nonce(call.clone().1).unwrap();
+        println!("nonce from call: {}", call.clone().0);
+
+        if self.nonce == call.clone().0 {
             Ok(())
         }
         else {

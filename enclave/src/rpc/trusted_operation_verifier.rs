@@ -193,7 +193,7 @@ pub mod tests {
 
         let trusted_call =
             TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }
@@ -207,7 +207,7 @@ pub mod tests {
         let trusted_call =
             TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
 
-        let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer);
+        let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }

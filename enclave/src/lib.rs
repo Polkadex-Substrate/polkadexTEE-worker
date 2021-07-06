@@ -33,7 +33,7 @@ extern crate sgx_tstd as std;
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
-use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
+use crate::nonce_handler::NonceHandler;
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 use base58::ToBase58;
 use chain_relay::{
@@ -92,6 +92,7 @@ mod happy_path;
 pub mod hex;
 mod io;
 mod ipfs;
+pub mod nonce_handler;
 pub mod polkadex_nonce_storage;
 pub mod openfinex;
 mod polkadex;
@@ -214,9 +215,11 @@ fn create_extrinsics(
 ) -> SgxResult<Vec<Vec<u8>>> {
     // get information for composing the extrinsic
     let signer = ed25519::unseal_pair()?;
-    debug!("Restored ECC pubkey: {:?}", signer.public().clone());
+    debug!("Restored ECC pubkey: {:?}", signer.public());
 
-    let mut nonce = polkadex_nonce_storage::lock_storage_and_get_nonce(signer.public().clone().into()).unwrap().nonce.unwrap(); //TODO: Error handling
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let mut nonce = nonce_storage.nonce;
 
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
@@ -231,14 +234,15 @@ fn create_extrinsics(
                 RUNTIME_SPEC_VERSION,
                 RUNTIME_TRANSACTION_VERSION
             )
-            .encode();
+                .encode();
             nonce += 1;
             xt
         })
         .collect();
 
     // update nonce storage
-    polkadex_nonce_storage::lock_and_update_nonce(nonce, signer.public().into()).unwrap(); //TODO: Error handling
+    debug!("Update to new new nonce: {:?}", nonce);
+    nonce_storage.update(nonce);
 
     Ok(extrinsics_buffer)
 }
@@ -368,7 +372,7 @@ pub unsafe extern "C" fn init_chain_relay(
     polkadex_gateway::initialize_polkadex_gateway();
     info!(" Polkadex Gateway Nonces and Cache Initialized");
 
-    if let Err(e) = polkadex_nonce_storage::create_in_memory_nonce_storage() {
+    if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
         error!("Creating in memory nonce storage failed. Error: {:?}", e);
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
@@ -405,7 +409,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .unwrap();
 
     if let Err(status) =
-        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
+    polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
     {
         return status;
     }
@@ -433,7 +437,7 @@ pub unsafe extern "C" fn load_orders_to_memory(
     };
 
     if let Err(status) =
-        polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders)
+    polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders)
     {
         return status;
     };
@@ -451,9 +455,9 @@ pub unsafe extern "C" fn sync_chain(
     // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
     // otherwise some extrsincs have high chance of being invalid.. not really good
     // update nonce storage
-    //if let Err(e) = polkadex_nonce_storage::lock_and_update_nonce(*nonce) {
-    //    error!("Locking and updating nonce failed. Error: {:?}", e);
-    //};
+    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
+        error!("Locking and updating nonce failed. Error: {:?}", e);
+    };
 
     let mut blocks_to_sync_slice = slice::from_raw_parts(blocks_to_sync, blocks_to_sync_size);
 
@@ -881,7 +885,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     let mut opaque_calls = Vec::<OpaqueCall>::new();
     for xt_opaque in block.extrinsics.iter() {
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
@@ -893,7 +897,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Register
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
@@ -904,7 +908,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
         // Polkadex OCEX Add Proxy
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
@@ -915,7 +919,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
         // Polkadex OCEX Remove Proxy
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
@@ -927,7 +931,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Withdraw
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
@@ -939,7 +943,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Deposit
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
@@ -950,7 +954,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
 
         if let Ok(xt) =
-            UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
+        UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, CALL_WORKER] {
                 if let Ok((decrypted_trusted_call, shard)) = decrypt_unchecked_extrinsic(xt) {
@@ -1082,8 +1086,8 @@ fn handle_ocex_withdraw(
     }
 }
 
+/// compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
 fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
-    // TODO: compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
     let validator = match io::light_validation::unseal() {
         Ok(v) => v,
         Err(e) => return Err(e),
@@ -1091,18 +1095,15 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     // Compose the release extrinsic
     let xt_block = [OCEX_MODULE, OCEX_RELEASE];
     let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
-    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc.clone()).encode());
+    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
 
     // Load the enclave's key pair
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
-    let nonce = match lock_storage_and_get_nonce(acc.clone()) {
-        Ok(nonce) => Ok(nonce),
-        Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
-    }?;
-
-    let nonce = nonce.nonce.unwrap();
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let nonce = nonce_storage.nonce;
     debug!("using nonce for ocex release: {:?}", nonce);
 
     let xt: Vec<u8> = compose_extrinsic_offline!(
@@ -1115,10 +1116,8 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
         RUNTIME_SPEC_VERSION,
         RUNTIME_TRANSACTION_VERSION
     )
-    .encode();
-
-    lock_storage_and_increment_nonce(acc.clone()).unwrap(); //TODO: Error handling
-    //nonce_storage.increment();
+        .encode();
+    nonce_storage.increment();
 
     send_release_extrinsic(xt)?;
     Ok(())
@@ -1298,7 +1297,7 @@ fn verify_worker_responses(
                     key,
                     proof.to_vec(),
                 )
-                .sgx_error_with_log("Erroneous StorageProof")?;
+                    .sgx_error_with_log("Erroneous StorageProof")?;
 
                 // Todo: Why do they do it like that, we could supply the proof only and get the value from the proof directly??
                 if &actual != value {
@@ -1420,6 +1419,7 @@ fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
     Ok(())
 }
 
+/// sends an release extrsinic per ocall to the node
 fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
     let res = unsafe {

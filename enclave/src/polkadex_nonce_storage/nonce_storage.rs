@@ -22,15 +22,12 @@ use codec::Encode;
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::vec::Vec;
 
-
-use crate::polkadex_nonce_storage::nonce_handler::*;
-
 pub type EncodedKey = Vec<u8>;
 
 #[derive(Debug)]
 pub struct PolkadexNonceStorage {
     /// map AccountId -> NonceHandler
-    pub storage: HashMap<EncodedKey, NonceHandler>,
+    pub storage: HashMap<EncodedKey, u32>,
 }
 
 impl PolkadexNonceStorage {
@@ -40,28 +37,32 @@ impl PolkadexNonceStorage {
         }
     }
 
-    pub fn read_nonce(&self, acc: AccountId) -> Option<&NonceHandler> {
+    pub fn read_nonce(&mut self, acc: AccountId) -> u32 {
         debug!("reading nonce from acc: {:?}", acc);
-        self.storage.get(&acc.encode())
+        if let Some(nonce) = self.storage.get(&acc.clone().encode()) {
+            *nonce
+        }
+        else {
+            self.initialize_nonce(acc);
+            0u32
+        }
     }
 
     pub fn set_nonce(&mut self, nonce: u32, acc: AccountId) {
-        match self
+        self
             .storage
-            .get_mut(&acc.clone().encode())
-        {
-            Some(nonce_handler) => {
-                nonce_handler.nonce = Some(nonce);
-            }
-            None => {
-                debug!("No entry available for given token- and AccountId, creating new.");
-                self.initialize_nonce(acc);
-            }
-        }
+            .insert(acc.clone().encode(), nonce);
+    }
+
+    pub fn increment_nonce(&mut self, acc: AccountId) {
+        let nonce = self.read_nonce(acc.clone());
+        self
+            .storage
+            .insert(acc.clone().encode(), nonce + 1u32);
     }
 
     pub fn initialize_nonce(&mut self, acc: AccountId) {
         debug!("initializing nonce for acc: {:?}", acc);
-        self.storage.insert(acc.encode(), NonceHandler::initialize());
+        self.storage.insert(acc.encode(), 0u32);
     }
 }

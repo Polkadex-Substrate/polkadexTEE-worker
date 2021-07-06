@@ -37,10 +37,6 @@ pub fn create_dummy_account() -> ed25519_core::Pair {
     ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
 }
 
-pub fn create_secondary_dummy_account() -> ed25519_core::Pair {
-    ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
-}
-
 pub fn create_dummy_order(account: AccountId) -> Order {
     Order {
         user_uid: account,
@@ -71,16 +67,14 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
 pub fn sign_trusted_call(
     trusted_call: TrustedCall,
     signer: ed25519_core::Pair,
+    nonce: u32,
 ) -> TrustedCallSigned {
     let mr_enclave = [0u8; 32];
     let shard_identifier = ShardIdentifier::default();
 
     trusted_call.sign(
         &KeyPair::Ed25519(signer.clone()),
-        lock_storage_and_get_nonce(signer.public().into())
-           .unwrap()
-           .nonce
-           .unwrap(), //TODO: Error handling
+        nonce,
         &mr_enclave,
         &shard_identifier,
     )

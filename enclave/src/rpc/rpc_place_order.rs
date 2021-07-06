@@ -131,7 +131,7 @@ pub mod tests {
 
         let trusted_call = TrustedCall::place_order(account_id.clone(), order, None);
 
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }

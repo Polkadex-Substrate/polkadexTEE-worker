@@ -93,7 +93,7 @@ pub mod tests {
 
     use super::*;
     use crate::rpc::mocks::dummy_builder::{
-        create_dummy_account, create_secondary_dummy_account, create_dummy_request, sign_trusted_call,
+        create_dummy_account, create_dummy_request, sign_trusted_call,
     };
     use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
     use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
@@ -115,23 +115,26 @@ pub mod tests {
     }
 
     pub fn test_incrementing_nonce_wont_match() {
-        let rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
+        let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
 
         let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_secondary_withdraw_order_operation()),
+            trusted_operation: Some(create_withdraw_order_operation()),
         });
 
         let top_extractor1 = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_secondary_withdraw_order_operation()),
+            trusted_operation: Some(create_withdraw_order_operation()),
         });
 
         let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
-        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway);
+        assert_eq!(0u32, rpc_gateway.nonce);
+        rpc_gateway.increment_nonce();
+        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway.clone());
+        assert_eq!(1u32, rpc_gateway.nonce);
 
-        assert_eq!(Some(0), lock_storage_and_get_nonce(create_secondary_dummy_account().public().into()).unwrap().nonce);
+
         rpc_withdraw.method_impl(create_dummy_request()).unwrap();
 
-        assert_eq!(Some(1), lock_storage_and_get_nonce(create_secondary_dummy_account().public().into()).unwrap().nonce);
+
 
         let result = rpc_withdraw1.method_impl(create_dummy_request());
 
@@ -158,18 +161,7 @@ pub mod tests {
 
         let trusted_call = TrustedCall::withdraw(account_id.clone(), AssetId::DOT, 1000, None);
 
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
-
-        TrustedOperation::direct_call(trusted_call_signed)
-    }
-
-    fn create_secondary_withdraw_order_operation() -> TrustedOperation {
-        let key_pair = create_secondary_dummy_account();
-        let account_id: AccountId = key_pair.public().into();
-
-        let trusted_call = TrustedCall::withdraw(account_id.clone(), AssetId::DOT, 1000, None);
-
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }
