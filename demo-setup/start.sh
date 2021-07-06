@@ -1,6 +1,7 @@
 # Script assumes that host system has go-lang installed and polkadex.tar is present in the same directory and config.yaml
 # The script assumes that openfinex opens it's port on 8001
 # It also assumes that config.yaml is inside config folder.
+# We also need docker-compose 1.29 or newer 
 
 
 git clone https://github.com/openware/barong-jwt.git
