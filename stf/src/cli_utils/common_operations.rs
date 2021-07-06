@@ -42,7 +42,7 @@ pub fn get_trusted_nonce(
         if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
             nonce
         } else {
-            info!("could not decode value. maybe hasn't been set? {:x?}", n);
+            error!("could not decode value. maybe hasn't been set? {:x?}", n);
             0
         }
     } else {
