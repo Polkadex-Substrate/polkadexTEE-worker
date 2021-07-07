@@ -19,4 +19,4 @@ sleep 30s
 echo "Starting the api and engine services"
 docker-compose -f compose/upstream_compose.yml start
 echo "Starting Polkadex Node and TEE Gateway"
-docker-compose up
+docker-compose up --build

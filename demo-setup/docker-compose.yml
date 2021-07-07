@@ -1,14 +1,17 @@
+version: "3.2"
+
 services:
   polkadex-node:
     build:
       context: .
-      dockerfile: ./polkadex/DockerFile
+      dockerfile: ./polkadex/Dockerfile
     ports:
-      - 9994:9994
+      - "9994:9994"
   polkadex-worker:
     build:
       context: .
-      dockerfile: ./gateway/DockerFile
+      dockerfile: ./gateway/Dockerfile
     ports:
-      - 9995:9995
+      - "9995:9995"
+      - "3443:3443"
     depends_on: [polkadex-node]

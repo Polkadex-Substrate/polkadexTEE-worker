@@ -1,6 +1,6 @@
 FROM scssubstratee/substratee_dev:1804-2.12-1.1.3-001
 RUN apt-get install -y git && apt-get install -y curl
-RUN git clone https://github.com/Polkadex-Substrate/polkadexTEE-worker.git
+RUN git clone  https://github.com/Polkadex-Substrate/polkadexTEE-worker.git
 RUN cd polkadexTEE-worker && \
     git checkout develop &&  \
     ./ci/install_rust.sh && \
@@ -10,5 +10,5 @@ RUN cd polkadexTEE-worker/bin && \
     ./substratee-worker shielding-key && \
     ./substratee-worker signing-key && \
     ./substratee-worker mrenclave > ~/mrenclave.b58
-EXPOSE 9995
-CMD ./polkadexTEE-worker/bin/substratee-worker -P 9995 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
+EXPOSE 9995 3443
+CMD cd polkadexTEE-worker/bin && ./substratee-worker -P 9995 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
