@@ -69,6 +69,7 @@ impl StaticStorageApi for CancelOrderCache {
 impl CancelOrderCache {
     /// removes the given order from the cache. Returns true if the
     /// given value was present
+    #[allow(clippy::ptr_arg)]
     pub fn remove_order(&mut self, order_id: &OrderUUID) -> bool {
         self.order_uuids.remove(order_id)
     }
@@ -82,6 +83,7 @@ impl CancelOrderCache {
     }
 
     /// Returns true if the set contains a value.
+    #[allow(clippy::ptr_arg)]
     pub fn contains(&self, order_id: &OrderUUID) -> bool {
         self.order_uuids.contains(order_id)
     }

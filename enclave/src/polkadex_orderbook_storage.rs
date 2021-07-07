@@ -58,12 +58,14 @@ impl OrderbookStorage {
 
     /// Removes a order_uid from the orderbook,
     /// returning the value at the order_uid if the order_uid was previously in the map.
+    #[allow(clippy::ptr_arg)]
     pub fn remove_order(&mut self, order_uid: &OrderUUID) -> Option<Order> {
         debug!("Removing order with uid: {:?}", order_uid);
         self.storage.remove(order_uid)
     }
 
     /// Returns a reference to the order corresponding to the order_uid.
+    #[allow(clippy::ptr_arg)]
     pub fn read_order(&self, order_uid: &OrderUUID) -> Option<&Order> {
         debug!("Reading order with uid: {:?}", order_uid);
         self.storage.get(order_uid)
@@ -112,6 +114,7 @@ pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayEr
 
 // TODO: Write test cases for this function
 
+#[allow(clippy::ptr_arg)]
 pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap
