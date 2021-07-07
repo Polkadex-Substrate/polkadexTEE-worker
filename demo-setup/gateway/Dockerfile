@@ -9,6 +9,6 @@ RUN cd polkadexTEE-worker/bin && \
     ./substratee-worker init-shard && \
     ./substratee-worker shielding-key && \
     ./substratee-worker signing-key && \
-    ./substratee-worker mrenclave > ~/mrenclave.b58 && \
+    ./substratee-worker mrenclave > ~/mrenclave.b58
 EXPOSE 9995
 CMD ./polkadexTEE-worker/bin/substratee-worker -P 9995 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
