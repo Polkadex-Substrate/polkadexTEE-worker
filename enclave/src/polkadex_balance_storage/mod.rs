@@ -64,7 +64,7 @@ pub fn lock_storage_and_reserve_balance(
             error!("Could not lock mutex of balance storage");
             GatewayError::UnableToLock
         })?;
-    let balance = match balance_storage.read_balance(token.clone(), main_acc.clone()) {
+    let balance = match balance_storage.read_balance(token, main_acc.clone()) {
         Some(balance) => balance.clone(),
         None => {
             error!("Account does not have a balance storage for this asset id yet");
@@ -79,12 +79,12 @@ pub fn lock_storage_and_reserve_balance(
         return Err(GatewayError::NotEnoughFreeBalance);
     }
     balance_storage.set_free_balance(
-        token.clone(),
+        token,
         main_acc.clone(),
         balance.free.saturating_sub(amount),
     )?;
     balance_storage.set_reserve_balance(
-        token.clone(),
+        token,
         main_acc.clone(),
         balance.reserved.saturating_add(amount),
     )?;
@@ -103,7 +103,7 @@ pub fn lock_storage_unreserve_balance(
             error!("Could not lock mutex of balance storage");
             GatewayError::UnableToLock
         })?;
-    let balance = match balance_storage.read_balance(token.clone(), main_acc.clone()) {
+    let balance = match balance_storage.read_balance(token, main_acc.clone()) {
         Some(balance) => balance.clone(),
         None => {
             error!("Account does not have a balance storage for this asset id yet");
@@ -115,7 +115,7 @@ pub fn lock_storage_unreserve_balance(
         return Err(GatewayError::NotEnoughReservedBalance);
     }
     balance_storage.set_free_balance(
-        token.clone(),
+        token,
         main_acc.clone(),
         balance.free.saturating_add(amount),
     )?;
@@ -154,7 +154,7 @@ pub fn lock_storage_and_withdraw(
             error!("Could not lock mutex of balance storage");
             GatewayError::UnableToLock
         })?;
-    match balance_storage.read_balance(token.clone(), main_acc.clone()) {
+    match balance_storage.read_balance(token, main_acc.clone()) {
         Some(balance) => {
             if balance.free >= amt {
                 balance_storage.withdraw(token, main_acc, amt)?;
@@ -214,8 +214,8 @@ pub fn lock_storage_transfer_balance(
             error!("Could not lock mutex of balance storage");
             GatewayError::UnableToLock
         })?;
-    balance_storage.reduce_free_balance(token.clone(), from.clone(), amount)?;
-    balance_storage.increase_free_balance(token.clone(), to.clone(), amount)?;
+    balance_storage.reduce_free_balance(token, from.clone(), amount)?;
+    balance_storage.increase_free_balance(token, to.clone(), amount)?;
     Ok(())
 }
 // Ony for testing
@@ -230,6 +230,6 @@ pub fn lock_storage_increase_free_balance(
             error!("Could not lock mutex of balance storage");
             GatewayError::UnableToLock
         })?;
-    balance_storage.increase_free_balance(token.clone(), account.clone(), amount)?;
+    balance_storage.increase_free_balance(token, account, amount)?;
     Ok(())
 }

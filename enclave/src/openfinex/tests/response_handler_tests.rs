@@ -25,9 +25,8 @@ use crate::openfinex::response_handler::PolkadexResponseHandler;
 use crate::openfinex::response_object_mapper::{OpenFinexResponse, OpenFinexResponseObjectMapper};
 use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::{GatewayError, PolkaDexGatewayCallback};
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, sync::Arc};
 use polkadex_sgx_primitives::types::{OrderUUID, TradeEvent};
-
 
 struct GatewayCallBackMock;
 impl PolkaDexGatewayCallback for GatewayCallBackMock {
@@ -43,10 +42,7 @@ impl PolkaDexGatewayCallback for GatewayCallBackMock {
         todo!()
     }
 
-    fn settle_trade(
-        &self,
-        _trade_event: TradeEvent
-    ) -> Result<(), GatewayError> {
+    fn settle_trade(&self, _trade_event: TradeEvent) -> Result<(), GatewayError> {
         todo!()
     }
 }
@@ -56,7 +52,7 @@ impl MarketsRequestCallback for MarketsRequestCallbackMock {
     fn update_markets(
         &self,
         _request_id: u128,
-        _json_strings: &Vec<String>,
+        _json_strings: &[String],
     ) -> Result<(), MarketRepositoryError> {
         todo!()
     }

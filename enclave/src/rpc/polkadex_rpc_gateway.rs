@@ -20,18 +20,18 @@ pub extern crate alloc;
 use alloc::{string::String, string::ToString};
 use log::error;
 
+use crate::execute_ocex_release_extrinsic;
+use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
+use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
-use crate::polkadex_gateway::{authenticate_user, OpenfinexPolkaDexGateway, GatewayError};
-use crate::execute_ocex_release_extrinsic;
+use crate::polkadex_gateway::{authenticate_user, GatewayError, OpenfinexPolkaDexGateway};
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
-use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
-use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
 pub trait RpcGateway: Send + Sync {
@@ -96,9 +96,9 @@ impl RpcGateway for PolkadexRpcGateway {
         }?;
 
         let main_account = trusted_call.main_account().clone();
-        let proxy_account = trusted_call.proxy_account().clone();
+        let proxy_account = trusted_call.proxy_account();
 
-        match self.authorize_user(main_account.clone(), proxy_account.clone()) {
+        match self.authorize_user(main_account, proxy_account) {
             Ok(()) => Ok(trusted_call),
             Err(e) => {
                 error!("Could not find account within registry");
@@ -120,11 +120,9 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_acc: Option<AccountId>,
         order: Order,
     ) -> Result<(), GatewayError> {
-        let gateway = OpenfinexPolkaDexGateway::new(
-            OpenFinexApiImpl::new(
-                OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
-            )
-        );
+        let gateway = OpenfinexPolkaDexGateway::new(OpenFinexApiImpl::new(
+            OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+        ));
         gateway.place_order(main_account, proxy_acc, order)
     }
 
@@ -134,17 +132,15 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_acc: Option<AccountId>,
         order: CancelOrder,
     ) -> Result<(), GatewayError> {
-        let gateway = OpenfinexPolkaDexGateway::new(
-            OpenFinexApiImpl::new(
-                OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
-            )
-        );
+        let gateway = OpenfinexPolkaDexGateway::new(OpenFinexApiImpl::new(
+            OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
+        ));
         gateway.cancel_order(main_account, proxy_acc, order)
     }
 
     fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
         match lock_storage_and_withdraw(main_account.clone(), token, amount) {
-            Ok(_) => execute_ocex_release_extrinsic(main_account.clone(), token, amount),
+            Ok(_) => execute_ocex_release_extrinsic(main_account, token, amount),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
     }

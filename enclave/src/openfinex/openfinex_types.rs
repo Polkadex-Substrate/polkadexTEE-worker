@@ -61,8 +61,8 @@ impl RequestType {
         }
     }
 
-    pub fn from_request_string(input: &String) -> OpenFinexApiResult<Self> {
-        match input.as_str() {
+    pub fn from_request_string(input: &str) -> OpenFinexApiResult<Self> {
+        match input {
             RequestType::DEPOSIT_STR => Ok(RequestType::DepositFunds),
             RequestType::WITHDRAW_STR => Ok(RequestType::WithdrawFunds),
             RequestType::CREATE_ORDER_STR => Ok(RequestType::CreateOrder),

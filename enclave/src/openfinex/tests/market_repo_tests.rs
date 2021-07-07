@@ -42,7 +42,7 @@ impl CacheProvider<MarketCache> for MarketCacheProviderMock {
         let ptr = self.cache_ptr.load(Ordering::SeqCst) as *mut SgxMutex<MarketCache>;
         if ptr.is_null() {
             error!("Could not load cache");
-            return Err(());
+            Err("Could not load cache".to_string())
         } else {
             Ok(unsafe { &*ptr })
         }
@@ -52,7 +52,7 @@ impl CacheProvider<MarketCache> for MarketCacheProviderMock {
 pub fn update_markets_from_json_strings() {
     let cache_provider = Arc::new(MarketCacheProviderMock {
         initial_market_cache: MarketCache::new(),
-        cache_ptr: AtomicPtr::new(0 as *mut ()),
+        cache_ptr: AtomicPtr::new(std::ptr::null_mut::<()>()),
     });
     cache_provider.initialize();
 

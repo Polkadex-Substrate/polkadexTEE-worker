@@ -56,7 +56,7 @@ pub fn verify_pdex_account_read_proofs(
             )
             .sgx_error_with_log("Erroneous Storage Proof")?
             {
-                if &actual != &account.account.encode() {
+                if actual != account.account.encode() {
                     error!("Wrong storage value supplied");
                     return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
                 }
@@ -221,7 +221,8 @@ pub fn add_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError>
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.add_main_account(main_acc))
+    proxy_storage.add_main_account(main_acc);
+    Ok(())
 }
 
 pub fn remove_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
@@ -230,7 +231,8 @@ pub fn remove_main_account(main_acc: AccountId) -> Result<(), AccountRegistryErr
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.remove_main_account(main_acc))
+    proxy_storage.remove_main_account(main_acc);
+    Ok(())
 }
 
 pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
@@ -239,7 +241,8 @@ pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountReg
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.add_proxy(main_acc, proxy))
+    proxy_storage.add_proxy(main_acc, proxy);
+    Ok(())
 }
 
 // pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
@@ -255,7 +258,8 @@ pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), Account
     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.remove_proxy(main_acc, proxy))
+    proxy_storage.remove_proxy(main_acc, proxy);
+    Ok(())
 }
 
 pub fn load_proxy_registry(
@@ -264,7 +268,7 @@ pub fn load_proxy_registry(
         GLOBAL_ACCOUNTS_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<PolkadexAccountsStorage>;
     if ptr.is_null() {
         error!("Null pointer to polkadex account registry");
-        return Err(AccountRegistryError::CouldNotLoadRegistry);
+        Err(AccountRegistryError::CouldNotLoadRegistry)
     } else {
         Ok(unsafe { &*ptr })
     }

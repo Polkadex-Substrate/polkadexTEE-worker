@@ -68,10 +68,10 @@ impl RpcPlaceOrder {
 
         let result = match self
             .rpc_gateway
-            .place_order(main_account, proxy_account.clone(), order)
+            .place_order(main_account, proxy_account, order)
         {
             Ok(_) => Ok(OrderUUID::new()), //FIXME: this is not ok!
-            Err(e) => Err(String::from(e.to_string())),
+            Err(e) => Err(e.to_string()),
         }?;
 
         Ok((result, false, DirectRequestStatus::Ok))
@@ -109,10 +109,7 @@ pub mod tests {
 
         let order_uuid = "lkas903jfaj3".encode();
 
-        let rpc_gateway = Box::new(RpcGatewayMock::mock_place_order(
-            Some(order_uuid.clone()),
-            true,
-        ));
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_place_order(Some(order_uuid), true));
 
         let request = create_dummy_request();
 
@@ -129,7 +126,7 @@ pub mod tests {
         let account_id: AccountId = key_pair.public().into();
         let order = create_dummy_order(account_id.clone());
 
-        let trusted_call = TrustedCall::place_order(account_id.clone(), order, None);
+        let trusted_call = TrustedCall::place_order(account_id, order, None);
 
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
 

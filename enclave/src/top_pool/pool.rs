@@ -251,8 +251,8 @@ where
             .validated_pool
             .extrinsics_tags(hashes, shard)
             .into_iter()
-            .filter_map(|x| x)
-            .flat_map(|x| x);
+            .flatten()
+            .flatten();
 
         // Prune all operations that provide given tags
         let prune_status = self.validated_pool.prune_tags(in_pool_tags, shard)?;

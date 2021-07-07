@@ -16,10 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::_write_order_to_disk;
 use crate::ed25519;
 use crate::polkadex_gateway::GatewayError;
-use crate::_write_order_to_disk;
 use log::error;
+use log::*;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
 use sgx_types::SgxResult;
 use sp_core::ed25519::Signature;
@@ -29,7 +30,6 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
-use log::*;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -104,7 +104,7 @@ pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> Sg
 pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayError> {
     let ptr = GLOBAL_ORDERBOOK_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<OrderbookStorage>;
     if ptr.is_null() {
-        return Err(GatewayError::UnableToLoadPointer);
+        Err(GatewayError::UnableToLoadPointer)
     } else {
         Ok(unsafe { &*ptr })
     }

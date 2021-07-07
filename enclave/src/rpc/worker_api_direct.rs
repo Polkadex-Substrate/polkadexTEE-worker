@@ -17,19 +17,12 @@
 
 pub extern crate alloc;
 use crate::rpc::polkadex_rpc_gateway::PolkadexRpcGateway;
-use crate::rpc::return_value_encoding::{
-    compute_encoded_return_error
-};
-use crate::rpc::trusted_operation_verifier::{TrustedOperationVerifier};
+use crate::rpc::return_value_encoding::compute_encoded_return_error;
+use crate::rpc::trusted_operation_verifier::TrustedOperationVerifier;
 use crate::rpc::{
-    api::SideChainApi,
-    basic_pool::BasicPool,
-    io_handler_extensions,
-    rpc_call_encoder::RpcCall,
-    rpc_cancel_order::RpcCancelOrder,
-    rpc_get_balance::RpcGetBalance,
-    rpc_place_order::RpcPlaceOrder,
-    rpc_withdraw::RpcWithdraw,
+    api::SideChainApi, basic_pool::BasicPool, io_handler_extensions, rpc_call_encoder::RpcCall,
+    rpc_cancel_order::RpcCancelOrder, rpc_get_balance::RpcGetBalance,
+    rpc_place_order::RpcPlaceOrder, rpc_withdraw::RpcWithdraw,
 };
 use crate::rsa3072;
 use crate::top_pool::pool::Options as PoolOptions;
@@ -220,7 +213,7 @@ pub unsafe extern "C" fn call_rpc_methods(
 pub fn update_status_event<H: Encode>(
     hash: H,
     status_update: TrustedOperationStatus,
-) -> Result<(), ()> {
+) -> Result<(), String> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
 
     let hash_encoded = hash.encode();
@@ -237,17 +230,17 @@ pub fn update_status_event<H: Encode>(
     };
 
     if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(());
+        return Err(String::from("rt not successful"));
     }
 
     if res != sgx_status_t::SGX_SUCCESS {
-        return Err(());
+        return Err(String::from("res not successful"));
     }
 
     Ok(())
 }
 
-pub fn send_state<H: Encode>(hash: H, value_opt: Option<Vec<u8>>) -> Result<(), ()> {
+pub fn send_state<H: Encode>(hash: H, value_opt: Option<Vec<u8>>) -> Result<(), String> {
     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
 
     let hash_encoded = hash.encode();
@@ -264,11 +257,11 @@ pub fn send_state<H: Encode>(hash: H, value_opt: Option<Vec<u8>>) -> Result<(), 
     };
 
     if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(());
+        return Err(String::from("rt not successful"));
     }
 
     if res != sgx_status_t::SGX_SUCCESS {
-        return Err(());
+        return Err(String::from("res not successful"));
     }
 
     Ok(())
