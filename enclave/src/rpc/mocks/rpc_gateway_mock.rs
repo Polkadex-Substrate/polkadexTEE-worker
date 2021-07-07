@@ -20,7 +20,6 @@ pub extern crate alloc;
 use alloc::string::String;
 
 use crate::polkadex_balance_storage::Balances;
-use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, create_in_memory_nonce_storage, lock_storage_and_increment_nonce};
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use polkadex_sgx_primitives::types::{CancelOrder, Order, OrderUUID};
@@ -36,7 +35,6 @@ pub struct RpcGatewayMock {
     pub order_uuid: Option<OrderUUID>,
     pub nonce: u32,
 }
-
 
 /// constructors
 impl RpcGatewayMock {
@@ -111,17 +109,14 @@ impl RpcGateway for RpcGatewayMock {
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<(), String> {
-        let call = match trusted_operation {
-            TrustedOperation::direct_call(tcs) => Ok((tcs.clone().nonce, tcs.call.main_account().clone())),
-            _ => {
-                Err(String::from("not direct call"))
-            }
-        }?;
+        let call_nonce = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => tcs.nonce,
+            _ => return Err(String::from("not direct call")),
+        };
 
-        if self.nonce == call.clone().0 {
+        if self.nonce == call_nonce {
             Ok(())
-        }
-        else {
+        } else {
             Err(String::from("failed cause nonce doesn't match"))
         }
     }
@@ -153,7 +148,7 @@ impl RpcGateway for RpcGatewayMock {
     ) -> Result<(), GatewayError> {
         match &self.order_uuid {
             Some(o) => {
-                return if o.eq(&cancel_order.order_id) {
+                if o.eq(&cancel_order.order_id) {
                     Ok(())
                 } else {
                     Err(GatewayError::OrderNotFound)

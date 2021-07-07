@@ -56,10 +56,7 @@ impl RpcGetBalance {
             self.top_extractor.get_verified_trusted_operation(request)?;
 
         let trusted_getter_signed = match verified_trusted_operation {
-            TrustedOperation::get(getter) => match getter {
-                Getter::trusted(tgs) => Ok(tgs),
-                _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
-            },
+            TrustedOperation::get(Getter::trusted(tgs)) => Ok(tgs),
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
 
@@ -79,10 +76,7 @@ impl RpcGetBalance {
             _ => Err(RpcCallStatus::operation_type_mismatch.to_string()),
         }?;
 
-        let balances = match self
-            .rpc_gateway
-            .get_balances(main_account.clone(), asset_id)
-        {
+        let balances = match self.rpc_gateway.get_balances(main_account, asset_id) {
             Ok(b) => Ok(b),
             Err(e) => Err(String::from(e.as_str())),
         }?;

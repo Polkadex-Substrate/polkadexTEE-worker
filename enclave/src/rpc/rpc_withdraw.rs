@@ -29,8 +29,6 @@ use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
-use crate::polkadex_nonce_storage::lock_storage_and_get_nonce;
-
 pub struct RpcWithdraw {
     top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
     rpc_gateway: Box<dyn RpcGateway + 'static>,
@@ -47,7 +45,7 @@ impl RpcWithdraw {
         }
     }
 
-    fn method_impl(
+    pub fn method_impl(
         &self,
         request: DirectRequest,
     ) -> Result<((), bool, DirectRequestStatus), String> {
@@ -101,11 +99,11 @@ pub mod tests {
     use sp_core::Pair;
 
     pub fn test_given_valid_call_then_succeed() {
-        let rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
-
         let top_extractor = Box::new(TrustedOperationExtractorMock {
             trusted_operation: Some(create_withdraw_order_operation()),
         });
+
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
 
         let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway);
 
@@ -114,39 +112,12 @@ pub mod tests {
         assert!(result.is_ok());
     }
 
-    pub fn test_incrementing_nonce_wont_match() {
-        let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
-
-        let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_withdraw_order_operation()),
-        });
-
-        let top_extractor1 = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_withdraw_order_operation()),
-        });
-
-        let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
-        assert_eq!(0u32, rpc_gateway.nonce);
-        rpc_gateway.increment_nonce();
-        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway.clone());
-        assert_eq!(1u32, rpc_gateway.nonce);
-
-
-        rpc_withdraw.method_impl(create_dummy_request()).unwrap();
-
-
-
-        let result = rpc_withdraw1.method_impl(create_dummy_request());
-
-        assert!(result.is_err());
-    }
-
     pub fn test_given_unauthorized_access_then_return_error() {
-        let rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(false));
-
         let top_extractor = Box::new(TrustedOperationExtractorMock {
             trusted_operation: Some(create_withdraw_order_operation()),
         });
+
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(false));
 
         let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway);
 
@@ -159,7 +130,7 @@ pub mod tests {
         let key_pair = create_dummy_account();
         let account_id: AccountId = key_pair.public().into();
 
-        let trusted_call = TrustedCall::withdraw(account_id.clone(), AssetId::DOT, 1000, None);
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::DOT, 1000, None);
 
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 

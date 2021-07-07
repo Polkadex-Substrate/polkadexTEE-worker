@@ -24,7 +24,7 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
 
-use crate::polkadex_nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
+use crate::nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
 
 use crate::execute_ocex_release_extrinsic;
 use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
@@ -95,7 +95,6 @@ impl RpcGateway for PolkadexRpcGateway {
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
-
         self.validate_trusted_call_nonce(trusted_operation.clone())?;
 
         let trusted_call = match trusted_operation {
@@ -107,9 +106,9 @@ impl RpcGateway for PolkadexRpcGateway {
         }?;
 
         let main_account = trusted_call.main_account().clone();
-        let proxy_account = trusted_call.proxy_account().clone();
+        let proxy_account = trusted_call.proxy_account();
 
-        match self.authorize_user(main_account.clone(), proxy_account.clone()) {
+        match self.authorize_user(main_account, proxy_account) {
             Ok(()) => Ok(trusted_call),
             Err(e) => {
                 error!("Could not find account within registry");
@@ -122,18 +121,23 @@ impl RpcGateway for PolkadexRpcGateway {
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<(), String> {
-        let call = match trusted_operation {
-            TrustedOperation::direct_call(tcs) => Ok((tcs.clone().nonce, tcs.call.main_account().clone())),
-            _ => {
-                Err(String::from("not direct call"))
-            }
-        }?;
+        let (nonce, main_account) = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => (tcs.nonce, tcs.call.main_account().clone()),
+            _ => return Err(String::from("not direct call")),
+        };
 
-        if lock_storage_and_get_nonce(call.clone().1).unwrap() == call.clone().0 {
-            lock_storage_and_increment_nonce(call.clone().1).unwrap();
-            Ok(())
-        }
-        else {
+        let stored_nonce = match lock_storage_and_get_nonce(main_account.clone()) {
+            Ok(nonce) => nonce,
+            Err(_) => return Err(String::from("Failed to get nonce from storage")),
+        };
+
+        if stored_nonce == nonce {
+            if lock_storage_and_increment_nonce(main_account).is_ok() {
+                Ok(())
+            } else {
+                Err(String::from("Failed to increment nonce"))
+            }
+        } else {
             Err(String::from("failed cause nonce doesn't match"))
         }
     }
@@ -171,8 +175,57 @@ impl RpcGateway for PolkadexRpcGateway {
 
     fn withdraw(&self, main_account: AccountId, token: AssetId, amount: Balance) -> SgxResult<()> {
         match lock_storage_and_withdraw(main_account.clone(), token, amount) {
-            Ok(_) => execute_ocex_release_extrinsic(main_account.clone(), token, amount),
+            Ok(_) => execute_ocex_release_extrinsic(main_account, token, amount),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
+    }
+}
+
+pub mod tests {
+    use crate::rpc::mocks::dummy_builder::create_dummy_account;
+    use crate::rpc::mocks::dummy_builder::create_dummy_request;
+    use crate::rpc::mocks::dummy_builder::sign_trusted_call;
+    use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
+    use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
+    use crate::rpc::polkadex_rpc_gateway::TrustedOperation;
+    use crate::rpc::rpc_withdraw::RpcWithdraw;
+    use crate::TrustedCall;
+    use polkadex_sgx_primitives::{AccountId, AssetId};
+    use sgx_tstd::boxed::Box;
+    use sp_application_crypto::Pair;
+
+    pub fn test_rejecting_outdated_nonce() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation()),
+        });
+
+        let top_extractor1 = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation()),
+        });
+
+        let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
+
+        let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
+        assert_eq!(0u32, rpc_gateway.nonce);
+        rpc_gateway.increment_nonce();
+        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway.clone());
+        assert_eq!(1u32, rpc_gateway.nonce);
+
+        rpc_withdraw.method_impl(create_dummy_request()).unwrap();
+
+        let result = rpc_withdraw1.method_impl(create_dummy_request());
+
+        assert!(result.is_err());
+    }
+
+    fn create_withdraw_order_operation() -> TrustedOperation {
+        let key_pair = create_dummy_account();
+        let account_id: AccountId = key_pair.public().into();
+
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::DOT, 1000, None);
+
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
+
+        TrustedOperation::direct_call(trusted_call_signed)
     }
 }

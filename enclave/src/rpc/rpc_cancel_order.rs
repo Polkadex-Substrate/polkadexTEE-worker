@@ -69,10 +69,10 @@ impl RpcCancelOrder {
 
         match self
             .rpc_gateway
-            .cancel_order(main_account, proxy_account.clone(), order_id)
+            .cancel_order(main_account, proxy_account, order_id)
         {
             Ok(()) => Ok(((), false, DirectRequestStatus::Ok)),
-            Err(e) => Err(String::from(e.to_string())),
+            Err(e) => Err(e.to_string()),
         }
     }
 }
@@ -93,7 +93,7 @@ pub mod tests {
 
     use super::*;
     use crate::rpc::mocks::dummy_builder::{
-        create_dummy_account, create_dummy_request, sign_trusted_call, create_dummy_cancel_order,
+        create_dummy_account, create_dummy_cancel_order, create_dummy_request, sign_trusted_call,
     };
     use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
     use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
@@ -104,14 +104,11 @@ pub mod tests {
     pub fn test_given_valid_order_id_return_success() {
         let order_id = "lojoif93j2lngfa".encode();
 
-        let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
-            Some(order_id.clone()),
-            true,
-        ));
-
         let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_cancel_order_operation(order_id)),
+            trusted_operation: Some(create_cancel_order_operation(order_id.clone())),
         });
+
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(Some(order_id), true));
 
         let request = create_dummy_request();
 
@@ -125,14 +122,14 @@ pub mod tests {
     pub fn test_given_order_id_mismatch_then_fail() {
         let order_id = "lojoif93j2lngfa".encode();
 
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_cancel_order_operation(order_id)),
+        });
+
         let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
             Some("other_id_that_doesnt_match".encode()),
             true,
         ));
-
-        let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_cancel_order_operation(order_id)),
-        });
 
         let request = create_dummy_request();
 
@@ -148,7 +145,7 @@ pub mod tests {
         let account_id: AccountId = key_pair.public().into();
         let cancel_order = create_dummy_cancel_order(account_id.clone(), order_id);
 
-        let trusted_call = TrustedCall::cancel_order(account_id.clone(), cancel_order, None);
+        let trusted_call = TrustedCall::cancel_order(account_id, cancel_order, None);
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)

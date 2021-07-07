@@ -93,7 +93,7 @@ pub mod hex;
 mod io;
 mod ipfs;
 pub mod nonce_handler;
-pub mod polkadex_nonce_storage;
+pub mod nonce_storage;
 pub mod openfinex;
 mod polkadex;
 mod polkadex_balance_storage;
@@ -234,7 +234,7 @@ fn create_extrinsics(
                 RUNTIME_SPEC_VERSION,
                 RUNTIME_TRANSACTION_VERSION
             )
-                .encode();
+            .encode();
             nonce += 1;
             xt
         })
@@ -409,7 +409,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .unwrap();
 
     if let Err(status) =
-    polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
+        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
     {
         return status;
     }
@@ -437,7 +437,7 @@ pub unsafe extern "C" fn load_orders_to_memory(
     };
 
     if let Err(status) =
-    polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders)
+        polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders)
     {
         return status;
     };
@@ -885,7 +885,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     let mut opaque_calls = Vec::<OpaqueCall>::new();
     for xt_opaque in block.extrinsics.iter() {
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
@@ -897,7 +897,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Register
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
@@ -908,7 +908,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
         // Polkadex OCEX Add Proxy
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
@@ -919,7 +919,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
         // Polkadex OCEX Remove Proxy
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
@@ -931,7 +931,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Withdraw
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
@@ -943,7 +943,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
 
         // Polkadex OCEX Deposit
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             // confirm call decodes successfully as well
             if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
@@ -954,7 +954,7 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
         }
 
         if let Ok(xt) =
-        UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
+            UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
         {
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, CALL_WORKER] {
                 if let Ok((decrypted_trusted_call, shard)) = decrypt_unchecked_extrinsic(xt) {
@@ -1116,7 +1116,7 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
         RUNTIME_SPEC_VERSION,
         RUNTIME_TRANSACTION_VERSION
     )
-        .encode();
+    .encode();
     nonce_storage.increment();
 
     send_release_extrinsic(xt)?;
@@ -1297,7 +1297,7 @@ fn verify_worker_responses(
                     key,
                     proof.to_vec(),
                 )
-                    .sgx_error_with_log("Erroneous StorageProof")?;
+                .sgx_error_with_log("Erroneous StorageProof")?;
 
                 // Todo: Why do they do it like that, we could supply the proof only and get the value from the proof directly??
                 if &actual != value {

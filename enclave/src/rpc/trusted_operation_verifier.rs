@@ -131,11 +131,11 @@ pub mod tests {
     use crate::rpc::mocks::dummy_builder::{
         create_dummy_account, create_dummy_request, sign_trusted_call,
     };
+    use crate::ShardIdentifier;
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, AssetId};
     use sp_core::{ed25519 as ed25519_core, Pair, H256};
     use substratee_stf::TrustedCall;
-    use crate::ShardIdentifier;
 
     pub fn given_valid_operation_in_request_then_decode_succeeds() {
         let input_trusted_operation = create_trusted_operation();
@@ -191,8 +191,7 @@ pub mod tests {
         let key_pair = create_dummy_account();
         let account_id: AccountId = key_pair.public().into();
 
-        let trusted_call =
-            TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::POLKADEX, 14875210, None);
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
@@ -204,8 +203,7 @@ pub mod tests {
 
         let malicious_signer = ed25519_core::Pair::from_seed(b"19857777701234567890123456789012");
 
-        let trusted_call =
-            TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::POLKADEX, 14875210, None);
 
         let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer, 0u32);
 

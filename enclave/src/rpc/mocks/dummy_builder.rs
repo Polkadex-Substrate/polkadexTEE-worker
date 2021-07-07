@@ -16,7 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polkadex_nonce_storage::lock_storage_and_get_nonce;
 use crate::ShardIdentifier;
 use codec::Encode;
 use polkadex_sgx_primitives::types::{
@@ -73,7 +72,7 @@ pub fn sign_trusted_call(
     let shard_identifier = ShardIdentifier::default();
 
     trusted_call.sign(
-        &KeyPair::Ed25519(signer.clone()),
+        &KeyPair::Ed25519(signer),
         nonce,
         &mr_enclave,
         &shard_identifier,
