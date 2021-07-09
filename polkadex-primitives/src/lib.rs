@@ -26,13 +26,17 @@ pub extern crate alloc;
 use alloc::string::{String, ToString};
 
 use codec::{Decode, Encode};
-pub use polkadex_primitives::common_types::{AccountId, Balance, Signature};
-use sp_core::{H256};
-use sp_std::vec::Vec;
+use frame_support::{sp_runtime::traits::AccountIdConversion, PalletId};
 pub use polkadex_primitives::assets::AssetId;
+pub use polkadex_primitives::common_types::{AccountId, Balance, Signature};
+use sp_core::H256;
+use sp_std::vec::Vec;
 
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
+
+// Genesis Account constant should be kept up to date with OCEXGenesisAccount at https://github.com/Polkadex-Substrate/Polkadex/blob/main/runtime/src/lib.rs#L1536
+const GENESIS_ACCOUNT: PalletId = PalletId(*b"polka/ga");
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
@@ -40,6 +44,28 @@ pub struct LinkedAccount {
     pub current: AccountId,
     pub next: Option<AccountId>,
     pub proxies: Vec<AccountId>,
+}
+
+impl LinkedAccount {
+    pub fn from(prev: AccountId, current: AccountId) -> Self {
+        LinkedAccount {
+            prev,
+            next: None,
+            current,
+            proxies: vec![],
+        }
+    }
+}
+
+impl Default for LinkedAccount {
+    fn default() -> Self {
+        LinkedAccount {
+            prev: GENESIS_ACCOUNT.into_account(),
+            current: GENESIS_ACCOUNT.into_account(),
+            next: None,
+            proxies: vec![],
+        }
+    }
 }
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
@@ -52,7 +78,7 @@ pub struct PolkadexAccount {
 pub struct OpenFinexUri {
     ip: Vec<u8>,
     port: u16,
-    path: Vec<u8>
+    path: Vec<u8>,
 }
 
 impl OpenFinexUri {
@@ -61,12 +87,12 @@ impl OpenFinexUri {
     ///         port_path_str, string containing at least the port
     ///             (e.g.: 8001/api/v2/ws or 8001)
     pub fn new(ip_str: &str, port_path_str: &str) -> Self {
-        let (port_str, path_str)  = if let Some(index) = port_path_str.find('/') {
+        let (port_str, path_str) = if let Some(index) = port_path_str.find('/') {
             port_path_str.split_at(index)
         } else {
             (port_path_str, "/")
         };
-        OpenFinexUri{
+        OpenFinexUri {
             ip: ip_str.as_bytes().to_vec(),
             port: port_str.parse().unwrap(),
             path: path_str.as_bytes().to_vec(),
@@ -89,7 +115,7 @@ impl OpenFinexUri {
 
     pub fn path(&self) -> String {
         String::from_utf8_lossy(&self.path).into_owned()
-   }
+    }
 }
 
 // TODO: Add unit tests
