@@ -40,9 +40,14 @@ jobs:
         run: cd stf && cargo test
       - name: Test Enclave
         run: cd bin && ./substratee-worker test --unit
-      - name: Clippy Client
-        run: cd client  && cargo clippy -- -D warnings
-      - name: Clippy Worker
-        run: cd worker  && cargo clippy -- -D warnings
+  clippy:
+    runs-on: self-hosted
+    container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust and WASM Environment
+        run: ./ci/install_rust.sh
+      - name: Clippy Worker & Client & stf
+        run: cargo clippy -- -D warnings
       - name: Clippy Enclave
         run: cd enclave  && cargo clippy -- -D warnings
