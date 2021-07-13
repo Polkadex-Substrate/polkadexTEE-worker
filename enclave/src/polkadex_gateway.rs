@@ -340,6 +340,18 @@ pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), Ga
     Ok(())
 }
 
+pub fn authenticate_user_and_validate_nonce(
+    main_acc: AccountId,
+    proxy_acc: Option<AccountId>,
+    nonce: u32,
+) -> Result<(), GatewayError> {
+    authenticate_user(main_acc.clone(), proxy_acc)?;
+    if polkadex::validate_nonce(main_acc, nonce).is_err() {
+        return Err(GatewayError::MainAccountNotRegistered); //FIXME: Swap for the correct error
+    };
+    Ok(())
+}
+
 pub fn authenticate_user(
     main_acc: AccountId,
     proxy_acc: Option<AccountId>,

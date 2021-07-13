@@ -24,12 +24,12 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
 
-use crate::nonce_storage::{lock_storage_and_get_nonce, lock_storage_and_increment_nonce};
-
 use crate::execute_ocex_release_extrinsic;
 use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
 use crate::openfinex::openfinex_client::OpenFinexClientInterface;
-use crate::polkadex_gateway::{authenticate_user, GatewayError, OpenfinexPolkaDexGateway};
+use crate::polkadex_gateway::{
+    authenticate_user, authenticate_user_and_validate_nonce, GatewayError, OpenfinexPolkaDexGateway,
+};
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
@@ -45,17 +45,20 @@ pub trait RpcGateway: Send + Sync {
         proxy_account: Option<AccountId>,
     ) -> Result<(), GatewayError>;
 
+    /// verifies that the proxy account (if any) is authorized to represent the main account and also verifies if the provided nonce matches the one in the storage
+    fn authorize_user_nonce(
+        &self,
+        main_account: AccountId,
+        proxy_account: Option<AccountId>,
+        nonce: u32,
+    ) -> Result<(), GatewayError>;
+
     /// verifies that the proxy account (if any) is authorized to represent the main account
     /// given a trusted call inside a trusted operation (convenience function)
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String>;
-
-    fn validate_trusted_call_nonce(
-        &self,
-        trusted_operation: TrustedOperation,
-    ) -> Result<(), String>;
 
     /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
@@ -91,14 +94,21 @@ impl RpcGateway for PolkadexRpcGateway {
         authenticate_user(main_account, proxy_account)
     }
 
+    fn authorize_user_nonce(
+        &self,
+        main_account: AccountId,
+        proxy_account: Option<AccountId>,
+        nonce: u32,
+    ) -> Result<(), GatewayError> {
+        authenticate_user_and_validate_nonce(main_account, proxy_account, nonce)
+    }
+
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
-        self.validate_trusted_call_nonce(trusted_operation.clone())?;
-
-        let trusted_call = match trusted_operation {
-            TrustedOperation::direct_call(tcs) => Ok(tcs.call),
+        let (trusted_call, nonce) = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => Ok((tcs.call, tcs.nonce)),
             _ => {
                 error!("Trusted calls entering via RPC must be direct");
                 Err(RpcCallStatus::operation_type_mismatch.to_string())
@@ -108,37 +118,12 @@ impl RpcGateway for PolkadexRpcGateway {
         let main_account = trusted_call.main_account().clone();
         let proxy_account = trusted_call.proxy_account();
 
-        match self.authorize_user(main_account, proxy_account) {
+        match self.authorize_user_nonce(main_account, proxy_account, nonce) {
             Ok(()) => Ok(trusted_call),
             Err(e) => {
                 error!("Could not find account within registry");
                 Err(format!("Authorization error: {}", e))
             }
-        }
-    }
-
-    fn validate_trusted_call_nonce(
-        &self,
-        trusted_operation: TrustedOperation,
-    ) -> Result<(), String> {
-        let (nonce, main_account) = match trusted_operation {
-            TrustedOperation::direct_call(tcs) => (tcs.nonce, tcs.call.main_account().clone()),
-            _ => return Err(String::from("not direct call")),
-        };
-
-        let stored_nonce = match lock_storage_and_get_nonce(main_account.clone()) {
-            Ok(nonce) => nonce,
-            Err(_) => return Err(String::from("Failed to get nonce from storage")),
-        };
-
-        if stored_nonce == nonce {
-            if lock_storage_and_increment_nonce(main_account).is_ok() {
-                Ok(())
-            } else {
-                Err(String::from("Failed to increment nonce"))
-            }
-        } else {
-            Err(String::from("failed cause nonce doesn't match"))
         }
     }
 

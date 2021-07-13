@@ -83,6 +83,7 @@ use substratee_worker_primitives::block::{
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
+pub mod accounts_storage;
 mod aes;
 mod attestation;
 pub mod cert;
@@ -414,7 +415,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         return status;
     }
 
-    if let Err(_) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+    if let Err(_) = polkadex::create_in_memory_accounts_and_nonce_storage(polkadex_accounts) {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 

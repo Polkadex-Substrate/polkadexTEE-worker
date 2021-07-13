@@ -22,9 +22,9 @@ use sgx_tstd::sync::SgxMutexGuard;
 
 use crate::polkadex;
 use crate::polkadex::AccountRegistryError;
-use crate::polkadex::PolkadexAccountsStorage;
+use crate::polkadex::AccountsNonceStorage;
 
-pub fn get_dummy_map(storage: &mut SgxMutexGuard<PolkadexAccountsStorage>) {
+pub fn get_dummy_map(storage: &mut SgxMutexGuard<AccountsNonceStorage>) {
     let main_account_one: AccountId = get_account("first_account");
     let main_account_two: AccountId = get_account("second_account");
     let main_account_three: AccountId = get_account("third_account");
@@ -33,20 +33,21 @@ pub fn get_dummy_map(storage: &mut SgxMutexGuard<PolkadexAccountsStorage>) {
     let dummy_account_three: AccountId = get_account("third_dummy_account");
 
     storage
+        .accounts_storage
         .accounts
         .insert(main_account_one.encode(), vec![dummy_account_one.clone()]);
-    storage.accounts.insert(
+    storage.accounts_storage.accounts.insert(
         main_account_two.encode(),
         vec![dummy_account_one.clone(), dummy_account_two.clone()],
     );
-    storage.accounts.insert(
+    storage.accounts_storage.accounts.insert(
         main_account_three.encode(),
         vec![dummy_account_one, dummy_account_two, dummy_account_three],
     );
 }
 
 pub fn initialize_dummy() {
-    polkadex::create_in_memory_account_storage(vec![]).unwrap();
+    polkadex::create_in_memory_accounts_and_nonce_storage(vec![]).unwrap();
     let mutex = polkadex::load_proxy_registry().unwrap();
     let mut proxy_storage = mutex.lock().unwrap();
     get_dummy_map(&mut proxy_storage);

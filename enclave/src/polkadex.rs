@@ -21,7 +21,6 @@ use codec::Encode;
 use frame_support::{metadata::StorageHasher, PalletId};
 use log::*;
 use polkadex_sgx_primitives::{AccountId, PolkadexAccount};
-use sgx_tstd::collections::HashMap;
 use sgx_types::{sgx_status_t, SgxResult};
 use sp_runtime::traits::{AccountIdConversion, Header as HeaderT};
 use sp_std::prelude::*;
@@ -32,10 +31,15 @@ use std::sync::{
 
 //use std::collections::HashMap;
 // TODO: Fix this import
-use crate::polkadex_gateway::GatewayError;
-use crate::utils::UnwrapOrSgxErrorUnexpected;
 
-static GLOBAL_ACCOUNTS_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+use crate::{
+    accounts_storage::{AccountsStorageError, PolkadexAccountsStorage},
+    nonce_storage::{NonceStorageError, PolkadexNonceStorage},
+    polkadex_gateway::GatewayError,
+    utils::UnwrapOrSgxErrorUnexpected,
+};
+
+static GLOBAL_ACCOUNTS_AND_NONCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub fn verify_pdex_account_read_proofs(
     header: Header,
@@ -56,7 +60,7 @@ pub fn verify_pdex_account_read_proofs(
             )
             .sgx_error_with_log("Erroneous Storage Proof")?
             {
-                if &actual != &account.account.encode() {
+                if actual != account.account.encode() {
                     error!("Wrong storage value supplied");
                     return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
                 }
@@ -112,89 +116,71 @@ fn key_hash<K: Encode>(key: &K, hasher: &StorageHasher) -> Vec<u8> {
     }
 }
 
-pub fn create_in_memory_account_storage(
+pub fn create_in_memory_accounts_and_nonce_storage(
     accounts: Vec<PolkadexAccount>,
 ) -> Result<(), GatewayError> {
-    let accounts_storage = PolkadexAccountsStorage::create(accounts);
-    let storage_ptr = Arc::new(SgxMutex::<PolkadexAccountsStorage>::new(accounts_storage));
+    let storage = AccountsNonceStorage::create(accounts);
+    let storage_ptr = Arc::new(SgxMutex::<AccountsNonceStorage>::new(storage));
     let ptr = Arc::into_raw(storage_ptr);
-    GLOBAL_ACCOUNTS_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
+    GLOBAL_ACCOUNTS_AND_NONCE_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
     Ok(())
 }
 
-pub type EncodedAccountId = Vec<u8>;
-
-/// Access that pointer
-pub struct PolkadexAccountsStorage {
-    pub(crate) accounts: HashMap<EncodedAccountId, Vec<AccountId>>,
+pub struct AccountsNonceStorage {
+    pub accounts_storage: PolkadexAccountsStorage,
+    pub nonce_storage: PolkadexNonceStorage,
 }
 
-impl PolkadexAccountsStorage {
-    #[allow(unused)]
-    pub fn from_hashmap(hashmap: HashMap<EncodedAccountId, Vec<AccountId>>) -> Self {
-        Self { accounts: hashmap }
-    }
-
-    pub fn create(accounts: Vec<PolkadexAccount>) -> PolkadexAccountsStorage {
-        let mut in_memory_map: PolkadexAccountsStorage = PolkadexAccountsStorage {
-            accounts: HashMap::new(),
-        };
-        for account in accounts {
-            in_memory_map
-                .accounts
-                .insert(account.account.current.encode(), account.account.proxies);
+impl AccountsNonceStorage {
+    fn create(accounts: Vec<PolkadexAccount>) -> Self {
+        Self {
+            accounts_storage: PolkadexAccountsStorage::create(accounts),
+            nonce_storage: PolkadexNonceStorage::create(),
         }
-        in_memory_map
     }
 
-    pub fn add_main_account(&mut self, acc: AccountId) {
-        if self.accounts.contains_key(&acc.encode()) {
-            warn!("Given account is registered");
-            return;
-        };
-        let vec: Vec<AccountId> = Vec::new();
-        self.accounts.insert(acc.encode(), vec);
+    fn initialize_main_account(&mut self, acc: AccountId) -> Result<(), AccountRegistryError> {
+        self.accounts_storage.add_main_account(acc.clone())?;
+        self.nonce_storage.initialize_nonce(acc);
+        Ok(())
     }
 
-    pub fn remove_main_account(&mut self, acc: AccountId) {
-        if !self.accounts.contains_key(&acc.encode()) {
-            warn!("Given account is not registered");
-            return;
-        };
-        self.accounts.remove(&acc.encode());
+    fn initialize_proxy_account(
+        &mut self,
+        acc: AccountId,
+        proxy: AccountId,
+    ) -> Result<(), AccountRegistryError> {
+        self.accounts_storage.add_proxy(acc, proxy)?;
+        Ok(())
     }
 
-    pub fn add_proxy(&mut self, main: AccountId, proxy: AccountId) {
-        if let Some(proxies) = self.accounts.get_mut(&main.encode()) {
-            if !proxies.contains(&proxy) {
-                proxies.push(proxy);
-                return;
-            }
-            warn!("Given Proxy is already registered");
-        };
-        warn!("Given Account is not registered");
+    fn remove_main_account(&mut self, acc: AccountId) -> Result<(), AccountRegistryError> {
+        self.accounts_storage.remove_main_account(acc.clone())?;
+        self.nonce_storage.remove_nonce(acc);
+        Ok(())
     }
 
-    pub fn remove_proxy(&mut self, main: AccountId, proxy: AccountId) {
-        if let Some(proxies) = self.accounts.get_mut(&main.encode()) {
-            if proxies.contains(&proxy) {
-                let index = proxies.iter().position(|x| *x == proxy).unwrap();
-                proxies.remove(index);
-                return;
-            }
-            warn!("Given Proxy is not registered");
-        };
-        warn!("Given Account is not registered");
+    fn remove_proxy_account(
+        &mut self,
+        acc: AccountId,
+        proxy: AccountId,
+    ) -> Result<(), AccountRegistryError> {
+        self.accounts_storage.remove_proxy(acc, proxy)?;
+        Ok(())
     }
 }
 
 pub fn check_if_main_account_registered(acc: AccountId) -> Result<bool, AccountRegistryError> {
     // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+    let proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.accounts.contains_key(&acc.encode()))
+    let result = proxy_storage
+        .accounts_storage
+        .accounts
+        .contains_key(&acc.encode());
+    Ok(result)
 }
 
 pub fn check_if_proxy_registered(
@@ -203,11 +189,15 @@ pub fn check_if_proxy_registered(
 ) -> Result<bool, AccountRegistryError> {
     // Acquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+    let proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
 
-    if let Some(list_of_proxies) = proxy_storage.accounts.get(&main_acc.encode()) {
+    if let Some(list_of_proxies) = proxy_storage
+        .accounts_storage
+        .accounts
+        .get(&main_acc.encode())
+    {
         Ok(list_of_proxies.contains(&proxy))
     } else {
         warn!("Main account not registered for given proxy");
@@ -218,56 +208,68 @@ pub fn check_if_proxy_registered(
 pub fn add_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.add_main_account(main_acc))
+    proxy_storage.initialize_main_account(main_acc)?;
+    Ok(())
 }
 
 pub fn remove_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.remove_main_account(main_acc))
+    proxy_storage.remove_main_account(main_acc)?;
+    Ok(())
 }
 
 pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.add_proxy(main_acc, proxy))
+    proxy_storage.initialize_proxy_account(main_acc, proxy)?;
+    Ok(())
 }
-
-// pub fn check_main_account(acc: AccountId) -> SgxResult<bool> {
-//     // Aquire lock on proxy_registry
-//     let mutex = load_proxy_registry()?;
-//     let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex.lock().unwrap();
-//     Ok(proxy_storage.accounts.contains_key(&acc.encode()))
-// }
 
 pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<PolkadexAccountsStorage> = mutex
+    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    Ok(proxy_storage.remove_proxy(main_acc, proxy))
+    proxy_storage.remove_proxy_account(main_acc, proxy)?;
+    Ok(())
 }
 
-pub fn load_proxy_registry(
-) -> Result<&'static SgxMutex<PolkadexAccountsStorage>, AccountRegistryError> {
-    let ptr =
-        GLOBAL_ACCOUNTS_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<PolkadexAccountsStorage>;
+pub fn load_proxy_registry() -> Result<&'static SgxMutex<AccountsNonceStorage>, AccountRegistryError>
+{
+    let ptr = GLOBAL_ACCOUNTS_AND_NONCE_STORAGE.load(Ordering::SeqCst)
+        as *mut SgxMutex<AccountsNonceStorage>;
     if ptr.is_null() {
         error!("Null pointer to polkadex account registry");
-        return Err(AccountRegistryError::CouldNotLoadRegistry);
+        Err(AccountRegistryError::CouldNotLoadRegistry)
     } else {
         Ok(unsafe { &*ptr })
     }
+}
+
+//Nonce related functions
+
+pub fn validate_nonce(acc: AccountId, nonce: u32) -> Result<(), AccountRegistryError> {
+    // Acquire lock on proxy_registry
+    let mutex = load_proxy_registry()?;
+    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
+    if !(proxy_storage.nonce_storage.read_nonce(acc.clone()) == Ok(nonce)) {
+        return Err(AccountRegistryError::NonceDoesntMatch);
+    }
+    proxy_storage.nonce_storage.increment_nonce(acc)?;
+    Ok(())
 }
 
 #[derive(Eq, Debug, PartialEq, PartialOrd)]
@@ -278,4 +280,68 @@ pub enum AccountRegistryError {
     CouldNotGetMutex,
     /// No registed main account for given proxy
     MainAccountNoRegistedForGivenProxy,
+    /// Nonce Doesn't match the one in the storage
+    NonceDoesntMatch,
+    /// PolkadexAccountsStorage Error
+    AccountStorageError(AccountsStorageError),
+    /// PolkadexNonceStorage Error
+    NonceStorageError(NonceStorageError),
+}
+
+impl From<AccountsStorageError> for AccountRegistryError {
+    fn from(error: AccountsStorageError) -> AccountRegistryError {
+        AccountRegistryError::AccountStorageError(error)
+    }
+}
+
+impl From<NonceStorageError> for AccountRegistryError {
+    fn from(error: NonceStorageError) -> AccountRegistryError {
+        AccountRegistryError::NonceStorageError(error)
+    }
+}
+
+pub mod tests {
+    use crate::polkadex::AccountsNonceStorage;
+    use codec::Encode;
+    use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
+    use sp_core::{ed25519 as ed25519_core, Pair};
+
+    pub fn initializing_main_account() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let mut storage: AccountsNonceStorage = AccountsNonceStorage::create(vec![]);
+        assert!(storage.initialize_main_account(account_id.clone()).is_ok());
+        assert!(storage
+            .accounts_storage
+            .accounts
+            .contains_key(&account_id.encode()));
+        assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
+    }
+
+    pub fn removing_main_account() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let mut storage: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        storage.nonce_storage.initialize_nonce(account_id.clone());
+
+        assert!(storage.remove_main_account(account_id.clone()).is_ok());
+        assert!(!storage
+            .accounts_storage
+            .accounts
+            .contains_key(&account_id.encode()));
+        assert!(storage.nonce_storage.read_nonce(account_id).is_err());
+    }
 }

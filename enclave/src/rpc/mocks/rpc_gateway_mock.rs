@@ -91,31 +91,32 @@ impl RpcGateway for RpcGatewayMock {
         }
     }
 
+    fn authorize_user_nonce(
+        &self,
+        _main_account: AccountId,
+        _proxy_account: Option<AccountId>,
+        _nonce: u32,
+    ) -> Result<(), GatewayError> {
+        match self.do_authorize {
+            true => Ok(()),
+            false => Err(GatewayError::ProxyNotRegisteredForMainAccount),
+        }
+    }
+
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
-        self.validate_trusted_call_nonce(trusted_operation.clone())?;
-        match self.do_authorize {
+        let (call, nonce) = match self.do_authorize {
             true => match trusted_operation {
-                TrustedOperation::direct_call(tcs) => Ok(tcs.call),
+                TrustedOperation::direct_call(tcs) => Ok((tcs.call, tcs.nonce)),
                 _ => Err(String::from("Trusted operation is not a direct call")),
             },
             false => Err(String::from("Authorization failed")),
-        }
-    }
+        }?;
 
-    fn validate_trusted_call_nonce(
-        &self,
-        trusted_operation: TrustedOperation,
-    ) -> Result<(), String> {
-        let call_nonce = match trusted_operation {
-            TrustedOperation::direct_call(tcs) => tcs.nonce,
-            _ => return Err(String::from("not direct call")),
-        };
-
-        if self.nonce == call_nonce {
-            Ok(())
+        if self.nonce == nonce {
+            Ok(call)
         } else {
             Err(String::from("failed cause nonce doesn't match"))
         }
