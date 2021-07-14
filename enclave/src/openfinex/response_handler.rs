@@ -97,9 +97,8 @@ impl PolkadexResponseHandler {
     fn handle_order_update(&self, order_update: OrderUpdate) {
         debug!("Received order update from OpenFinex");
 
-        match order_update.state {
-            // cancel order
-            OrderState::CANCEL => match self
+        if order_update.state == OrderState::CANCEL {
+            match self
                 .polkadex_gateway_callback
                 .process_cancel_order(order_update.unique_order_id)
             {
@@ -109,8 +108,7 @@ impl PolkadexResponseHandler {
                 Err(e) => {
                     error!("Cancelling order failed: {}", e)
                 }
-            },
-            _ => {}
+            }
         }
     }
 
@@ -119,7 +117,6 @@ impl PolkadexResponseHandler {
         if let Err(e) = self.polkadex_gateway_callback.settle_trade(trade_event) {
             error!("[Error] in polkadex gateway settle trade: {:?}", e);
         };
-
     }
 
     fn handle_request_response(&self, request_response: RequestResponse, request_id: RequestId) {

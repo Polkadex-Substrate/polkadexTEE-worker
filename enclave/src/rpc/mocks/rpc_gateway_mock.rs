@@ -124,7 +124,7 @@ impl RpcGateway for RpcGatewayMock {
     ) -> Result<(), GatewayError> {
         match &self.order_uuid {
             Some(o) => {
-                return if o.eq(&cancel_order.order_id) {
+                if o.eq(&cancel_order.order_id) {
                     Ok(())
                 } else {
                     Err(GatewayError::OrderNotFound)

@@ -112,7 +112,6 @@ pub fn add_market_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     )
 }
 
-
 pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
     app.arg(
         Arg::with_name(MARKET_ID_BASE_ARG_NAME)

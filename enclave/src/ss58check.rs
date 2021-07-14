@@ -20,9 +20,9 @@ use alloc::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult, string::S
 use base58::{FromBase58, ToBase58};
 use blake2_rfc::blake2b::{Blake2b, Blake2bResult};
 use core::convert::AsMut;
+use log::*;
 use sp_core::crypto::{AccountId32, Ss58AddressFormat};
 use sp_core::sp_std::convert::TryInto;
-use log::*;
 
 /// errors related to the conversion to/from SS58Check format
 #[derive(Debug, Clone, PartialEq, Copy)]
@@ -64,15 +64,15 @@ fn to_ss58check(account_id: &AccountId32) -> String {
 /// Return the ss58-check string for this key.
 fn to_ss58check_with_version(account_id: &AccountId32, version: Ss58AddressFormat) -> String {
     // We mask out the upper two bits of the ident - SS58 Prefix currently only supports 14-bits
-    let ident: u16 = u16::from(version) & 0b00111111_11111111;
+    let ident: u16 = u16::from(version) & 0b0011_1111_1111_1111;
     let mut v = match ident {
         0..=63 => vec![ident as u8],
         64..=16_383 => {
             // upper six bits of the lower byte(!)
-            let first = ((ident & 0b00000000_11111100) as u8) >> 2;
+            let first = ((ident & 0b0000_0000_1111_1100) as u8) >> 2;
             // lower two bits of the lower byte in the high pos,
             // lower bits of the upper byte in the low pos
-            let second = ((ident >> 8) as u8) | ((ident & 0b00000000_00000011) as u8) << 6;
+            let second = ((ident >> 8) as u8) | ((ident & 0b0000_0000_0000_0011) as u8) << 6;
             vec![first | 0b01000000, second]
         }
         _ => unreachable!("masked out the upper two bits; qed"),
@@ -123,7 +123,7 @@ fn from_ss58check_with_version(
             let upper = data[1] & 0b00111111;
             (2, (lower as u16) | ((upper as u16) << 8))
         }
-        _ => Err(SS58CheckError::UnknownVersion)?,
+        _ => return Err(SS58CheckError::UnknownVersion),
     };
     if data.len() != prefix_len + body_len + CHECKSUM_LEN {
         return Err(SS58CheckError::BadLength);

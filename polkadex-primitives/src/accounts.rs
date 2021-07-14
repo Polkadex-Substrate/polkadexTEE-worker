@@ -15,8 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
-use polkadex_primitives::common_types::{AccountId};
-
+use polkadex_primitives::common_types::AccountId;
 
 pub extern crate alloc;
 use alloc::vec::Vec;

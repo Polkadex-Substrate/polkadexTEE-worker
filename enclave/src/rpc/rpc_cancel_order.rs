@@ -69,10 +69,10 @@ impl RpcCancelOrder {
 
         match self
             .rpc_gateway
-            .cancel_order(main_account, proxy_account.clone(), order_id)
+            .cancel_order(main_account, proxy_account, order_id)
         {
             Ok(()) => Ok(((), false, DirectRequestStatus::Ok)),
-            Err(e) => Err(String::from(e.to_string())),
+            Err(e) => Err(e.to_string()),
         }
     }
 }
@@ -93,7 +93,7 @@ pub mod tests {
 
     use super::*;
     use crate::rpc::mocks::dummy_builder::{
-        create_dummy_account, create_dummy_request, sign_trusted_call, create_dummy_cancel_order,
+        create_dummy_account, create_dummy_cancel_order, create_dummy_request, sign_trusted_call,
     };
     use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
     use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
@@ -108,10 +108,7 @@ pub mod tests {
             trusted_operation: Some(create_cancel_order_operation(order_id.clone())),
         });
 
-        let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(
-            Some(order_id),
-            true,
-        ));
+        let rpc_gateway = Box::new(RpcGatewayMock::mock_cancel_order(Some(order_id), true));
 
         let request = create_dummy_request();
 
@@ -148,7 +145,7 @@ pub mod tests {
         let account_id: AccountId = key_pair.public().into();
         let cancel_order = create_dummy_cancel_order(account_id.clone(), order_id);
 
-        let trusted_call = TrustedCall::cancel_order(account_id.clone(), cancel_order, None);
+        let trusted_call = TrustedCall::cancel_order(account_id, cancel_order, None);
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
 
         TrustedOperation::direct_call(trusted_call_signed)

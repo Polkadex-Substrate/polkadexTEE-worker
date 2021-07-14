@@ -84,7 +84,7 @@ impl ResponseParser for TcpResponseParser {
         let lexer = ResponseLexer {};
         let lex_items = lexer
             .lex(&response)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         let mut lex_it = lex_items.iter().peekable();
 
@@ -116,7 +116,7 @@ fn parse_request_id<'a, T: Iterator<Item = &'a LexItem>>(
     preamble: Preamble,
 ) -> OpenFinexApiResult<Option<RequestId>> {
     match preamble {
-        RESPONSE_TO_REQUEST_PREAMBLE => consume_token(iter, &token_number).map(|r| Some(r)),
+        RESPONSE_TO_REQUEST_PREAMBLE => consume_token(iter, &token_number).map(Some),
         RESPONSE_TO_EVENTS => Ok(None),
         _ => Err(OpenFinexApiError::ResponseParsingError(format!(
             "Unknown response preamble: {}",
@@ -126,11 +126,11 @@ fn parse_request_id<'a, T: Iterator<Item = &'a LexItem>>(
 }
 
 fn parse_response_method(
-    input: &String,
-    parameters: &Vec<ParameterNode>,
+    input: &str,
+    parameters: &[ParameterNode],
     request_id: &Option<RequestId>,
 ) -> OpenFinexApiResult<ResponseMethod> {
-    match input.as_str() {
+    match input {
         // error
         TcpResponseParser::RESPONSE_ERROR_STR => {
             let error_message = retrieve_error_message_from_parameters(parameters);
@@ -149,8 +149,8 @@ fn parse_response_method(
     }
 }
 
-fn map_response_method_update(input: &String) -> OpenFinexApiResult<ResponseMethod> {
-    match input.as_str() {
+fn map_response_method_update(input: &str) -> OpenFinexApiResult<ResponseMethod> {
+    match input {
         "ou" => Ok(ResponseMethod::OrderUpdate),
         "tr" => Ok(ResponseMethod::TradeEvent),
         _ => Err(OpenFinexApiError::ResponseParsingError(format!(
@@ -160,17 +160,14 @@ fn map_response_method_update(input: &String) -> OpenFinexApiResult<ResponseMeth
     }
 }
 
-fn retrieve_error_message_from_parameters(parameters: &Vec<ParameterNode>) -> String {
+fn retrieve_error_message_from_parameters(parameters: &[ParameterNode]) -> String {
     // the first parameter, which should be a string, is the error message
     match parameters.first() {
         Some(p) => match p {
-            ParameterNode::SingleParameter(i) => match i {
-                ParameterItem::String(s) => s.clone(),
-                _ => format!("//failed to get error description from response//"),
-            },
-            _ => format!("//failed to get error description from response//"),
+            ParameterNode::SingleParameter(ParameterItem::String(s)) => s.clone(),
+            _ => "//failed to get error description from response//".to_string(),
         },
-        None => format!("//no error description was found in the response//"),
+        None => "//no error description was found in the response//".to_string(),
     }
 }
 
@@ -187,7 +184,7 @@ fn parse_parameters<'a, T: Iterator<Item = &'a LexItem>>(
     }
 
     // check for nested parameters list
-    if let Some(_) = peek_token(iter, &token_opening_parenthesis) {
+    if peek_token(iter, &token_opening_parenthesis).is_some() {
         let nested_parameters = parse_parameters(iter)?; // recursive call
 
         // we flatten all nested parameters because we only support recursion depth=1
@@ -257,7 +254,7 @@ fn token_parameter(lex_item: &LexItem) -> OpenFinexApiResult<ParameterItem> {
     let expected_json_item = LexItem::Json("{}".to_string());
 
     Err(unexpected_token_error_for_multiple(
-        &vec![
+        &[
             &expected_string_item,
             &expected_number_item,
             &expected_json_item,
@@ -307,7 +304,7 @@ fn token_closing_parenthesis(lex_item: &LexItem) -> OpenFinexApiResult<()> {
 }
 
 fn unexpected_token_error_for_multiple(
-    expected: &Vec<&LexItem>,
+    expected: &[&LexItem],
     actual: &LexItem,
 ) -> OpenFinexApiError {
     OpenFinexApiError::ResponseParsingError(format!(
@@ -317,9 +314,9 @@ fn unexpected_token_error_for_multiple(
 }
 
 fn unexpected_token_error(expected: &LexItem, actual: &LexItem) -> OpenFinexApiError {
-    unexpected_token_error_for_multiple(&vec![expected], actual)
+    unexpected_token_error_for_multiple(&[expected], actual)
 }
 
 fn unexpected_end_error() -> OpenFinexApiError {
-    OpenFinexApiError::ResponseParsingError(format!("Unexpected end of tokens, expected any"))
+    OpenFinexApiError::ResponseParsingError("Unexpected end of tokens, expected any".to_string())
 }

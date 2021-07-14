@@ -1,8 +1,8 @@
 use log::*;
+use std::fmt;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender as MpscSender;
 use std::thread;
-use std::fmt;
 
 use codec::Decode;
 
@@ -21,8 +21,7 @@ impl fmt::Display for WsError {
     }
 }
 
-impl std::error::Error for WsError { }
-
+impl std::error::Error for WsError {}
 
 pub struct DirectWsClient {
     pub out: Sender,

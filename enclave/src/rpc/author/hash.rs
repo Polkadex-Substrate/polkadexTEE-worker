@@ -19,6 +19,7 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use codec::{Decode, Encode};
+use sgx_tstd::boxed::Box;
 
 use substratee_stf::TrustedOperation;
 
@@ -32,5 +33,5 @@ pub enum TrustedOperationOrHash<Hash> {
     /// Raw extrinsic bytes.
     OperationEncoded(Vec<u8>),
     /// Raw extrinsic
-    Operation(TrustedOperation),
+    Operation(Box<TrustedOperation>),
 }

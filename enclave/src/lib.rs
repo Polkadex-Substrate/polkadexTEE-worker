@@ -54,6 +54,7 @@ use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use sgx_externalities::SgxExternalitiesTypeTrait;
+use sgx_tstd::boxed::Box;
 use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
 use sp_core::{blake2_256, crypto::Pair, H256};
 use sp_finality_grandpa::VersionedAuthorityList;
@@ -413,7 +414,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         return status;
     }
 
-    if let Err(_) = polkadex::create_in_memory_account_storage(polkadex_accounts) {
+    if polkadex::create_in_memory_account_storage(polkadex_accounts).is_err() {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
@@ -989,50 +990,48 @@ fn handle_ocex_register(
     _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXRegisterFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc) = xt.function.clone(); // TODO: what to do in this case
+    let (call, main_acc) = xt.function; // TODO: what to do in this case
     info!(
         "Found OCEX Register extrinsic in block: \nCall: {:?} \nMain: {:?} ",
         call,
         main_acc.encode().to_base58(),
     );
-    polkadex::add_main_account(main_acc.into()).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+    polkadex::add_main_account(main_acc).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_add_proxy(
     _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXAddProxyFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc, proxy) = xt.function.clone();
+    let (call, main_acc, proxy) = xt.function;
     info!(
         "Found OCEX Add Proxy extrinsic in block: \nCall: {:?} \nMain: {:?}  \nProxy Acc: {}",
         call,
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::add_proxy(main_acc.into(), proxy.into())
-        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+    polkadex::add_proxy(main_acc, proxy).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_remove_proxy(
     _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXRemoveProxyFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc, proxy) = xt.function.clone();
+    let (call, main_acc, proxy) = xt.function;
     info!(
         "Found OCEX Remove Proxy extrinsic in block: \nCall: {:?} \nMain: {:?}  \nProxy Acc: {}",
         call,
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::remove_proxy(main_acc.into(), proxy.into())
-        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+    polkadex::remove_proxy(main_acc, proxy).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_deposit(
     _calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXDepositFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc, token, amount) = xt.function.clone();
+    let (call, main_acc, token, amount) = xt.function;
     info!(
         "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
@@ -1040,8 +1039,8 @@ fn handle_ocex_deposit(
         token.encode().to_base58(),
         amount
     );
-    if let Err(_) = polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount) {
-        return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+    if polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount).is_err() {
+        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
     } else {
         Ok(())
     }
@@ -1051,37 +1050,37 @@ fn handle_ocex_withdraw(
     calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
 ) -> SgxResult<()> {
-    let (call, main_acc, token, amount) = xt.function.clone();
+    let (call, main_acc, token, amount) = xt.function;
     info!(
         "Found OCEX Withdraw extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
         call,
-        main_acc.clone().encode().to_base58(), //FIXME @gautham please look into it
+        main_acc.encode().to_base58(), //FIXME @gautham please look into it
         token.encode().to_base58(),
         amount
     );
 
-    match polkadex::check_if_main_account_registered(main_acc.clone().into()) {
+    match polkadex::check_if_main_account_registered(main_acc.clone()) {
         // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists {
                 match polkadex_balance_storage::lock_storage_and_withdraw(
                     main_acc.clone(),
-                    token.clone(),
+                    token,
                     amount,
                 ) {
                     Ok(()) => {
                         // Compose the release extrinsic
                         let xt_block = [OCEX_MODULE, OCEX_RELEASE];
                         calls.push(OpaqueCall((xt_block, token, amount, main_acc).encode()));
-                        return Ok(());
+                        Ok(())
                     }
-                    Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+                    Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
                 }
             } else {
-                return Err(sgx_status_t::SGX_ERROR_UNEXPECTED);
+                Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
             }
         }
-        Err(_) => return Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
     }
 }
 
@@ -1210,9 +1209,9 @@ fn handle_trusted_worker_call(
             let inblock = false;
             author
                 .remove_top(
-                    vec![TrustedOperationOrHash::Operation(
+                    vec![TrustedOperationOrHash::Operation(Box::new(
                         stf_call_signed.into_trusted_operation(true),
-                    )],
+                    ))],
                     shard,
                     inblock,
                 )
@@ -1242,9 +1241,9 @@ fn handle_trusted_worker_call(
             let inblock = false;
             author
                 .remove_top(
-                    vec![TrustedOperationOrHash::Operation(
+                    vec![TrustedOperationOrHash::Operation(Box::new(
                         stf_call_signed.into_trusted_operation(true),
-                    )],
+                    ))],
                     shard,
                     inblock,
                 )
@@ -1262,9 +1261,9 @@ fn handle_trusted_worker_call(
         let inblock = true;
         author
             .remove_top(
-                vec![TrustedOperationOrHash::Operation(
+                vec![TrustedOperationOrHash::Operation(Box::new(
                     stf_call_signed.clone().into_trusted_operation(true),
-                )],
+                ))],
                 shard,
                 inblock,
             )

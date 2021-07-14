@@ -16,10 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::_write_order_to_disk;
 use crate::ed25519;
 use crate::polkadex_gateway::GatewayError;
-use crate::_write_order_to_disk;
 use log::error;
+use log::*;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
 use sgx_types::SgxResult;
 use sp_core::ed25519::Signature;
@@ -29,7 +30,6 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
-use log::*;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -58,12 +58,14 @@ impl OrderbookStorage {
 
     /// Removes a order_uid from the orderbook,
     /// returning the value at the order_uid if the order_uid was previously in the map.
+    #[allow(clippy::ptr_arg)]
     pub fn remove_order(&mut self, order_uid: &OrderUUID) -> Option<Order> {
         debug!("Removing order with uid: {:?}", order_uid);
         self.storage.remove(order_uid)
     }
 
     /// Returns a reference to the order corresponding to the order_uid.
+    #[allow(clippy::ptr_arg)]
     pub fn read_order(&self, order_uid: &OrderUUID) -> Option<&Order> {
         debug!("Reading order with uid: {:?}", order_uid);
         self.storage.get(order_uid)
@@ -104,7 +106,7 @@ pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> Sg
 pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayError> {
     let ptr = GLOBAL_ORDERBOOK_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<OrderbookStorage>;
     if ptr.is_null() {
-        return Err(GatewayError::UnableToLoadPointer);
+        Err(GatewayError::UnableToLoadPointer)
     } else {
         Ok(unsafe { &*ptr })
     }
@@ -112,6 +114,7 @@ pub fn load_orderbook() -> Result<&'static SgxMutex<OrderbookStorage>, GatewayEr
 
 // TODO: Write test cases for this function
 
+#[allow(clippy::ptr_arg)]
 pub fn lock_storage_and_remove_order(order_uuid: &OrderUUID) -> Result<Order, GatewayError> {
     let mutex = load_orderbook()?;
     // TODO: Handle this unwrap

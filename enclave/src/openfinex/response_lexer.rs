@@ -38,7 +38,7 @@ impl alloc::fmt::Display for LexItem {
 pub struct ResponseLexer {}
 
 impl ResponseLexer {
-    pub fn lex(&self, input: &String) -> Result<Vec<LexItem>, String> {
+    pub fn lex(&self, input: &str) -> Result<Vec<LexItem>, String> {
         let mut result = Vec::new();
 
         let mut it = input.chars().peekable();
@@ -161,10 +161,7 @@ fn get_string<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Result<String
 }
 
 fn is_string_delimiter(c: &char) -> bool {
-    match c {
-        '"' | '\'' => true,
-        _ => false,
-    }
+    matches!(c, '"' | '\'')
 }
 
 pub mod tests {
@@ -209,13 +206,10 @@ pub mod tests {
         verify_last_char_is_not_quote(&get_string_result.unwrap())
     }
 
-    fn verify_last_char_is_not_quote(str: &String) {
-        match str.chars().last() {
-            Some(c) => {
-                assert_ne!(c, '"');
-                assert_ne!(c, '\'');
-            }
-            None => {}
+    fn verify_last_char_is_not_quote(str: &str) {
+        if let Some(c) = str.chars().last() {
+            assert_ne!(c, '"');
+            assert_ne!(c, '\'');
         }
     }
 
@@ -253,20 +247,18 @@ pub mod tests {
         verify_json_string(&lexed_items, 9, 2);
     }
 
-    fn verify_json_string(lex_items: &Vec<LexItem>, index: usize, expected_length: usize) {
+    fn verify_json_string(lex_items: &[LexItem], index: usize, expected_length: usize) {
         let json_string = get_json_string(&lex_items, index).unwrap();
         assert_eq!(json_string.len(), expected_length);
         assert_eq!(json_string.chars().next().unwrap(), '{');
         assert_eq!(json_string.chars().last().unwrap(), '}');
     }
 
-    fn get_json_string(lex_items: &Vec<LexItem>, index: usize) -> Result<String, ()> {
+    fn get_json_string(lex_items: &[LexItem], index: usize) -> Result<String, ()> {
         match lex_items.get(index) {
             None => Err(()),
-            Some(l) => match l {
-                LexItem::Json(s) => Ok(s.clone()),
-                _ => Err(()),
-            },
+            Some(LexItem::Json(s)) => Ok(s.clone()),
+            Some(_) => Err(()),
         }
     }
 

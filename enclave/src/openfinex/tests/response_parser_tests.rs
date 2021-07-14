@@ -53,7 +53,7 @@ pub fn given_valid_get_markets_response_then_parse_items() {
 
 pub fn given_valid_error_response_then_parse_items() {
     let error_description = String::from("Message describing the error");
-    let response_string = format!("[2,42,\"error\",[\"{}\"]]", error_description).to_string();
+    let response_string = format!("[2,42,\"error\",[\"{}\"]]", error_description);
 
     let parser = TcpResponseParser {};
     let parsed_response = parser.parse_response_string(response_string).unwrap();
@@ -71,8 +71,7 @@ pub fn given_invalid_preamble_then_return_error() {
     let response_string = format!(
         "[{},42,\"admin_create_order\",[\"1245-2345-6798-123123\"]]",
         invalid_preamble
-    )
-    .to_string();
+    );
 
     let parser = TcpResponseParser {};
     let parsed_response = parser.parse_response_string(response_string);

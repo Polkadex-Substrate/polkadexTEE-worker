@@ -101,7 +101,7 @@ fn verify_signature(
                     if let true = tgs.verify_signature() {
                         return Ok(());
                     }
-                    return Err(RpcCallStatus::signature_verification_failure);
+                    Err(RpcCallStatus::signature_verification_failure)
                 }
             }
         }
@@ -184,8 +184,7 @@ pub mod tests {
         let key_pair = create_dummy_account();
         let account_id: AccountId = key_pair.public().into();
 
-        let trusted_call =
-            TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::POLKADEX, 14875210, None);
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
 
         TrustedOperation::direct_call(trusted_call_signed)
@@ -197,8 +196,7 @@ pub mod tests {
 
         let malicious_signer = ed25519_core::Pair::from_seed(b"19857777701234567890123456789012");
 
-        let trusted_call =
-            TrustedCall::withdraw(account_id.clone(), AssetId::POLKADEX, 14875210, None);
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::POLKADEX, 14875210, None);
 
         let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer);
 
