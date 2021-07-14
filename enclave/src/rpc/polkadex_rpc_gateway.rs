@@ -26,9 +26,6 @@ use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
-use crate::execute_ocex_release_extrinsic;
-use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
-use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::polkadex_gateway::{
     authenticate_user, authenticate_user_and_validate_nonce, GatewayError, OpenfinexPolkaDexGateway,
 };
