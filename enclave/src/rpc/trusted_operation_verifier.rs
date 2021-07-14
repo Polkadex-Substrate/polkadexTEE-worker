@@ -102,7 +102,7 @@ fn verify_signature(
                     if let true = tgs.verify_signature() {
                         return Ok(());
                     }
-                    return Err(RpcCallStatus::signature_verification_failure);
+                    Err(RpcCallStatus::signature_verification_failure)
                 }
             }
         }

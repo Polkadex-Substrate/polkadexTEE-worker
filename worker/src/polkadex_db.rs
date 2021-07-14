@@ -20,9 +20,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use codec::Encode;
-use rocksdb::{
-    DBWithThreadMode, Error as RocksDBError, IteratorMode, Options, SingleThreaded, DB,
-};
+use rocksdb::{DBWithThreadMode, Error as RocksDBError, IteratorMode, Options, SingleThreaded, DB};
 
 use polkadex_sgx_primitives::types::SignedOrder;
 

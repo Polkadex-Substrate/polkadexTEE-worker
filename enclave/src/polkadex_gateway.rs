@@ -180,7 +180,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         ); */
         self.openfinex_api
             .create_order(order, request_id)
-            .map_err(|e| GatewayError::OpenFinexApiError(e))
+            .map_err(GatewayError::OpenFinexApiError)
     }
 
     fn send_cancel_request_to_openfinex(
@@ -193,7 +193,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         ); */
         self.openfinex_api
             .cancel_order(cancel_order, request_id)
-            .map_err(|e| GatewayError::OpenFinexApiError(e))
+            .map_err(GatewayError::OpenFinexApiError)
     }
 
     /// Cancel order function does the following
@@ -207,7 +207,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         cancel_order: CancelOrder,
     ) -> Result<(), GatewayError> {
         // Authenticate
-        authenticate_user(main_account.clone(), proxy_acc)?;
+        authenticate_user(main_account, proxy_acc)?;
         let mutex = CancelOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
         let mut cache = match mutex.lock() {
             Ok(guard) => guard,
@@ -229,7 +229,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
 //Only for test
 pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let mut cache = match mutex.lock() {
+    let cache = match mutex.lock() {
         Ok(guard) => guard,
         Err(e) => {
             error!(
@@ -243,9 +243,9 @@ pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
 }
 
 // Only for test
-pub fn lock_storage_get_order(request_id: RequestId) -> Result<Order, GatewayError> {
+pub fn _lock_storage_get_order(request_id: RequestId) -> Result<Order, GatewayError> {
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let mut cache = match mutex.lock() {
+    let cache = match mutex.lock() {
         Ok(guard) => guard,
         Err(e) => {
             error!(
@@ -360,7 +360,7 @@ pub fn authenticate_user(
     match proxy_acc {
         Some(proxy) => {
             if !polkadex::check_if_proxy_registered(main_acc, proxy)
-                .map_err(|e| GatewayError::AccountRegistryError(e))?
+                .map_err(GatewayError::AccountRegistryError)?
             {
                 // FIXME: Should this really be an error?
                 debug!("Proxy Account is not registered for given Main Account");
@@ -369,7 +369,7 @@ pub fn authenticate_user(
         }
         None => {
             if !polkadex::check_if_main_account_registered(main_acc)
-                .map_err(|e| GatewayError::AccountRegistryError(e))?
+                .map_err(GatewayError::AccountRegistryError)?
             {
                 // FIXME: Should this really be an error?
                 debug!("Main Account is not registered");
@@ -550,14 +550,14 @@ pub fn consume_order(
             };
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
-                    counter_order.clone(),
+                    counter_order,
                     maker_order_uuid,
                 )?;
             }
 
             if current_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
-                    current_order.clone(),
+                    current_order,
                     taker_order_uuid,
                 )?;
             }
@@ -570,7 +570,7 @@ pub fn consume_order(
             do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
-                    counter_order.clone(),
+                    counter_order,
                     maker_order_uuid,
                 )?;
             } else {
@@ -584,7 +584,7 @@ pub fn consume_order(
 
             if current_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
-                    current_order.clone(),
+                    current_order,
                     taker_order_uuid,
                 )?;
             }
@@ -597,7 +597,7 @@ pub fn consume_order(
             do_asset_exchange_market(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
-                    counter_order.clone(),
+                    counter_order,
                     maker_order_uuid,
                 )?;
             } else {
@@ -611,7 +611,7 @@ pub fn consume_order(
 
             if current_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
-                    current_order.clone(),
+                    current_order,
                     taker_order_uuid,
                 )?;
             }
@@ -644,7 +644,7 @@ pub fn do_asset_exchange(
                 &counter_order.user_uid,
                 &current_order.user_uid,
             )?;
-            counter_order.quantity = counter_order.quantity - current_order.quantity;
+            counter_order.quantity -= current_order.quantity;
             current_order.quantity = 0;
             Ok(())
         }
@@ -666,7 +666,7 @@ pub fn do_asset_exchange(
                 &counter_order.user_uid,
                 &current_order.user_uid,
             )?;
-            current_order.quantity = current_order.quantity - counter_order.quantity;
+            current_order.quantity -= counter_order.quantity;
             counter_order.quantity = 0;
             Ok(())
         }
@@ -688,7 +688,7 @@ pub fn do_asset_exchange(
                 &current_order.user_uid,
                 &counter_order.user_uid,
             )?;
-            counter_order.quantity = counter_order.quantity - current_order.quantity;
+            counter_order.quantity -= current_order.quantity;
             current_order.quantity = 0;
             Ok(())
         }
@@ -710,7 +710,7 @@ pub fn do_asset_exchange(
                 &current_order.user_uid,
                 &counter_order.user_uid,
             )?;
-            current_order.quantity = current_order.quantity - counter_order.quantity;
+            current_order.quantity -= counter_order.quantity;
             counter_order.quantity = 0;
             Ok(())
         }
@@ -739,7 +739,7 @@ pub fn do_asset_exchange_market(
                     &counter_order.user_uid,
                     &current_order.user_uid,
                 )?;
-                counter_order.quantity = counter_order.quantity - current_order_quantity;
+                counter_order.quantity -= current_order_quantity;
                 current_order.price = Some(0);
             } else {
                 let trade_amount =
@@ -775,7 +775,7 @@ pub fn do_asset_exchange_market(
                 &current_order.user_uid,
                 &counter_order.user_uid,
             )?;
-            counter_order.quantity = counter_order.quantity - current_order.quantity;
+            counter_order.quantity -= current_order.quantity;
             current_order.quantity = 0;
             Ok(())
         }
@@ -793,7 +793,7 @@ pub fn do_asset_exchange_market(
                 &current_order.user_uid,
                 &counter_order.user_uid,
             )?;
-            current_order.quantity = current_order.quantity - counter_order.quantity;
+            current_order.quantity -= counter_order.quantity;
             counter_order.quantity = 0;
             Ok(())
         }
@@ -807,8 +807,8 @@ pub fn transfer_asset(
     from: &UserId,
     to: &UserId,
 ) -> Result<(), GatewayError> {
-    polkadex_balance_storage::lock_storage_unreserve_balance(from, asset_id.clone(), amount)?;
-    polkadex_balance_storage::lock_storage_transfer_balance(from, to, asset_id.clone(), amount)?;
+    polkadex_balance_storage::lock_storage_unreserve_balance(from, *asset_id, amount)?;
+    polkadex_balance_storage::lock_storage_transfer_balance(from, to, *asset_id, amount)?;
     Ok(())
 }
 

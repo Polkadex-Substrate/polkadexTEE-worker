@@ -330,22 +330,20 @@ fn test_ocall_read_write_ipfs() {
 
         let mut ipfs_content = IpfsContent::new(cid, content_buf);
         let verification = ipfs_content.verify();
-        assert_eq!(verification.is_ok(), true);
+        assert!(verification.is_ok());
     } else {
         error!("was not able to write to file");
-        assert!(false);
+        panic!()
     }
 }
 
 #[allow(unused)]
 fn test_ocall_worker_request() {
     info!("testing ocall_worker_request. Hopefully substraTEE-node is running...");
-    let mut requests = Vec::new();
-
-    requests.push(WorkerRequest::ChainStorage(
+    let mut requests = vec![WorkerRequest::ChainStorage(
         storage_key("Balances", "TotalIssuance").0,
         None,
-    ));
+    )];
 
     let mut resp: Vec<WorkerResponse<Vec<u8>>> = match crate::worker_request(requests) {
         Ok(response) => response,

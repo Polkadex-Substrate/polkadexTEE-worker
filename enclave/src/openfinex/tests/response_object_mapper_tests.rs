@@ -59,10 +59,10 @@ pub fn test_subscribe_response() {
         response_method: ResponseMethod::FromRequestMethod(RequestType::Subscribe, request_id),
         response_preamble: 51,
         parameters: vec![
-            ParameterNode::SingleParameter(ParameterItem::String(format!("admin"))),
+            ParameterNode::SingleParameter(ParameterItem::String("admin".to_string())),
             ParameterNode::ParameterList(vec![
-                ParameterItem::String(format!("events.order")),
-                ParameterItem::String(format!("events.trade")),
+                ParameterItem::String("events.order".to_string()),
+                ParameterItem::String("events.trade".to_string()),
             ]),
         ],
     };
@@ -73,14 +73,14 @@ pub fn test_subscribe_response() {
         OpenFinexResponse::RequestResponse(rr, rid) => match rr {
             RequestResponse::Subscription(sr) => {
                 assert_eq!(rid, request_id);
-                assert_eq!(format!("admin"), sr.admin_name);
+                assert_eq!("admin".to_string(), sr.admin_name);
                 assert_eq!(sr.subscribed_events.len(), 2);
                 assert_eq!(
-                    &format!("events.order"),
+                    &"events.order".to_string(),
                     sr.subscribed_events.get(0).unwrap()
                 );
                 assert_eq!(
-                    &format!("events.trade"),
+                    &"events.trade".to_string(),
                     sr.subscribed_events.get(1).unwrap()
                 );
             }
@@ -99,7 +99,7 @@ pub fn test_subscribe_response() {
 
 pub fn test_create_order_response() {
     let request_id: ResponseInteger = 12;
-    let order_id = format!("1245-2345-6798-123123");
+    let order_id = "1245-2345-6798-123123".to_string();
     let subscribe_response = ParsedResponse {
         response_method: ResponseMethod::FromRequestMethod(RequestType::CreateOrder, request_id),
         response_preamble: 2,
@@ -130,7 +130,7 @@ pub fn test_create_order_response() {
 }
 
 pub fn test_order_update_response() {
-    let order_uuid = format!("7acbbc84-939d-11eaa827-1831bf9834b0");
+    let order_uuid = "7acbbc84-939d-11eaa827-1831bf9834b0".to_string();
     let order_id = 2;
 
     let account = get_account("order_update_test_account");
@@ -140,19 +140,19 @@ pub fn test_order_update_response() {
         response_method: ResponseMethod::OrderUpdate,
         response_preamble: 5,
         parameters: vec![
-            ParameterNode::SingleParameter(ParameterItem::String(format!("ABC000001"))),
+            ParameterNode::SingleParameter(ParameterItem::String("ABC000001".to_string())),
             ParameterNode::SingleParameter(ParameterItem::String(account_nickname)),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("dotpdx"))),
+            ParameterNode::SingleParameter(ParameterItem::String("dotpdx".to_string())),
             ParameterNode::SingleParameter(ParameterItem::Number(order_id)),
             ParameterNode::SingleParameter(ParameterItem::String(order_uuid.clone())),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("buy"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("d"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("l"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("1"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("2"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("3"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("4"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("5"))),
+            ParameterNode::SingleParameter(ParameterItem::String("buy".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("d".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("l".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("1".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("2".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("3".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("4".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("5".to_string())),
             ParameterNode::SingleParameter(ParameterItem::Number(1)),
             ParameterNode::SingleParameter(ParameterItem::Number(1589211516)),
         ],
@@ -187,24 +187,24 @@ pub fn test_trade_event_response() {
         response_method: ResponseMethod::TradeEvent,
         response_preamble: 5,
         parameters: vec![
-            ParameterNode::SingleParameter(ParameterItem::String(format!("pdxdot"))),
+            ParameterNode::SingleParameter(ParameterItem::String("pdxdot".to_string())),
             ParameterNode::SingleParameter(ParameterItem::Number(trade_id)),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("1000"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("2"))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("2000"))),
+            ParameterNode::SingleParameter(ParameterItem::String("1000".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("2".to_string())),
+            ParameterNode::SingleParameter(ParameterItem::String("2000".to_string())),
             ParameterNode::SingleParameter(ParameterItem::Number(2)),
-            ParameterNode::SingleParameter(ParameterItem::String(format!(
-                "55d78eee-939e-11ea-945f-1831bf9834b0"
-            ))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("A00001"))),
+            ParameterNode::SingleParameter(ParameterItem::String(
+                "55d78eee-939e-11ea-945f-1831bf9834b0".to_string(),
+            )),
+            ParameterNode::SingleParameter(ParameterItem::String("A00001".to_string())),
             ParameterNode::SingleParameter(ParameterItem::String(maker_nickname)),
             ParameterNode::SingleParameter(ParameterItem::Number(3)),
-            ParameterNode::SingleParameter(ParameterItem::String(format!(
-                "55d78eee-939e-11ea-945f-1831bf9834as"
-            ))),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("A00002"))),
+            ParameterNode::SingleParameter(ParameterItem::String(
+                "55d78eee-939e-11ea-945f-1831bf9834as".to_string(),
+            )),
+            ParameterNode::SingleParameter(ParameterItem::String("A00002".to_string())),
             ParameterNode::SingleParameter(ParameterItem::String(taker_nickname)),
-            ParameterNode::SingleParameter(ParameterItem::String(format!("buy"))),
+            ParameterNode::SingleParameter(ParameterItem::String("buy".to_string())),
             ParameterNode::SingleParameter(ParameterItem::Number(1589211884)),
         ],
     };
@@ -265,26 +265,26 @@ pub fn test_get_markets_response() {
 fn map_to_objects(response: &ParsedResponse) -> OpenFinexResponse {
     struct ResponseDeserializerMock;
     impl OpenFinexResponseDeserializer for ResponseDeserializerMock {
-        fn string_to_market_id(&self, _market_id_str: &String) -> Result<MarketId, String> {
+        fn string_to_market_id(&self, _market_id_str: &str) -> Result<MarketId, String> {
             Ok(MarketId {
                 base: AssetId::POLKADEX,
                 quote: AssetId::DOT,
             })
         }
 
-        fn string_to_order_type(&self, _order_type_str: &String) -> Result<OrderType, String> {
+        fn string_to_order_type(&self, _order_type_str: &str) -> Result<OrderType, String> {
             Ok(OrderType::LIMIT)
         }
 
-        fn string_to_order_side(&self, _order_side_str: &String) -> Result<OrderSide, String> {
+        fn string_to_order_side(&self, _order_side_str: &str) -> Result<OrderSide, String> {
             Ok(OrderSide::BID)
         }
 
-        fn string_to_order_state(&self, _order_state_str: &String) -> Result<OrderState, String> {
+        fn string_to_order_state(&self, _order_state_str: &str) -> Result<OrderState, String> {
             Ok(OrderState::DONE)
         }
 
-        fn string_to_asset_id(&self, _asset_id_str: &String) -> Result<AssetId, String> {
+        fn string_to_asset_id(&self, _asset_id_str: &str) -> Result<AssetId, String> {
             Ok(AssetId::DOT)
         }
     }

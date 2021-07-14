@@ -29,15 +29,15 @@ use polkadex_sgx_primitives::AssetId;
 use sp_core::H160;
 
 pub trait OpenFinexResponseDeserializer {
-    fn string_to_market_id(&self, market_id_str: &String) -> Result<MarketId, String>;
+    fn string_to_market_id(&self, market_id_str: &str) -> Result<MarketId, String>;
 
-    fn string_to_order_type(&self, order_type_str: &String) -> Result<OrderType, String>;
+    fn string_to_order_type(&self, order_type_str: &str) -> Result<OrderType, String>;
 
-    fn string_to_order_side(&self, order_side_str: &String) -> Result<OrderSide, String>;
+    fn string_to_order_side(&self, order_side_str: &str) -> Result<OrderSide, String>;
 
-    fn string_to_order_state(&self, order_state_str: &String) -> Result<OrderState, String>;
+    fn string_to_order_state(&self, order_state_str: &str) -> Result<OrderState, String>;
 
-    fn string_to_asset_id(&self, asset_id_str: &String) -> Result<AssetId, String>;
+    fn string_to_asset_id(&self, asset_id_str: &str) -> Result<AssetId, String>;
 }
 
 pub struct ResponseDeserializerImpl {
@@ -55,7 +55,7 @@ impl ResponseDeserializerImpl {
 }
 
 impl OpenFinexResponseDeserializer for ResponseDeserializerImpl {
-    fn string_to_market_id(&self, market_id_str: &String) -> Result<MarketId, String> {
+    fn string_to_market_id(&self, market_id_str: &str) -> Result<MarketId, String> {
         let mutex = self
             .market_cache_provider
             .load()
@@ -68,19 +68,19 @@ impl OpenFinexResponseDeserializer for ResponseDeserializerImpl {
         string_to_market_id(market_id_str, &cache)
     }
 
-    fn string_to_order_type(&self, order_type_str: &String) -> Result<OrderType, String> {
+    fn string_to_order_type(&self, order_type_str: &str) -> Result<OrderType, String> {
         string_to_order_type(order_type_str)
     }
 
-    fn string_to_order_side(&self, order_side_str: &String) -> Result<OrderSide, String> {
+    fn string_to_order_side(&self, order_side_str: &str) -> Result<OrderSide, String> {
         string_to_order_side(order_side_str)
     }
 
-    fn string_to_order_state(&self, order_state_str: &String) -> Result<OrderState, String> {
+    fn string_to_order_state(&self, order_state_str: &str) -> Result<OrderState, String> {
         string_to_order_state(order_state_str)
     }
 
-    fn string_to_asset_id(&self, asset_id_str: &String) -> Result<AssetId, String> {
+    fn string_to_asset_id(&self, asset_id_str: &str) -> Result<AssetId, String> {
         asset_id_mapping::string_to_asset_id(asset_id_str)
     }
 }
@@ -98,7 +98,7 @@ pub fn market_id_to_request_string(market_id: MarketId) -> String {
 }
 
 fn string_to_market_id(
-    market_id_str: &String,
+    market_id_str: &str,
     market_cache: &MarketCache,
 ) -> Result<MarketId, String> {
     let market = market_cache.get_market(market_id_str).ok_or_else(|| {
@@ -139,8 +139,8 @@ pub fn order_type_to_request_string(order_type: OrderType) -> String {
     }
 }
 
-fn string_to_order_type(order_type_str: &String) -> Result<OrderType, String> {
-    match order_type_str.as_str() {
+fn string_to_order_type(order_type_str: &str) -> Result<OrderType, String> {
+    match order_type_str {
         MARKET_ORDER_TYPE_STR => Ok(OrderType::MARKET),
         LIMIT_ORDER_TYPE_STR => Ok(OrderType::LIMIT),
         POSTONLY_ORDER_TYPE_STR => Ok(OrderType::PostOnly),
@@ -162,8 +162,8 @@ pub fn order_side_to_request_string(order_side: OrderSide) -> String {
     }
 }
 
-fn string_to_order_side(order_side_str: &String) -> Result<OrderSide, String> {
-    match order_side_str.as_str() {
+fn string_to_order_side(order_side_str: &str) -> Result<OrderSide, String> {
+    match order_side_str {
         BID_ORDER_SIDE_STR => Ok(OrderSide::BID),
         ASK_ORDER_SIDE_STR => Ok(OrderSide::ASK),
         _ => Err(format!(
@@ -187,8 +187,8 @@ pub fn order_state_to_request_string(order_state: OrderState) -> String {
     }
 }
 
-fn string_to_order_state(order_state_str: &String) -> Result<OrderState, String> {
-    match order_state_str.as_str() {
+fn string_to_order_state(order_state_str: &str) -> Result<OrderState, String> {
+    match order_state_str {
         DONE_ORDER_STATE_STR => Ok(OrderState::DONE),
         WAIT_ORDER_STATE_STR => Ok(OrderState::WAIT),
         CANCEL_ORDER_STATE_STR => Ok(OrderState::CANCEL),
@@ -222,11 +222,11 @@ pub mod asset_id_mapping {
         }
     }
 
-    pub fn string_to_asset_id(asset_id_str: &String) -> Result<AssetId, String> {
+    pub fn string_to_asset_id(asset_id_str: &str) -> Result<AssetId, String> {
         // TODO: we're using just dummy values here
         let dummy_token_hash = dummy_hash();
 
-        match asset_id_str.as_str() {
+        match asset_id_str {
             POLKADEX_ASSET_STR => Ok(AssetId::POLKADEX),
             DOT_ASSET_STR => Ok(AssetId::DOT),
 
@@ -279,7 +279,7 @@ pub mod tests {
         ];
 
         for asset_id in asset_ids {
-            let asset_id_str = asset_id_mapping::asset_id_to_string(asset_id.clone());
+            let asset_id_str = asset_id_mapping::asset_id_to_string(asset_id);
             let mapped_asset_id = asset_id_mapping::string_to_asset_id(&asset_id_str).unwrap();
             assert_eq!(asset_id, mapped_asset_id);
         }
@@ -289,7 +289,7 @@ pub mod tests {
         let order_sides = vec![OrderSide::ASK, OrderSide::BID];
 
         for order_side in order_sides {
-            let order_side_str = order_side_to_request_string(order_side.clone());
+            let order_side_str = order_side_to_request_string(order_side);
             let mapped_order_side = string_to_order_side(&order_side_str).unwrap();
             assert_eq!(order_side, mapped_order_side);
         }
@@ -304,7 +304,7 @@ pub mod tests {
         ];
 
         for order_type in order_types {
-            let order_type_str = order_type_to_request_string(order_type.clone());
+            let order_type_str = order_type_to_request_string(order_type);
             let mapped_order_type = string_to_order_type(&order_type_str).unwrap();
             assert_eq!(order_type, mapped_order_type);
         }
@@ -319,7 +319,7 @@ pub mod tests {
         ];
 
         for order_state in order_states {
-            let order_state_str = order_state_to_request_string(order_state.clone());
+            let order_state_str = order_state_to_request_string(order_state);
             let mapped_order_state = string_to_order_state(&order_state_str).unwrap();
             assert_eq!(order_state, mapped_order_state);
         }
@@ -367,7 +367,7 @@ pub mod tests {
         ];
 
         for market_id in market_ids {
-            let market_id_str = market_id_to_request_string(market_id.clone());
+            let market_id_str = market_id_to_request_string(market_id);
             let mapped_market_id = string_to_market_id(&market_id_str, &market_cache).unwrap();
             assert_eq!(market_id, mapped_market_id);
         }

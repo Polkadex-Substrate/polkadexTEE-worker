@@ -51,7 +51,7 @@ use sp_runtime::generic::{
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Hash as HashT, Header as HeaderT, NumberFor,
 };
-use sp_runtime::{Justifications, Justification, OpaqueExtrinsic};
+use sp_runtime::{Justification, Justifications, OpaqueExtrinsic};
 
 type RelayId = u64;
 pub type Blocknumber = u32;

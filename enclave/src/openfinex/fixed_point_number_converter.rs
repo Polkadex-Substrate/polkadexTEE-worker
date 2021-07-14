@@ -39,25 +39,22 @@ impl FixedPointNumberConverter {
     /// - no negative numbers can be parsed
     /// - no scientific notation
     /// - no fractions below 1/UNIT
-    pub fn parse_from_string(str: &String) -> OpenFinexApiResult<ResponseInteger> {
+    pub fn parse_from_string(str: &str) -> OpenFinexApiResult<ResponseInteger> {
         let mut chars_iter = str.chars().peekable();
 
         // parse all digits before the decimal (integer part)
         let mut integer_digits = parse_number_sequence(&mut chars_iter);
         integer_digits.reverse();
 
-        match chars_iter.peek() {
-            Some(c) => {
-                if *c == '.' {
-                    chars_iter.next();
-                }
+        if let Some(c) = chars_iter.peek() {
+            if *c == '.' {
+                chars_iter.next();
             }
-            None => {}
         }
 
         let fraction_digits = parse_number_sequence(&mut chars_iter);
 
-        if let Some(_) = chars_iter.peek() {
+        if chars_iter.peek().is_some() {
             return Err(OpenFinexApiError::FixedPointConversionError(format!(
                 "string ({}) is not a valid fixed point number",
                 str
@@ -85,7 +82,8 @@ impl FixedPointNumberConverter {
     }
 
     /// convert an integer to a fixed point number string, shifted by UNIT orders of magnitude
-    pub fn to_string(integer: ResponseInteger) -> String {
+    pub fn _to_string(integer: ResponseInteger) -> String {
+        //TODO: Find a function name that doesn't trigger clippy
         let fraction = integer % UNIT;
         let integer_part = integer / UNIT;
 
@@ -106,16 +104,16 @@ fn parse_number_sequence<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> Ve
     digits
 }
 
-fn combine_integer_digits(digits: &Vec<u8>) -> OpenFinexApiResult<ResponseInteger> {
+fn combine_integer_digits(digits: &[u8]) -> OpenFinexApiResult<ResponseInteger> {
     combine_digits(digits, &|order| UNIT.checked_mul(order))
 }
 
-fn combine_fraction_digits(digits: &Vec<u8>) -> OpenFinexApiResult<ResponseInteger> {
+fn combine_fraction_digits(digits: &[u8]) -> OpenFinexApiResult<ResponseInteger> {
     combine_digits(digits, &|order| (UNIT / 10u128).checked_div(order))
 }
 
 fn combine_digits(
-    digits: &Vec<u8>,
+    digits: &[u8],
     scale_fn: &dyn Fn(u128) -> Option<u128>,
 ) -> OpenFinexApiResult<ResponseInteger> {
     let mut number: u128 = 0;
@@ -149,57 +147,62 @@ pub mod tests {
     use super::*;
 
     pub fn fail_to_parse_invalid_strings() {
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("ar4")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("34.5g")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("not_a_number")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("12.f")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("a.56")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("a0.21542")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("_")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("-1547566.2894")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("NaN")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("Inf")).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"ar4".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"34.5g".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"not_a_number".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"12.f".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"a.56".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"a0.21542".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"_".to_string()).is_err());
+        assert!(
+            FixedPointNumberConverter::parse_from_string(&"-1547566.2894".to_string()).is_err()
+        );
+        assert!(FixedPointNumberConverter::parse_from_string(&"NaN".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"Inf".to_string()).is_err());
     }
 
     pub fn fail_to_parse_scientific_notation() {
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("1.4e-3")).is_err());
-        assert!(FixedPointNumberConverter::parse_from_string(&format!("9e8")).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"1.4e-3".to_string()).is_err());
+        assert!(FixedPointNumberConverter::parse_from_string(&"9e8".to_string()).is_err());
     }
 
     pub fn fail_to_parse_if_too_large() {
         // number in string is larger than what can be converted to u128 (with 18 digit shift)
         // u128 max 340_282_366_920_938_463_463,,_374_607_431_768_211_455
         assert!(
-            FixedPointNumberConverter::parse_from_string(&format!("340282366920938463464"))
+            FixedPointNumberConverter::parse_from_string(&"340282366920938463464".to_string())
                 .is_err()
         );
     }
 
     pub fn successfully_parse_numbers() {
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&format!("42")).unwrap(),
+            FixedPointNumberConverter::parse_from_string(&"42".to_string()).unwrap(),
             42_000_000_000_000_000_000
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&format!("0.1234")).unwrap(),
+            FixedPointNumberConverter::parse_from_string(&"0.1234".to_string()).unwrap(),
             123_400_000_000_000_000
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&format!(".005")).unwrap(),
+            FixedPointNumberConverter::parse_from_string(&".005".to_string()).unwrap(),
             5_000_000_000_000_000
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&format!("6548731654.123456789012345678"))
-                .unwrap(),
+            FixedPointNumberConverter::parse_from_string(
+                &"6548731654.123456789012345678".to_string()
+            )
+            .unwrap(),
             6_548_731_654_123_456_789_012_345_678
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&format!("4785182996.201809734")).unwrap(),
+            FixedPointNumberConverter::parse_from_string(&"4785182996.201809734".to_string())
+                .unwrap(),
             4_785_182_996_201_809_734_000_000_000u128
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&format!(".1")).unwrap(),
+            FixedPointNumberConverter::parse_from_string(&".1".to_string()).unwrap(),
             100_000_000_000_000_000u128
         );
     }
@@ -207,33 +210,36 @@ pub mod tests {
     pub fn fail_to_parse_if_number_exceeds_precision() {
         // have limited precision of 18 digits
         assert!(
-            FixedPointNumberConverter::parse_from_string(&format!("0.0000000000000000001"))
+            FixedPointNumberConverter::parse_from_string(&"0.0000000000000000001".to_string())
                 .is_err()
         );
     }
 
     pub fn convert_to_string() {
         assert_eq!(
-            FixedPointNumberConverter::to_string(10_000_000_000_000_000_000u128),
-            format!("10.0")
+            FixedPointNumberConverter::_to_string(10_000_000_000_000_000_000u128),
+            "10.0".to_string()
         );
 
         assert_eq!(
-            FixedPointNumberConverter::to_string(42u128),
-            format!("0.000000000000000042")
+            FixedPointNumberConverter::_to_string(42u128),
+            "0.000000000000000042".to_string()
         );
 
         assert_eq!(
-            FixedPointNumberConverter::to_string(487_190_845_002_441_456_031_034_845_001u128),
-            format!("487190845002.441456031034845001")
+            FixedPointNumberConverter::_to_string(487_190_845_002_441_456_031_034_845_001u128),
+            "487190845002.441456031034845001".to_string()
         );
 
         assert_eq!(
-            FixedPointNumberConverter::to_string(1u128),
-            format!("0.000000000000000001")
+            FixedPointNumberConverter::_to_string(1u128),
+            "0.000000000000000001".to_string()
         );
 
-        assert_eq!(FixedPointNumberConverter::to_string(0u128), format!("0.0"));
+        assert_eq!(
+            FixedPointNumberConverter::_to_string(0u128),
+            "0.0".to_string()
+        );
     }
 
     pub fn convert_to_string_and_back() {
@@ -247,7 +253,7 @@ pub mod tests {
         ];
 
         for number in numbers {
-            let number_str = FixedPointNumberConverter::to_string(number);
+            let number_str = FixedPointNumberConverter::_to_string(number);
             let converted_number =
                 FixedPointNumberConverter::parse_from_string(&number_str).unwrap();
             assert_eq!(number, converted_number);

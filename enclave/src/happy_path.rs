@@ -5,7 +5,6 @@ use crate::polkadex_balance_storage::{
 };
 use crate::polkadex_gateway::lock_storage_get_cache_nonce;
 use crate::polkadex_gateway::{process_create_order, settle_trade};
-use crate::polkadex_orderbook_storage::lock_storage_and_add_order;
 use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
 use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{
@@ -45,7 +44,7 @@ pub fn test_happy_path() {
     );
 
     //Place Ask Limit Order
-    let mut ask_limit_order: Order = Order {
+    let ask_limit_order: Order = Order {
         user_uid: alice.clone(),
         market_id: MarketId {
             base: token_a,
@@ -58,7 +57,7 @@ pub fn test_happy_path() {
         price: Some(UNIT),
     };
 
-    let mut buy_limit_order: Order = Order {
+    let buy_limit_order: Order = Order {
         user_uid: bob.clone(),
         market_id: MarketId {
             base: token_a,
@@ -73,21 +72,21 @@ pub fn test_happy_path() {
 
     // Place Ask limit Order
     assert!(gateway
-        .place_order(alice.clone(), None, ask_limit_order.clone())
+        .place_order(alice.clone(), None, ask_limit_order)
         .is_ok());
 
     let ask_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let ask_limit_order_uuid: OrderUUID = (200..202).collect();
-    process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone());
+    process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone()).unwrap(); //TODO: Proper error handing
 
     // Place Bid Limit Order
     assert!(gateway
-        .place_order(bob.clone(), None, buy_limit_order.clone())
+        .place_order(bob.clone(), None, buy_limit_order)
         .is_ok());
 
     let bid_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let buy_limit_order_uuid: OrderUUID = (202..204).collect();
-    process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone());
+    process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone()).unwrap(); //TODO: Proper error handing
 
     //Order Event
     let trade_event = TradeEvent {
@@ -96,7 +95,7 @@ pub fn test_happy_path() {
             quote: token_b,
         },
         trade_id: 1,
-        price: 1 * UNIT,
+        price: UNIT,
         amount: 0,
         funds: 0,
         maker_user_id: alice.clone(), // Alice
@@ -111,18 +110,12 @@ pub fn test_happy_path() {
     assert_eq!(settle_trade(trade_event), Ok(()));
     assert_eq!(check_balance(450 * UNIT, 0, alice.clone(), token_a), Ok(()));
 
-    assert_eq!(
-        check_balance(50 * UNIT, 0u128, alice.clone(), token_b),
-        Ok(())
-    );
+    assert_eq!(check_balance(50 * UNIT, 0u128, alice, token_b), Ok(()));
 
     assert_eq!(
         check_balance(50 * UNIT, 0u128, bob.clone(), token_a),
         Ok(())
     );
 
-    assert_eq!(
-        check_balance(450 * UNIT, 0u128, bob.clone(), token_b),
-        Ok(())
-    );
+    assert_eq!(check_balance(450 * UNIT, 0u128, bob, token_b), Ok(()));
 }

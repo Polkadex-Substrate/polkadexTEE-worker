@@ -20,6 +20,7 @@ use crate::polkadex_cache::cache_api::{CacheResult, RequestId, StaticStorageApi}
 use log::*;
 use polkadex_sgx_primitives::types::Order;
 use std::collections::HashMap;
+use std::string::String;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, SgxMutex};
 
@@ -57,7 +58,7 @@ impl StaticStorageApi for CreateOrderCache {
         let ptr = CREATE_ORDER_CACHE.load(Ordering::SeqCst) as *mut SgxMutex<Self>;
         if ptr.is_null() {
             error!("Could not load create order cache");
-            return Err(());
+            Err(String::from("Could not load cancel order cache"))
         } else {
             Ok(unsafe { &*ptr })
         }

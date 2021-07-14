@@ -18,6 +18,7 @@
 
 pub use crate::openfinex::openfinex_types::RequestId;
 use log::*;
+use std::string::String;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::Arc;
 use std::sync::SgxMutex;
@@ -25,7 +26,7 @@ use std::sync::SgxMutex;
 /// result type definition using the OpenFinexApiError$
 /// -> This might be sensible to change to custom error in the future
 /// But for now only two tpyes of errors are necessary..
-pub type CacheResult<T> = core::result::Result<T, ()>;
+pub type CacheResult<T> = core::result::Result<T, String>;
 
 /// Generic cache provider, requires to be initialized before load
 pub trait CacheProvider<T> {
@@ -54,7 +55,7 @@ impl<T> CacheProvider<T> for StaticCacheProvider<T> {
         let ptr = self.static_cache_ptr.load(Ordering::SeqCst) as *mut SgxMutex<T>;
         if ptr.is_null() {
             error!("Could not load cache");
-            return Err(());
+            Err(String::from("Could not load cache"))
         } else {
             Ok(unsafe { &*ptr })
         }
@@ -87,7 +88,7 @@ impl<T> LocalCacheProvider<T> {
     pub fn new(initial_cache: &'static dyn Fn() -> T) -> Self {
         let cache_provider = LocalCacheProvider {
             initial_cache,
-            cache_ptr: AtomicPtr::new(0 as *mut ()),
+            cache_ptr: AtomicPtr::new(std::ptr::null_mut::<()>()),
         };
 
         cache_provider.initialize();
@@ -108,7 +109,7 @@ impl<T> CacheProvider<T> for LocalCacheProvider<T> {
         let ptr = self.cache_ptr.load(Ordering::SeqCst) as *mut SgxMutex<T>;
         if ptr.is_null() {
             error!("Could not load cache");
-            return Err(());
+            Err(String::from("Could not load cache"))
         } else {
             Ok(unsafe { &*ptr })
         }

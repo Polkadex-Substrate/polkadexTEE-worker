@@ -25,6 +25,7 @@ use crate::openfinex::response_parser::{
 };
 use crate::openfinex::string_serialization::OpenFinexResponseDeserializer;
 use crate::ss58check::ss58check_to_account_id;
+use crate::std::string::ToString;
 use alloc::{string::String, sync::Arc, vec::Vec};
 use codec::Encode;
 use core::iter::Peekable;
@@ -118,7 +119,7 @@ impl ResponseObjectMapper {
         &self,
         request_type: &RequestType,
         request_id: &RequestId,
-        parameters: &Vec<ParameterNode>,
+        parameters: &[ParameterNode],
     ) -> OpenFinexApiResult<OpenFinexResponse> {
         let mut param_iter = parameters.iter().peekable();
 
@@ -177,7 +178,7 @@ impl ResponseObjectMapper {
 
     fn map_trade_event(
         &self,
-        parameters: &Vec<ParameterNode>,
+        parameters: &[ParameterNode],
     ) -> OpenFinexApiResult<OpenFinexResponse> {
         let mut param_iter = parameters.iter().peekable();
 
@@ -206,12 +207,12 @@ impl ResponseObjectMapper {
         let market_id = self
             .string_deserializer
             .string_to_market_id(&market_id_str)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         let maker_side = self
             .string_deserializer
             .string_to_order_side(&maker_order_side_str)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         // we use the nickname to pass our user ID currently, see the request side
         let maker_user_id = ss58check_to_account_id(maker_nickname.as_str())
@@ -239,7 +240,7 @@ impl ResponseObjectMapper {
 
     fn map_order_update(
         &self,
-        parameters: &Vec<ParameterNode>,
+        parameters: &[ParameterNode],
     ) -> OpenFinexApiResult<OpenFinexResponse> {
         let mut param_iter = parameters.iter().peekable();
 
@@ -264,22 +265,22 @@ impl ResponseObjectMapper {
         let market_id = self
             .string_deserializer
             .string_to_market_id(&market_id_str)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         let order_side = self
             .string_deserializer
             .string_to_order_side(&order_side_str)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         let order_type = self
             .string_deserializer
             .string_to_order_type(&order_type_str)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         let order_state = self
             .string_deserializer
             .string_to_order_state(&order_state_str)
-            .map_err(|e| OpenFinexApiError::ResponseParsingError(e))?;
+            .map_err(OpenFinexApiError::ResponseParsingError)?;
 
         // user ID is taken from nickname - has to match what we compose in the request, see
         // openfinex_api_impl.rs
@@ -314,9 +315,9 @@ fn get_next_single_item<'a, T: Iterator<Item = &'a ParameterNode>, R>(
             let parameter_item = extract_single_parameter_from_node(p)?;
             (item_extractor)(parameter_item)
         }
-        None => Err(OpenFinexApiError::ResponseParsingError(format!(
-            "Expected a parameter node, but list of parameter nodes ended prematurely"
-        ))),
+        None => Err(OpenFinexApiError::ResponseParsingError(
+            "Expected a parameter node, but list of parameter nodes ended prematurely".to_string(),
+        )),
     }
 }
 
@@ -337,9 +338,9 @@ fn get_next_item_list<'a, T: Iterator<Item = &'a ParameterNode>, R>(
 
             Ok(extracted_items)
         }
-        None => Err(OpenFinexApiError::ResponseParsingError(format!(
-            "Expected a parameter node, but list of parameter nodes ended prematurely"
-        ))),
+        None => Err(OpenFinexApiError::ResponseParsingError(
+            "Expected a parameter node, but list of parameter nodes ended prematurely".to_string(),
+        )),
     }
 }
 
@@ -373,9 +374,10 @@ fn get_next_items<'a, T: Iterator<Item = &'a ParameterNode>, R>(
 fn extract_single_parameter_from_node(node: &ParameterNode) -> OpenFinexApiResult<&ParameterItem> {
     match node {
         ParameterNode::SingleParameter(i) => Ok(i),
-        _ => Err(OpenFinexApiError::ResponseParsingError(format!(
+        _ => Err(OpenFinexApiError::ResponseParsingError(
             "Expected a single parameter, but instead found a nested list of parameters"
-        ))),
+                .to_string(),
+        )),
     }
 }
 
@@ -383,9 +385,9 @@ fn extract_nested_parameter_list_from_node(
     node: &ParameterNode,
 ) -> OpenFinexApiResult<&Vec<ParameterItem>> {
     match node {
-        ParameterNode::SingleParameter(_) => Err(OpenFinexApiError::ResponseParsingError(format!(
-            "Expected a nested parameter list, but instead found a single parameter"
-        ))),
+        ParameterNode::SingleParameter(_) => Err(OpenFinexApiError::ResponseParsingError(
+            "Expected a nested parameter list, but instead found a single parameter".to_string(),
+        )),
         ParameterNode::ParameterList(l) => Ok(l),
     }
 }

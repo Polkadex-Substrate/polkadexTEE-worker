@@ -23,7 +23,7 @@ use crate::polkadex_cache::cache_api::CacheProvider;
 use crate::polkadex_cache::market_cache::MarketCache;
 use log::*;
 use std::sync::Arc;
-use std::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult, string::String, vec::Vec};
+use std::{fmt::Display, fmt::Formatter, fmt::Result as FormatResult, string::String};
 
 #[derive(Eq, Debug, PartialOrd, PartialEq)]
 pub enum MarketRepositoryError {
@@ -42,7 +42,7 @@ pub trait MarketsRequestCallback {
     fn update_markets(
         &self,
         request_id: RequestId,
-        json_strings: &Vec<String>,
+        json_strings: &[String],
     ) -> Result<(), MarketRepositoryError>;
 }
 
@@ -66,7 +66,7 @@ impl MarketsRequestCallback for MarketRepository {
     fn update_markets(
         &self,
         request_id: u128,
-        json_strings: &Vec<String>,
+        json_strings: &[String],
     ) -> Result<(), MarketRepositoryError> {
         let mutex = self
             .cache_provider
@@ -107,8 +107,8 @@ impl MarketsRequestSender for MarketRepository {
     }
 }
 
-fn map_string_to_market(json_string: &String) -> Option<Market> {
-    let market: Option<Market> = match serde_json::from_str(json_string.as_str()) {
+fn map_string_to_market(json_string: &str) -> Option<Market> {
+    let market: Option<Market> = match serde_json::from_str(json_string) {
         Ok(m) => Some(m),
         Err(e) => {
             error!("Failed to deserialize string to a Market object: {}", e);

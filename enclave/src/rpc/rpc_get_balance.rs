@@ -61,7 +61,7 @@ impl RpcGetBalance {
         }?;
 
         let main_account = trusted_getter_signed.getter.main_account().clone();
-        let proxy_account = trusted_getter_signed.getter.proxy_account().clone();
+        let proxy_account = trusted_getter_signed.getter.proxy_account();
 
         let _authorization_result = match self
             .rpc_gateway
