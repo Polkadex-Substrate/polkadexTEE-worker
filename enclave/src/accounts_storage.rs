@@ -170,9 +170,7 @@ pub mod tests {
                 },
                 proof: vec![],
             }]);
-        assert!(accounts_storage
-            .accounts
-            .contains_key(&account_id.clone().encode()));
+        assert!(accounts_storage.accounts.contains_key(&account_id.encode()));
 
         assert!(accounts_storage.add_main_account(account_id).is_err());
     }
@@ -183,9 +181,7 @@ pub mod tests {
                 .public()
                 .into();
         let mut accounts_storage: PolkadexAccountsStorage = PolkadexAccountsStorage::create(vec![]);
-        assert!(!accounts_storage
-            .accounts
-            .contains_key(&account_id.clone().encode()));
+        assert!(!accounts_storage.accounts.contains_key(&account_id.encode()));
         assert!(accounts_storage.remove_main_account(account_id).is_err());
     }
 
