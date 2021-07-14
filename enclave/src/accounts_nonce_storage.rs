@@ -29,9 +29,6 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 
-//use std::collections::HashMap;
-// TODO: Fix this import
-
 use crate::{
     accounts_storage::{AccountsStorageError, PolkadexAccountsStorage},
     nonce_storage::{NonceStorageError, PolkadexNonceStorage},
@@ -301,7 +298,7 @@ impl From<NonceStorageError> for AccountRegistryError {
 }
 
 pub mod tests {
-    use crate::polkadex::AccountsNonceStorage;
+    use super::AccountsNonceStorage;
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
     use sp_core::{ed25519 as ed25519_core, Pair};
@@ -343,5 +340,67 @@ pub mod tests {
             .accounts
             .contains_key(&account_id.encode()));
         assert!(storage.nonce_storage.read_nonce(account_id).is_err());
+    }
+
+    pub fn initializing_proxy_account() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
+                .public()
+                .into();
+        let mut storage: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        storage.nonce_storage.initialize_nonce(account_id.clone());
+
+        assert!(storage
+            .initialize_proxy_account(account_id.clone(), proxy_id.clone())
+            .is_ok());
+        assert_eq!(
+            storage.accounts_storage.accounts.get(&account_id.encode()),
+            Some(&vec![proxy_id])
+        );
+        assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
+    }
+
+    pub fn removing_proxy_account() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
+                .public()
+                .into();
+        let mut storage: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![proxy_id.clone()],
+                },
+                proof: vec![],
+            }]);
+        storage.nonce_storage.initialize_nonce(account_id.clone());
+
+        assert!(storage
+            .remove_proxy_account(account_id.clone(), proxy_id)
+            .is_ok());
+        assert_eq!(
+            storage.accounts_storage.accounts.get(&account_id.encode()),
+            Some(&vec![])
+        );
+        assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
     }
 }

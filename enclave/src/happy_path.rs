@@ -1,5 +1,5 @@
+use crate::accounts_nonce_storage::add_main_account;
 use crate::constants::UNIT;
-use crate::polkadex::add_main_account;
 use crate::polkadex_balance_storage::{
     lock_storage_and_deposit, lock_storage_and_initialize_balance,
 };

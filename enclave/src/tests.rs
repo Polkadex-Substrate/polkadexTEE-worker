@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::accounts_nonce_storage;
 use crate::accounts_storage;
 use crate::aes;
 use crate::attestation;
@@ -23,7 +24,6 @@ use crate::ed25519;
 use crate::happy_path;
 use crate::nonce_storage;
 use crate::openfinex;
-use crate::polkadex;
 use crate::polkadex_cache;
 use crate::rpc;
 use crate::rsa3072;
@@ -219,8 +219,10 @@ pub extern "C" fn test_main_entrance() -> size_t {
         accounts_storage::tests::removing_proxy_account,
 
         // AccountsNonce Storage
-        polkadex::tests::initializing_main_account,
-        polkadex::tests::removing_main_account,
+        accounts_nonce_storage::tests::initializing_main_account,
+        accounts_nonce_storage::tests::removing_main_account,
+        accounts_nonce_storage::tests::initializing_proxy_account,
+        accounts_nonce_storage::tests::removing_proxy_account,
 
         // Utility
         ss58check::tests::convert_account_id_to_and_from_ss58check,

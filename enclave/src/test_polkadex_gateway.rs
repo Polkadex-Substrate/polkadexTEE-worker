@@ -25,11 +25,11 @@ use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_tstd::vec::Vec;
 
 // Polkadex represents 1 Token as 10^^18 minimum possible units
-use crate::constants::UNIT;
-use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
-use crate::polkadex::{
+use crate::accounts_nonce_storage::{
     add_main_account, check_if_main_account_registered, create_in_memory_accounts_and_nonce_storage,
 };
+use crate::constants::UNIT;
+use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
 use crate::polkadex_balance_storage::{
     create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances,
     lock_storage_and_initialize_balance,

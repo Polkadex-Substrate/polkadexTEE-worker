@@ -26,17 +26,17 @@ use polkadex_sgx_primitives::types::{
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use std::sync::Arc;
 
+use crate::accounts_nonce_storage;
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
 use crate::openfinex::openfinex_types::RequestId;
-use crate::polkadex;
 use crate::polkadex_balance_storage;
 use crate::polkadex_cache::cache_api::StaticStorageApi;
 use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_gateway;
 use crate::polkadex_orderbook_storage;
-use polkadex::AccountRegistryError;
+use accounts_nonce_storage::AccountRegistryError;
 
 impl alloc::fmt::Display for GatewayError {
     fn fmt(&self, f: &mut alloc::fmt::Formatter) -> FormatResult {
@@ -346,7 +346,7 @@ pub fn authenticate_user_and_validate_nonce(
     nonce: u32,
 ) -> Result<(), GatewayError> {
     authenticate_user(main_acc.clone(), proxy_acc)?;
-    if polkadex::validate_nonce(main_acc, nonce).is_err() {
+    if accounts_nonce_storage::validate_nonce(main_acc, nonce).is_err() {
         return Err(GatewayError::MainAccountNotRegistered); //FIXME: Swap for the correct error
     };
     Ok(())
@@ -359,7 +359,7 @@ pub fn authenticate_user(
     // Authentication
     match proxy_acc {
         Some(proxy) => {
-            if !polkadex::check_if_proxy_registered(main_acc, proxy)
+            if !accounts_nonce_storage::check_if_proxy_registered(main_acc, proxy)
                 .map_err(GatewayError::AccountRegistryError)?
             {
                 // FIXME: Should this really be an error?
@@ -368,7 +368,7 @@ pub fn authenticate_user(
             }
         }
         None => {
-            if !polkadex::check_if_main_account_registered(main_acc)
+            if !accounts_nonce_storage::check_if_main_account_registered(main_acc)
                 .map_err(GatewayError::AccountRegistryError)?
             {
                 // FIXME: Should this really be an error?
