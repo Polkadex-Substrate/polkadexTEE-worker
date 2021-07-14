@@ -21,7 +21,7 @@ use crate::cli_utils::common_operations::get_trusted_nonce;
 use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::{
-    add_main_account_args, add_order_id_args, add_proxy_account_args, add_market_id_args,
+    add_main_account_args, add_market_id_args, add_order_id_args, add_proxy_account_args,
 };
 use crate::commands::common_args_processing::get_cancel_order_from_matches;
 use crate::{KeyPair, TrustedCall, TrustedOperation};
@@ -58,7 +58,9 @@ fn command_runner<'a>(
 
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
-    let cancel_order = get_cancel_order_from_matches(matches, account_details.main_account_public_key().into()).unwrap();
+    let cancel_order =
+        get_cancel_order_from_matches(matches, account_details.main_account_public_key().into())
+            .unwrap();
 
     let direct: bool = matches.is_present("direct");
 
@@ -123,7 +125,6 @@ mod tests {
         main_account_arg.append(&mut order_id_args);
         main_account_arg.append(&mut identifier_args);
         main_account_arg.append(&mut market_id);
-
 
         main_account_arg
     }

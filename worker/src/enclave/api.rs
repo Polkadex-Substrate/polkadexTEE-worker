@@ -25,7 +25,7 @@ use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{Header, SignedBlock};
 use polkadex_sgx_primitives::types::SignedOrder;
-use polkadex_sgx_primitives::{PolkadexAccount};
+use polkadex_sgx_primitives::PolkadexAccount;
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sgx_types::*;
 use sgx_urts::SgxEnclave;

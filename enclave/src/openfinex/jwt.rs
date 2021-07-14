@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use log::*;
 use std::borrow::ToOwned;
 use std::string::String;
-use log::*;
 
-
-use serde::{Serialize, Deserialize};
-use jsonwebtoken::{encode as jwtencode, Header, Algorithm, EncodingKey};
+use jsonwebtoken::{encode as jwtencode, Algorithm, EncodingKey, Header};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -54,12 +53,12 @@ pub fn create_jwt(uid: String) -> String {
     match jwtencode(
         &Header::new(Algorithm::RS256),
         &claims,
-        &EncodingKey::from_rsa_pem(include_bytes!("../../../bin/jwt/rsa-key")).unwrap() //FIXME: eek, hardcoded
+        &EncodingKey::from_rsa_pem(include_bytes!("../../../bin/jwt/rsa-key")).unwrap(), //FIXME: eek, hardcoded
     ) {
         Ok(token) => {
             debug!("successfully created jwt: {}", token);
             token
-        },
+        }
         Err(e) => {
             error!("Could not create jwt: {:?}", e);
             "".to_owned()

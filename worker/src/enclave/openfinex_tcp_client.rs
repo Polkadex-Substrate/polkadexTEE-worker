@@ -21,27 +21,43 @@ use sgx_types::*;
 
 use mio::tcp::TcpStream;
 
-use log::*;
 use codec::Encode;
-use std::os::unix::io::AsRawFd;
-use std::net::SocketAddr;
-use std::str;
-use std::io::{self};
+use log::*;
 use polkadex_sgx_primitives::OpenFinexUri;
+use std::io::{self};
+use std::net::SocketAddr;
+use std::os::unix::io::AsRawFd;
+use std::str;
 
-extern {
-    fn tcp_client_new(eid: sgx_enclave_id_t, retval: *mut usize,
-            fd: c_int, finex_uri: *const u8, finex_uri_size: usize) -> sgx_status_t;
-    fn tcp_client_read(eid: sgx_enclave_id_t, retval: *mut c_int,
-                        session_id: usize) -> sgx_status_t;
-    fn tcp_client_write(eid: sgx_enclave_id_t, retval: *mut c_int,
-                        session_id: usize) -> sgx_status_t;
-    fn tcp_client_wants_read(eid: sgx_enclave_id_t, retval: *mut c_int,
-                            session_id: usize) -> sgx_status_t;
-    fn tcp_client_wants_write(eid: sgx_enclave_id_t, retval: *mut c_int,
-                            session_id: usize) -> sgx_status_t;
-    fn tcp_client_close(eid: sgx_enclave_id_t,
-                     session_id: usize) -> sgx_status_t;
+extern "C" {
+    fn tcp_client_new(
+        eid: sgx_enclave_id_t,
+        retval: *mut usize,
+        fd: c_int,
+        finex_uri: *const u8,
+        finex_uri_size: usize,
+    ) -> sgx_status_t;
+    fn tcp_client_read(
+        eid: sgx_enclave_id_t,
+        retval: *mut c_int,
+        session_id: usize,
+    ) -> sgx_status_t;
+    fn tcp_client_write(
+        eid: sgx_enclave_id_t,
+        retval: *mut c_int,
+        session_id: usize,
+    ) -> sgx_status_t;
+    fn tcp_client_wants_read(
+        eid: sgx_enclave_id_t,
+        retval: *mut c_int,
+        session_id: usize,
+    ) -> sgx_status_t;
+    fn tcp_client_wants_write(
+        eid: sgx_enclave_id_t,
+        retval: *mut c_int,
+        session_id: usize,
+    ) -> sgx_status_t;
+    fn tcp_client_close(eid: sgx_enclave_id_t, session_id: usize) -> sgx_status_t;
 }
 
 const CLIENT: mio::Token = mio::Token(0);
@@ -58,12 +74,13 @@ struct TcpClient {
 }
 
 impl TcpClient {
-    fn ready(&mut self,
-             poll: &mut mio::Poll,
-             //Events is passed as an argument to Poll::poll and will be
-             // used to receive any new readiness events received since the last poll.
-             ev: &mio::Event) -> bool {
-
+    fn ready(
+        &mut self,
+        poll: &mut mio::Poll,
+        //Events is passed as an argument to Poll::poll and will be
+        // used to receive any new readiness events received since the last poll.
+        ev: &mio::Event,
+    ) -> bool {
         assert_eq!(ev.token(), CLIENT);
 
         if ev.readiness().is_readable() {
@@ -87,7 +104,11 @@ impl TcpClient {
 
 impl TcpClient {
     /// Creates a new TLSClient within the enclave
-    fn new(enclave_id: sgx_enclave_id_t, sock: TcpStream, finex_uri: OpenFinexUri) -> Option<TcpClient> {
+    fn new(
+        enclave_id: sgx_enclave_id_t,
+        sock: TcpStream,
+        finex_uri: OpenFinexUri,
+    ) -> Option<TcpClient> {
         let mut client_id: usize = 0xFFFF_FFFF_FFFF_FFFF;
 
         let result = unsafe {
@@ -110,8 +131,7 @@ impl TcpClient {
             return Option::None;
         }
 
-        Option::Some(
-            TcpClient {
+        Option::Some(TcpClient {
             enclave_id,
             socket: sock,
             closing: false,
@@ -120,10 +140,7 @@ impl TcpClient {
     }
 
     fn close(&self) {
-
-        let retval = unsafe {
-            tcp_client_close(self.enclave_id, self.client_id)
-        };
+        let retval = unsafe { tcp_client_close(self.enclave_id, self.client_id) };
 
         if retval != sgx_status_t::SGX_SUCCESS {
             println!("[-] ECALL Enclave [tcp_client_close] Failed {}!", retval);
@@ -133,15 +150,10 @@ impl TcpClient {
     /// read from server
     fn read_tcp(&self) -> isize {
         let mut retval = -1;
-        let result = unsafe {
-            tcp_client_read(self.enclave_id,
-                            &mut retval,
-                            self.client_id
-                        )
-        };
+        let result = unsafe { tcp_client_read(self.enclave_id, &mut retval, self.client_id) };
 
         match result {
-            sgx_status_t::SGX_SUCCESS => { retval as isize }
+            sgx_status_t::SGX_SUCCESS => retval as isize,
             _ => {
                 println!("[-] ECALL Enclave [tcp_client_read] Failed {}!", result);
                 -1
@@ -151,14 +163,10 @@ impl TcpClient {
     /// write from client to server
     fn write_tcp(&self) -> isize {
         let mut retval = -1;
-        let result = unsafe {
-            tcp_client_write(self.enclave_id,
-                             &mut retval,
-                             self.client_id)
-        };
+        let result = unsafe { tcp_client_write(self.enclave_id, &mut retval, self.client_id) };
 
         match result {
-            sgx_status_t::SGX_SUCCESS => { retval as isize }
+            sgx_status_t::SGX_SUCCESS => retval as isize,
             _ => {
                 println!("[-] ECALL Enclave [tcp_client_write] Failed {}!", result);
                 -1
@@ -168,16 +176,15 @@ impl TcpClient {
 
     fn wants_read(&self) -> bool {
         let mut retval = -1;
-        let result = unsafe {
-            tcp_client_wants_read(self.enclave_id,
-                                  &mut retval,
-                                  self.client_id)
-        };
+        let result = unsafe { tcp_client_wants_read(self.enclave_id, &mut retval, self.client_id) };
 
         match result {
-            sgx_status_t::SGX_SUCCESS => { },
+            sgx_status_t::SGX_SUCCESS => {}
             _ => {
-                println!("[-] ECALL Enclave [tcp_client_wants_read] Failed {}!", result);
+                println!(
+                    "[-] ECALL Enclave [tcp_client_wants_read] Failed {}!",
+                    result
+                );
                 return false;
             }
         }
@@ -186,21 +193,20 @@ impl TcpClient {
 
     fn wants_write(&self) -> bool {
         let mut retval = -1;
-        let result = unsafe {
-            tcp_client_wants_write(self.enclave_id,
-                                   &mut retval,
-                                   self.client_id)
-        };
+        let result =
+            unsafe { tcp_client_wants_write(self.enclave_id, &mut retval, self.client_id) };
 
         match result {
-            sgx_status_t::SGX_SUCCESS => { },
+            sgx_status_t::SGX_SUCCESS => {}
             _ => {
-                println!("[-] ECALL Enclave [http_client_wants_write] Failed {}!", result);
+                println!(
+                    "[-] ECALL Enclave [http_client_wants_write] Failed {}!",
+                    result
+                );
                 return false;
             }
         }
         !matches!(retval, 0)
-
     }
 
     /// We're ready to do a read.
@@ -223,11 +229,13 @@ impl TcpClient {
     /// (Polls for readiness events on all registered values)
     fn register(&self, poll: &mut mio::Poll) {
         let interest = self.ready_interest();
-        poll.register(&self.socket,
-                      CLIENT,
-                      interest,
-                      mio::PollOpt::level() | mio::PollOpt::oneshot())
-            .unwrap();
+        poll.register(
+            &self.socket,
+            CLIENT,
+            interest,
+            mio::PollOpt::level() | mio::PollOpt::oneshot(),
+        )
+        .unwrap();
     }
 
     fn ready_interest(&self) -> mio::Ready {
@@ -244,11 +252,13 @@ impl TcpClient {
 
     fn reregister(&self, poll: &mut mio::Poll) {
         let interest = self.ready_interest();
-        poll.reregister(&self.socket,
-                        CLIENT,
-                        interest,
-                        mio::PollOpt::level() | mio::PollOpt::oneshot())
-            .unwrap();
+        poll.reregister(
+            &self.socket,
+            CLIENT,
+            interest,
+            mio::PollOpt::level() | mio::PollOpt::oneshot(),
+        )
+        .unwrap();
     }
 
     fn is_closed(&self) -> bool {
@@ -291,8 +301,6 @@ fn get_socket_addr(uri: OpenFinexUri) -> SocketAddr {
     unreachable!("Cannot lookup address");
 }
 
-
-
 pub fn enclave_run_openfinex_client(
     eid: sgx_enclave_id_t,
     finex_uri: OpenFinexUri,
@@ -312,8 +320,7 @@ pub fn enclave_run_openfinex_client(
         // little overhead as possible over the OS abstractions.
         // Using Mio starts by creating a Poll, which reads events from the OS and
         // puts them into Events. You can handle I/O events from the OS with it.
-        let mut poll = mio::Poll::new()
-            .unwrap();
+        let mut poll = mio::Poll::new().unwrap();
         let mut events = mio::Events::with_capacity(1024);
         // register to mio::Poll
         client.register(&mut poll);
@@ -328,10 +335,9 @@ pub fn enclave_run_openfinex_client(
             for ev in events.iter() {
                 if !client.ready(&mut poll, &ev) {
                     client.close();
-                    break 'outer ;
+                    break 'outer;
                 }
             }
-
         }
     } else {
         println!("[-] TcpClient could not be created within enclave");

@@ -17,7 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::Encode;
-use polkadex_sgx_primitives::types::{DirectRequest, MarketId, Order, CancelOrder, OrderSide, OrderType, OrderUUID};
+use polkadex_sgx_primitives::types::{
+    CancelOrder, DirectRequest, MarketId, Order, OrderSide, OrderType, OrderUUID,
+};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sp_core::{ed25519 as ed25519_core, Pair, H256};
 use substratee_stf::{KeyPair, TrustedCall, TrustedCallSigned};
@@ -55,7 +57,7 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
             quote: AssetId::DOT,
             base: AssetId::POLKADEX,
         },
-        order_id
+        order_id,
     }
 }
 

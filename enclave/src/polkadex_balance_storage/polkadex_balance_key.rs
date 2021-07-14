@@ -19,7 +19,6 @@
 use codec::{Decode, Encode};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 
-
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct PolkadexBalanceKey {
     pub asset_id: AssetId,

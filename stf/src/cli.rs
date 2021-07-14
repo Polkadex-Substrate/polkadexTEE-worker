@@ -151,7 +151,10 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let arg_from = matches.value_of("from").unwrap();
                     let arg_to = matches.value_of("to").unwrap();
-                    let amount = matches.value_of("amount").unwrap().parse::<u128>()
+                    let amount = matches
+                        .value_of("amount")
+                        .unwrap()
+                        .parse::<u128>()
                         .expect("amount can be converted to u128");
                     let from = get_pair_from_str_trusted(matches, arg_from);
                     let to = get_accountid_from_str(arg_to);
@@ -201,7 +204,10 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                 })
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let arg_who = matches.value_of("account").unwrap();
-                    let amount = matches.value_of("amount").unwrap().parse::<u128>()
+                    let amount = matches
+                        .value_of("amount")
+                        .unwrap()
+                        .parse::<u128>()
                         .expect("amount can be converted to u128");
                     let who = get_pair_from_str_trusted(matches, arg_who);
                     let signer = get_pair_from_str_trusted(matches, "//Alice");
@@ -303,7 +309,10 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let arg_from = matches.value_of("from").unwrap();
                     let arg_to = matches.value_of("to").unwrap();
-                    let amount = matches.value_of("amount").unwrap().parse::<u128>()
+                    let amount = matches
+                        .value_of("amount")
+                        .unwrap()
+                        .parse::<u128>()
                         .expect("amount can be converted to u128");
                     let from = get_pair_from_str_trusted(matches, arg_from);
                     let to = get_accountid_from_str(arg_to);
