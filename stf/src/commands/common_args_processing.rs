@@ -20,7 +20,7 @@ use crate::commands::common_args::{
     ORDER_TYPE_ARG_NAME, ORDER_UUID_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME, TOKEN_ID_ARG_NAME,
 };
 use clap::ArgMatches;
-use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, CancelOrder};
+use polkadex_sgx_primitives::types::{CancelOrder, MarketId, Order, OrderSide, OrderType};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 
 pub fn get_order_from_matches(
@@ -61,7 +61,10 @@ pub fn get_order_from_matches(
     Ok(order)
 }
 
-pub fn get_cancel_order_from_matches(matches: &ArgMatches, main_account: AccountId) -> Result<CancelOrder, String> {
+pub fn get_cancel_order_from_matches(
+    matches: &ArgMatches,
+    main_account: AccountId,
+) -> Result<CancelOrder, String> {
     let order_id = matches
         .value_of(ORDER_UUID_ARG_NAME)
         .unwrap_or_else(|| panic!("missing {} argument", ORDER_UUID_ARG_NAME))
@@ -71,9 +74,9 @@ pub fn get_cancel_order_from_matches(matches: &ArgMatches, main_account: Account
     let market_id = get_market_id_from_matches(matches)?;
 
     let order = CancelOrder {
-            user_uid: main_account,
-            market_id,
-            order_id,
+        user_uid: main_account,
+        market_id,
+        order_id,
     };
 
     Ok(order)
@@ -120,7 +123,8 @@ fn get_amount_from_matches(matches: &ArgMatches<'_>, arg_name: &str) -> u128 {
 }
 
 fn get_amount_from_str(arg: &str) -> u128 {
-    arg.parse::<u128>().unwrap_or_else(|_| panic!("failed to convert {} into an integer", arg))
+    arg.parse::<u128>()
+        .unwrap_or_else(|_| panic!("failed to convert {} into an integer", arg))
 }
 
 fn get_asset_id_from_str(arg: &str) -> Result<AssetId, String> {

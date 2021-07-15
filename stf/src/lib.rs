@@ -41,7 +41,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 
-use polkadex_sgx_primitives::types::{CurrencyId, Order, CancelOrder};
+use polkadex_sgx_primitives::types::{CancelOrder, CurrencyId, Order};
 
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
@@ -237,14 +237,17 @@ impl TrustedCall {
             TrustedCall::balance_unshield(_, _, _, _) => None,
             TrustedCall::balance_shield(_, _) => None,
 
-            TrustedCall::place_order(signer, _, main_account_option) =>
-                main_account_option.as_ref().map(|_| signer.clone()),
+            TrustedCall::place_order(signer, _, main_account_option) => {
+                main_account_option.as_ref().map(|_| signer.clone())
+            }
 
-            TrustedCall::cancel_order(signer, _, main_account_option) =>
-                main_account_option.as_ref().map(|_| signer.clone()),
+            TrustedCall::cancel_order(signer, _, main_account_option) => {
+                main_account_option.as_ref().map(|_| signer.clone())
+            }
 
-            TrustedCall::withdraw(signer, _, _, main_account_option) =>
-                main_account_option.as_ref().map(|_| signer.clone()),
+            TrustedCall::withdraw(signer, _, _, main_account_option) => {
+                main_account_option.as_ref().map(|_| signer.clone())
+            }
         }
     }
 
@@ -311,8 +314,9 @@ impl TrustedGetter {
             TrustedGetter::free_balance(_) => None,
             TrustedGetter::reserved_balance(_) => None,
             TrustedGetter::nonce(_) => None,
-            TrustedGetter::get_balance(signer, _, main_account_option) =>
+            TrustedGetter::get_balance(signer, _, main_account_option) => {
                 main_account_option.as_ref().map(|_| signer.clone())
+            }
         }
     }
 

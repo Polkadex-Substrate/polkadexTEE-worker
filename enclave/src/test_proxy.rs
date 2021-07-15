@@ -57,14 +57,8 @@ pub fn test_check_if_main_account_registered() {
     initialize_dummy();
     let account_to_find_real: AccountId = get_account("first_account");
     let account_to_find_false: AccountId = get_account("false_account");
-    assert_eq!(
-        polkadex::check_if_main_account_registered(account_to_find_real).unwrap(),
-        true
-    );
-    assert_eq!(
-        polkadex::check_if_main_account_registered(account_to_find_false).unwrap(),
-        false
-    );
+    assert!(polkadex::check_if_main_account_registered(account_to_find_real).unwrap(),);
+    assert!(!polkadex::check_if_main_account_registered(account_to_find_false).unwrap(),);
 }
 
 #[allow(unused)]
@@ -73,13 +67,9 @@ pub fn test_check_if_proxy_registered() {
     let main_account_false: AccountId = get_account("false_account");
     let dummy_account_one: AccountId = get_account("first_dummy_account");
     let dummy_account_false: AccountId = get_account("false_dummy_account");
-    assert_eq!(
-        polkadex::check_if_proxy_registered(main_account.clone(), dummy_account_one).unwrap(),
-        true
-    );
-    assert_eq!(
-        polkadex::check_if_proxy_registered(main_account, dummy_account_false.clone()).unwrap(),
-        false
+    assert!(polkadex::check_if_proxy_registered(main_account.clone(), dummy_account_one).unwrap(),);
+    assert!(
+        !polkadex::check_if_proxy_registered(main_account, dummy_account_false.clone()).unwrap(),
     );
     assert_eq!(
         polkadex::check_if_proxy_registered(main_account_false, dummy_account_false),
@@ -91,24 +81,15 @@ pub fn test_check_if_proxy_registered() {
 pub fn test_add_main_account() {
     let main_account: AccountId = get_account("new_account");
     polkadex::add_main_account(main_account.clone());
-    assert_eq!(
-        polkadex::check_if_main_account_registered(main_account).unwrap(),
-        true
-    );
+    assert!(polkadex::check_if_main_account_registered(main_account).unwrap(),);
 }
 
 #[allow(unused)]
 pub fn test_remove_main_account() {
     let main_account: AccountId = get_account("first_account");
-    assert_eq!(
-        polkadex::check_if_main_account_registered(main_account.clone()).unwrap(),
-        true
-    );
+    assert!(polkadex::check_if_main_account_registered(main_account.clone()).unwrap(),);
     polkadex::remove_main_account(main_account.clone());
-    assert_eq!(
-        polkadex::check_if_main_account_registered(main_account).unwrap(),
-        false
-    );
+    assert!(!polkadex::check_if_main_account_registered(main_account).unwrap(),);
 }
 
 #[allow(unused)]
@@ -116,24 +97,17 @@ pub fn test_add_proxy_account() {
     let main_account: AccountId = get_account("first_account");
     let new_proxy_account: AccountId = get_account("new_account");
     polkadex::add_proxy(main_account.clone(), new_proxy_account.clone());
-    assert_eq!(
-        polkadex::check_if_proxy_registered(main_account, new_proxy_account).unwrap(),
-        true
-    );
+    assert!(polkadex::check_if_proxy_registered(main_account, new_proxy_account).unwrap());
 }
 
 #[allow(unused)]
 pub fn test_remove_proxy_account() {
     let main_account: AccountId = get_account("first_account");
     let dummy_account_one: AccountId = get_account("first_dummy_account");
-    assert_eq!(
+    assert!(
         polkadex::check_if_proxy_registered(main_account.clone(), dummy_account_one.clone())
-            .unwrap(),
-        true
+            .unwrap()
     );
     polkadex::remove_proxy(main_account.clone(), dummy_account_one.clone());
-    assert_eq!(
-        polkadex::check_if_proxy_registered(main_account, dummy_account_one).unwrap(),
-        false
-    );
+    assert!(!polkadex::check_if_proxy_registered(main_account, dummy_account_one).unwrap(),);
 }

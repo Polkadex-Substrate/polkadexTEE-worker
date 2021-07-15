@@ -12,8 +12,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-
-
 use crate::openfinex::client_utils;
 use crate::openfinex::jwt;
 use crate::openfinex::market_repo::{MarketRepository, MarketsRequestSender};
@@ -23,7 +21,7 @@ use crate::openfinex::response_parser::TcpResponseParser;
 use crate::openfinex::string_serialization::ResponseDeserializerImpl;
 use crate::polkadex_cache::market_cache::LocalMarketCacheFactory;
 use crate::polkadex_gateway::PolkaDexGatewayCallbackFactory;
-use client_utils::{Opcode, Payload, Message};
+use client_utils::{Message, Opcode, Payload};
 use codec::Decode;
 use lazy_static::lazy_static;
 use log::*;
@@ -151,7 +149,7 @@ impl TcpClient {
     fn do_read(&mut self) -> io::Result<usize> {
         //FIXME: maybe we can use up buffer read here?
         //let mut buffer = [0 as u8; 1028]; // Dummy buffer. will not be necessary with tls client
-        let mut start_bytes = [0 as u8; 2];
+        let mut start_bytes = [0u8; 2];
         let rc = self.socket.read(&mut start_bytes);
         if rc.is_err() {
             error!("TLS read error: {:?}", rc);
@@ -163,11 +161,14 @@ impl TcpClient {
         if rc.unwrap() == 0 {
             //self.closing = true;
             //self.clean_closure = true;
-            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "EOF"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "EOF",
+            ));
         }
         if start_bytes[0] == 72 {
             // parse http response
-            let mut buffer = [0 as u8; 512];
+            let mut buffer = [0u8; 512];
             self.socket.read(&mut buffer).unwrap(); //TODO: Proper Error handling
 
             debug!(
@@ -192,21 +193,24 @@ impl TcpClient {
                         } else {
                             self.append_string_payload(message.payload)
                         }
-                    },
+                    }
                     Opcode::ContinuationOp => {
                         if fin {
                             self.append_string_payload(message.payload);
-                            debug!("Sending to handler : {:?}", self.payload_string_buffer.clone());
-                            self.response_handler.handle_text_op(Payload::Text(self.payload_string_buffer.clone()));
+                            debug!(
+                                "Sending to handler : {:?}",
+                                self.payload_string_buffer.clone()
+                            );
+                            self.response_handler
+                                .handle_text_op(Payload::Text(self.payload_string_buffer.clone()));
                             self.payload_string_buffer = String::new();
                         } else {
                             self.append_string_payload(message.payload)
                         }
-                    },
+                    }
                     _ => error!("received unexpected op: {:?}", message.opcode),
                 }
             }
-
         }
         Ok(start_bytes.len())
     }
@@ -226,24 +230,24 @@ impl TcpClient {
         let payload_length: u64 = match pay_len {
             127 => {
                 // Your length is a uint64 of byte 3 to 8
-                let mut length_buffer = [0 as u8; 8];
+                let mut length_buffer = [0u8; 8];
                 if let Err(rc) = self.socket.read(&mut length_buffer) {
                     error!("TLS read error: {:?}", rc);
                     return None;
                 };
-                 u64::from_be_bytes(length_buffer)
-            },
+                u64::from_be_bytes(length_buffer)
+            }
             126 => {
                 // Your length is an uint16 of byte 3 and 4
-                let mut length_buffer = [0 as u8; 2];
+                let mut length_buffer = [0u8; 2];
                 if let Err(rc) = self.socket.read(&mut length_buffer) {
                     error!("TLS read error: {:?}", rc);
                     return None;
                 };
                 u16::from_be_bytes(length_buffer) as u64
-            },
+            }
             // Byte is 125 or less thats your length
-            _ => pay_len as u64
+            _ => pay_len as u64,
         };
 
         /* let (payload_length, payload_buf) = match pay_len {
@@ -277,7 +281,7 @@ impl TcpClient {
         // payloads larger than 125 bytes are not allowed for control frames
         match opcode {
             Opcode::CloseOp | Opcode::PingOp if payload_length > 125 => panic!(),
-            _ => ()
+            _ => (),
         }
 
         // No mask from server
@@ -290,29 +294,26 @@ impl TcpClient {
         let payload_buf = masked_payload_buf; */
 
         let payload: Payload = match opcode {
-            Opcode::TextOp   => Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap()),
+            Opcode::TextOp => Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap()),
             Opcode::BinaryOp => Payload::Binary(payload_buf.to_vec()),
-            Opcode::CloseOp  => Payload::Empty,
-            Opcode::PingOp   => {
+            Opcode::CloseOp => Payload::Empty,
+            Opcode::PingOp => {
                 debug!("Ping");
                 Payload::Binary(payload_buf.to_vec())
-
-            },
-            Opcode::PongOp   => {
+            }
+            Opcode::PongOp => {
                 debug!("Pong");
                 Payload::Binary(payload_buf.to_vec())
-            },
-            _        => {
-                Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap())
-            }, // ContinuationOp
+            }
+            _ => Payload::Text(String::from_utf8(payload_buf.to_vec()).unwrap()), // ContinuationOp
         };
 
         // for now only take text option
-        return Some(Message::new(payload, opcode))
+        Some(Message::new(payload, opcode))
     }
 
     fn append_string_payload(&mut self, payload: Payload) {
-        debug!("Appending to payload: {:?}", payload.clone());
+        debug!("Appending to payload: {:?}", payload);
         if let Payload::Text(new_text) = payload {
             self.payload_string_buffer.push_str(&new_text);
         }
@@ -340,7 +341,7 @@ impl TcpClient {
     }
 
     fn send_pong(&mut self) {
-        let masked_request = client_utils::mask(&[0 as u8], Opcode::PongOp);
+        let masked_request = client_utils::mask(&[0u8], Opcode::PongOp);
         self.write_buffer(&masked_request)
     }
 
@@ -455,11 +456,7 @@ pub unsafe extern "C" fn tcp_client_new(
     let client_pointer: *mut TcpClient = Box::into_raw(Box::new(tcp_client));
 
     // create session and return current session id
-    let session_id = match Sessions::new_session(client_pointer) {
-        Some(s) => s,
-        None => 0xFFFF_FFFF_FFFF_FFFF,
-    };
-    session_id
+    Sessions::new_session(client_pointer).unwrap_or(0xFFFF_FFFF_FFFF_FFFF)
 }
 
 #[no_mangle]
@@ -498,8 +495,7 @@ pub extern "C" fn tcp_client_close(session_id: usize) {
 pub extern "C" fn tcp_client_wants_read(session_id: usize) -> c_int {
     if let Some(session_ptr) = Sessions::get_session(session_id) {
         let session = unsafe { &*session_ptr };
-        let result = session.wants_read() as c_int;
-        result
+        session.wants_read() as c_int
     } else {
         -1
     }
@@ -509,8 +505,7 @@ pub extern "C" fn tcp_client_wants_read(session_id: usize) -> c_int {
 pub extern "C" fn tcp_client_wants_write(session_id: usize) -> c_int {
     if let Some(session_ptr) = Sessions::get_session(session_id) {
         let session = unsafe { &*session_ptr };
-        let result = session.wants_write() as c_int;
-        result
+        session.wants_write() as c_int
     } else {
         -1
     }
@@ -528,13 +523,13 @@ impl OpenFinexClientInterface {
         OpenFinexClientInterface { session_id }
     }
 
-    pub fn send_request(self, plaintext: &[u8]) -> Result<(), ()> {
+    pub fn send_request(self, plaintext: &[u8]) -> Result<(), String> {
         if let Some(session_ptr) = Sessions::get_session(self.session_id) {
             let session = unsafe { &mut *session_ptr };
             session.write_masked_text(plaintext);
             Ok(())
         } else {
-            Err(())
+            Err(String::from("Failed to send request"))
         }
     }
 }

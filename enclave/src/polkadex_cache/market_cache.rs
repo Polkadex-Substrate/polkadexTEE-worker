@@ -77,7 +77,7 @@ impl MarketCache {
     }
 
     /// gets a market by id
-    pub fn get_market(&self, id: &String) -> Option<&Market> {
+    pub fn get_market(&self, id: &str) -> Option<&Market> {
         self.markets.get(id)
     }
 

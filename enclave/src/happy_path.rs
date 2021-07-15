@@ -72,7 +72,7 @@ pub fn test_happy_path() {
 
     // Place Ask limit Order
     assert!(gateway
-        .place_order(alice.clone(), None, ask_limit_order.clone())
+        .place_order(alice.clone(), None, ask_limit_order)
         .is_ok());
 
     let ask_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
@@ -81,7 +81,7 @@ pub fn test_happy_path() {
 
     // Place Bid Limit Order
     assert!(gateway
-        .place_order(bob.clone(), None, buy_limit_order.clone())
+        .place_order(bob.clone(), None, buy_limit_order)
         .is_ok());
 
     let bid_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
@@ -95,7 +95,7 @@ pub fn test_happy_path() {
             quote: token_b,
         },
         trade_id: 1,
-        price: 1 * UNIT,
+        price: UNIT,
         amount: 0,
         funds: 0,
         maker_user_id: alice.clone(), // Alice
@@ -110,18 +110,12 @@ pub fn test_happy_path() {
     assert_eq!(settle_trade(trade_event), Ok(()));
     assert_eq!(check_balance(450 * UNIT, 0, alice.clone(), token_a), Ok(()));
 
-    assert_eq!(
-        check_balance(50 * UNIT, 0u128, alice.clone(), token_b),
-        Ok(())
-    );
+    assert_eq!(check_balance(50 * UNIT, 0u128, alice, token_b), Ok(()));
 
     assert_eq!(
         check_balance(50 * UNIT, 0u128, bob.clone(), token_a),
         Ok(())
     );
 
-    assert_eq!(
-        check_balance(450 * UNIT, 0u128, bob.clone(), token_b),
-        Ok(())
-    );
+    assert_eq!(check_balance(450 * UNIT, 0u128, bob, token_b), Ok(()));
 }

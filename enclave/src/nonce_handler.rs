@@ -69,7 +69,7 @@ pub fn lock_and_update_nonce(new_nonce: u32) -> SgxResult<()> {
     let mutex = load_nonce_storage()?;
     let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
     // only update if new nonce is actually an update
-    if new_nonce > nonce_storage.nonce  {
+    if new_nonce > nonce_storage.nonce {
         debug!("update to new nonce: {:?}", new_nonce);
         nonce_storage.update(new_nonce);
     }

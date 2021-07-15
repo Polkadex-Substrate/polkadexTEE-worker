@@ -35,9 +35,11 @@ use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
     pallet_substratee_registry::{Enclave, Request},
-    AccountId, Call, Event, Hash, BalancesCall,
+    AccountId, BalancesCall, Call, Event, Hash,
 };
+use orml_tokens::AccountData;
 use polkadex_sgx_primitives::types::DirectRequest;
+use polkadex_sgx_primitives::{AssetId, Balance};
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
@@ -56,7 +58,6 @@ use substrate_api_client::{
     utils::FromHexString,
     Api, XtStatus,
 };
-use orml_tokens::AccountData;
 use substrate_client_keystore::LocalKeystore;
 use substratee_stf::cli_utils::account_parsing::*;
 use substratee_stf::commands::{common_args, common_args_processing};
@@ -64,9 +65,6 @@ use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
-use polkadex_sgx_primitives::{Balance, AssetId};
-
-
 
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -734,7 +732,7 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
     loop {
         match receiver.recv() {
             Ok(response) => {
-                debug!("Recevied respsonse: {:?}",  response);
+                debug!("Recevied respsonse: {:?}", response);
                 let response: RpcResponse = serde_json::from_str(&response).unwrap();
                 if let Ok(return_value) = RpcReturnValue::decode(&mut response.result.as_slice()) {
                     debug!("Return value: {:?}", return_value);
@@ -752,9 +750,9 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
                         }
                         DirectRequestStatus::Ok => {
                             if !return_value.do_watch {
-                                return Some(return_value.value)
+                                return Some(return_value.value);
                             }
-                        },
+                        }
                     }
                 };
             }

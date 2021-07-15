@@ -68,7 +68,7 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+                Err(GatewayError::AccountIdOrAssetIdNotFound)
             }
         }
     }
@@ -89,7 +89,7 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+                Err(GatewayError::AccountIdOrAssetIdNotFound)
             }
         }
     }
@@ -132,7 +132,7 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+                Err(GatewayError::AccountIdOrAssetIdNotFound)
             }
         }
     }
@@ -156,7 +156,7 @@ impl PolkadexBalanceStorage {
             }
             None => {
                 error!("Account Id or Asset id not avalaible");
-                return Err(GatewayError::AccountIdOrAssetIdNotFound);
+                Err(GatewayError::AccountIdOrAssetIdNotFound)
             }
         }
     }

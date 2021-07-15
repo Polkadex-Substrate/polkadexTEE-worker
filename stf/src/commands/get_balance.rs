@@ -23,10 +23,10 @@ use crate::commands::common_args_processing::get_token_id_from_matches;
 use crate::{KeyPair, TrustedGetter, TrustedOperation};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
+use codec::Decode;
 use core::option::Option;
 use log::*;
 use polkadex_sgx_primitives::Balance;
-use codec::Decode;
 
 pub fn get_balance_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,

@@ -32,7 +32,8 @@ pub struct AccountDetails {
 
 impl AccountDetails {
     pub fn new(matches: &ArgMatches<'_>) -> Self {
-        let arg_account = matches.value_of(ACCOUNT_ID_ARG_NAME)
+        let arg_account = matches
+            .value_of(ACCOUNT_ID_ARG_NAME)
             .unwrap_or_else(|| panic!("missing main account option ({})", ACCOUNT_ID_ARG_NAME));
 
         let main_account_pair = get_pair_from_str_trusted(matches, arg_account);
@@ -68,7 +69,9 @@ impl AccountDetails {
 
     /// returns a main account public key, IF the signer is a proxy, none otherwise
     pub fn main_account_public_key_if_not_signer(&self) -> Option<sr25519_core::Public> {
-        self.proxy_account.as_ref().map(|_| sr25519_core::Public::from(self.main_account.public()))
+        self.proxy_account
+            .as_ref()
+            .map(|_| sr25519_core::Public::from(self.main_account.public()))
     }
 
     #[cfg(test)]

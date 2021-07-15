@@ -56,8 +56,8 @@ impl OpenFinexApi for OpenFinexApiImpl {
         let order_type = order_type_to_request_string(order.order_type);
         let order_side = order_side_to_request_string(order.side);
 
-        let quantity_decimal = FixedPointNumberConverter::to_string(order.quantity);
-        let price_decimal = order.price.map(|p| FixedPointNumberConverter::to_string(p));
+        let quantity_decimal = FixedPointNumberConverter::_to_string(order.quantity);
+        let price_decimal = order.price.map(FixedPointNumberConverter::_to_string);
 
         let request = self
             .create_builder(RequestType::CreateOrder, request_id)
