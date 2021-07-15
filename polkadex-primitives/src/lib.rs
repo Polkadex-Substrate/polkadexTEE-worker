@@ -26,6 +26,7 @@ pub extern crate alloc;
 use alloc::string::{String, ToString};
 
 use codec::{Decode, Encode};
+use frame_support::{sp_runtime::traits::AccountIdConversion, PalletId};
 pub use polkadex_primitives::assets::AssetId;
 pub use polkadex_primitives::common_types::{AccountId, Balance, Signature};
 use sp_core::H256;
@@ -34,12 +35,37 @@ use sp_std::vec::Vec;
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 
+// Genesis Account constant should be kept up to date with OCEXGenesisAccount at https://github.com/Polkadex-Substrate/Polkadex/blob/main/runtime/src/lib.rs#L1536
+const GENESIS_ACCOUNT: PalletId = PalletId(*b"polka/ga");
+
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub struct LinkedAccount {
     pub prev: AccountId,
     pub current: AccountId,
     pub next: Option<AccountId>,
     pub proxies: Vec<AccountId>,
+}
+
+impl LinkedAccount {
+    pub fn from(prev: AccountId, current: AccountId) -> Self {
+        LinkedAccount {
+            prev,
+            next: None,
+            current,
+            proxies: vec![],
+        }
+    }
+}
+
+impl Default for LinkedAccount {
+    fn default() -> Self {
+        LinkedAccount {
+            prev: GENESIS_ACCOUNT.into_account(),
+            current: GENESIS_ACCOUNT.into_account(),
+            next: None,
+            proxies: vec![],
+        }
+    }
 }
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
