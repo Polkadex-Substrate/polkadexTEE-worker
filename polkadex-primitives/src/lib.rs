@@ -25,6 +25,7 @@ pub mod types;
 pub extern crate alloc;
 use alloc::string::{String, ToString};
 
+use alloc::vec;
 use codec::{Decode, Encode};
 use frame_support::{sp_runtime::traits::AccountIdConversion, PalletId};
 pub use polkadex_primitives::assets::AssetId;
