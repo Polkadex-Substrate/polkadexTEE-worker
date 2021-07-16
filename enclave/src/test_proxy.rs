@@ -17,8 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use codec::Encode;
-use polkadex_sgx_primitives::{accounts::get_account, AccountId};
+use polkadex_sgx_primitives::AccountId;
 use sgx_tstd::sync::SgxMutexGuard;
+use substratee_worker_primitives::get_account;
 
 use crate::polkadex;
 use crate::polkadex::AccountRegistryError;

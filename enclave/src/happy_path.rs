@@ -6,12 +6,12 @@ use crate::polkadex_balance_storage::{
 use crate::polkadex_gateway::lock_storage_get_cache_nonce;
 use crate::polkadex_gateway::{process_create_order, settle_trade};
 use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
-use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{
     MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
 };
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_tstd::vec::Vec;
+use substratee_worker_primitives::get_account;
 
 pub fn test_happy_path() {
     let gateway = create_mock_gateway();
