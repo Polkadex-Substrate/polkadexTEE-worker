@@ -114,7 +114,6 @@ fn key_hash<K: Encode>(key: &K, hasher: &StorageHasher) -> Vec<u8> {
         StorageHasher::Blake2_256 => sp_core::blake2_256(&encoded_key).to_vec(),
         StorageHasher::Twox128 => sp_core::twox_128(&encoded_key).to_vec(),
         StorageHasher::Twox256 => sp_core::twox_256(&encoded_key).to_vec(),
-        StorageHasher::Twox64Concat => sp_core::twox_64(&encoded_key).to_vec(),
         StorageHasher::Twox64Concat => sp_core::twox_64(&encoded_key)
             .iter()
             .chain(&encoded_key)
@@ -284,18 +283,6 @@ pub fn load_registry() -> Result<&'static SgxMutex<AccountsNonceStorage>, Accoun
 
 //Nonce related functions
 
-pub fn validate_and_increment_nonce(
-    acc: AccountId,
-    nonce: u32,
-) -> Result<(), AccountRegistryError> {
-    // Acquire lock on proxy_registry
-    let mutex = load_registry()?;
-    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
-        .lock()
-        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    storage.validate_and_increment_nonce(acc, nonce)
-}
-
 pub fn auth_user_validate_increment_nonce(
     acc: AccountId,
     proxy_acc: Option<AccountId>,
@@ -308,26 +295,18 @@ pub fn auth_user_validate_increment_nonce(
 
     match proxy_acc {
         Some(proxy) => {
-            if let Some(list_of_proxies) = storage.accounts_storage.accounts.get(&acc.encode()) {
-                if !list_of_proxies.contains(&proxy) {
-                    return Err(AccountRegistryError::CouldNotLoadRegistry);
-                }
-            } else {
-                return Err(AccountRegistryError::CouldNotLoadRegistry);
+            if !storage.check_if_proxy_registered(acc.clone(), proxy)? {
+                return Err(AccountRegistryError::ProxyAccountNoRegistedForGivenMainAccount);
             }
         }
         None => {
-            if !storage
-                .accounts_storage
-                .accounts
-                .contains_key(&acc.encode())
-            {
-                return Err(AccountRegistryError::CouldNotLoadRegistry);
+            if !storage.check_if_main_account_registered(acc.clone()) {
+                return Err(AccountRegistryError::MainAccountNoRegistedForGivenProxy);
             }
         }
     }
     if storage.nonce_storage.read_nonce(acc.clone())? != nonce {
-        return Err(AccountRegistryError::CouldNotLoadRegistry); //FIX
+        return Err(AccountRegistryError::NonceValidationFailed);
     }
     storage.nonce_storage.increment_nonce(acc)?;
     Ok(())
@@ -341,6 +320,10 @@ pub enum AccountRegistryError {
     CouldNotGetMutex,
     /// No registed main account for given proxy
     MainAccountNoRegistedForGivenProxy,
+    /// No registed proxy account for given main account
+    ProxyAccountNoRegistedForGivenMainAccount,
+    /// Nonce validation failed (didn't match)
+    NonceValidationFailed,
     /// PolkadexAccountsStorage Error
     AccountStorageError(AccountsStorageError),
     /// PolkadexNonceStorage Error
