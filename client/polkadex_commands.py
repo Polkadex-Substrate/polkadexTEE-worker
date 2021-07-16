@@ -78,7 +78,10 @@ def read_mrenclave():
         # open file instead
         print("Reading MRENCLAVE from file")
         with open(mrenclave_filename) as f:
-            workers = f.readlines()
+            mrenclaves_with_line_ending = f.readlines()
+            for mrenclave in mrenclaves_with_line_ending:
+                workers.append(mrenclave.strip())
+
     MRENCLAVE = workers[0]
     print("Using mrenclave of first worker as default: " + MRENCLAVE)
     return workers
