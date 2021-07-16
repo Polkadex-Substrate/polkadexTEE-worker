@@ -16,13 +16,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::accounts_nonce_storage;
-use crate::accounts_storage;
+use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage};
 use crate::aes;
 use crate::attestation;
 use crate::ed25519;
 use crate::happy_path;
-use crate::nonce_storage;
 use crate::openfinex;
 use crate::polkadex_cache;
 use crate::rpc;
@@ -207,10 +205,13 @@ pub extern "C" fn test_main_entrance() -> size_t {
         io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
 
         // Nonce Storage
-        nonce_storage::tests::nonce_initialized_correctly,
-        nonce_storage::tests::nonce_incremented_correctly,
+        nonce_storage::tests::create_nonce_storage,
+        nonce_storage::tests::initialize_nonce,
+        nonce_storage::tests::increment_nonce,
+        nonce_storage::tests::remove_nonce,
 
         // Accounts Storage
+        accounts_storage::tests::create_accounts_storage,
         accounts_storage::tests::adding_main_account,
         accounts_storage::tests::removing_main_account,
         accounts_storage::tests::adding_already_registered_accounts,
@@ -219,10 +220,15 @@ pub extern "C" fn test_main_entrance() -> size_t {
         accounts_storage::tests::removing_proxy_account,
 
         // AccountsNonce Storage
-        accounts_nonce_storage::tests::initializing_main_account,
-        accounts_nonce_storage::tests::removing_main_account,
-        accounts_nonce_storage::tests::initializing_proxy_account,
-        accounts_nonce_storage::tests::removing_proxy_account,
+        accounts_nonce_storage::tests::create_and_load_registry,
+        accounts_nonce_storage::tests::create_accounts_nonce_storage,
+        accounts_nonce_storage::tests::register_main_account,
+        accounts_nonce_storage::tests::remove_main_account,
+        accounts_nonce_storage::tests::register_proxy_account,
+        accounts_nonce_storage::tests::remove_proxy_account,
+        accounts_nonce_storage::tests::check_if_main_account_registered,
+        accounts_nonce_storage::tests::check_if_proxy_registered,
+        accounts_nonce_storage::tests::validate_and_increment_nonce,
 
         // Utility
         ss58check::tests::convert_account_id_to_and_from_ss58check,

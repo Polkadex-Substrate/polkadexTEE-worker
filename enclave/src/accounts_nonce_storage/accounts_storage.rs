@@ -24,7 +24,7 @@ use sgx_tstd::vec::Vec;
 
 pub type EncodedAccountId = Vec<u8>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PolkadexAccountsStorage {
     /// map AccountId -> Vec<AccountId>
     pub accounts: HashMap<EncodedAccountId, Vec<AccountId>>,
@@ -116,10 +116,33 @@ pub enum AccountsStorageError {
 }
 
 pub mod tests {
-    use crate::accounts_storage::PolkadexAccountsStorage;
+    use super::PolkadexAccountsStorage;
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
     use sp_core::{ed25519 as ed25519_core, Pair};
+
+    pub fn create_accounts_storage() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let storage_empty: PolkadexAccountsStorage = PolkadexAccountsStorage::create(vec![]);
+        let storage_with_account: PolkadexAccountsStorage =
+            PolkadexAccountsStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        assert!(!storage_empty.accounts.contains_key(&account_id.encode()));
+        assert_eq!(
+            storage_with_account.accounts.get(&account_id.encode()),
+            Some(&vec![])
+        );
+    }
 
     pub fn adding_main_account() {
         let account_id: AccountId =

@@ -212,4 +212,6 @@ pub mod tests {
 
         TrustedOperation::direct_call(trusted_call_signed)
     }
+
+    // TODO: Test that nonce doesn't get incremented on unsuccessful call.
 }

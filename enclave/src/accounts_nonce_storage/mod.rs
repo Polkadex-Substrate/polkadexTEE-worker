@@ -30,11 +30,16 @@ use std::sync::{
 };
 
 use crate::{
-    accounts_storage::{AccountsStorageError, PolkadexAccountsStorage},
-    nonce_storage::{NonceStorageError, PolkadexNonceStorage},
+    // accounts_storage::{AccountsStorageError, PolkadexAccountsStorage},
+    // nonce_storage::{NonceStorageError, PolkadexNonceStorage},
     polkadex_gateway::GatewayError,
     utils::UnwrapOrSgxErrorUnexpected,
 };
+
+pub mod accounts_storage;
+pub mod nonce_storage;
+pub use accounts_storage::*;
+pub use nonce_storage::*;
 
 static GLOBAL_ACCOUNTS_AND_NONCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -110,6 +115,11 @@ fn key_hash<K: Encode>(key: &K, hasher: &StorageHasher) -> Vec<u8> {
         StorageHasher::Twox128 => sp_core::twox_128(&encoded_key).to_vec(),
         StorageHasher::Twox256 => sp_core::twox_256(&encoded_key).to_vec(),
         StorageHasher::Twox64Concat => sp_core::twox_64(&encoded_key).to_vec(),
+        StorageHasher::Twox64Concat => sp_core::twox_64(&encoded_key)
+            .iter()
+            .chain(&encoded_key)
+            .cloned()
+            .collect(),
     }
 }
 
@@ -123,6 +133,7 @@ pub fn create_in_memory_accounts_and_nonce_storage(
     Ok(())
 }
 
+#[derive(Debug, PartialEq)]
 pub struct AccountsNonceStorage {
     pub accounts_storage: PolkadexAccountsStorage,
     pub nonce_storage: PolkadexNonceStorage,
@@ -131,18 +142,18 @@ pub struct AccountsNonceStorage {
 impl AccountsNonceStorage {
     fn create(accounts: Vec<PolkadexAccount>) -> Self {
         Self {
-            accounts_storage: PolkadexAccountsStorage::create(accounts),
-            nonce_storage: PolkadexNonceStorage::create(),
+            accounts_storage: PolkadexAccountsStorage::create(accounts.clone()),
+            nonce_storage: PolkadexNonceStorage::create(accounts),
         }
     }
 
-    fn initialize_main_account(&mut self, acc: AccountId) -> Result<(), AccountRegistryError> {
+    fn register_main_account(&mut self, acc: AccountId) -> Result<(), AccountRegistryError> {
         self.accounts_storage.add_main_account(acc.clone())?;
         self.nonce_storage.initialize_nonce(acc);
         Ok(())
     }
 
-    fn initialize_proxy_account(
+    fn register_proxy_account(
         &mut self,
         acc: AccountId,
         proxy: AccountId,
@@ -165,85 +176,102 @@ impl AccountsNonceStorage {
         self.accounts_storage.remove_proxy(acc, proxy)?;
         Ok(())
     }
+
+    fn check_if_main_account_registered(&self, acc: AccountId) -> bool {
+        self.accounts_storage.accounts.contains_key(&acc.encode())
+    }
+
+    fn check_if_proxy_registered(
+        &self,
+        acc: AccountId,
+        proxy: AccountId,
+    ) -> Result<bool, AccountRegistryError> {
+        if let Some(list_of_proxies) = self.accounts_storage.accounts.get(&acc.encode()) {
+            Ok(list_of_proxies.contains(&proxy))
+        } else {
+            Err(AccountRegistryError::MainAccountNoRegistedForGivenProxy)
+        }
+    }
+
+    // Nonce related functions
+
+    fn validate_and_increment_nonce(
+        &mut self,
+        acc: AccountId,
+        nonce: u32,
+    ) -> Result<(), AccountRegistryError> {
+        if self.nonce_storage.read_nonce(acc.clone())? != nonce {
+            return Err(AccountRegistryError::CouldNotLoadRegistry); //FIX
+        }
+        self.nonce_storage.increment_nonce(acc)?;
+        Ok(())
+    }
 }
 
 pub fn check_if_main_account_registered(acc: AccountId) -> Result<bool, AccountRegistryError> {
     // Acquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    let result = proxy_storage
-        .accounts_storage
-        .accounts
-        .contains_key(&acc.encode());
+    let result = storage.check_if_main_account_registered(acc);
     Ok(result)
 }
 
 pub fn check_if_proxy_registered(
-    main_acc: AccountId,
+    acc: AccountId,
     proxy: AccountId,
 ) -> Result<bool, AccountRegistryError> {
     // Acquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
 
-    if let Some(list_of_proxies) = proxy_storage
-        .accounts_storage
-        .accounts
-        .get(&main_acc.encode())
-    {
-        Ok(list_of_proxies.contains(&proxy))
-    } else {
-        warn!("Main account not registered for given proxy");
-        Err(AccountRegistryError::MainAccountNoRegistedForGivenProxy)
-    }
+    storage.check_if_proxy_registered(acc, proxy)
 }
 
 pub fn add_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    proxy_storage.initialize_main_account(main_acc)?;
+    storage.register_main_account(main_acc)?;
     Ok(())
 }
 
 pub fn remove_main_account(main_acc: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    proxy_storage.remove_main_account(main_acc)?;
+    storage.remove_main_account(main_acc)?;
     Ok(())
 }
 
 pub fn add_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    proxy_storage.initialize_proxy_account(main_acc, proxy)?;
+    storage.register_proxy_account(main_acc, proxy)?;
     Ok(())
 }
 
 pub fn remove_proxy(main_acc: AccountId, proxy: AccountId) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    proxy_storage.remove_proxy_account(main_acc, proxy)?;
+    storage.remove_proxy_account(main_acc, proxy)?;
     Ok(())
 }
 
-pub fn load_proxy_registry() -> Result<&'static SgxMutex<AccountsNonceStorage>, AccountRegistryError>
-{
+pub fn load_registry() -> Result<&'static SgxMutex<AccountsNonceStorage>, AccountRegistryError> {
     let ptr = GLOBAL_ACCOUNTS_AND_NONCE_STORAGE.load(Ordering::SeqCst)
         as *mut SgxMutex<AccountsNonceStorage>;
     if ptr.is_null() {
@@ -256,16 +284,52 @@ pub fn load_proxy_registry() -> Result<&'static SgxMutex<AccountsNonceStorage>, 
 
 //Nonce related functions
 
-pub fn validate_nonce(acc: AccountId, nonce: u32) -> Result<(), AccountRegistryError> {
+pub fn validate_and_increment_nonce(
+    acc: AccountId,
+    nonce: u32,
+) -> Result<(), AccountRegistryError> {
     // Acquire lock on proxy_registry
-    let mutex = load_proxy_registry()?;
-    let mut proxy_storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
         .lock()
         .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
-    if !(proxy_storage.nonce_storage.read_nonce(acc.clone()) == Ok(nonce)) {
-        return Err(AccountRegistryError::NonceDoesntMatch);
+    storage.validate_and_increment_nonce(acc, nonce)
+}
+
+pub fn auth_user_validate_increment_nonce(
+    acc: AccountId,
+    proxy_acc: Option<AccountId>,
+    nonce: u32,
+) -> Result<(), AccountRegistryError> {
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
+
+    match proxy_acc {
+        Some(proxy) => {
+            if let Some(list_of_proxies) = storage.accounts_storage.accounts.get(&acc.encode()) {
+                if !list_of_proxies.contains(&proxy) {
+                    return Err(AccountRegistryError::CouldNotLoadRegistry);
+                }
+            } else {
+                return Err(AccountRegistryError::CouldNotLoadRegistry);
+            }
+        }
+        None => {
+            if !storage
+                .accounts_storage
+                .accounts
+                .contains_key(&acc.encode())
+            {
+                return Err(AccountRegistryError::CouldNotLoadRegistry);
+            }
+        }
     }
-    proxy_storage.nonce_storage.increment_nonce(acc)?;
+    if storage.nonce_storage.read_nonce(acc.clone())? != nonce {
+        return Err(AccountRegistryError::CouldNotLoadRegistry); //FIX
+    }
+    storage.nonce_storage.increment_nonce(acc)?;
     Ok(())
 }
 
@@ -277,8 +341,6 @@ pub enum AccountRegistryError {
     CouldNotGetMutex,
     /// No registed main account for given proxy
     MainAccountNoRegistedForGivenProxy,
-    /// Nonce Doesn't match the one in the storage
-    NonceDoesntMatch,
     /// PolkadexAccountsStorage Error
     AccountStorageError(AccountsStorageError),
     /// PolkadexNonceStorage Error
@@ -298,18 +360,67 @@ impl From<NonceStorageError> for AccountRegistryError {
 }
 
 pub mod tests {
-    use super::AccountsNonceStorage;
+    use super::{create_in_memory_accounts_and_nonce_storage, load_registry, AccountsNonceStorage};
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
     use sp_core::{ed25519 as ed25519_core, Pair};
 
-    pub fn initializing_main_account() {
+    pub fn create_and_load_registry() {
+        assert!(create_in_memory_accounts_and_nonce_storage(vec![]).is_ok());
+        assert_eq!(
+            *load_registry().unwrap().lock().unwrap(),
+            AccountsNonceStorage::create(vec![])
+        );
+    }
+
+    pub fn create_accounts_nonce_storage() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let storage_empty: AccountsNonceStorage = AccountsNonceStorage::create(vec![]);
+        let storage_with_account: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        assert!(!storage_empty
+            .accounts_storage
+            .accounts
+            .contains_key(&account_id.encode()));
+        assert!(!storage_empty
+            .nonce_storage
+            .storage
+            .contains_key(&account_id.encode()));
+
+        assert_eq!(
+            storage_with_account
+                .accounts_storage
+                .accounts
+                .get(&account_id.encode()),
+            Some(&vec![])
+        );
+        assert_eq!(
+            storage_with_account
+                .nonce_storage
+                .storage
+                .get(&account_id.encode()),
+            Some(&0u32)
+        );
+    }
+
+    pub fn register_main_account() {
         let account_id: AccountId =
             ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
                 .public()
                 .into();
         let mut storage: AccountsNonceStorage = AccountsNonceStorage::create(vec![]);
-        assert!(storage.initialize_main_account(account_id.clone()).is_ok());
+        assert!(storage.register_main_account(account_id.clone()).is_ok());
         assert!(storage
             .accounts_storage
             .accounts
@@ -317,7 +428,7 @@ pub mod tests {
         assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
     }
 
-    pub fn removing_main_account() {
+    pub fn remove_main_account() {
         let account_id: AccountId =
             ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
                 .public()
@@ -332,7 +443,6 @@ pub mod tests {
                 },
                 proof: vec![],
             }]);
-        storage.nonce_storage.initialize_nonce(account_id.clone());
 
         assert!(storage.remove_main_account(account_id.clone()).is_ok());
         assert!(!storage
@@ -342,7 +452,7 @@ pub mod tests {
         assert!(storage.nonce_storage.read_nonce(account_id).is_err());
     }
 
-    pub fn initializing_proxy_account() {
+    pub fn register_proxy_account() {
         let account_id: AccountId =
             ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
                 .public()
@@ -361,10 +471,9 @@ pub mod tests {
                 },
                 proof: vec![],
             }]);
-        storage.nonce_storage.initialize_nonce(account_id.clone());
 
         assert!(storage
-            .initialize_proxy_account(account_id.clone(), proxy_id.clone())
+            .register_proxy_account(account_id.clone(), proxy_id.clone())
             .is_ok());
         assert_eq!(
             storage.accounts_storage.accounts.get(&account_id.encode()),
@@ -373,7 +482,7 @@ pub mod tests {
         assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
     }
 
-    pub fn removing_proxy_account() {
+    pub fn remove_proxy_account() {
         let account_id: AccountId =
             ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
                 .public()
@@ -392,7 +501,6 @@ pub mod tests {
                 },
                 proof: vec![],
             }]);
-        storage.nonce_storage.initialize_nonce(account_id.clone());
 
         assert!(storage
             .remove_proxy_account(account_id.clone(), proxy_id)
@@ -402,5 +510,106 @@ pub mod tests {
             Some(&vec![])
         );
         assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
+    }
+
+    pub fn check_if_main_account_registered() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let storage_with_account: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        let storage_empty: AccountsNonceStorage = AccountsNonceStorage::create(vec![]);
+        assert!(storage_with_account.check_if_main_account_registered(account_id.clone()));
+        assert!(!storage_empty.check_if_main_account_registered(account_id));
+    }
+
+    pub fn check_if_proxy_registered() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
+                .public()
+                .into();
+        let storage_with_proxy: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![proxy_id.clone()],
+                },
+                proof: vec![],
+            }]);
+        let storage_with_account: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        let storage_empty: AccountsNonceStorage = AccountsNonceStorage::create(vec![]);
+        assert_eq!(
+            storage_with_proxy.check_if_proxy_registered(account_id.clone(), proxy_id.clone()),
+            Ok(true)
+        );
+        assert_eq!(
+            storage_with_account.check_if_proxy_registered(account_id.clone(), proxy_id.clone()),
+            Ok(false)
+        );
+        assert!(storage_empty
+            .check_if_proxy_registered(account_id, proxy_id)
+            .is_err());
+    }
+
+    pub fn validate_and_increment_nonce() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let mut storage: AccountsNonceStorage =
+            AccountsNonceStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+
+        // Validate nonce and increment while checking if it did correctly, all 3 should be ok
+        assert!(storage
+            .validate_and_increment_nonce(account_id.clone(), 0u32)
+            .is_ok());
+        assert!(storage
+            .validate_and_increment_nonce(account_id.clone(), 1u32)
+            .is_ok());
+        assert!(storage
+            .validate_and_increment_nonce(account_id.clone(), 2u32)
+            .is_ok());
+
+        // Try to validate the wrong nonce, should be error
+        assert!(storage
+            .validate_and_increment_nonce(account_id.clone(), 0u32)
+            .is_err());
+
+        // Check to see if the previous error didn't wrongfully increment the nonce, should be ok
+        assert!(storage
+            .validate_and_increment_nonce(account_id, 3u32)
+            .is_ok());
     }
 }

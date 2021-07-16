@@ -345,10 +345,11 @@ pub fn authenticate_user_and_validate_nonce(
     proxy_acc: Option<AccountId>,
     nonce: u32,
 ) -> Result<(), GatewayError> {
-    authenticate_user(main_acc.clone(), proxy_acc)?;
-    if accounts_nonce_storage::validate_nonce(main_acc, nonce).is_err() {
-        return Err(GatewayError::MainAccountNotRegistered); //FIXME: Swap for the correct error
-    };
+    if accounts_nonce_storage::auth_user_validate_increment_nonce(main_acc, proxy_acc, nonce)
+        .is_err()
+    {
+        return Err(GatewayError::UndefinedBehaviour);
+    }
     Ok(())
 }
 

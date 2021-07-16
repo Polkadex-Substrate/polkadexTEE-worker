@@ -49,9 +49,9 @@ pub fn get_dummy_map(storage: &mut SgxMutexGuard<AccountsNonceStorage>) {
 
 pub fn initialize_dummy() {
     accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]).unwrap();
-    let mutex = accounts_nonce_storage::load_proxy_registry().unwrap();
-    let mut proxy_storage = mutex.lock().unwrap();
-    get_dummy_map(&mut proxy_storage);
+    let mutex = accounts_nonce_storage::load_registry().unwrap();
+    let mut storage = mutex.lock().unwrap();
+    get_dummy_map(&mut storage);
 }
 
 #[allow(unused)]
