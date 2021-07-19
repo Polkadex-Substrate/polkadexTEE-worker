@@ -157,7 +157,8 @@ impl AccountsNonceStorage {
         acc: AccountId,
         proxy: AccountId,
     ) -> Result<(), AccountRegistryError> {
-        self.accounts_storage.add_proxy(acc, proxy)?;
+        self.accounts_storage.add_proxy(acc, proxy.clone())?;
+        self.nonce_storage.initialize_nonce(proxy);
         Ok(())
     }
 
@@ -172,7 +173,8 @@ impl AccountsNonceStorage {
         acc: AccountId,
         proxy: AccountId,
     ) -> Result<(), AccountRegistryError> {
-        self.accounts_storage.remove_proxy(acc, proxy)?;
+        self.accounts_storage.remove_proxy(acc, proxy.clone())?;
+        self.nonce_storage.remove_nonce(proxy);
         Ok(())
     }
 
@@ -460,9 +462,9 @@ pub mod tests {
             .is_ok());
         assert_eq!(
             storage.accounts_storage.accounts.get(&account_id.encode()),
-            Some(&vec![proxy_id])
+            Some(&vec![proxy_id.clone()])
         );
-        assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
+        assert_eq!(storage.nonce_storage.read_nonce(proxy_id), Ok(0u32));
     }
 
     pub fn remove_proxy_account() {
@@ -486,13 +488,13 @@ pub mod tests {
             }]);
 
         assert!(storage
-            .remove_proxy_account(account_id.clone(), proxy_id)
+            .remove_proxy_account(account_id.clone(), proxy_id.clone())
             .is_ok());
         assert_eq!(
             storage.accounts_storage.accounts.get(&account_id.encode()),
             Some(&vec![])
         );
-        assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
+        assert!(storage.nonce_storage.read_nonce(proxy_id).is_err());
     }
 
     pub fn check_if_main_account_registered() {

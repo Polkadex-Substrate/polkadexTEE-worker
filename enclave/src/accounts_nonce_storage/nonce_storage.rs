@@ -37,6 +37,10 @@ impl PolkadexNonceStorage {
         };
         for account in accounts {
             in_memory_map.initialize_nonce(account.account.current);
+
+            for proxy in account.account.proxies {
+                in_memory_map.initialize_nonce(proxy);
+            }
         }
         in_memory_map
     }
