@@ -26,7 +26,8 @@ use sgx_tstd::vec::Vec;
 
 // Polkadex represents 1 Token as 10^^18 minimum possible units
 use crate::accounts_nonce_storage::{
-    add_main_account, check_if_main_account_registered, create_in_memory_accounts_and_nonce_storage,
+    add_main_account, check_if_main_account_registered,
+    create_in_memory_accounts_and_nonce_storage, test_proxy::initialize_dummy,
 };
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
@@ -44,7 +45,6 @@ use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
     lock_storage_and_check_order_in_orderbook, lock_storage_and_get_order,
 };
-use crate::test_proxy::initialize_dummy;
 
 pub struct OpenFinexApiMock {}
 

@@ -348,7 +348,7 @@ pub fn authenticate_user_and_validate_nonce(
     if accounts_nonce_storage::auth_user_validate_increment_nonce(main_acc, proxy_acc, nonce)
         .is_err()
     {
-        return Err(GatewayError::UndefinedBehaviour);
+        return Err(GatewayError::NonceInvalid);
     }
     Ok(())
 }
@@ -831,6 +831,8 @@ pub enum GatewayError {
     QuantityOrPriceZeroInLimitOrder,
     /// Nonce not present
     NonceNotPresent,
+    /// Nonce Invalid
+    NonceInvalid,
     /// Price for limit Order not found
     LimitOrderPriceNotFound, // FIXME Duplicate
     /// Not implemented yet

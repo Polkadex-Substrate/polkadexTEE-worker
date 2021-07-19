@@ -180,11 +180,11 @@ pub mod tests {
 
     pub fn test_rejecting_outdated_nonce() {
         let top_extractor = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_withdraw_order_operation()),
+            trusted_operation: Some(create_withdraw_order_operation(0u32)),
         });
 
         let top_extractor1 = Box::new(TrustedOperationExtractorMock {
-            trusted_operation: Some(create_withdraw_order_operation()),
+            trusted_operation: Some(create_withdraw_order_operation(0u32)),
         });
 
         let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
@@ -202,16 +202,38 @@ pub mod tests {
         assert!(result.is_err());
     }
 
-    fn create_withdraw_order_operation() -> TrustedOperation {
+    pub fn test_successful_call_with_nonce() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation(0u32)),
+        });
+
+        let top_extractor1 = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation(1u32)),
+        });
+
+        let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
+
+        let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
+        assert_eq!(0u32, rpc_gateway.nonce);
+        rpc_gateway.increment_nonce();
+        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway.clone());
+        assert_eq!(1u32, rpc_gateway.nonce);
+
+        rpc_withdraw.method_impl(create_dummy_request()).unwrap();
+
+        let result = rpc_withdraw1.method_impl(create_dummy_request());
+
+        assert!(result.is_ok());
+    }
+
+    fn create_withdraw_order_operation(nonce: u32) -> TrustedOperation {
         let key_pair = create_dummy_account();
         let account_id: AccountId = key_pair.public().into();
 
         let trusted_call = TrustedCall::withdraw(account_id, AssetId::DOT, 1000, None);
 
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, nonce);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }
-
-    // TODO: Test that nonce doesn't get incremented on unsuccessful call.
 }

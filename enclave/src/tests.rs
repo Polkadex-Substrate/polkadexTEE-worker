@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage};
+use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage, test_proxy};
 use crate::aes;
 use crate::attestation;
 use crate::ed25519;
@@ -29,7 +29,6 @@ use crate::ss58check;
 use crate::state;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
-use crate::test_proxy;
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -192,6 +191,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
 
         // RPC API tests
         polkadex_rpc_gateway::tests::test_rejecting_outdated_nonce,
+        polkadex_rpc_gateway::tests::test_successful_call_with_nonce,
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         rpc_get_balance::tests::test_given_valid_top_return_balances,
         //rpc_place_order::tests::test_given_valid_call_return_order_uuid, TODO: @Bigna this test case is failing ... I need your help with this
@@ -211,6 +211,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         nonce_storage::tests::remove_nonce,
 
         // Accounts Storage
+        accounts_storage::tests::create_accounts_storage_from_hashmap,
         accounts_storage::tests::create_accounts_storage,
         accounts_storage::tests::adding_main_account,
         accounts_storage::tests::removing_main_account,

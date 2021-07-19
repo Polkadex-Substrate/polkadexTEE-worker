@@ -89,6 +89,10 @@ pub mod tests {
             ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
                 .public()
                 .into();
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
         let storage_empty: PolkadexNonceStorage = PolkadexNonceStorage::create(vec![]);
         let storage_with_account: PolkadexNonceStorage =
             PolkadexNonceStorage::create(vec![PolkadexAccount {
@@ -96,13 +100,17 @@ pub mod tests {
                     prev: account_id.clone(),
                     current: account_id.clone(),
                     next: None,
-                    proxies: vec![],
+                    proxies: vec![proxy_id.clone()],
                 },
                 proof: vec![],
             }]);
         assert!(!storage_empty.storage.contains_key(&account_id.encode()));
         assert_eq!(
             storage_with_account.storage.get(&account_id.encode()),
+            Some(&0u32)
+        );
+        assert_eq!(
+            storage_with_account.storage.get(&proxy_id.encode()),
             Some(&0u32)
         );
     }

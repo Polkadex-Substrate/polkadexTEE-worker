@@ -109,7 +109,6 @@ mod state;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
 mod test_polkadex_gateway;
-mod test_proxy;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;

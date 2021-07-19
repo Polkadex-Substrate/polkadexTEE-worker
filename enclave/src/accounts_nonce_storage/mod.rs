@@ -38,6 +38,7 @@ use crate::{
 
 pub mod accounts_storage;
 pub mod nonce_storage;
+pub mod test_proxy;
 pub use accounts_storage::*;
 pub use nonce_storage::*;
 

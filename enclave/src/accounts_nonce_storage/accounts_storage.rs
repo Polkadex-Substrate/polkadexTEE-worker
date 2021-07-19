@@ -116,10 +116,38 @@ pub enum AccountsStorageError {
 }
 
 pub mod tests {
-    use super::PolkadexAccountsStorage;
+    use super::{EncodedAccountId, PolkadexAccountsStorage};
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
+    use sgx_tstd::collections::HashMap;
+    use sgx_tstd::vec::Vec;
     use sp_core::{ed25519 as ed25519_core, Pair};
+
+    pub fn create_accounts_storage_from_hashmap() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
+                .public()
+                .into();
+
+        let second_account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"34567890123456789012345678901234")
+                .public()
+                .into();
+
+        let mut hashmap: HashMap<EncodedAccountId, Vec<AccountId>> = HashMap::new();
+        hashmap.insert(account_id.encode(), vec![proxy_id]);
+        hashmap.insert(second_account_id.encode(), vec![]);
+
+        assert_eq!(
+            PolkadexAccountsStorage::from_hashmap(hashmap.clone()),
+            PolkadexAccountsStorage { accounts: hashmap }
+        );
+    }
 
     pub fn create_accounts_storage() {
         let account_id: AccountId =
@@ -178,50 +206,6 @@ pub mod tests {
         assert!(!accounts_storage.accounts.contains_key(&account_id.encode()));
     }
 
-    pub fn adding_already_registered_accounts() {
-        let account_id: AccountId =
-            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
-                .public()
-                .into();
-        let proxy_id: AccountId =
-            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
-                .public()
-                .into();
-        let mut accounts_storage: PolkadexAccountsStorage =
-            PolkadexAccountsStorage::create(vec![PolkadexAccount {
-                account: LinkedAccount {
-                    prev: account_id.clone(),
-                    current: account_id.clone(),
-                    next: None,
-                    proxies: vec![proxy_id.clone()],
-                },
-                proof: vec![],
-            }]);
-        assert!(accounts_storage.accounts.contains_key(&account_id.encode()));
-
-        assert!(accounts_storage
-            .add_main_account(account_id.clone())
-            .is_err());
-        assert!(accounts_storage.add_proxy(account_id, proxy_id).is_err());
-    }
-
-    pub fn removing_not_registered_accounts() {
-        let account_id: AccountId =
-            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
-                .public()
-                .into();
-        let proxy_id: AccountId =
-            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
-                .public()
-                .into();
-        let mut accounts_storage: PolkadexAccountsStorage = PolkadexAccountsStorage::create(vec![]);
-        assert!(!accounts_storage.accounts.contains_key(&account_id.encode()));
-        assert!(accounts_storage
-            .remove_main_account(account_id.clone())
-            .is_err());
-        assert!(accounts_storage.remove_proxy(account_id, proxy_id).is_err());
-    }
-
     pub fn adding_proxy_account() {
         let account_id: AccountId =
             ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
@@ -278,5 +262,68 @@ pub mod tests {
             accounts_storage.accounts.get(&account_id.encode()),
             Some(&vec![])
         );
+    }
+
+    pub fn adding_already_registered_accounts() {
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
+                .public()
+                .into();
+        let mut accounts_storage: PolkadexAccountsStorage =
+            PolkadexAccountsStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: account_id.clone(),
+                    current: account_id.clone(),
+                    next: None,
+                    proxies: vec![proxy_id.clone()],
+                },
+                proof: vec![],
+            }]);
+        assert!(accounts_storage.accounts.contains_key(&account_id.encode()));
+
+        assert!(accounts_storage
+            .add_main_account(account_id.clone())
+            .is_err());
+        assert!(accounts_storage.add_proxy(account_id, proxy_id).is_err());
+    }
+
+    pub fn removing_not_registered_accounts() {
+        let registered_account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"34567890123456789012345678901234")
+                .public()
+                .into();
+        let account_id: AccountId =
+            ed25519_core::Pair::from_seed(b"12345678901234567890123456789012")
+                .public()
+                .into();
+
+        let proxy_id: AccountId =
+            ed25519_core::Pair::from_seed(b"23456789012345678901234567890123")
+                .public()
+                .into();
+        let mut accounts_storage: PolkadexAccountsStorage =
+            PolkadexAccountsStorage::create(vec![PolkadexAccount {
+                account: LinkedAccount {
+                    prev: registered_account_id.clone(),
+                    current: registered_account_id.clone(),
+                    next: None,
+                    proxies: vec![],
+                },
+                proof: vec![],
+            }]);
+        assert!(!accounts_storage.accounts.contains_key(&account_id.encode()));
+        assert!(accounts_storage
+            .remove_main_account(account_id.clone())
+            .is_err());
+        assert!(accounts_storage
+            .remove_proxy(account_id, proxy_id.clone())
+            .is_err());
+        assert!(accounts_storage
+            .remove_proxy(registered_account_id, proxy_id)
+            .is_err());
     }
 }
