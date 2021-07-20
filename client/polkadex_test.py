@@ -58,3 +58,6 @@ if __name__ == '__main__':
     #11 Alice withdraws all her tokenB through direct call to gateway
     print("Alice and Bob withdraw their newly traded tokens:")
     withdraw(alice, tokenA, 50_000_000_000_000_000)
+    await_block()
+    await_block()
+    await_block()
