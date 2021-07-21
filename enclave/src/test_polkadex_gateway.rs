@@ -20,9 +20,8 @@ use log::*;
 use polkadex_sgx_primitives::types::{
     CancelOrder, MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
 };
-use polkadex_sgx_primitives::{AccountId, AssetId};
+use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
-use substratee_worker_primitives::get_account;
 
 // Polkadex represents 1 Token as 10^^18 minimum possible units
 use crate::constants::UNIT;

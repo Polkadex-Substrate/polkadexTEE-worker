@@ -9,9 +9,8 @@ use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
 use polkadex_sgx_primitives::types::{
     MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
 };
-use polkadex_sgx_primitives::{AccountId, AssetId};
+use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
-use substratee_worker_primitives::get_account;
 
 pub fn test_happy_path() {
     let gateway = create_mock_gateway();

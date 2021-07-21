@@ -20,8 +20,7 @@ use codec::Encode;
 use sgx_tstd::sync::SgxMutexGuard;
 use sp_std::prelude::*;
 
-use polkadex_sgx_primitives::{AccountId, AssetId};
-use substratee_worker_primitives::get_account;
+use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 
 use crate::polkadex_balance_storage::*;
 use crate::polkadex_gateway::GatewayError;
