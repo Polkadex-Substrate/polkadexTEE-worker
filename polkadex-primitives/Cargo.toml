@@ -17,7 +17,6 @@ polkadex-primitives = { git = "https://github.com/Polkadex-Substrate/polkadex-pr
 git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
 default-features = false
-features = ["full_crypto"]
 
 [dependencies.sgx_tstd]
 git = "https://github.com/apache/teaclave-sgx-sdk.git"

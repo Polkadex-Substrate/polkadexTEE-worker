@@ -11,6 +11,7 @@ serde           = { version = "1.0", optional = true}
 serde_derive    = { version = "1.0", optional = true}
 serde_json      = { version = "1.0", optional = true}
 chrono          = { version = "0.4.19", default-features = false, features = ["alloc"]}
+polkadex-primitives = { git = "https://github.com/Polkadex-Substrate/polkadex-primitives.git", branch = 'main', default-features = false }
 
 [dependencies.sgx_tstd]
 git = "https://github.com/apache/teaclave-sgx-sdk.git"
