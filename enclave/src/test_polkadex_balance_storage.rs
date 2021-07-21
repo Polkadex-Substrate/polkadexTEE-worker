@@ -19,7 +19,6 @@
 use codec::Encode;
 use sgx_tstd::sync::SgxMutexGuard;
 use sp_std::prelude::*;
-
 use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 
 use crate::polkadex_balance_storage::*;

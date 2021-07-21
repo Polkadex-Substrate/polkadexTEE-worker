@@ -22,7 +22,7 @@ demo script running happy flow openfinex commands
 import subprocess
 import optparse
 
-mrenclave_filename = "mrenclave.b58"
+mrenclave_filename = "../bin/mrenclave.b58"
 MRENCLAVE = ""
 direct = '--direct'
 markettype = ['--markettype=spot']
@@ -68,15 +68,20 @@ def read_mrenclave():
     ret = subprocess.run(cli + ["list-workers"], stdout=subprocess.PIPE)
     lines = ret.stdout.decode("utf-8").splitlines()
     workers = []
-    if lines:
+    if lines != ['number of workers registered: 0']:
+        print("Reading MRENCLAVE from registered list")
         for line in lines:
             if "MRENCLAVE" in line:
                 mrenclave = line.split()
                 workers.append(mrenclave[1].strip())
     else:
         # open file instead
+        print("Reading MRENCLAVE from file")
         with open(mrenclave_filename) as f:
-            workers = f.readlines()
+            mrenclaves_with_line_ending = f.readlines()
+            for mrenclave in mrenclaves_with_line_ending:
+                workers.append(mrenclave.strip())
+
     MRENCLAVE = workers[0]
     print("Using mrenclave of first worker as default: " + MRENCLAVE)
     return workers
