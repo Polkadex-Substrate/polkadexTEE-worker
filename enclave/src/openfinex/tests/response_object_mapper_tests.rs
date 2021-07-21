@@ -29,9 +29,9 @@ use crate::openfinex::string_serialization::OpenFinexResponseDeserializer;
 use crate::ss58check::account_id_to_ss58check;
 use alloc::{string::String, string::ToString, sync::Arc, vec::Vec};
 use codec::Encode;
-use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{MarketId, OrderSide, OrderState, OrderType};
 use polkadex_sgx_primitives::AssetId;
+use substratee_worker_primitives::get_account;
 
 pub fn test_given_parsed_error_then_map_to_error_object() {
     let error_description = String::from("error description");
