@@ -11,7 +11,6 @@ use polkadex_sgx_primitives::types::{
 };
 use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
-use substratee_worker_primitives::get_account;
 
 pub fn test_happy_path() {
     let gateway = create_mock_gateway();
