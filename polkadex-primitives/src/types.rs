@@ -26,6 +26,8 @@ use crate::ShardIdentifier;
 use polkadex_primitives::assets::AssetId;
 use polkadex_primitives::common_types::{AccountId, Balance};
 use sp_core::ed25519::Signature;
+
+#[cfg(feature = "full_crypto")]
 use sp_core::{ed25519, Pair};
 
 /// User UID or nickname to identify the user (Wallet Address in our case)
@@ -110,11 +112,13 @@ pub struct SignedOrder {
 }
 
 impl SignedOrder {
+    #[cfg(feature = "full_crypto")]
     pub fn sign(&mut self, key_pair: &ed25519::Pair) {
         let payload = self.encode();
         self.signature = key_pair.sign(payload.as_slice());
     }
 
+    #[cfg(feature = "full_crypto")]
     pub fn verify_signature(&self, key_pair: &ed25519::Pair) -> bool {
         // TODO: We can do better here, no need of unnecessary clones
         let order = SignedOrder {

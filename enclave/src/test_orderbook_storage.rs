@@ -26,8 +26,7 @@ use sp_core::ed25519::Signature;
 use crate::ed25519;
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
-use polkadex_sgx_primitives::AssetId;
-use substratee_worker_primitives::get_account;
+use polkadex_sgx_primitives::{accounts::get_account, AssetId};
 
 pub fn get_dummy_orders() -> Vec<Order> {
     let order: Order = Order {
