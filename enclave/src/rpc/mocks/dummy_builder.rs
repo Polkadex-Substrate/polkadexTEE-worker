@@ -68,7 +68,9 @@ pub fn sign_trusted_call(
     signer: ed25519_core::Pair,
     nonce: u32,
 ) -> TrustedCallSigned {
-    let mr_enclave = [0u8; 32];
+    let mr_enclave = crate::attestation::get_mrenclave_of_self()
+        .expect("Failed to get mrenclave")
+        .m;
     let shard_identifier = ShardIdentifier::default();
 
     trusted_call.sign(

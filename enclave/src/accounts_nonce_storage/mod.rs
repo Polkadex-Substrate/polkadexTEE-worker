@@ -197,6 +197,10 @@ impl AccountsNonceStorage {
 
     // Nonce related functions
 
+    fn get_nonce(&self, acc: AccountId) -> Result<u32, AccountRegistryError> {
+        Ok(self.nonce_storage.read_nonce(acc)?)
+    }
+
     fn validate_and_increment_nonce(
         &mut self,
         acc: AccountId,
@@ -285,6 +289,15 @@ pub fn load_registry() -> Result<&'static SgxMutex<AccountsNonceStorage>, Accoun
 }
 
 //Nonce related functions
+
+pub fn get_nonce(main_acc: AccountId) -> Result<u32, AccountRegistryError> {
+    // Aquire lock on proxy_registry
+    let mutex = load_registry()?;
+    let storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
+    storage.get_nonce(main_acc)
+}
 
 pub fn auth_user_validate_increment_nonce(
     acc: AccountId,
@@ -391,13 +404,7 @@ pub mod tests {
                 .get(&account_id.encode()),
             Some(&vec![])
         );
-        assert_eq!(
-            storage_with_account
-                .nonce_storage
-                .storage
-                .get(&account_id.encode()),
-            Some(&0u32)
-        );
+        assert_eq!(storage_with_account.get_nonce(account_id), Ok(0u32));
     }
 
     pub fn register_main_account() {
@@ -411,7 +418,7 @@ pub mod tests {
             .accounts_storage
             .accounts
             .contains_key(&account_id.encode()));
-        assert_eq!(storage.nonce_storage.read_nonce(account_id), Ok(0u32));
+        assert_eq!(storage.get_nonce(account_id), Ok(0u32));
     }
 
     pub fn remove_main_account() {
@@ -435,7 +442,7 @@ pub mod tests {
             .accounts_storage
             .accounts
             .contains_key(&account_id.encode()));
-        assert!(storage.nonce_storage.read_nonce(account_id).is_err());
+        assert!(storage.get_nonce(account_id).is_err());
     }
 
     pub fn register_proxy_account() {
@@ -465,7 +472,7 @@ pub mod tests {
             storage.accounts_storage.accounts.get(&account_id.encode()),
             Some(&vec![proxy_id.clone()])
         );
-        assert_eq!(storage.nonce_storage.read_nonce(proxy_id), Ok(0u32));
+        assert_eq!(storage.get_nonce(proxy_id), Ok(0u32));
     }
 
     pub fn remove_proxy_account() {
@@ -495,7 +502,7 @@ pub mod tests {
             storage.accounts_storage.accounts.get(&account_id.encode()),
             Some(&vec![])
         );
-        assert!(storage.nonce_storage.read_nonce(proxy_id).is_err());
+        assert!(storage.get_nonce(proxy_id).is_err());
     }
 
     pub fn check_if_main_account_registered() {

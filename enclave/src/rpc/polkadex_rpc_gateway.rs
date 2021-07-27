@@ -62,6 +62,9 @@ pub trait RpcGateway: Send + Sync {
     /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
 
+    /// get the nonce for a given account
+    fn nonce(&self, main_account: AccountId) -> SgxResult<u32>;
+
     /// place an order
     fn place_order(
         &self,
@@ -120,7 +123,7 @@ impl RpcGateway for PolkadexRpcGateway {
         match self.authorize_user_nonce(main_account, proxy_account, nonce) {
             Ok(()) => Ok(trusted_call),
             Err(e) => {
-                error!("Could not find account within registry");
+                error!("Could not find account within registry: {:?}", e);
                 Err(format!("Authorization error: {}", e))
             }
         }
@@ -129,6 +132,13 @@ impl RpcGateway for PolkadexRpcGateway {
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {
         match lock_storage_and_get_balances(main_account, asset_id) {
             Ok(balance) => Ok(balance),
+            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
+    }
+
+    fn nonce(&self, main_account: AccountId) -> SgxResult<u32> {
+        match crate::accounts_nonce_storage::get_nonce(main_account) {
+            Ok(nonce) => Ok(nonce),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
     }

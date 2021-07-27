@@ -129,6 +129,10 @@ impl RpcGateway for RpcGatewayMock {
         }
     }
 
+    fn nonce(&self, _main_account: AccountId) -> SgxResult<u32> {
+        Ok(self.nonce)
+    }
+
     fn place_order(
         &self,
         _main_account: AccountId,

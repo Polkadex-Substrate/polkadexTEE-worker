@@ -25,6 +25,7 @@ pub fn get_rpc_function_name_from_top(trusted_operation: &TrustedOperation) -> O
             public(_) => None,
             trusted(tgs) => match tgs.getter {
                 TrustedGetter::get_balance(_, _, _) => Some("get_balance".to_owned()),
+                TrustedGetter::nonce(_) => Some("nonce".to_owned()),
                 _ => None,
             },
         },

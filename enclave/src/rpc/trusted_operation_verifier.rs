@@ -81,7 +81,6 @@ fn verify_signature(
     debug!("verify signature of TrustedOperation");
     debug!("query mrenclave of self");
     let mrenclave = match attestation::get_mrenclave_of_self() {
-        //FIXME: This is not returning the correct value
         Ok(m) => m,
         Err(_) => return Err(RpcCallStatus::mrenclave_failure),
     };
@@ -111,17 +110,12 @@ fn verify_signature(
 
 fn verify_signature_of_signed_call(
     trusted_call: &TrustedCallSigned,
-    _mrenclave: &sgx_measurement_t,
+    mrenclave: &sgx_measurement_t,
     shard_id: &ShardIdentifier,
 ) -> Result<(), RpcCallStatus> {
-    let m = [0u8; 32];
-    if trusted_call.verify_signature(
-        //&mrenclave.m
-        &m, &shard_id,
-    ) {
+    if trusted_call.verify_signature(&mrenclave.m, &shard_id) {
         return Ok(());
     }
-
     Err(RpcCallStatus::signature_verification_failure)
 }
 
