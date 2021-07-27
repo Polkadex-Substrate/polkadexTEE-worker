@@ -53,7 +53,8 @@ use crate::enclave::api::{
     enclave_sync_chain,
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
-use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
+//use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
+use crate::polkadex_db::{GeneralDB, KVStore, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
@@ -558,10 +559,10 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Initializing Polkadex Orderbook Mirror");
 
-    RocksDB::initialize_db(true).unwrap();
+    GeneralDB::initialize_db();
 
     info!("Loading Orders from Orderbook Storage");
-    let signed_orders = RocksDB::read_all().ok().unwrap();
+    let signed_orders = GeneralDB::read_all().ok().unwrap();
 
     enclave_load_orders_to_memory(eid, signed_orders).unwrap();
 
@@ -821,9 +822,9 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     // TODO: Do we need error handling here?
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = RocksDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        polkadex_db::RocksDB::write(&orderbook_mirror, order_id, &signed_order)
+        let mutex = GeneralDB::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<GeneralDB> = mutex.lock().unwrap();
+        GeneralDB::write(&mut orderbook_mirror, order_id, &signed_order)
     });
     status
 }
