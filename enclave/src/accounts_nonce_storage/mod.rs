@@ -198,7 +198,7 @@ impl AccountsNonceStorage {
     // Nonce related functions
 
     fn get_nonce(&self, acc: AccountId) -> Result<u32, AccountRegistryError> {
-        Ok(self.nonce_storage.read_nonce(acc)?)
+        self.nonce_storage.read_nonce(acc).map_err(AccountRegistryError::NonceStorageError)
     }
 
     fn validate_and_increment_nonce(
