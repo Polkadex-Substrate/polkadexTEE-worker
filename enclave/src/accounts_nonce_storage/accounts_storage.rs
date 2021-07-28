@@ -26,7 +26,7 @@ pub type EncodedAccountId = Vec<u8>;
 
 #[derive(Debug, PartialEq)]
 pub struct PolkadexAccountsStorage {
-    /// map AccountId -> Vec<AccountId>
+    /// Map MainAccount -> Vec<ProxyAccount>
     pub accounts: HashMap<EncodedAccountId, Vec<AccountId>>,
 }
 
