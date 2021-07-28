@@ -207,7 +207,7 @@ impl AccountsNonceStorage {
         nonce: u32,
     ) -> Result<(), AccountRegistryError> {
         if self.nonce_storage.read_nonce(acc.clone())? != nonce {
-            return Err(AccountRegistryError::CouldNotLoadRegistry); //FIX
+            return Err(AccountRegistryError::NonceValidationFailed);
         }
         self.nonce_storage.increment_nonce(acc)?;
         Ok(())
