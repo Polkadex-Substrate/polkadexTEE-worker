@@ -21,7 +21,7 @@ use crate::rpc::return_value_encoding::compute_encoded_return_error;
 use crate::rpc::trusted_operation_verifier::TrustedOperationVerifier;
 use crate::rpc::{
     api::SideChainApi, basic_pool::BasicPool, io_handler_extensions, rpc_call_encoder::RpcCall,
-    rpc_cancel_order::RpcCancelOrder, rpc_get_balance::RpcGetBalance,
+    rpc_cancel_order::RpcCancelOrder, rpc_get_balance::RpcGetBalance, rpc_nonce::RpcNonce,
     rpc_place_order::RpcPlaceOrder, rpc_withdraw::RpcWithdraw,
 };
 use crate::rsa3072;
@@ -143,6 +143,15 @@ fn init_io_handler() -> IoHandler {
     io.add_sync_method(
         &RpcGetBalance::name(),
         RpcGetBalance::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
+
+    // GET BALANCE
+    io.add_sync_method(
+        &RpcNonce::name(),
+        RpcNonce::new(
             Box::new(TrustedOperationVerifier {}),
             Box::new(PolkadexRpcGateway {}),
         ),

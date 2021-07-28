@@ -146,7 +146,7 @@ pub mod tests {
         let cancel_order = create_dummy_cancel_order(account_id.clone(), order_id);
 
         let trusted_call = TrustedCall::cancel_order(account_id, cancel_order, None);
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }

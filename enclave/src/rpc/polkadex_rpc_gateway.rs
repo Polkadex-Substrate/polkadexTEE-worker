@@ -26,7 +26,9 @@ use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
-use crate::polkadex_gateway::{authenticate_user, GatewayError, OpenfinexPolkaDexGateway};
+use crate::polkadex_gateway::{
+    authenticate_user, authenticate_user_and_validate_nonce, GatewayError, OpenfinexPolkaDexGateway,
+};
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
@@ -42,6 +44,14 @@ pub trait RpcGateway: Send + Sync {
         proxy_account: Option<AccountId>,
     ) -> Result<(), GatewayError>;
 
+    /// verifies that the proxy account (if any) is authorized to represent the main account and also verifies if the provided nonce matches the one in the storage
+    fn authorize_user_nonce(
+        &self,
+        main_account: AccountId,
+        proxy_account: Option<AccountId>,
+        nonce: u32,
+    ) -> Result<(), GatewayError>;
+
     /// verifies that the proxy account (if any) is authorized to represent the main account
     /// given a trusted call inside a trusted operation (convenience function)
     fn authorize_trusted_call(
@@ -51,6 +61,9 @@ pub trait RpcGateway: Send + Sync {
 
     /// get the balance of a certain asset ID for a given account
     fn get_balances(&self, main_account: AccountId, asset_it: AssetId) -> SgxResult<Balances>;
+
+    /// get the nonce for a given account
+    fn nonce(&self, main_account: AccountId) -> SgxResult<u32>;
 
     /// place an order
     fn place_order(
@@ -83,12 +96,21 @@ impl RpcGateway for PolkadexRpcGateway {
         authenticate_user(main_account, proxy_account)
     }
 
+    fn authorize_user_nonce(
+        &self,
+        main_account: AccountId,
+        proxy_account: Option<AccountId>,
+        nonce: u32,
+    ) -> Result<(), GatewayError> {
+        authenticate_user_and_validate_nonce(main_account, proxy_account, nonce)
+    }
+
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
-        let trusted_call = match trusted_operation {
-            TrustedOperation::direct_call(tcs) => Ok(tcs.call),
+        let (trusted_call, nonce) = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => Ok((tcs.call, tcs.nonce)),
             _ => {
                 error!("Trusted calls entering via RPC must be direct");
                 Err(RpcCallStatus::operation_type_mismatch.to_string())
@@ -98,10 +120,10 @@ impl RpcGateway for PolkadexRpcGateway {
         let main_account = trusted_call.main_account().clone();
         let proxy_account = trusted_call.proxy_account();
 
-        match self.authorize_user(main_account, proxy_account) {
+        match self.authorize_user_nonce(main_account, proxy_account, nonce) {
             Ok(()) => Ok(trusted_call),
             Err(e) => {
-                error!("Could not find account within registry");
+                error!("Could not find account within registry: {:?}", e);
                 Err(format!("Authorization error: {}", e))
             }
         }
@@ -110,6 +132,13 @@ impl RpcGateway for PolkadexRpcGateway {
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {
         match lock_storage_and_get_balances(main_account, asset_id) {
             Ok(balance) => Ok(balance),
+            Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+        }
+    }
+
+    fn nonce(&self, main_account: AccountId) -> SgxResult<u32> {
+        match crate::accounts_nonce_storage::get_nonce(main_account) {
+            Ok(nonce) => Ok(nonce),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
     }
@@ -143,5 +172,78 @@ impl RpcGateway for PolkadexRpcGateway {
             Ok(_) => execute_ocex_release_extrinsic(main_account, token, amount),
             Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
+    }
+}
+
+pub mod tests {
+    use crate::rpc::mocks::dummy_builder::create_dummy_account;
+    use crate::rpc::mocks::dummy_builder::create_dummy_request;
+    use crate::rpc::mocks::dummy_builder::sign_trusted_call;
+    use crate::rpc::mocks::rpc_gateway_mock::RpcGatewayMock;
+    use crate::rpc::mocks::trusted_operation_extractor_mock::TrustedOperationExtractorMock;
+    use crate::rpc::polkadex_rpc_gateway::TrustedOperation;
+    use crate::rpc::rpc_withdraw::RpcWithdraw;
+    use crate::TrustedCall;
+    use polkadex_sgx_primitives::{AccountId, AssetId};
+    use sgx_tstd::boxed::Box;
+    use sp_application_crypto::Pair;
+
+    pub fn test_rejecting_outdated_nonce() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation(0u32)),
+        });
+
+        let top_extractor1 = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation(0u32)),
+        });
+
+        let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
+
+        let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
+        assert_eq!(0u32, rpc_gateway.nonce);
+        rpc_gateway.increment_nonce();
+        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway.clone());
+        assert_eq!(1u32, rpc_gateway.nonce);
+
+        rpc_withdraw.method_impl(create_dummy_request()).unwrap();
+
+        let result = rpc_withdraw1.method_impl(create_dummy_request());
+
+        assert!(result.is_err());
+    }
+
+    pub fn test_successful_call_with_nonce() {
+        let top_extractor = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation(0u32)),
+        });
+
+        let top_extractor1 = Box::new(TrustedOperationExtractorMock {
+            trusted_operation: Some(create_withdraw_order_operation(1u32)),
+        });
+
+        let mut rpc_gateway = Box::new(RpcGatewayMock::mock_withdraw(true));
+
+        let rpc_withdraw = RpcWithdraw::new(top_extractor, rpc_gateway.clone());
+        assert_eq!(0u32, rpc_gateway.nonce);
+        rpc_gateway.increment_nonce();
+        let rpc_withdraw1 = RpcWithdraw::new(top_extractor1, rpc_gateway.clone());
+        assert_eq!(1u32, rpc_gateway.nonce);
+
+        rpc_withdraw.method_impl(create_dummy_request()).unwrap();
+
+        let result = rpc_withdraw1.method_impl(create_dummy_request());
+
+        assert!(result.is_ok());
+    }
+
+    fn create_withdraw_order_operation(nonce: u32) -> TrustedOperation {
+        let key_pair = create_dummy_account();
+        let account_id: AccountId = key_pair.public().into();
+
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::DOT, 1000, None);
+
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, nonce);
+
+        TrustedOperation::direct_call(trusted_call_signed)
     }
 }

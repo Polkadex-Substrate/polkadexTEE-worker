@@ -27,11 +27,13 @@ use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
 
+#[derive(Clone)]
 /// Mock implementation to be used in unit testing
 pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
     pub order_uuid: Option<OrderUUID>,
+    pub nonce: u32,
 }
 
 /// constructors
@@ -41,6 +43,7 @@ impl RpcGatewayMock {
             do_authorize: false,
             balance_to_return: None,
             order_uuid: None,
+            nonce: 0u32,
         }
     }
 
@@ -70,6 +73,10 @@ impl RpcGatewayMock {
         withdraw_mock.do_authorize = do_authorize;
         withdraw_mock
     }
+
+    pub fn increment_nonce(&mut self) {
+        self.nonce += 1u32;
+    }
 }
 
 impl RpcGateway for RpcGatewayMock {
@@ -84,16 +91,34 @@ impl RpcGateway for RpcGatewayMock {
         }
     }
 
+    fn authorize_user_nonce(
+        &self,
+        _main_account: AccountId,
+        _proxy_account: Option<AccountId>,
+        _nonce: u32,
+    ) -> Result<(), GatewayError> {
+        match self.do_authorize {
+            true => Ok(()),
+            false => Err(GatewayError::ProxyNotRegisteredForMainAccount),
+        }
+    }
+
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
     ) -> Result<TrustedCall, String> {
-        match self.do_authorize {
+        let (call, nonce) = match self.do_authorize {
             true => match trusted_operation {
-                TrustedOperation::direct_call(tcs) => Ok(tcs.call),
+                TrustedOperation::direct_call(tcs) => Ok((tcs.call, tcs.nonce)),
                 _ => Err(String::from("Trusted operation is not a direct call")),
             },
             false => Err(String::from("Authorization failed")),
+        }?;
+
+        if self.nonce == nonce {
+            Ok(call)
+        } else {
+            Err(String::from("failed cause nonce doesn't match"))
         }
     }
 
@@ -102,6 +127,10 @@ impl RpcGateway for RpcGatewayMock {
             Some(b) => Ok(b.clone()),
             None => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
+    }
+
+    fn nonce(&self, _main_account: AccountId) -> SgxResult<u32> {
+        Ok(self.nonce)
     }
 
     fn place_order(

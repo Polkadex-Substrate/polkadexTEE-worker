@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::ShardIdentifier;
 use codec::Encode;
 use polkadex_sgx_primitives::types::{
     CancelOrder, DirectRequest, MarketId, Order, OrderSide, OrderType, OrderUUID,
@@ -65,9 +66,17 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
 pub fn sign_trusted_call(
     trusted_call: TrustedCall,
     signer: ed25519_core::Pair,
+    nonce: u32,
 ) -> TrustedCallSigned {
-    let mr_enclave = [2u8; 32];
-    let shard_identifier = H256::from(mr_enclave);
+    let mr_enclave = crate::attestation::get_mrenclave_of_self()
+        .expect("Failed to get mrenclave")
+        .m;
+    let shard_identifier = ShardIdentifier::default();
 
-    trusted_call.sign(&KeyPair::Ed25519(signer), 0, &mr_enclave, &shard_identifier)
+    trusted_call.sign(
+        &KeyPair::Ed25519(signer),
+        nonce,
+        &mr_enclave,
+        &shard_identifier,
+    )
 }

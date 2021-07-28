@@ -24,9 +24,12 @@ use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
 
 // Polkadex represents 1 Token as 10^^18 minimum possible units
+use crate::accounts_nonce_storage::{
+    add_main_account, check_if_main_account_registered,
+    create_in_memory_accounts_and_nonce_storage, test_proxy::initialize_dummy,
+};
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
-use crate::polkadex::{add_main_account, create_in_memory_account_storage};
 use crate::polkadex_balance_storage::{
     create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances,
     lock_storage_and_initialize_balance,
@@ -41,7 +44,6 @@ use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
     lock_storage_and_check_order_in_orderbook, lock_storage_and_get_order,
 };
-use crate::test_proxy::initialize_dummy;
 
 pub struct OpenFinexApiMock {}
 
@@ -81,7 +83,7 @@ pub fn initialize_storage() {
     // Initialize Gateway
     initialize_polkadex_gateway();
     // Initialize Account Storage
-    assert!(create_in_memory_account_storage(vec![]).is_ok());
+    assert!(create_in_memory_accounts_and_nonce_storage(vec![]).is_ok());
     // Initialize Balance storage
     assert!(create_in_memory_balance_storage().is_ok());
     // Initialize Order Mirror
@@ -90,8 +92,11 @@ pub fn initialize_storage() {
 }
 
 fn setup(main: AccountId) {
-    // Register Main account
-    assert!(add_main_account(main.clone()).is_ok());
+    // Check if account is already registered
+    if let Ok(false) = check_if_main_account_registered(main.clone()) {
+        // Register Main account
+        assert!(add_main_account(main.clone()).is_ok());
+    }
     // Initialize Balance for main account
     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::POLKADEX).is_ok());
     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::DOT).is_ok());

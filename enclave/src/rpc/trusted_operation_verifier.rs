@@ -113,10 +113,9 @@ fn verify_signature_of_signed_call(
     mrenclave: &sgx_measurement_t,
     shard_id: &ShardIdentifier,
 ) -> Result<(), RpcCallStatus> {
-    if trusted_call.verify_signature(&mrenclave.m, shard_id) {
+    if trusted_call.verify_signature(&mrenclave.m, &shard_id) {
         return Ok(());
     }
-
     Err(RpcCallStatus::signature_verification_failure)
 }
 
@@ -126,6 +125,7 @@ pub mod tests {
     use crate::rpc::mocks::dummy_builder::{
         create_dummy_account, create_dummy_request, sign_trusted_call,
     };
+    use crate::ShardIdentifier;
     use codec::Encode;
     use polkadex_sgx_primitives::{AccountId, AssetId};
     use sp_core::{ed25519 as ed25519_core, Pair, H256};
@@ -135,10 +135,11 @@ pub mod tests {
         let input_trusted_operation = create_trusted_operation();
         let request = DirectRequest {
             encoded_text: input_trusted_operation.encode(),
-            shard: H256::from([1u8; 32]),
+            shard: ShardIdentifier::default(),
         };
 
-        let decoded_operation = decode_request(request).unwrap();
+        let decoded_operation =
+            get_verified_trusted_operation(request).expect("Failed to verify operation.");
 
         match decoded_operation {
             TrustedOperation::direct_call(tcs) => match tcs.call {
@@ -185,7 +186,7 @@ pub mod tests {
         let account_id: AccountId = key_pair.public().into();
 
         let trusted_call = TrustedCall::withdraw(account_id, AssetId::POLKADEX, 14875210, None);
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }
@@ -198,7 +199,7 @@ pub mod tests {
 
         let trusted_call = TrustedCall::withdraw(account_id, AssetId::POLKADEX, 14875210, None);
 
-        let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer);
+        let trusted_call_signed = sign_trusted_call(trusted_call, malicious_signer, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }

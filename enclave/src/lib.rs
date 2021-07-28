@@ -84,6 +84,8 @@ use substratee_worker_primitives::block::{
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
+mod accounts_nonce_storage;
+//pub mod accounts_storage;
 mod aes;
 mod attestation;
 pub mod cert;
@@ -94,8 +96,8 @@ pub mod hex;
 mod io;
 mod ipfs;
 pub mod nonce_handler;
+//pub mod nonce_storage;
 pub mod openfinex;
-mod polkadex;
 mod polkadex_balance_storage;
 pub mod polkadex_cache;
 mod polkadex_gateway;
@@ -107,7 +109,6 @@ mod state;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
 mod test_polkadex_gateway;
-mod test_proxy;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
@@ -408,13 +409,16 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         .latest_finalized_header(validator.num_relays)
         .unwrap();
 
-    if let Err(status) =
-        polkadex::verify_pdex_account_read_proofs(latest_header, polkadex_accounts.clone())
-    {
+    if let Err(status) = accounts_nonce_storage::verify_pdex_account_read_proofs(
+        latest_header,
+        polkadex_accounts.clone(),
+    ) {
         return status;
     }
 
-    if polkadex::create_in_memory_account_storage(polkadex_accounts).is_err() {
+    if accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(polkadex_accounts)
+        .is_err()
+    {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
@@ -996,7 +1000,8 @@ fn handle_ocex_register(
         call,
         main_acc.encode().to_base58(),
     );
-    polkadex::add_main_account(main_acc).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+    accounts_nonce_storage::add_main_account(main_acc)
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_add_proxy(
@@ -1010,7 +1015,8 @@ fn handle_ocex_add_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::add_proxy(main_acc, proxy).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+    accounts_nonce_storage::add_proxy(main_acc, proxy)
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_remove_proxy(
@@ -1024,7 +1030,8 @@ fn handle_ocex_remove_proxy(
         main_acc.encode().to_base58(),
         proxy.encode().to_base58()
     );
-    polkadex::remove_proxy(main_acc, proxy).map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+    accounts_nonce_storage::remove_proxy(main_acc, proxy)
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
 }
 
 fn handle_ocex_deposit(
@@ -1059,7 +1066,7 @@ fn handle_ocex_withdraw(
         amount
     );
 
-    match polkadex::check_if_main_account_registered(main_acc.clone()) {
+    match accounts_nonce_storage::check_if_main_account_registered(main_acc.clone()) {
         // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
         Ok(exists) => {
             if exists {

@@ -103,11 +103,11 @@ pub mod tests {
     use sp_core::Pair;
 
     pub fn test_given_valid_call_return_order_uuid() {
+        let order_uuid = "lkas903jfaj3".encode();
+
         let top_extractor = Box::new(TrustedOperationExtractorMock {
             trusted_operation: Some(create_place_order_operation()),
         });
-
-        let order_uuid = "lkas903jfaj3".encode();
 
         let rpc_gateway = Box::new(RpcGatewayMock::mock_place_order(Some(order_uuid), true));
 
@@ -128,7 +128,7 @@ pub mod tests {
 
         let trusted_call = TrustedCall::place_order(account_id, order, None);
 
-        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair);
+        let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, 0u32);
 
         TrustedOperation::direct_call(trusted_call_signed)
     }

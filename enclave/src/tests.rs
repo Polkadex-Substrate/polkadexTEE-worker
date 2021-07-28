@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage, test_proxy};
 use crate::aes;
 use crate::attestation;
 use crate::ed25519;
@@ -28,7 +29,6 @@ use crate::ss58check;
 use crate::state;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
-use crate::test_proxy;
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -72,8 +72,8 @@ use sp_core::ed25519 as spEd25519;
 use rpc::author::{Author, AuthorApi};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use rpc::{
-    io_handler_extensions, rpc_call_encoder, rpc_cancel_order, rpc_get_balance, rpc_withdraw,
-    trusted_operation_verifier,
+    io_handler_extensions, polkadex_rpc_gateway, rpc_call_encoder, rpc_cancel_order,
+    rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
 };
 
 #[no_mangle]
@@ -190,6 +190,8 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::tests::response_handler_tests::handle_request_response,
 
         // RPC API tests
+        polkadex_rpc_gateway::tests::test_rejecting_outdated_nonce,
+        polkadex_rpc_gateway::tests::test_successful_call_with_nonce,
         rpc_call_encoder::tests::test_encoding_none_params_returns_ok,
         rpc_get_balance::tests::test_given_valid_top_return_balances,
         //rpc_place_order::tests::test_given_valid_call_return_order_uuid, TODO: @Bigna this test case is failing ... I need your help with this
@@ -201,6 +203,33 @@ pub extern "C" fn test_main_entrance() -> size_t {
         trusted_operation_verifier::tests::given_nonsense_text_in_request_then_decode_fails,
         trusted_operation_verifier::tests::given_valid_operation_with_invalid_signature_then_return_error,
         io_handler_extensions::tests::test_given_io_handler_methods_then_retrieve_all_names_as_string,
+
+        // Nonce Storage
+        nonce_storage::tests::create_nonce_storage,
+        nonce_storage::tests::initialize_nonce,
+        nonce_storage::tests::increment_nonce,
+        nonce_storage::tests::remove_nonce,
+
+        // Accounts Storage
+        accounts_storage::tests::create_accounts_storage_from_hashmap,
+        accounts_storage::tests::create_accounts_storage,
+        accounts_storage::tests::adding_main_account,
+        accounts_storage::tests::removing_main_account,
+        accounts_storage::tests::adding_already_registered_accounts,
+        accounts_storage::tests::removing_not_registered_accounts,
+        accounts_storage::tests::adding_proxy_account,
+        accounts_storage::tests::removing_proxy_account,
+
+        // AccountsNonce Storage
+        accounts_nonce_storage::tests::create_and_load_registry,
+        accounts_nonce_storage::tests::create_accounts_nonce_storage,
+        accounts_nonce_storage::tests::register_main_account,
+        accounts_nonce_storage::tests::remove_main_account,
+        accounts_nonce_storage::tests::register_proxy_account,
+        accounts_nonce_storage::tests::remove_proxy_account,
+        accounts_nonce_storage::tests::check_if_main_account_registered,
+        accounts_nonce_storage::tests::check_if_proxy_registered,
+        accounts_nonce_storage::tests::validate_and_increment_nonce,
 
         // Utility
         ss58check::tests::convert_account_id_to_and_from_ss58check,
