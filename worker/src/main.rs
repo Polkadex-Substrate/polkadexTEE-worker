@@ -53,7 +53,6 @@ use crate::enclave::api::{
     enclave_sync_chain,
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
-//use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
 use crate::polkadex_db::{OrderbookMirror, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
