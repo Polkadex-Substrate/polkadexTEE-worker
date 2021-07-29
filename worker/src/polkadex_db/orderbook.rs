@@ -52,7 +52,7 @@ impl OrderbookMirror {
             },
             None => {
                 println!("Key returns None");
-                Err(PolkadexDBError::KeyNotFound)
+                Err(PolkadexDBError::_KeyNotFound)
             }
         }
     }

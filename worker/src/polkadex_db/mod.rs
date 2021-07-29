@@ -29,5 +29,5 @@ pub enum PolkadexDBError {
     /// Failed to deserialize value
     UnableToDeseralizeValue,
     /// Failed to find key in the DB
-    KeyNotFound,
+    _KeyNotFound,
 }
