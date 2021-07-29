@@ -1,109 +1,76 @@
 use std::collections::HashMap;
 
-use crate::constants::{ORDERBOOK_DB_FILE, ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT};
-use std::sync::atomic::{AtomicPtr, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
-
-use codec::Encode;
-use rocksdb::{DBWithThreadMode, Error as RocksDBError, IteratorMode, Options, SingleThreaded, DB};
-
-use polkadex_sgx_primitives::types::SignedOrder;
-
-static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-
 pub struct GeneralDB {
     pub db: HashMap<Vec<u8>, Vec<u8>>,
 }
 
-pub enum PolkadexDBError {
-    UnableToLoadPointer,
-    UnableToRetrieveValue,
-    ErrorWritingToDB,
-    UnableToDeseralizeValue,
-    ErrorDeleteingKey,
+impl GeneralDB {
+    pub fn write(&mut self, key: Vec<u8>, data: Vec<u8>) {
+        self.db.insert(key, data);
+    }
+
+    pub fn _find(&self, k: Vec<u8>) -> Option<&Vec<u8>> {
+        self.db.get(&k)
+    }
+
+    pub fn _delete(&mut self, k: Vec<u8>) {
+        self.db.remove(&k);
+    }
+
+    pub fn read_all(&self) -> Vec<(Vec<u8>, Vec<u8>)> {
+        self.db
+            .clone()
+            .into_iter()
+            .collect::<Vec<(Vec<u8>, Vec<u8>)>>()
+    }
 }
 
-pub trait KVStore {
-    /// Loads the DB from file on disk
-    fn initialize_db();
-    fn load_orderbook_mirror() -> Result<&'static Mutex<GeneralDB>, PolkadexDBError>;
-    fn write(
-        db: &mut MutexGuard<GeneralDB>,
-        order_uid: Vec<u8>,
-        signed_order: &SignedOrder,
-    ) -> Result<(), PolkadexDBError>;
-    fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError>;
-    fn delete(db: &mut MutexGuard<GeneralDB>, k: Vec<u8>) -> Result<(), PolkadexDBError>;
-    fn read_all() -> Result<Vec<SignedOrder>, PolkadexDBError>;
-}
+#[cfg(test)]
+mod tests {
+    use super::GeneralDB;
+    use codec::Encode;
+    use std::collections::HashMap;
 
-impl KVStore for GeneralDB {
-    fn initialize_db() {
-        let storage_ptr = Arc::new(Mutex::<GeneralDB>::new(GeneralDB { db: HashMap::new() }));
-        let ptr = Arc::into_raw(storage_ptr);
-        // FIXME: Do we really need SeqCst here?, RocksDB already takes care of concurrent writes.
-        ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
+    #[test]
+    fn write() {
+        let mut general_db = GeneralDB { db: HashMap::new() };
+        assert_eq!(general_db.db, HashMap::new());
+        general_db.write("key".encode(), "data".encode());
+        assert_eq!(general_db.db.get(&"key".encode()), Some(&"data".encode()));
     }
 
-    fn load_orderbook_mirror() -> Result<&'static Mutex<GeneralDB>, PolkadexDBError> {
-        let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<GeneralDB>;
-        if ptr.is_null() {
-            println!("Unable to load the pointer");
-            Err(PolkadexDBError::UnableToLoadPointer)
-        } else {
-            Ok(unsafe { &*ptr })
-        }
-    }
-    fn write(
-        db: &mut MutexGuard<GeneralDB>,
-        order_uid: Vec<u8>,
-        signed_order: &SignedOrder,
-    ) -> Result<(), PolkadexDBError> {
-        db.db.insert(order_uid, signed_order.encode());
-        Ok(())
+    #[test]
+    fn find() {
+        let mut general_db = GeneralDB { db: HashMap::new() };
+        general_db.db.insert("key".encode(), "data".encode());
+        assert_eq!(general_db._find("key".encode()), Some(&"data".encode()));
+        assert_eq!(general_db._find("key1".encode()), None);
     }
 
-    fn find(k: Vec<u8>) -> Result<Option<SignedOrder>, PolkadexDBError> {
-        let mutex = GeneralDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<GeneralDB> = mutex.lock().unwrap();
-        println!("Searching for Key");
-        match orderbook_mirror.db.get(&k) {
-            Some(v) => match SignedOrder::from_vec(&v) {
-                Ok(order) => {
-                    println!("Found Key");
-                    Ok(Some(order))
-                }
-                Err(_) => {
-                    println!("Unable to Deserialize ");
-                    Err(PolkadexDBError::UnableToDeseralizeValue)
-                }
+    #[test]
+    fn delete() {
+        let mut general_db = GeneralDB { db: HashMap::new() };
+        general_db.db.insert("key".encode(), "data".encode());
+        assert_eq!(general_db.db.contains_key(&"key".encode()), true);
+        general_db._delete("key".encode());
+        assert_eq!(general_db.db.contains_key(&"key".encode()), false);
+    }
+
+    #[test]
+    fn read_all() {
+        let mut general_db = GeneralDB { db: HashMap::new() };
+        general_db.db.insert("key".encode(), "data".encode());
+        general_db.db.insert("key1".encode(), "data1".encode());
+        assert_eq!(
+            {
+                let mut read_all = general_db.read_all();
+                read_all.sort();
+                read_all
             },
-            None => {
-                println!("Key returns None");
-                Ok(None)
-            }
-        }
-    }
-
-    fn delete(db: &mut MutexGuard<GeneralDB>, k: Vec<u8>) -> Result<(), PolkadexDBError> {
-        db.db.remove(&k);
-        Ok(())
-    }
-
-    fn read_all() -> Result<Vec<SignedOrder>, PolkadexDBError> {
-        let mutex = GeneralDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<GeneralDB> = mutex.lock().unwrap();
-        let iterator = orderbook_mirror.db.iter();
-        let mut orders: Vec<SignedOrder> = vec![];
-        for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
-            match SignedOrder::from_vec(&*value) {
-                Ok(order) => orders.push(order),
-                Err(_) => {
-                    println!("Unable to deserialize ");
-                    return Err(PolkadexDBError::UnableToDeseralizeValue);
-                }
-            }
-        }
-        Ok(orders)
+            vec![
+                ("key".encode(), "data".encode()),
+                ("key1".encode(), "data1".encode())
+            ]
+        );
     }
 }

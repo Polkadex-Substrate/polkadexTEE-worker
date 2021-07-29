@@ -54,7 +54,7 @@ use crate::enclave::api::{
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
 //use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
-use crate::polkadex_db::{GeneralDB, KVStore, PolkadexDBError};
+use crate::polkadex_db::{OrderbookMirror, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
@@ -70,8 +70,9 @@ mod ipfs;
 mod polkadex;
 mod polkadex_db;
 mod tests;
-//#[cfg(test)]
-//mod tests_polkadex_DB;
+
+#[cfg(test)]
+mod tests_orderbook_mirror;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -559,10 +560,16 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Initializing Polkadex Orderbook Mirror");
 
-    GeneralDB::initialize_db();
+    polkadex_db::orderbook::initialize_orderbook();
 
     info!("Loading Orders from Orderbook Storage");
-    let signed_orders = GeneralDB::read_all().ok().unwrap();
+    let signed_orders = polkadex_db::orderbook::load_orderbook()
+        .unwrap() // TODO: Replace unwrap
+        .lock()
+        .unwrap()
+        .read_all()
+        .ok()
+        .unwrap();
 
     enclave_load_orders_to_memory(eid, signed_orders).unwrap();
 
@@ -822,9 +829,10 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     // TODO: Do we need error handling here?
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = GeneralDB::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<GeneralDB> = mutex.lock().unwrap();
-        GeneralDB::write(&mut orderbook_mirror, order_id, &signed_order)
+        let mutex = polkadex_db::orderbook::load_orderbook()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        orderbook_mirror.write(order_id, &signed_order);
+        Ok(())
     });
     status
 }
