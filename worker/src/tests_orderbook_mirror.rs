@@ -18,17 +18,19 @@
 
 use std::{thread, time};
 
-use polkadex_sgx_primitives::types::{Order, OrderSide, OrderType, SignedOrder, MarketId};
-use polkadex_sgx_primitives::accounts::get_account;
-use crate::polkadex_db::{KVStore, PolkadexDBError, RocksDB};
+use crate::polkadex_db::{
+    orderbook::initialize_orderbook, orderbook::load_orderbook, OrderbookMirror, PolkadexDBError,
+};
+use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
+use polkadex_sgx_primitives::AssetId;
 use sp_core::ed25519::Signature;
 use std::sync::MutexGuard;
-use polkadex_sgx_primitives::AssetId;
+use substratee_worker_primitives::get_account;
 
 #[test]
 fn test_db_initialization() {
-    assert!(RocksDB::initialize_db(true).is_ok());
-    assert!(RocksDB::load_orderbook_mirror().is_ok());
+    initialize_orderbook();
+    assert!(load_orderbook().is_ok());
 }
 
 #[test]
@@ -39,9 +41,9 @@ fn test_write_and_delete() {
         order_id: "FIRST_ORDER".to_string().into_bytes(),
         order: Order {
             user_uid: get_account("FOO"),
-            market_id: MarketId{
+            market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT
+                quote: AssetId::DOT,
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -54,40 +56,54 @@ fn test_write_and_delete() {
     let first_order_clone = first_order.clone();
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = RocksDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::write(
-            &orderbook_mirror,
-            "FIRST_ORDER".to_string().into_bytes(),
-            &first_order,
-        )
+        let mutex = load_orderbook()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        Ok(orderbook_mirror.write("FIRST_ORDER".to_string().into_bytes(), &first_order))
     });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
-    let order_read = RocksDB::find("FIRST_ORDER".to_string().into_bytes())
-        .unwrap_or(Some(SignedOrder::default()));
+    let handler = thread::spawn(move || -> Result<SignedOrder, PolkadexDBError> {
+        let mutex = load_orderbook()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        Ok(orderbook_mirror
+            ._find("FIRST_ORDER".to_string().into_bytes())
+            .unwrap_or(SignedOrder::default()))
+    });
 
-    assert!(order_read.is_some());
-    assert_eq!(order_read.unwrap(), first_order_clone);
+    let order_read = handler.join().unwrap().unwrap();
 
-    let second_result = RocksDB::find("SECOND_ORDER".to_string().into_bytes());
-    assert!(second_result.is_ok());
-    assert!(second_result.ok().unwrap().is_none());
+    assert_eq!(order_read, first_order_clone);
+
+    let handler = thread::spawn(move || -> Result<SignedOrder, PolkadexDBError> {
+        let mutex = load_orderbook()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        orderbook_mirror._find("SECOND_ORDER".to_string().into_bytes())
+    });
+
+    let second_result = handler.join().unwrap();
+
+    assert!(second_result.is_err());
 
     let delete_handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = RocksDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::delete(&orderbook_mirror, "FIRST_ORDER".to_string().into_bytes())
+        let mutex = load_orderbook()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        Ok(orderbook_mirror._delete("FIRST_ORDER".to_string().into_bytes()))
     });
 
     let result = delete_handler.join().unwrap();
     assert!(result.is_ok());
 
-    let second_result = RocksDB::find("FIRST_ORDER".to_string().into_bytes());
-    assert!(second_result.is_ok());
-    assert!(second_result.ok().unwrap().is_none());
+    let handler = thread::spawn(move || -> Result<SignedOrder, PolkadexDBError> {
+        let mutex = load_orderbook()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        orderbook_mirror._find("FIRST_ORDER".to_string().into_bytes())
+    });
+
+    let second_result = handler.join().unwrap();
+
+    assert!(second_result.is_err());
 }
 
 #[test]
@@ -98,9 +114,9 @@ fn test_read_all() {
         order_id: "FIRST_ORDER1".to_string().into_bytes(),
         order: Order {
             user_uid: get_account("FOO"),
-            market_id: MarketId{
+            market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT
+                quote: AssetId::DOT,
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -114,9 +130,9 @@ fn test_read_all() {
         order_id: "SECOND_ORDER1".to_string().into_bytes(),
         order: Order {
             user_uid: get_account("FOO"),
-            market_id: MarketId{
+            market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT
+                quote: AssetId::DOT,
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -129,10 +145,10 @@ fn test_read_all() {
     let third_order = SignedOrder {
         order_id: "THIRD_ORDER".to_string().into_bytes(),
         order: Order {
-            user_uid:get_account("FOO"),
-            market_id: MarketId{
+            user_uid: get_account("FOO"),
+            market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT
+                quote: AssetId::DOT,
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -147,32 +163,30 @@ fn test_read_all() {
     let second_order_clone = second_order.clone();
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = RocksDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::write(
-            &orderbook_mirror,
-            "FIRST_ORDER1".to_string().into_bytes(),
-            &first_order,
-        )
+        let mutex = load_orderbook()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        Ok(orderbook_mirror.write("FIRST_ORDER1".to_string().into_bytes(), &first_order))
     });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = RocksDB::load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<RocksDB> = mutex.lock().unwrap();
-        RocksDB::write(
-            &orderbook_mirror,
-            "SECOND_ORDER1".to_string().into_bytes(),
-            &second_order,
-        )
+        let mutex = load_orderbook()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        Ok(orderbook_mirror.write("SECOND_ORDER1".to_string().into_bytes(), &second_order))
     });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
-    let orders = RocksDB::read_all().ok().unwrap();
+    let handler = thread::spawn(move || -> Result<Vec<SignedOrder>, PolkadexDBError> {
+        let mutex = load_orderbook()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        orderbook_mirror.read_all()
+    });
+
+    let orders = handler.join().unwrap().unwrap();
     assert!(orders.contains(&first_order_clone));
     assert!(orders.contains(&second_order_clone));
     assert!(!orders.contains(&third_order));
