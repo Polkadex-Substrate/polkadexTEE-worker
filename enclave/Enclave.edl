@@ -1,17 +1,18 @@
 /*
-	Copyright 2019 Supercomputing Systems AG
+	This file is part of Polkadex.
+    Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
 
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
-
-		http://www.apache.org/licenses/LICENSE-2.0
-
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+    SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
 enclave {
@@ -26,6 +27,7 @@ enclave {
 	from "sgx_time.edl" import *;
 	from "sgx_env.edl" import *;
 	from "sgx_thread.edl" import *;
+	from "sgx_pipe.edl" import *;
 
 	include "sgx_quote.h"
 
@@ -46,7 +48,15 @@ enclave {
             [out, size=latest_header_size] uint8_t* latest_header, size_t latest_header_size
         );
 
-        public sgx_status_t produce_blocks(
+        public sgx_status_t accept_pdex_accounts(
+            [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size
+        );
+
+        public sgx_status_t load_orders_to_memory(
+            [in ,size=orders_size] uint8_t* orders, size_t orders_size
+        );
+
+        public sgx_status_t sync_chain(
             [in, size=blocks_size] uint8_t* blocks, size_t blocks_size,
             [in] uint32_t* nonce
         );
@@ -80,9 +90,17 @@ enclave {
 		);
 
 		public size_t test_main_entrance();
+
+		public size_t tcp_client_new(int fd, [in, size=finex_uri_size] uint8_t* finex_uri, size_t finex_uri_size);
+        public int tcp_client_read(size_t session_id);
+        public int tcp_client_write(size_t session_id);
+        public void tcp_client_close(size_t session_id);
+		public int tcp_client_wants_read(size_t session_id);
+        public int tcp_client_wants_write(size_t session_id);
 	};
 
 	untrusted {
+	    sgx_status_t ocall_write_order_to_db([out, size = order_size] uint8_t * order, uint32_t order_size);
 		sgx_status_t ocall_sgx_init_quote(
 			[out] sgx_target_info_t *ret_ti,
 			[out] sgx_epid_group_id_t *ret_gid
@@ -121,6 +139,10 @@ enclave {
 		sgx_status_t ocall_send_block_and_confirmation(
 	        [in, size = confirmations_size] uint8_t * confirmations, uint32_t confirmations_size,
 	        [in, size = signed_blocks_size] uint8_t * signed_blocks, uint32_t signed_blocks_size
+	    );
+
+	    sgx_status_t ocall_send_release_extrinsic(
+	        [in, size = extrinsic_size] uint8_t * extrinsic, uint32_t extrinsic_size
 	    );
 
 		sgx_status_t ocall_update_status_event(

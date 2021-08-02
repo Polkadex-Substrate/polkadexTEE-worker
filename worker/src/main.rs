@@ -1,19 +1,20 @@
-/*
-    Copyright 2019 Supercomputing Systems AG
+// This file is part of Polkadex.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+// Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
-        http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 
-*/
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
 use std::fs::{self, File};
 use std::io::stdin;
 use std::io::Write;
@@ -22,11 +23,10 @@ use std::slice;
 use std::str;
 use std::sync::{
     mpsc::{channel, Sender},
-    Mutex,
+    Mutex, MutexGuard,
 };
 use std::thread;
-
-use sgx_types::*;
+use std::time::Duration;
 
 use base58::{FromBase58, ToBase58};
 use clap::{load_yaml, App};
@@ -34,39 +34,48 @@ use codec::{Decode, Encode};
 use lazy_static::lazy_static;
 use log::*;
 use my_node_runtime::{
-    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock, UncheckedExtrinsic,
+    pallet_substratee_registry::ShardIdentifier, Event, Hash, Header, SignedBlock,
+    UncheckedExtrinsic,
 };
+use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
     sr25519,
     storage::StorageKey,
     Pair,
 };
+use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
 use sp_keyring::AccountKeyring;
 use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
 
-use crate::enclave::api::{enclave_init_chain_relay, enclave_produce_blocks};
+use crate::enclave::api::{
+    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory,
+    enclave_sync_chain,
+};
+use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
+use crate::polkadex_db::{OrderbookMirror, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
 };
 use enclave::tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server};
 use enclave::worker_api_direct_server::start_worker_api_direct_server;
-use sp_finality_grandpa::{AuthorityList, VersionedAuthorityList, GRANDPA_AUTHORITIES_KEY};
-use std::time::{Duration, SystemTime};
-
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::{OpenFinexUri, PolkadexAccount};
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
-
 mod constants;
 mod enclave;
 mod ipfs;
+mod polkadex;
+mod polkadex_db;
 mod tests;
+
+#[cfg(test)]
+mod tests_orderbook_mirror;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// start block production every ... ms
-const BLOCK_PRODUCTION_INTERVAL: u64 = 1000;
 
 fn main() {
     // Setup logging
@@ -89,6 +98,12 @@ fn main() {
     let mu_ra_port = matches.value_of("mu-ra-port").unwrap_or("3443");
 
     let worker_rpc_port = matches.value_of("worker-rpc-port").unwrap_or("2000");
+
+    let finex_ip = matches.value_of("openfinex-server").unwrap_or("127.0.0.1");
+    let finex_port_path = matches
+        .value_of("openfinex-port")
+        .unwrap_or("8001/api/v2/ws");
+    let finex_uri = OpenFinexUri::new(finex_ip, finex_port_path);
 
     if let Some(smatches) = matches.subcommand_matches("run") {
         println!("*** Starting substraTEE-worker");
@@ -120,6 +135,7 @@ fn main() {
         worker(
             w_ip,
             mu_ra_port,
+            finex_uri,
             &shard,
             &ext_api_url,
             worker_rpc_port,
@@ -206,6 +222,7 @@ fn main() {
         return;
     }
     if let Some(_matches) = matches.subcommand_matches("init-shard") {
+        info!("*** Initializing shard");
         match _matches.values_of("shard") {
             Some(values) => {
                 for shard in values {
@@ -218,6 +235,7 @@ fn main() {
                 }
             }
             _ => {
+                info!("No shard identifier was provided, using MRENCLAVE ID");
                 let enclave = enclave_init().unwrap();
                 let shard =
                     ShardIdentifier::from_slice(&enclave_mrenclave(enclave.geteid()).unwrap());
@@ -257,6 +275,7 @@ fn main() {
 fn worker(
     w_ip: &str,
     mu_ra_port: &str,
+    finex_uri: OpenFinexUri,
     shard: &ShardIdentifier,
     ext_api_url: &str,
     worker_rpc_port: &str,
@@ -291,6 +310,16 @@ fn worker(
     });
 
     // ------------------------------------------------------------------------
+    // start open finex client
+    println!(
+        "OpenFinex Client listening on ws://{}:{}:{}",
+        finex_uri.ip(),
+        finex_uri.port(),
+        finex_uri.path()
+    );
+    thread::spawn(move || enclave_run_openfinex_client(eid, finex_uri));
+
+    // ------------------------------------------------------------------------
     // start worker api direct invocation server
     println!(
         "rpc worker server listening on ws://{}:{}",
@@ -308,7 +337,6 @@ fn worker(
 
     let tee_accountid = enclave_account(eid);
     ensure_account_has_funds(&mut api, &tee_accountid);
-
     // ------------------------------------------------------------------------
     // perform a remote attestation and get an unchecked extrinsic back
 
@@ -331,20 +359,12 @@ fn worker(
 
         // send the extrinsic and wait for confirmation
         println!("[>] Register the enclave (send the extrinsic)");
-        let tx_hash = api.send_extrinsic(_xthex, XtStatus::InBlock).unwrap();
+        let tx_hash = api.send_extrinsic(_xthex, XtStatus::Finalized).unwrap();
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
-    let latest_head = init_chain_relay(eid, &api);
+    let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
-
-    // ------------------------------------------------------------------------
-    // start interval block production
-    let api4 = api.clone();
-    thread::Builder::new()
-        .name("interval_block_production_timer".to_owned())
-        .spawn(move || start_interval_block_production(eid, &api4, latest_head))
-        .unwrap();
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
@@ -359,7 +379,7 @@ fn worker(
         })
         .unwrap();
 
-    let api3 = api;
+    let api3 = api.clone();
     let sender3 = sender.clone();
     let _block_subscriber = thread::Builder::new()
         .name("block_subscriber".to_owned())
@@ -372,29 +392,8 @@ fn worker(
         if let Ok(msg) = receiver.recv_timeout(timeout) {
             if let Ok(events) = parse_events(msg.clone()) {
                 print_events(events, sender.clone())
-            }
-        }
-    }
-}
-
-/// Triggers the enclave to produce a block based on a fixed time schedule
-fn start_interval_block_production(
-    eid: sgx_enclave_id_t,
-    api: &Api<sr25519::Pair>,
-    mut latest_head: Header,
-) {
-    let block_production_interval = Duration::from_millis(BLOCK_PRODUCTION_INTERVAL);
-    let mut interval_start = SystemTime::now();
-    loop {
-        if let Ok(elapsed) = interval_start.elapsed() {
-            if elapsed >= block_production_interval {
-                // update interval time
-                interval_start = SystemTime::now();
-                latest_head = produce_blocks(eid, api, latest_head)
-            } else {
-                // sleep for the rest of the interval
-                let sleep_time = block_production_interval - elapsed;
-                thread::sleep(sleep_time);
+            } else if let Ok(_header) = parse_header(msg.clone()) {
+                latest_head = sync_chain(eid, &api, latest_head);
             }
         }
     }
@@ -432,6 +431,10 @@ fn parse_events(event: String) -> Result<Events, String> {
     let _unhex = Vec::from_hex(event).map_err(|_| "Decoding Events Failed".to_string())?;
     let mut _er_enc = _unhex.as_slice();
     Events::decode(&mut _er_enc).map_err(|_| "Decoding Events Failed".to_string())
+}
+
+fn parse_header(header: String) -> Result<Header, String> {
+    serde_json::from_str(&header).map_err(|_| "Decoding Header Failed".to_string())
 }
 
 fn print_events(events: Events, _sender: Sender<String>) {
@@ -480,6 +483,8 @@ fn print_events(events: Events, _sender: Sender<String>) {
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
+
+                    //FIXME: BlockConfirmed still necessary for Polkadex?
                     my_node_runtime::pallet_substratee_registry::RawEvent::BlockConfirmed(
                         sender,
                         payload,
@@ -546,13 +551,35 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finished initializing chain relay, syncing....");
 
-    produce_blocks(eid, api, latest)
+    let polkadex_accounts: Vec<PolkadexAccount> = polkadex::get_main_accounts(latest.clone(), api);
+
+    enclave_accept_pdex_accounts(eid, polkadex_accounts).unwrap();
+
+    info!("Finishing retrieving Polkadex Accounts, ...");
+
+    info!("Initializing Polkadex Orderbook Mirror");
+
+    polkadex_db::orderbook::initialize_orderbook();
+
+    info!("Loading Orders from Orderbook Storage");
+    let signed_orders = polkadex_db::orderbook::load_orderbook()
+        .unwrap() // TODO: Replace unwrap
+        .lock()
+        .unwrap()
+        .read_all()
+        .ok()
+        .unwrap();
+
+    enclave_load_orders_to_memory(eid, signed_orders).unwrap();
+
+    info!("Finished loading Orderbook Storage ...");
+    sync_chain(eid, api, latest)
 }
 
 /// Starts block production
 ///
 /// Returns the last synced header of layer one
-pub fn produce_blocks(
+pub fn sync_chain(
     eid: sgx_enclave_id_t,
     api: &Api<sr25519::Pair>,
     last_synced_head: Header,
@@ -566,59 +593,58 @@ pub fn produce_blocks(
         .unwrap()
         .unwrap();
 
-    let mut blocks_to_sync = Vec::<SignedBlock>::new();
-
-    // add blocks to sync if not already up to date
-    if curr_head.block.header.hash() != last_synced_head.hash() {
-        blocks_to_sync.push(curr_head.clone());
-
-        // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
-        let mut head = curr_head.clone();
-        let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
-        if no_blocks_to_sync > 1 {
-            println!(
-                "Chain Relay is synced until block: {:?}",
-                last_synced_head.number
-            );
-            println!(
-                "Last finalized block number: {:?}\n",
-                head.block.header.number
-            );
-        }
-        while head.block.header.parent_hash != last_synced_head.hash() {
-            debug!("Getting head of hash: {:?}", head.block.header.parent_hash);
-            head = api
-                .get_signed_block(Some(head.block.header.parent_hash))
-                .unwrap()
-                .unwrap();
-            blocks_to_sync.push(head.clone());
-
-            if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
-                println!(
-                    "Remaining blocks to fetch until last synced header: {:?}",
-                    head.block.header.number - last_synced_head.number
-                )
-            }
-        }
-        blocks_to_sync.reverse();
+    if curr_head.block.header.hash() == last_synced_head.hash() {
+        // we are already up to date, do nothing
+        return curr_head.block.header;
     }
+
+    let mut blocks_to_sync = vec![curr_head.clone()];
+
+    // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
+    let mut head = curr_head.clone();
+
+    let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
+    if no_blocks_to_sync > 1 {
+        println!(
+            "Chain Relay is synced until block: {:?}",
+            last_synced_head.number
+        );
+        println!(
+            "Last finalized block number: {:?}\n",
+            head.block.header.number
+        );
+    }
+
+    while head.block.header.parent_hash != last_synced_head.hash() {
+        head = api
+            .get_signed_block(Some(head.block.header.parent_hash))
+            .unwrap()
+            .unwrap();
+        blocks_to_sync.push(head.clone());
+
+        if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
+            println!(
+                "Remaining blocks to fetch until last synced header: {:?}",
+                head.block.header.number - last_synced_head.number
+            )
+        }
+    }
+    blocks_to_sync.reverse();
 
     let tee_accountid = enclave_account(eid);
 
     // only feed BLOCK_SYNC_BATCH_SIZE blocks at a time into the enclave to save enclave state regularly
-    let mut i = if curr_head.block.header.hash() == last_synced_head.hash() {
-        curr_head.block.header.number as usize
-    } else {
-        blocks_to_sync[0].block.header.number as usize
-    };
+    let mut i = blocks_to_sync[0].block.header.number as usize;
     for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
         let tee_nonce = get_nonce(&api, &tee_accountid);
-        // Produce blocks
-        if let Err(e) = enclave_produce_blocks(eid, chunk.to_vec(), tee_nonce) {
+
+        // sync enclave with chain
+        if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
             error!("{}", e);
             // enclave might not have synced
             return last_synced_head;
         };
+
         i += chunk.len();
         println!(
             "Synced {} blocks out of {} finalized blocks",
@@ -658,7 +684,7 @@ fn init_shard(shard: &ShardIdentifier) {
 // get the public signing key of the TEE
 fn enclave_account(eid: sgx_enclave_id_t) -> AccountId32 {
     let tee_public = enclave_signing_key(eid).unwrap();
-    trace!(
+    debug!(
         "[+] Got ed25519 account of TEE = {}",
         tee_public.to_ss58check()
     );
@@ -681,14 +707,16 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair>, accountid: &AccountId3
     let free = get_balance(&api, &accountid);
     info!("TEE's free balance = {:?}", free);
 
-    if free < 1_000_000_000_000 {
+    if free < 100_000_000_000_000_000_000 {
         let signer_orig = api.signer.clone();
         api.signer = Some(alice);
-
         println!("[+] bootstrap funding Enclave form Alice's funds");
-        let xt = api.balance_transfer(GenericAddress::Id(accountid.clone()), 1_000_000_000_000);
+        let xt = api.balance_transfer(
+            GenericAddress::Id(accountid.clone()),
+            100_000_000_000_000_000_000,
+        );
         let xt_hash = api
-            .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
+            .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
             .unwrap();
         info!("[<] Extrinsic got finalized. Hash: {:?}\n", xt_hash);
 
@@ -778,6 +806,65 @@ pub unsafe extern "C" fn ocall_worker_request(
 ///
 /// FFI are always unsafe
 #[no_mangle]
+pub unsafe extern "C" fn ocall_write_order_to_db(
+    order: *const u8,
+    order_size: u32,
+) -> sgx_status_t {
+    debug!("    Entering ocall_write_order_to_db");
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let mut order_slice = slice::from_raw_parts(order, order_size as usize);
+
+    let signed_order: SignedOrder = match Decode::decode(&mut order_slice) {
+        Ok(order) => order,
+        Err(_) => {
+            error!("Could not decode SignedOrder");
+            status = sgx_status_t::SGX_ERROR_UNEXPECTED;
+            SignedOrder::default()
+        }
+    };
+    if status == sgx_status_t::SGX_ERROR_UNEXPECTED {
+        return status;
+    }
+    // TODO: Do we need error handling here?
+    let order_id = signed_order.order_id.clone();
+    thread::spawn(move || -> Result<(), PolkadexDBError> {
+        let mutex = polkadex_db::orderbook::load_orderbook()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        orderbook_mirror.write(order_id, &signed_order);
+        Ok(())
+    });
+    status
+}
+
+/// # Safety
+///
+/// FFI are always unsafe
+#[no_mangle]
+pub unsafe extern "C" fn ocall_send_release_extrinsic(
+    extrinsic: *const u8,
+    extrinsic_size: u32,
+) -> sgx_status_t {
+    debug!("Entering ocall_send_release_extrinsic");
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let mut extrinsic_slice = slice::from_raw_parts(extrinsic, extrinsic_size as usize);
+    let api = Api::<sr25519::Pair>::new(NODE_URL.lock().unwrap().clone()).unwrap();
+    let release_extrinsic_calls: Vec<u8> = match Decode::decode(&mut extrinsic_slice) {
+        Ok(calls) => calls,
+        Err(_) => {
+            error!("Could not decode release calls");
+            status = sgx_status_t::SGX_ERROR_UNEXPECTED;
+            vec![]
+        }
+    };
+    api.send_extrinsic(hex_encode(release_extrinsic_calls), XtStatus::Ready)
+        .unwrap();
+    status
+}
+
+/// # Safety
+///
+/// FFI are always unsafe
+#[no_mangle]
 pub unsafe extern "C" fn ocall_send_block_and_confirmation(
     confirmations: *const u8,
     confirmations_size: u32,
@@ -798,7 +885,7 @@ pub unsafe extern "C" fn ocall_send_block_and_confirmation(
         Err(_) => {
             error!("Could not decode confirmation calls");
             status = sgx_status_t::SGX_ERROR_UNEXPECTED;
-            vec![vec![]]
+            vec![]
         }
     };
 
@@ -820,7 +907,7 @@ pub unsafe extern "C" fn ocall_send_block_and_confirmation(
     }
 
     // handle blocks
-    let signed_blocks: Vec<SignedSidechainBlock> = match Decode::decode(&mut signed_blocks_slice) {
+    let _signed_blocks: Vec<SignedSidechainBlock> = match Decode::decode(&mut signed_blocks_slice) {
         Ok(blocks) => blocks,
         Err(_) => {
             error!("Could not decode confirmation calls");
@@ -828,7 +915,7 @@ pub unsafe extern "C" fn ocall_send_block_and_confirmation(
             vec![]
         }
     };
-    println! {"Received blocks: {:?}", signed_blocks};
+    //println! {"Received blocks: {:?}", signed_blocks};
     // TODO: M8.3: Store blocks
     // TODO: M8.3: broadcast blocks
     status

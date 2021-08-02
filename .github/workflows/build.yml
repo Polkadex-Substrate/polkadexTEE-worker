@@ -1,0 +1,64 @@
+#  This file is part of Polkadex.
+#  Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
+#  SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU General Public License
+#  along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+name: PolkadexTEE Worker
+
+on:
+  push:
+    branches: [ 'master','develop' ]
+  pull_request:
+    branches: [ 'master','develop' ]
+
+jobs:
+  build-polkadexTEE:
+    runs-on: self-hosted
+    container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust and WASM Environment
+        run: ./ci/install_rust.sh
+      - name: Information
+        run: cargo --version && rustup show && env
+      - name: Build Project
+        run: SGX_MODE=SW make
+      - name: Test Client
+        run: cd client && cargo test
+      - name: Test Worker
+        run: cd worker && cargo test
+      - name: Test STF
+        run: cd stf && cargo test
+      - name: Test Enclave
+        run: cd bin && ./substratee-worker test --unit
+  clippy:
+    runs-on: self-hosted
+    container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust and WASM Environment
+        run: ./ci/install_rust.sh
+      - name: Clippy Worker & Client & stf
+        run: cargo clippy -- -D warnings
+      - name: Clippy Enclave
+        run: cd enclave  && cargo clippy -- -D warnings
+  fmt:
+    runs-on: self-hosted
+    container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust and WASM Environment
+        run: ./ci/install_rust.sh
+      - name: Worker, Client & Stf
+        run: cargo fmt --all -- --check
+      - name: Enclave
+        run: cd enclave && cargo fmt --all -- --check

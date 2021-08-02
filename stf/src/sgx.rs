@@ -200,7 +200,7 @@ impl Stf {
     ) -> Result<(), StfError> {
         let call_hash = blake2_256(&call.encode());
         ext.execute_with(|| {
-            let sender = call.call.account().clone();
+            let sender = call.call.signer().clone();
             validate_nonce(&sender, call.nonce)?;
             match call.call {
                 TrustedCall::balance_set_balance(root, who, free_balance, reserved_balance) => {
@@ -265,6 +265,9 @@ impl Stf {
                     Self::shield_funds(who, value)?;
                     Ok(())
                 }
+
+                // default, other trusted calls have no implementation here
+                _ => Ok(()),
             }?;
             increment_nonce(&sender);
             Ok(())
@@ -323,6 +326,10 @@ impl Stf {
                     } else {
                         None
                     }
+                }
+                TrustedGetter::get_balance(_signer, _currency, _option) => {
+                    // TODO call implementation
+                    None
                 }
             },
             Getter::public(g) => match g {
@@ -386,6 +393,9 @@ impl Stf {
             TrustedCall::balance_transfer(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::balance_unshield(_, _, _, _) => debug!("No storage updates needed..."),
             TrustedCall::balance_shield(_, _) => debug!("No storage updates needed..."),
+            TrustedCall::place_order(_, _, _) => debug!("No storage updates needed..."),
+            TrustedCall::cancel_order(_, _, _) => debug!("No storage updates needed..."),
+            TrustedCall::withdraw(_, _, _, _) => debug!("No storage updates needed..."),
         };
         key_hashes
     }

@@ -1,19 +1,21 @@
-/*
-    Copyright 2019 Supercomputing Systems AG
+// This file is part of Polkadex.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+// Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
-        http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 
-*/
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 #![feature(structural_match)]
 #![feature(rustc_attrs)]
 #![feature(core_intrinsics)]
@@ -24,80 +26,93 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 #![allow(clippy::missing_safety_doc)]
 
-use log::*;
-
 #[cfg(not(target_env = "sgx"))]
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use base58::ToBase58;
-
-use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
-
-use substrate_api_client::compose_extrinsic_offline;
-use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
-use substratee_worker_primitives::block::{
-    Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
+use crate::constants::{
+    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
-use substratee_worker_primitives::BlockHash;
-
-use codec::{Decode, Encode};
-use sp_core::{blake2_256, crypto::Pair, H256};
-use sp_finality_grandpa::VersionedAuthorityList;
-
-use constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, RUNTIME_SPEC_VERSION,
-    RUNTIME_TRANSACTION_VERSION, SUBSRATEE_REGISTRY_MODULE,
-};
-
-use std::slice;
-use std::vec::Vec;
-
-use core::ops::Deref;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::{SgxMutex, SgxMutexGuard};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::untrusted::time::SystemTimeEx;
-use utils::write_slice_and_whitespace_pad;
-
-use crate::constants::{CALL_WORKER, SHIELD_FUNDS};
+use crate::nonce_handler::NonceHandler;
 use crate::utils::UnwrapOrSgxErrorUnexpected;
+use base58::ToBase58;
 use chain_relay::{
     storage_proof::{StorageProof, StorageProofChecker},
     Block, Header, LightValidation,
 };
+use codec::{Decode, Encode};
+use constants::{
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_REGISTER,
+    OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    SUBSRATEE_REGISTRY_MODULE,
+};
+use core::ops::Deref;
+use log::*;
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::{AssetId, PolkadexAccount};
+use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
+use rpc::worker_api_direct;
+use rpc::{api::SideChainApi, basic_pool::BasicPool};
+use sgx_externalities::SgxExternalitiesTypeTrait;
+use sgx_tstd::boxed::Box;
+use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
+use sp_core::{blake2_256, crypto::Pair, H256};
+use sp_finality_grandpa::VersionedAuthorityList;
 use sp_runtime::OpaqueExtrinsic;
 use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT};
+use std::collections::HashMap;
+use std::slice;
+use std::sync::Arc;
+use std::sync::{SgxMutex, SgxMutexGuard};
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::untrusted::time::SystemTimeEx;
+use std::vec::Vec;
+use substrate_api_client::compose_extrinsic_offline;
 use substrate_api_client::extrinsic::xt_primitives::UncheckedExtrinsicV4;
-
-use sgx_externalities::SgxExternalitiesTypeTrait;
+use substratee_node_primitives::{
+    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn, OCEXWithdrawFn,
+    ShieldFundsFn,
+};
 use substratee_stf::sgx::{shards_key_hash, storage_hashes_to_update_per_shard, OpaqueCall};
 use substratee_stf::State as StfState;
 use substratee_stf::{
     AccountId, Getter, ShardIdentifier, Stf, TrustedCall, TrustedCallSigned, TrustedGetterSigned,
 };
+use substratee_worker_primitives::block::{
+    Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
+};
+use substratee_worker_primitives::BlockHash;
+use utils::write_slice_and_whitespace_pad;
 
-use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
-use rpc::worker_api_direct;
-use rpc::{api::SideChainApi, basic_pool::BasicPool};
-
+mod accounts_nonce_storage;
+//pub mod accounts_storage;
 mod aes;
 mod attestation;
+pub mod cert;
 mod constants;
 mod ed25519;
+mod happy_path;
+pub mod hex;
 mod io;
 mod ipfs;
-mod rsa3072;
-mod state;
-mod utils;
-
-pub mod cert;
-pub mod hex;
+pub mod nonce_handler;
+//pub mod nonce_storage;
+pub mod openfinex;
+mod polkadex_balance_storage;
+pub mod polkadex_cache;
+mod polkadex_gateway;
+mod polkadex_orderbook_storage;
 pub mod rpc;
+mod rsa3072;
+mod ss58check;
+mod state;
+mod test_orderbook_storage;
+mod test_polkadex_balance_storage;
+mod test_polkadex_gateway;
 pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
+mod utils;
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 
@@ -197,11 +212,15 @@ pub unsafe extern "C" fn get_ecc_signing_pubkey(pubkey: *mut u8, pubkey_size: u3
 fn create_extrinsics(
     validator: LightValidation,
     calls_buffer: Vec<OpaqueCall>,
-    mut nonce: u32,
+    mut _nonce: u32,
 ) -> SgxResult<Vec<Vec<u8>>> {
     // get information for composing the extrinsic
     let signer = ed25519::unseal_pair()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
+
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let mut nonce = nonce_storage.nonce;
 
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
@@ -221,6 +240,10 @@ fn create_extrinsics(
             xt
         })
         .collect();
+
+    // update nonce storage
+    debug!("Update to new new nonce: {:?}", nonce);
+    nonce_storage.update(nonce);
 
     Ok(extrinsics_buffer)
 }
@@ -345,15 +368,101 @@ pub unsafe extern "C" fn init_chain_relay(
         Ok(header) => write_slice_and_whitespace_pad(latest_header_slice, header.encode()),
         Err(e) => return e,
     }
+
+    // Initializes the Order Nonce
+    polkadex_gateway::initialize_polkadex_gateway();
+    info!(" Polkadex Gateway Nonces and Cache Initialized");
+
+    if let Err(e) = nonce_handler::create_in_memory_nonce_storage() {
+        error!("Creating in memory nonce storage failed. Error: {:?}", e);
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
+    if let Err(e) = polkadex_balance_storage::create_in_memory_balance_storage() {
+        error!("Creating in memory balance storage failed. Error: {:?}", e);
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
     sgx_status_t::SGX_SUCCESS
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn produce_blocks(
+pub unsafe extern "C" fn accept_pdex_accounts(
+    pdex_accounts: *const u8,
+    pdex_accounts_size: usize,
+) -> sgx_status_t {
+    let mut pdex_accounts_slice = slice::from_raw_parts(pdex_accounts, pdex_accounts_size);
+
+    let polkadex_accounts: Vec<PolkadexAccount> = match Decode::decode(&mut pdex_accounts_slice) {
+        Ok(b) => b,
+        Err(e) => {
+            error!("Decoding signed accounts failed. Error: {:?}", e);
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    };
+
+    let validator = match io::light_validation::unseal() {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    let latest_header = validator
+        .latest_finalized_header(validator.num_relays)
+        .unwrap();
+
+    if let Err(status) = accounts_nonce_storage::verify_pdex_account_read_proofs(
+        latest_header,
+        polkadex_accounts.clone(),
+    ) {
+        return status;
+    }
+
+    if accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(polkadex_accounts)
+        .is_err()
+    {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
+    sgx_status_t::SGX_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn load_orders_to_memory(
+    orders: *const u8,
+    orders_size: usize,
+) -> sgx_status_t {
+    let mut orders_slice = slice::from_raw_parts(orders, orders_size);
+
+    let signed_orders: Vec<SignedOrder> = match Decode::decode(&mut orders_slice) {
+        Ok(b) => b,
+        Err(e) => {
+            error!("Decoding signed orders failed. Error: {:?}", e);
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    };
+
+    if let Err(status) =
+        polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders)
+    {
+        return status;
+    };
+
+    sgx_status_t::SGX_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sync_chain(
     blocks_to_sync: *const u8,
     blocks_to_sync_size: usize,
     nonce: *const u32,
 ) -> sgx_status_t {
+    // FIXME: This design needs some more thoughts.
+    // Proposal: Lock nonce handler storage while syncing, and give free after syncing?
+    // otherwise some extrsincs have high chance of being invalid.. not really good
+    // update nonce storage
+    if let Err(e) = nonce_handler::lock_and_update_nonce(*nonce) {
+        error!("Locking and updating nonce failed. Error: {:?}", e);
+    };
+
     let mut blocks_to_sync_slice = slice::from_raw_parts(blocks_to_sync, blocks_to_sync_size);
 
     let blocks_to_sync: Vec<SignedBlock<Block>> = match Decode::decode(&mut blocks_to_sync_slice) {
@@ -766,7 +875,7 @@ pub fn update_states(header: Header) -> SgxResult<()> {
                     state::write(state, &s)?;
                 }
             }
-            None => info!("No shards are on the chain yet"),
+            None => debug!("No shards are on the chain yet"),
         };
     };
     Ok(())
@@ -785,10 +894,68 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
             // confirm call decodes successfully as well
             if xt.function.0 == [SUBSRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
                 if let Err(e) = handle_shield_funds_xt(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
+                    error!("Error performing shield funds. Error: {:?}", e);
                 }
             }
         };
+
+        // Polkadex OCEX Register
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_REGISTER] {
+                if let Err(e) = handle_ocex_register(&mut opaque_calls, xt) {
+                    error!("Error performing ocex register. Error: {:?}", e);
+                }
+            }
+        }
+        // Polkadex OCEX Add Proxy
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXAddProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_ADD_PROXY] {
+                if let Err(e) = handle_ocex_add_proxy(&mut opaque_calls, xt) {
+                    error!("Error performing ocex add proxy. Error: {:?}", e);
+                }
+            }
+        }
+        // Polkadex OCEX Remove Proxy
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXRemoveProxyFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_REMOVE_PROXY] {
+                if let Err(e) = handle_ocex_remove_proxy(&mut opaque_calls, xt) {
+                    error!("Error performing ocex remove proxy. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Withdraw
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXWithdrawFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_WITHDRAW] {
+                if let Err(e) = handle_ocex_withdraw(&mut opaque_calls, xt) {
+                    error!("Error performing ocex withdraw. Error: {:?}", e);
+                }
+            }
+        }
+
+        // Polkadex OCEX Deposit
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<OCEXDepositFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [OCEX_MODULE, OCEX_DEPOSIT] {
+                if let Err(e) = handle_ocex_deposit(&mut opaque_calls, xt) {
+                    error!("Error performing ocex deposit. Error: {:?}", e);
+                }
+            }
+        }
 
         if let Ok(xt) =
             UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
@@ -823,13 +990,151 @@ pub fn scan_block_for_relevant_xt(block: &Block) -> SgxResult<Vec<OpaqueCall>> {
     Ok(opaque_calls)
 }
 
+fn handle_ocex_register(
+    _calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXRegisterFn>,
+) -> SgxResult<()> {
+    let (call, main_acc) = xt.function; // TODO: what to do in this case
+    info!(
+        "Found OCEX Register extrinsic in block: \nCall: {:?} \nMain: {:?} ",
+        call,
+        main_acc.encode().to_base58(),
+    );
+    accounts_nonce_storage::add_main_account(main_acc)
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+}
+
+fn handle_ocex_add_proxy(
+    _calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXAddProxyFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, proxy) = xt.function;
+    info!(
+        "Found OCEX Add Proxy extrinsic in block: \nCall: {:?} \nMain: {:?}  \nProxy Acc: {}",
+        call,
+        main_acc.encode().to_base58(),
+        proxy.encode().to_base58()
+    );
+    accounts_nonce_storage::add_proxy(main_acc, proxy)
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+}
+
+fn handle_ocex_remove_proxy(
+    _calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXRemoveProxyFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, proxy) = xt.function;
+    info!(
+        "Found OCEX Remove Proxy extrinsic in block: \nCall: {:?} \nMain: {:?}  \nProxy Acc: {}",
+        call,
+        main_acc.encode().to_base58(),
+        proxy.encode().to_base58()
+    );
+    accounts_nonce_storage::remove_proxy(main_acc, proxy)
+        .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)
+}
+
+fn handle_ocex_deposit(
+    _calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXDepositFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, token, amount) = xt.function;
+    info!(
+        "Found OCEX Deposit extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
+        call,
+        main_acc,
+        token.encode().to_base58(),
+        amount
+    );
+    if polkadex_balance_storage::lock_storage_and_deposit(main_acc, token, amount).is_err() {
+        Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+    } else {
+        Ok(())
+    }
+}
+
+fn handle_ocex_withdraw(
+    calls: &mut Vec<OpaqueCall>,
+    xt: UncheckedExtrinsicV4<OCEXWithdrawFn>,
+) -> SgxResult<()> {
+    let (call, main_acc, token, amount) = xt.function;
+    info!(
+        "Found OCEX Withdraw extrinsic in block: \nCall: {:?} \nMain: {:?}  \nToken: {:?} \nAmount: {}",
+        call,
+        main_acc.encode().to_base58(), //FIXME @gautham please look into it
+        token.encode().to_base58(),
+        amount
+    );
+
+    match accounts_nonce_storage::check_if_main_account_registered(main_acc.clone()) {
+        // TODO: Check if proxy is registered since proxy can also invoke a withdrawal
+        Ok(exists) => {
+            if exists {
+                match polkadex_balance_storage::lock_storage_and_withdraw(
+                    main_acc.clone(),
+                    token,
+                    amount,
+                ) {
+                    Ok(()) => {
+                        // Compose the release extrinsic
+                        let xt_block = [OCEX_MODULE, OCEX_RELEASE];
+                        calls.push(OpaqueCall((xt_block, token, amount, main_acc).encode()));
+                        Ok(())
+                    }
+                    Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+                }
+            } else {
+                Err(sgx_status_t::SGX_ERROR_UNEXPECTED)
+            }
+        }
+        Err(_) => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
+    }
+}
+
+/// compose an ocex::release extrinsic, sign with enclave signing key and send it through ocall
+fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
+    let validator = match io::light_validation::unseal() {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    };
+    // Compose the release extrinsic
+    let xt_block = [OCEX_MODULE, OCEX_RELEASE];
+    let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
+    let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
+
+    // Load the enclave's key pair
+    let signer = ed25519::unseal_pair()?;
+    debug!("Restored ECC pubkey: {:?}", signer.public());
+
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let nonce = nonce_storage.nonce;
+    debug!("using nonce for ocex release: {:?}", nonce);
+
+    let xt: Vec<u8> = compose_extrinsic_offline!(
+        signer,
+        call,
+        nonce,
+        Era::Immortal,
+        genesis_hash,
+        genesis_hash,
+        RUNTIME_SPEC_VERSION,
+        RUNTIME_TRANSACTION_VERSION
+    )
+    .encode();
+    nonce_storage.increment();
+
+    send_release_extrinsic(xt)?;
+    Ok(())
+}
+
 fn handle_shield_funds_xt(
     calls: &mut Vec<OpaqueCall>,
     xt: UncheckedExtrinsicV4<ShieldFundsFn>,
 ) -> SgxResult<()> {
     let (call, account_encrypted, amount, shard) = xt.function.clone();
     info!("Found ShieldFunds extrinsic in block: \nCall: {:?} \nAccount Encrypted {:?} \nAmount: {} \nShard: {}",
-        call, account_encrypted, amount, shard.encode().to_base58(),
+          call, account_encrypted, amount, shard.encode().to_base58(),
     );
 
     let mut state = if state::exists(&shard) {
@@ -877,9 +1182,9 @@ fn decrypt_unchecked_extrinsic(
     let (call, request) = xt.function;
     let (shard, cyphertext) = (request.shard, request.cyphertext);
     debug!("Found CallWorker extrinsic in block: \nCall: {:?} \nRequest: \nshard: {}\ncyphertext: {:?}",
-        call,
-        shard.encode().to_base58(),
-        cyphertext
+           call,
+           shard.encode().to_base58(),
+           cyphertext
     );
 
     debug!("decrypt the call");
@@ -911,9 +1216,9 @@ fn handle_trusted_worker_call(
             let inblock = false;
             author
                 .remove_top(
-                    vec![TrustedOperationOrHash::Operation(
+                    vec![TrustedOperationOrHash::Operation(Box::new(
                         stf_call_signed.into_trusted_operation(true),
-                    )],
+                    ))],
                     shard,
                     inblock,
                 )
@@ -943,9 +1248,9 @@ fn handle_trusted_worker_call(
             let inblock = false;
             author
                 .remove_top(
-                    vec![TrustedOperationOrHash::Operation(
+                    vec![TrustedOperationOrHash::Operation(Box::new(
                         stf_call_signed.into_trusted_operation(true),
-                    )],
+                    ))],
                     shard,
                     inblock,
                 )
@@ -963,9 +1268,9 @@ fn handle_trusted_worker_call(
         let inblock = true;
         author
             .remove_top(
-                vec![TrustedOperationOrHash::Operation(
+                vec![TrustedOperationOrHash::Operation(Box::new(
                     stf_call_signed.clone().into_trusted_operation(true),
-                )],
+                ))],
                 shard,
                 inblock,
             )
@@ -1012,6 +1317,12 @@ fn verify_worker_responses(
 }
 
 extern "C" {
+    pub fn ocall_write_order_to_db(
+        ret_val: *mut sgx_status_t,
+        order: *const u8,
+        order_size: u32,
+    ) -> sgx_status_t;
+
     pub fn ocall_read_ipfs(
         ret_val: *mut sgx_status_t,
         cid: *const u8,
@@ -1048,7 +1359,13 @@ extern "C" {
         signed_blocks_size: u32,
     ) -> sgx_status_t;
 
+    pub fn ocall_send_release_extrinsic(
+        ret_val: *mut sgx_status_t,
+        xt: *const u8,
+        size_xt: u32,
+    ) -> sgx_status_t;
 }
+
 // TODO: this is redundantly defined in worker/src/main.rs
 #[derive(Encode, Decode, Clone, Debug, PartialEq)]
 pub enum WorkerRequest {
@@ -1084,4 +1401,44 @@ fn worker_request<V: Encode + Decode>(
         return Err(res);
     }
     Ok(Decode::decode(&mut resp.as_slice()).unwrap())
+}
+
+fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+    let res = unsafe {
+        ocall_write_order_to_db(
+            &mut rt as *mut sgx_status_t,
+            order.encode().as_ptr(),
+            order.encode().len() as u32,
+        )
+    };
+
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(rt);
+    }
+
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(res);
+    }
+    Ok(())
+}
+
+/// sends an release extrsinic per ocall to the node
+fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+    let res = unsafe {
+        ocall_send_release_extrinsic(
+            &mut rt as *mut sgx_status_t,
+            extrinsic.encode().as_ptr(),
+            extrinsic.encode().len() as u32,
+        )
+    };
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(rt);
+    }
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(res);
+    }
+    Ok(())
 }

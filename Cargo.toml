@@ -1,12 +1,13 @@
 [workspace]
 members = [
-	 "worker",
-	 "worker/worker-api",
-	 "substratee-node-primitives",
-	 "substratee-worker-primitives",
-	 "client",
-	 "stf",
-#	 "enclave",
+    "worker",
+    "worker/worker-api",
+    "substratee-node-primitives",
+    "substratee-worker-primitives",
+    "polkadex-primitives",
+    "client",
+    "stf",
+    #"enclave",
 ]
 
 #[patch."https://github.com/scs/substrate-api-client"]

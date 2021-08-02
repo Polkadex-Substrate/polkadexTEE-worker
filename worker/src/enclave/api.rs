@@ -1,32 +1,34 @@
-/*
-    Copyright 2019 Supercomputing Systems AG
+// This file is part of Polkadex.
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+// Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
 
-        http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 
-*/
+// You should have received a copy of the GNU General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use log::*;
 /// keep this api free from chain-specific types!
 use std::io::{Read, Write};
 use std::{fs::File, path::PathBuf};
 
+use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
+use codec::{Decode, Encode};
+use log::*;
+use my_node_runtime::{Header, SignedBlock};
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::PolkadexAccount;
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
-
-use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VALUE_MAX_SIZE};
-use codec::{Decode, Encode};
-use my_node_runtime::{Header, SignedBlock};
 use sp_core::ed25519;
 use sp_finality_grandpa::VersionedAuthorityList;
 
@@ -57,7 +59,21 @@ extern "C" {
         latest_header_size: usize,
     ) -> sgx_status_t;
 
-    fn produce_blocks(
+    fn accept_pdex_accounts(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        pdex_accounts: *const u8,
+        pdex_accounts_size: usize,
+    ) -> sgx_status_t;
+
+    fn load_orders_to_memory(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        orders: *const u8,
+        orders_size: usize,
+    ) -> sgx_status_t;
+
+    fn sync_chain(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,
         blocks: *const u8,
@@ -201,6 +217,8 @@ pub fn enclave_init_chain_relay(
     let mut status = sgx_status_t::SGX_SUCCESS;
     let result = unsafe {
         // Todo: this is a bit ugly but the common `encode()` is not implemented for authority list
+
+        // TODO: Fix the wrapper with linkedAccounts pointer and size
         authority_list.using_encoded(|authorities| {
             init_chain_relay(
                 eid,
@@ -229,10 +247,60 @@ pub fn enclave_init_chain_relay(
     Ok(latest)
 }
 
+pub fn enclave_accept_pdex_accounts(
+    eid: sgx_enclave_id_t,
+    pdex_accounts: Vec<PolkadexAccount>,
+) -> SgxResult<()> {
+    let mut status = sgx_status_t::SGX_SUCCESS;
+
+    let result = unsafe {
+        accept_pdex_accounts(
+            eid,
+            &mut status,
+            pdex_accounts.encode().as_ptr(),
+            pdex_accounts.encode().len(),
+        )
+    };
+
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
+    Ok(())
+}
+
+pub fn enclave_load_orders_to_memory(
+    eid: sgx_enclave_id_t,
+    orders: Vec<SignedOrder>,
+) -> SgxResult<()> {
+    let mut status = sgx_status_t::SGX_SUCCESS;
+
+    let result = unsafe {
+        load_orders_to_memory(
+            eid,
+            &mut status,
+            orders.encode().as_ptr(),
+            orders.encode().len(),
+        )
+    };
+
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
+    Ok(())
+}
+
 /// Starts block production within enclave
 ///
 /// Returns the produced blocks
-pub fn enclave_produce_blocks(
+pub fn enclave_sync_chain(
     eid: sgx_enclave_id_t,
     blocks_to_sync: Vec<SignedBlock>,
     tee_nonce: u32,
@@ -241,7 +309,7 @@ pub fn enclave_produce_blocks(
 
     let result = unsafe {
         blocks_to_sync
-            .using_encoded(|b| produce_blocks(eid, &mut status, b.as_ptr(), b.len(), &tee_nonce))
+            .using_encoded(|b| sync_chain(eid, &mut status, b.as_ptr(), b.len(), &tee_nonce))
     };
 
     if status != sgx_status_t::SGX_SUCCESS {

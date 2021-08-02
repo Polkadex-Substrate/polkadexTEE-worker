@@ -17,6 +17,13 @@ pub type ShardIdentifier = H256;
 
 //use sp_core::ed25519::Signature;
 
+use polkadex_primitives::AccountId;
+use sp_core::blake2_256;
+
+pub fn get_account(seed: &str) -> AccountId {
+    AccountId::new(Vec::from(seed).using_encoded(blake2_256))
+}
+
 #[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub enum DirectRequestStatus {
     /// Direct request was successfully executed
@@ -55,7 +62,7 @@ pub enum TrustedOperationStatus {
     Invalid,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Debug)]
 pub struct RpcReturnValue {
     pub value: Vec<u8>,
     pub do_watch: bool,

@@ -64,8 +64,13 @@ client/my_keystore
 client/my_trusted_keystore
 bin/chain_relay_db.bin.1
 
+
 target
 .idea
 .settings
 .classpath
 .project
+
+#worker
+worker/polkadex-orderbook-mirror.bin
+
