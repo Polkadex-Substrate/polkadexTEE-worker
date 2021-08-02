@@ -63,3 +63,9 @@ bin2/enclave-shielding-pubkey.json
 client/my_keystore
 client/my_trusted_keystore
 bin/chain_relay_db.bin.1
+
+target
+.idea
+.settings
+.classpath
+.project
