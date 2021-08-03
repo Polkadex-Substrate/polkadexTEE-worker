@@ -113,7 +113,7 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
 
         match Builder::new()
             .with_settings(settings)
-            .build(|out: Sender| move |msg| out.send(msg))
+            .build(|out: Sender| Server { client: out })
             .unwrap()
             .listen(addr.clone())
         {
