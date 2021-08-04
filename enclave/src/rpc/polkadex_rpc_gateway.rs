@@ -145,7 +145,7 @@ impl RpcGateway for PolkadexRpcGateway {
         let main_account = trusted_call.main_account().clone();
         let proxy_account = trusted_call.proxy_account();
 
-       Ok(trusted_call)
+        Ok(trusted_call)
     }
 
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {
