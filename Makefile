@@ -197,7 +197,70 @@ $(Signed_RustEnclave_Name): $(RustEnclave_Name)
 	@echo "SIGN =>  $@"
 	@echo
 	@echo "Enclave is in $(SGX_ENCLAVE_MODE)"
+.PHONY: benchmark
+benchmark: $(Client_Name) $(Worker_Name) $(Signed_RustEnclave_Name)
+worker: $(Worker_Name)
+client: $(Client_Name)
+githooks: .git/hooks/pre-commit
 
+######## EDL objects ########
+$(Enclave_EDL_Files): $(SGX_EDGER8R) enclave/Enclave.edl
+	$(SGX_EDGER8R) --trusted enclave/Enclave.edl --search-path $(SGX_SDK)/include --search-path $(CUSTOM_EDL_PATH) --trusted-dir enclave
+	$(SGX_EDGER8R) --untrusted enclave/Enclave.edl --search-path $(SGX_SDK)/include --search-path $(CUSTOM_EDL_PATH) --untrusted-dir worker
+	@echo "GEN  =>  $(Enclave_EDL_Files)"
+
+######## SubstraTEE-worker objects ########
+worker/Enclave_u.o: $(Enclave_EDL_Files)
+	@$(CC) $(Worker_C_Flags) -c worker/Enclave_u.c -o $@
+	@echo "CC   <=  $<"
+
+$(Worker_Enclave_u_Object): worker/Enclave_u.o
+	$(AR) rcsD $@ $^
+	cp $(Worker_Enclave_u_Object) ./lib
+
+$(Worker_Name): $(Worker_Enclave_u_Object) $(Worker_SRC_Files)
+	@echo
+	@echo "Building the substraTEE-worker"
+	@cd worker && SGX_SDK=$(SGX_SDK) cargo build $(Worker_Rust_Flags)
+	@echo "Cargo  =>  $@"
+	cp $(Worker_Rust_Path)/substratee-worker ./bin
+	cp $(Worker_Rust_Path)/substratee-worker ./bin2
+
+######## SubstraTEE-client objects ########
+$(Client_Name): $(Client_SRC_Files)
+	@echo
+	@echo "Building the substraTEE-client"
+	@cd $(Client_SRC_Path) && cargo build $(Client_Rust_Flags)
+	@echo "Cargo  =>  $@"
+	cp $(Client_Rust_Path)/$(Client_Binary) ./bin
+
+######## Enclave objects ########
+enclave/Enclave_t.o: $(Enclave_EDL_Files)
+	@$(CC) $(RustEnclave_Compile_Flags) -c enclave/Enclave_t.c -o $@
+	@echo "CC   <=  $<"
+
+$(RustEnclave_Name): enclave-benchmark enclave/Enclave_t.o
+	@echo Compiling $(RustEnclave_Name)
+	@$(CXX) enclave/Enclave_t.o -o $@ $(RustEnclave_Link_Flags)
+	@echo "LINK =>  $@"
+
+$(Signed_RustEnclave_Name): $(RustEnclave_Name)
+	@echo
+	@echo "Signing the enclave: $(SGX_ENCLAVE_MODE)"
+	$(SGX_ENCLAVE_SIGNER) sign -key $(SGX_SIGN_KEY) -enclave $(RustEnclave_Name) -out $@ -config $(SGX_ENCLAVE_CONFIG)
+	@echo "SIGN =>  $@"
+	@echo
+	@echo "Enclave is in $(SGX_ENCLAVE_MODE)"
+
+.PHONY: enclave-benchmark
+enclave:
+	@echo
+	@echo "Building the enclave"
+	$(MAKE) -C ./enclave/ benchmark
+
+.git/hooks/pre-commit: .githooks/pre-commit
+	@echo "Installing git hooks"
+	cp .githooks/pre-commit .git/hooks
 .PHONY: enclave
 enclave:
 	@echo
