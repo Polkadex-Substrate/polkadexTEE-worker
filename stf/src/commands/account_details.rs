@@ -26,8 +26,8 @@ use sp_core::{sr25519 as sr25519_core, Pair};
 /// Provides methods to get the signer account, depending on whether an optional
 /// proxy account was provided, or just a main account
 pub struct AccountDetails {
-    main_account: sr25519::AppPair,
-    proxy_account: Option<sr25519::AppPair>,
+    pub main_account: sr25519::AppPair,
+    pub proxy_account: Option<sr25519::AppPair>,
 }
 
 impl AccountDetails {
