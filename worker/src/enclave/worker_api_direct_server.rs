@@ -20,6 +20,7 @@ use codec::{Decode, Encode};
 use log::*;
 use sp_core::H256 as Hash;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::slice;
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -28,6 +29,9 @@ use std::sync::{
 use std::thread;
 use ws::{listen, CloseCode, Handler, Message, Result, Sender};
 
+use crate::polkadex_db::balances::load_balances_mirror;
+use crate::polkadex_db::nonce::load_nonce_mirror;
+use polkadex_sgx_primitives::AccountId;
 use substratee_worker_primitives::{
     DirectRequestStatus, RpcResponse, RpcReturnValue, TrustedOperationStatus,
 };
@@ -296,6 +300,39 @@ pub unsafe extern "C" fn ocall_send_status(
         }
         guard.remove(&hash);
     }
+
+    sgx_status_t::SGX_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ocall_send_nonce(
+    account_encoded: *const u8,
+    account_size: u32,
+    nonce: u32,
+) -> sgx_status_t {
+    let account_slice = slice::from_raw_parts(account_encoded, account_size as usize);
+    let slice: [u8; 32] = account_slice.try_into().unwrap();
+    let account = AccountId::from(slice);
+    let mutex = load_nonce_mirror().unwrap();
+    let mut nonce_mirror = mutex.lock().unwrap();
+    nonce_mirror.write(account, nonce);
+    error!("Nonce written: {}", nonce);
+    sgx_status_t::SGX_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ocall_send_balances(
+    account_encoded: *const u8,
+    account_size: u32,
+    free: u128,
+    reserved: u128,
+) -> sgx_status_t {
+    let account_slice = slice::from_raw_parts(account_encoded, account_size as usize);
+    let slice: [u8; 32] = account_slice.try_into().unwrap();
+    let account = AccountId::from(slice);
+    let mutex = load_balances_mirror().unwrap();
+    let mut balances_mirror = mutex.lock().unwrap();
+    balances_mirror.write(account, free, reserved);
 
     sgx_status_t::SGX_SUCCESS
 }

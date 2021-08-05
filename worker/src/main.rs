@@ -64,6 +64,7 @@ use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::{OpenFinexUri, PolkadexAccount};
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 mod constants;
+mod db_handler;
 mod enclave;
 mod ipfs;
 mod polkadex;
@@ -365,6 +366,10 @@ fn worker(
 
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
+
+    // ------------------------------------------------------------------------
+    // Start DB Handler Thread
+    crate::db_handler::DBHandler::initialize(eid);
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing

@@ -84,11 +84,13 @@ use substratee_worker_primitives::block::{
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
+use sgx_types::sgx_enclave_id_t;
+
 mod accounts_nonce_storage;
-//pub mod accounts_storage;
 mod aes;
 mod attestation;
 pub mod cert;
+pub mod channel_storage;
 mod constants;
 mod ed25519;
 mod happy_path;
@@ -96,7 +98,6 @@ pub mod hex;
 mod io;
 mod ipfs;
 pub mod nonce_handler;
-//pub mod nonce_storage;
 pub mod openfinex;
 mod polkadex_balance_storage;
 pub mod polkadex_cache;
@@ -423,6 +424,53 @@ pub unsafe extern "C" fn accept_pdex_accounts(
     };
 
     sgx_status_t::SGX_SUCCESS
+}
+
+extern "C" {
+    fn ocall_send_nonce(
+        eid: sgx_enclave_id_t,
+        ret_val: *mut sgx_status_t,
+        account_encoded: *const u8,
+        account_size: u32,
+        nonce: u32,
+    ) -> sgx_status_t;
+
+    pub fn ocall_send_balances(
+        account_encoded: *const u8,
+        account_size: u32,
+        free: u128,
+        reserved: u128,
+    ) -> sgx_status_t;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn run_db_thread(eid: sgx_enclave_id_t) -> sgx_status_t {
+    if crate::channel_storage::create_in_memory_channel_storage().is_err() {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
+
+    let receiver = crate::channel_storage::load_receiver().unwrap();
+
+    let receiver = receiver.lock().unwrap();
+
+    loop {
+        match receiver.recv().unwrap() {
+            crate::channel_storage::ChannelType::Nonce(account, nonce) => {
+                let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+                error!("Received Nonce channel call");
+                let slice: &[u8] = account.as_ref();
+                println!(
+                    "{:#?}",
+                    ocall_send_nonce(eid, &mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce)
+                )
+            }
+            crate::channel_storage::ChannelType::Balances(account, balances) => {
+                let slice: &[u8] = account.as_ref();
+                let (free, reserved) = (balances.free, balances.reserved);
+                ocall_send_balances(slice.as_ptr(), 32, free, reserved);
+            }
+        }
+    }
 }
 
 #[no_mangle]

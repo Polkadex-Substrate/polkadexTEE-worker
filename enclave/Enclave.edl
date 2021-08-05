@@ -52,6 +52,8 @@ enclave {
             [in, size=pdex_accounts_size] uint8_t* pdex_accounts, size_t pdex_accounts_size
         );
 
+        public sgx_status_t run_db_thread();
+
         public sgx_status_t load_orders_to_memory(
             [in ,size=orders_size] uint8_t* orders, size_t orders_size
         );
@@ -153,5 +155,14 @@ enclave {
 			[in, size = hash_size] uint8_t * hash_encoded, uint32_t hash_size,
 			[in, size = status_size] uint8_t * status_encoded, uint32_t status_size
 	    );
+	    sgx_status_t ocall_send_nonce(
+                    [in, size = account_size] uint8_t * account_encoded, uint32_t account_size,
+                    [in] uint32_t* nonce
+                );
+        sgx_status_t ocall_send_balances(
+            [in, size = account_size] uint8_t * account_encoded, uint32_t account_size,
+            [in] __uint128_t* free,
+            [in] __uint128_t* reserved
+        );
 	};
 };

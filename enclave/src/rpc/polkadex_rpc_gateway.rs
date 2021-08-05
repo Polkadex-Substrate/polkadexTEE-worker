@@ -102,7 +102,18 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_account: Option<AccountId>,
         nonce: u32,
     ) -> Result<(), GatewayError> {
-        authenticate_user_and_validate_nonce(main_account, proxy_account, nonce)
+        let result =
+            authenticate_user_and_validate_nonce(main_account.clone(), proxy_account, nonce);
+        if result.is_ok() {
+            crate::channel_storage::load_sender()
+                .unwrap()
+                .send(crate::channel_storage::ChannelType::Nonce(
+                    main_account,
+                    nonce + 1,
+                ))
+                .unwrap();
+        }
+        result
     }
 
     fn authorize_trusted_call(

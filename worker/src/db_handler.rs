@@ -14,24 +14,22 @@
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
+// along with this program. If not, see <https://www.gnu.org/licenses/>
 
-pub mod general_db;
-pub use general_db::*;
-pub mod orderbook;
-pub use orderbook::*;
-pub mod nonce;
-pub use nonce::*;
-pub mod balances;
-pub use balances::*;
+use crate::enclave::api::enclave_run_db_thread;
+use sgx_types::sgx_enclave_id_t;
+use std::thread;
 
-#[derive(Debug)]
-/// Polkadex DB Error
-pub enum PolkadexDBError {
-    /// Failed to load pointer
-    UnableToLoadPointer,
-    /// Failed to deserialize value
-    UnableToDeseralizeValue,
-    /// Failed to find key in the DB
-    _KeyNotFound,
+pub struct DBHandler {}
+
+impl DBHandler {
+    pub fn initialize(eid: sgx_enclave_id_t) {
+        crate::polkadex_db::nonce::initialize_nonce_mirror();
+        thread::spawn(move || -> Result<(), String> {
+            println!("started");
+            let result = enclave_run_db_thread(eid);
+            println!("result: {:#?}", result.clone());
+            Ok(result.unwrap())
+        });
+    }
 }
