@@ -38,6 +38,10 @@ else
 	CARGO_TARGET := --release
 endif
 
+ifeq ($(BENCHMARK), 1)
+		CARGO_TARGET += --features "benchmarking"
+endif
+
 .PHONY: all
 
 all: $(Rust_Enclave_Name)
@@ -48,18 +52,5 @@ ifeq ($(XARGO_SGX), 1)
 	cp ./target/x86_64-unknown-linux-sgx/$(OUTPUT_PATH)/libsubstratee_worker_enclave.a ../lib/libenclave.a
 else
 	cargo build $(CARGO_TARGET)
-	cp ./target/$(OUTPUT_PATH)/libsubstratee_worker_enclave.a ../lib/libenclave.a
-endif
-
-.PHONY: benchmark
-
-benchmark: $(Rust_Enclave_Name)
-
-$(Rust_Enclave_Name): $(Rust_Enclave_Files)
-ifeq ($(XARGO_SGX), 1)
-	RUST_TARGET_PATH=$(Rust_Target_Path) xargo build --target x86_64-unknown-linux-sgx $(CARGO_TARGET)
-	cp ./target/x86_64-unknown-linux-sgx/$(OUTPUT_PATH)/libsubstratee_worker_enclave.a ../lib/libenclave.a
-else
-	cargo build $(CARGO_TARGET) --features "benchmarking"
 	cp ./target/$(OUTPUT_PATH)/libsubstratee_worker_enclave.a ../lib/libenclave.a
 endif
