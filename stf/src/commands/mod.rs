@@ -21,7 +21,7 @@ pub mod get_balance;
 pub mod place_order;
 pub mod withdraw;
 
-mod account_details;
+pub mod account_details;
 pub mod common_args;
 pub mod common_args_processing;
 
