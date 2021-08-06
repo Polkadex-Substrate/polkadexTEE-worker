@@ -2563,7 +2563,7 @@ dependencies = [
 [[package]]
 name = "substrate-api-client"
 version = "0.5.0"
-source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#c048828ad971c35dee45b873448d3712fccf76ea"
+source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#65bae5c0674942488365983e454e7e4c4f839e70"
 dependencies = [
  "frame-metadata",
  "frame-support",
@@ -2681,6 +2681,7 @@ version = "0.8.0"
 dependencies = [
  "chrono 0.4.19",
  "parity-scale-codec",
+ "polkadex-primitives",
  "primitive-types",
  "sgx_tstd",
  "sp-core",
