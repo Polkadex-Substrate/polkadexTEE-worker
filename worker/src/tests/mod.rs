@@ -31,10 +31,6 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
     let enclave = enclave_init().unwrap();
     let eid = enclave.geteid();
 
-    // ------------------------------------------------------------------------
-    // Start DB Handler Thread
-    crate::db_handler::DBHandler::initialize(eid);
-
     if matches.is_present("all") || matches.is_present("unit") {
         println!("Running unit Tests");
         enclave_test(eid).unwrap();
@@ -64,18 +60,4 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
         let _head = shield_funds_workds(eid, port, head);
     }
     println!("[+] All tests ended!");
-    println!(
-        "{:#?}",
-        crate::polkadex_db::load_nonce_mirror()
-            .unwrap()
-            .lock()
-            .unwrap()
-    );
-    println!(
-        "{:#?}",
-        crate::polkadex_db::load_balances_mirror()
-            .unwrap()
-            .lock()
-            .unwrap()
-    );
 }

@@ -433,8 +433,11 @@ extern "C" {
     ) -> sgx_status_t;
 
     pub fn ocall_send_balances(
+        ret_val: *mut sgx_status_t,
         account_encoded: *const u8,
         account_size: u32,
+        token_encoded: *const u8,
+        token_size: u32,
         free: *mut u8,
         reserved: *mut u8,
         balance_size: u32,
@@ -459,27 +462,26 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
         match receiver.recv().unwrap() {
             crate::channel_storage::ChannelType::Nonce(account, nonce) => {
                 let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-                error!("Received Nonce channel call");
                 let slice: &[u8] = account.as_ref();
-                println!(
-                    "{:#?}",
-                    ocall_send_nonce(&mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce)
-                )
+
+                ocall_send_nonce(&mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce);
             }
             crate::channel_storage::ChannelType::Balances(account, balances) => {
-                let slice = account.encode();
-                let slice: &[u8] = slice.as_ref();
-                error!("Received Balances channel call");
+                let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+                let account_slice: &[u8] = account.account_id.as_ref();
+                let token_slice = account.asset_id.encode();
+                let token_slice: &[u8] = token_slice.as_ref();
                 let (mut free, mut reserved) = (balances.free.encode(), balances.reserved.encode());
-                println!(
-                    "{:#?}",
-                    ocall_send_balances(
-                        slice.as_ptr(),
-                        32,
-                        free.as_mut_ptr(),
-                        reserved.as_mut_ptr(),
-                        free.len() as u32,
-                    )
+
+                ocall_send_balances(
+                    &mut rt as *mut sgx_status_t,
+                    account_slice.as_ptr(),
+                    32,
+                    token_slice.as_ptr(),
+                    token_slice.len() as u32,
+                    free.as_mut_ptr(),
+                    reserved.as_mut_ptr(),
+                    free.len() as u32,
                 );
             }
         }

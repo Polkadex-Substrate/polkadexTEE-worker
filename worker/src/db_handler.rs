@@ -32,10 +32,10 @@ impl DBHandler {
     pub fn initialize(eid: sgx_enclave_id_t) {
         DBHandler::initialize_mirrors();
         thread::spawn(move || -> Result<(), String> {
-            println!("started");
-            let result = enclave_run_db_thread(eid);
-            println!("result: {:#?}", result.clone());
-            Ok(result.unwrap())
+            if enclave_run_db_thread(eid).is_err() {
+                return Err(String::from("Failed to run DB Thread"));
+            }
+            Ok(())
         });
     }
 }

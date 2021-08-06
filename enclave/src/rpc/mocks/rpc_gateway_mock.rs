@@ -19,10 +19,9 @@
 pub extern crate alloc;
 use alloc::string::String;
 
-use crate::polkadex_balance_storage::{Balances, PolkadexBalanceKey};
+use crate::polkadex_balance_storage::Balances;
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
-use log::error;
 use polkadex_sgx_primitives::types::{CancelOrder, Order, OrderUUID};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sgx_types::{sgx_status_t, SgxResult};
@@ -116,15 +115,6 @@ impl RpcGateway for RpcGatewayMock {
             false => Err(String::from("Authorization failed")),
         }?;
 
-        crate::channel_storage::load_sender()
-            .unwrap()
-            .send(crate::channel_storage::ChannelType::Nonce(
-                call.main_account().clone(),
-                nonce + 1,
-            ))
-            .unwrap();
-        error!("SENT NONCE");
-
         if self.nonce == nonce {
             Ok(call)
         } else {
@@ -174,17 +164,6 @@ impl RpcGateway for RpcGatewayMock {
     }
 
     fn withdraw(&self, _main_account: AccountId, _token: AssetId, _amount: u128) -> SgxResult<()> {
-        crate::channel_storage::load_sender()
-            .unwrap()
-            .send(crate::channel_storage::ChannelType::Balances(
-                PolkadexBalanceKey::from(_token, _main_account),
-                crate::polkadex_balance_storage::Balances {
-                    free: _amount,
-                    reserved: 0,
-                },
-            ))
-            .unwrap();
-        error!("SENT BALANCES");
         Ok(())
     }
 }

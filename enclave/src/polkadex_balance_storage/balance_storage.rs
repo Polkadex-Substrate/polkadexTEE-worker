@@ -41,7 +41,6 @@ fn balance_change(account: PolkadexBalanceKey, new_balance: Balances) {
             new_balance,
         ))
         .unwrap();
-    error!("SENT BALANCES");
 }
 
 impl PolkadexBalanceStorage {
@@ -75,10 +74,14 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
         {
             Some(balance) => {
                 balance.free = amt;
+                balance_change(
+                    PolkadexBalanceKey::from(token, acc),
+                    Balances::from(amt, balance.reserved),
+                );
                 Ok(())
             }
             None => {
@@ -96,10 +99,14 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
         {
             Some(balance) => {
                 balance.reserved = amt;
+                balance_change(
+                    PolkadexBalanceKey::from(token, acc),
+                    Balances::from(balance.free, amt),
+                );
                 Ok(())
             }
             None => {
@@ -121,6 +128,10 @@ impl PolkadexBalanceStorage {
         {
             Some(balance) => {
                 balance.free = balance.free.saturating_add(amt);
+                balance_change(
+                    PolkadexBalanceKey::from(token, acc),
+                    Balances::from(balance.free, balance.reserved),
+                );
                 Ok(())
             }
             None => {
@@ -139,10 +150,14 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
         {
             Some(balance) => {
                 balance.free = balance.free.saturating_sub(amt);
+                balance_change(
+                    PolkadexBalanceKey::from(token, acc),
+                    Balances::from(balance.free, balance.reserved),
+                );
                 Ok(())
             }
             None => {
@@ -160,13 +175,17 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
         {
             Some(balance) => {
                 balance.free = balance
                     .free
                     .checked_sub(amt)
                     .ok_or(GatewayError::LimitOrderPriceNotFound)?; //FIXME Error type
+                balance_change(
+                    PolkadexBalanceKey::from(token, acc),
+                    Balances::from(balance.free, balance.reserved),
+                );
                 Ok(())
             }
             None => {
@@ -191,6 +210,10 @@ impl PolkadexBalanceStorage {
                     .free
                     .checked_add(amt)
                     .ok_or(GatewayError::LimitOrderPriceNotFound)?; //FIXME Error Type
+                balance_change(
+                    PolkadexBalanceKey::from(token, acc),
+                    Balances::from(balance.free, balance.reserved),
+                );
                 Ok(())
             }
             None => {

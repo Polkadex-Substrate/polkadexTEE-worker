@@ -44,6 +44,15 @@ pub struct PolkadexBalanceKey {
     account_id: AccountId,
 }
 
+impl PolkadexBalanceKey {
+    pub fn from(asset_id: AssetId, account_id: AccountId) -> Self {
+        Self {
+            asset_id,
+            account_id,
+        }
+    }
+}
+
 impl BalancesMirror {
     pub fn write(&mut self, balance_key: PolkadexBalanceKey, free: u128, reserved: u128) {
         self.general_db
@@ -64,21 +73,6 @@ impl BalancesMirror {
     pub fn _delete(&mut self, k: PolkadexBalanceKey) {
         self.general_db._delete(k.encode());
     }
-
-    // pub fn read_all(&self) -> Result<Vec<u32>, PolkadexDBError> {
-    //     let iterator = self.general_db.read_all().into_iter();
-    //     let mut nonces: Vec<u32> = vec![];
-    //     for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
-    //         match SignedOrder::from_vec(&*value) {
-    //             Ok(order) => orders.push(order),
-    //             Err(_) => {
-    //                 println!("Unable to deserialize");
-    //                 return Err(PolkadexDBError::UnableToDeseralizeValue);
-    //             }
-    //         }
-    //     }
-    //     Ok(orders)
-    // }
 }
 
 pub fn initialize_balances_mirror() {

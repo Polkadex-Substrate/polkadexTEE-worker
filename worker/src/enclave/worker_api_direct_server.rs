@@ -32,7 +32,7 @@ use ws::{listen, CloseCode, Handler, Message, Result, Sender};
 use crate::polkadex_db::balances::load_balances_mirror;
 use crate::polkadex_db::nonce::load_nonce_mirror;
 use crate::polkadex_db::PolkadexBalanceKey;
-use polkadex_sgx_primitives::AccountId;
+use polkadex_sgx_primitives::{AccountId, AssetId};
 use substratee_worker_primitives::{
     DirectRequestStatus, RpcResponse, RpcReturnValue, TrustedOperationStatus,
 };
@@ -316,17 +316,18 @@ pub unsafe extern "C" fn ocall_send_nonce(
     {
         account
     } else {
+        error!("Failed to decode account");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
     let account = AccountId::from(account_slice);
     let mutex = if let Ok(mutex) = load_nonce_mirror() {
         mutex
     } else {
+        error!("Failed to load nonce mirror");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
     let mut nonce_mirror = mutex.lock().unwrap();
     nonce_mirror.write(account, nonce);
-    error!("Nonce written: {}", nonce);
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -334,21 +335,36 @@ pub unsafe extern "C" fn ocall_send_nonce(
 pub unsafe extern "C" fn ocall_send_balances(
     account_encoded: *const u8,
     account_size: u32,
+    token_encoded: *const u8,
+    token_size: u32,
     free: *mut u8,
     reserved: *mut u8,
     balance_size: u32,
 ) -> sgx_status_t {
-    let mut account_slice = slice::from_raw_parts(account_encoded, account_size as usize);
-
-    let account = if let Ok(key) = PolkadexBalanceKey::decode(&mut account_slice) {
-        key
+    let account_slice: [u8; 32] = if let Ok(account) =
+        slice::from_raw_parts(account_encoded, account_size as usize).try_into()
+    {
+        account
     } else {
+        error!("Failed to decode account");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
+    let account = AccountId::from(account_slice);
+
+    let mut token_slice = slice::from_raw_parts(token_encoded, token_size as usize);
+    let token = if let Ok(token) = AssetId::decode(&mut token_slice) {
+        token
+    } else {
+        error!("Failed to decode AssetId");
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
+    let account = PolkadexBalanceKey::from(token, account);
 
     let mutex = if let Ok(mutex) = load_balances_mirror() {
         mutex
     } else {
+        error!("Failed to load balance mirror");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
     let mut balances_mirror = mutex.lock().unwrap();
@@ -359,10 +375,10 @@ pub unsafe extern "C" fn ocall_send_balances(
     ) {
         (free, reserved)
     } else {
+        error!("Failed to decode balances");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
     balances_mirror.write(account, free, reserved);
-
     sgx_status_t::SGX_SUCCESS
 }
