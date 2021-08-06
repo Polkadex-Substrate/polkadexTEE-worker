@@ -57,21 +57,6 @@ impl NonceMirror {
     pub fn _delete(&mut self, k: AccountId) {
         self.general_db._delete(k.encode());
     }
-
-    // pub fn read_all(&self) -> Result<Vec<u32>, PolkadexDBError> {
-    //     let iterator = self.general_db.read_all().into_iter();
-    //     let mut nonces: Vec<u32> = vec![];
-    //     for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
-    //         match SignedOrder::from_vec(&*value) {
-    //             Ok(order) => orders.push(order),
-    //             Err(_) => {
-    //                 println!("Unable to deserialize");
-    //                 return Err(PolkadexDBError::UnableToDeseralizeValue);
-    //             }
-    //         }
-    //     }
-    //     Ok(orders)
-    // }
 }
 
 pub fn initialize_nonce_mirror() {
@@ -89,5 +74,79 @@ pub fn load_nonce_mirror() -> Result<&'static Mutex<NonceMirror>, PolkadexDBErro
         Err(PolkadexDBError::UnableToLoadPointer)
     } else {
         Ok(unsafe { &*ptr })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GeneralDB;
+    use crate::polkadex_db::NonceMirror;
+    use codec::Encode;
+    use polkadex_primitives::AccountId;
+    use sp_core::{ed25519 as ed25519_core, Pair};
+    use std::collections::HashMap;
+
+    fn create_dummy_account() -> AccountId {
+        AccountId::from(ed25519_core::Pair::from_seed(b"12345678901234567890123456789012").public())
+    }
+    fn create_secondary_dummy_account() -> AccountId {
+        AccountId::from(ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public())
+    }
+
+    #[test]
+    fn write() {
+        let dummy_account = create_dummy_account();
+        let mut nonce_mirror = NonceMirror {
+            general_db: GeneralDB { db: HashMap::new() },
+        };
+        assert_eq!(nonce_mirror.general_db.db, HashMap::new());
+        nonce_mirror.write(dummy_account.clone(), 42u32);
+        assert_eq!(
+            nonce_mirror.general_db.db.get(&dummy_account.encode()),
+            Some(&42u32.encode())
+        );
+    }
+
+    #[test]
+    fn find() {
+        let dummy_account = create_dummy_account();
+        let mut nonce_mirror = NonceMirror {
+            general_db: GeneralDB { db: HashMap::new() },
+        };
+        nonce_mirror
+            .general_db
+            .db
+            .insert(dummy_account.encode(), 42u32.encode());
+        assert_eq!(nonce_mirror._find(dummy_account).unwrap(), 42u32);
+        assert!(nonce_mirror
+            ._find(create_secondary_dummy_account())
+            .is_err());
+    }
+
+    #[test]
+    fn delete() {
+        let dummy_account = create_dummy_account();
+        let mut nonce_mirror = NonceMirror {
+            general_db: GeneralDB { db: HashMap::new() },
+        };
+        nonce_mirror
+            .general_db
+            .db
+            .insert(dummy_account.encode(), 42u32.encode());
+        assert_eq!(
+            nonce_mirror
+                .general_db
+                .db
+                .contains_key(&dummy_account.encode()),
+            true
+        );
+        nonce_mirror._delete(dummy_account.clone());
+        assert_eq!(
+            nonce_mirror
+                .general_db
+                .db
+                .contains_key(&dummy_account.encode()),
+            false
+        );
     }
 }

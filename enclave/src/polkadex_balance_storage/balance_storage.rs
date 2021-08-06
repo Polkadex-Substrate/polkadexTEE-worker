@@ -23,6 +23,7 @@ use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::vec::Vec;
 
+use crate::channel_storage::{load_sender, ChannelType};
 use crate::polkadex_balance_storage::balances::*;
 use crate::polkadex_balance_storage::polkadex_balance_key::*;
 
@@ -33,14 +34,12 @@ pub struct PolkadexBalanceStorage {
     pub storage: HashMap<EncodedKey, Balances>,
 }
 
-fn balance_change(account: PolkadexBalanceKey, new_balance: Balances) {
-    crate::channel_storage::load_sender()
-        .unwrap()
-        .send(crate::channel_storage::ChannelType::Balances(
-            account,
-            new_balance,
-        ))
-        .unwrap();
+fn balance_change(account: PolkadexBalanceKey, new_balance: Balances) -> Result<(), GatewayError> {
+    load_sender()
+        .map_err(|_| GatewayError::UnableToLoadPointer)?
+        .send(ChannelType::Balances(account, new_balance))
+        .map_err(|_| GatewayError::UndefinedBehaviour)?;
+    Ok(())
 }
 
 impl PolkadexBalanceStorage {
@@ -56,14 +55,20 @@ impl PolkadexBalanceStorage {
         self.storage.get(&key)
     }
 
-    pub fn initialize_balance(&mut self, token: AssetId, acc: AccountId, free: Balance) {
+    pub fn initialize_balance(
+        &mut self,
+        token: AssetId,
+        acc: AccountId,
+        free: Balance,
+    ) -> Result<(), GatewayError> {
         let key = PolkadexBalanceKey::from(token, acc.clone()).encode();
         debug!("creating new entry for key: {:?}", key);
         self.storage.insert(key, Balances::from(free, 0u128));
         balance_change(
             PolkadexBalanceKey::from(token, acc),
             Balances::from(free, 0u128),
-        );
+        )?;
+        Ok(())
     }
 
     pub fn set_free_balance(
@@ -81,7 +86,7 @@ impl PolkadexBalanceStorage {
                 balance_change(
                     PolkadexBalanceKey::from(token, acc),
                     Balances::from(amt, balance.reserved),
-                );
+                )?;
                 Ok(())
             }
             None => {
@@ -106,7 +111,7 @@ impl PolkadexBalanceStorage {
                 balance_change(
                     PolkadexBalanceKey::from(token, acc),
                     Balances::from(balance.free, amt),
-                );
+                )?;
                 Ok(())
             }
             None => {
@@ -131,12 +136,12 @@ impl PolkadexBalanceStorage {
                 balance_change(
                     PolkadexBalanceKey::from(token, acc),
                     Balances::from(balance.free, balance.reserved),
-                );
+                )?;
                 Ok(())
             }
             None => {
                 debug!("No entry available for given token- and AccountId, creating new.");
-                self.initialize_balance(token, acc, amt);
+                self.initialize_balance(token, acc, amt)?;
                 Ok(())
             }
         }
@@ -157,7 +162,7 @@ impl PolkadexBalanceStorage {
                 balance_change(
                     PolkadexBalanceKey::from(token, acc),
                     Balances::from(balance.free, balance.reserved),
-                );
+                )?;
                 Ok(())
             }
             None => {
@@ -185,7 +190,7 @@ impl PolkadexBalanceStorage {
                 balance_change(
                     PolkadexBalanceKey::from(token, acc),
                     Balances::from(balance.free, balance.reserved),
-                );
+                )?;
                 Ok(())
             }
             None => {
@@ -213,11 +218,11 @@ impl PolkadexBalanceStorage {
                 balance_change(
                     PolkadexBalanceKey::from(token, acc),
                     Balances::from(balance.free, balance.reserved),
-                );
+                )?;
                 Ok(())
             }
             None => {
-                self.initialize_balance(token, acc, amt);
+                self.initialize_balance(token, acc, amt)?;
                 Ok(())
             }
         }

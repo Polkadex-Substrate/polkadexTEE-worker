@@ -32,7 +32,7 @@ pub struct BalancesMirror {
     general_db: GeneralDB,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, PartialEq, Debug)]
 pub struct Balances {
     free: u128,
     reserved: u128,
@@ -90,5 +90,108 @@ pub fn load_balances_mirror() -> Result<&'static Mutex<BalancesMirror>, Polkadex
         Err(PolkadexDBError::UnableToLoadPointer)
     } else {
         Ok(unsafe { &*ptr })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GeneralDB;
+    use crate::polkadex_db::{Balances, BalancesMirror, PolkadexBalanceKey};
+    use codec::Encode;
+    use polkadex_primitives::AccountId;
+    use polkadex_sgx_primitives::AssetId;
+    use sp_core::{ed25519 as ed25519_core, Pair};
+    use std::collections::HashMap;
+
+    fn create_dummy_key() -> PolkadexBalanceKey {
+        PolkadexBalanceKey::from(
+            AssetId::POLKADEX,
+            AccountId::from(
+                ed25519_core::Pair::from_seed(b"12345678901234567890123456789012").public(),
+            ),
+        )
+    }
+    fn create_secondary_dummy_key() -> PolkadexBalanceKey {
+        PolkadexBalanceKey::from(
+            AssetId::POLKADEX,
+            AccountId::from(
+                ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public(),
+            ),
+        )
+    }
+
+    #[test]
+    fn write() {
+        let dummy_key = create_dummy_key();
+        let mut balances_mirror = BalancesMirror {
+            general_db: GeneralDB { db: HashMap::new() },
+        };
+        assert_eq!(balances_mirror.general_db.db, HashMap::new());
+        balances_mirror.write(dummy_key.clone(), 42u128, 0u128);
+        assert_eq!(
+            balances_mirror.general_db.db.get(&dummy_key.encode()),
+            Some(
+                &Balances {
+                    free: 42u128,
+                    reserved: 0u128
+                }
+                .encode()
+            )
+        );
+    }
+
+    #[test]
+    fn find() {
+        let dummy_key = create_dummy_key();
+        let mut balances_mirror = BalancesMirror {
+            general_db: GeneralDB { db: HashMap::new() },
+        };
+        balances_mirror.general_db.db.insert(
+            dummy_key.encode(),
+            Balances {
+                free: 42u128,
+                reserved: 0u128,
+            }
+            .encode(),
+        );
+        assert_eq!(
+            balances_mirror._find(dummy_key).unwrap(),
+            Balances {
+                free: 42u128,
+                reserved: 0u128,
+            }
+        );
+        assert!(balances_mirror._find(create_secondary_dummy_key()).is_err());
+    }
+
+    #[test]
+    fn delete() {
+        let dummy_key = create_dummy_key();
+        let mut balances_mirror = BalancesMirror {
+            general_db: GeneralDB { db: HashMap::new() },
+        };
+        balances_mirror.general_db.db.insert(
+            dummy_key.encode(),
+            Balances {
+                free: 42u128,
+                reserved: 0u128,
+            }
+            .encode(),
+        );
+        assert_eq!(
+            balances_mirror
+                .general_db
+                .db
+                .contains_key(&dummy_key.encode()),
+            true
+        );
+        balances_mirror._delete(dummy_key.clone());
+        assert_eq!(
+            balances_mirror
+                .general_db
+                .db
+                .contains_key(&dummy_key.encode()),
+            false
+        );
     }
 }
