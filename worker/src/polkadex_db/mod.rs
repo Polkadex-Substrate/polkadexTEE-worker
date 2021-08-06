@@ -17,6 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod general_db;
+pub mod disc_storage_handler;
 pub use general_db::*;
 pub mod orderbook;
 pub use orderbook::*;
@@ -24,6 +25,9 @@ pub mod nonce;
 pub use nonce::*;
 pub mod balances;
 pub use balances::*;
+
+
+pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -36,4 +40,12 @@ pub enum PolkadexDBError {
     _KeyNotFound,
     /// Failed to decode
     _DecodeError,
+}
+
+
+
+/// Trait for handling permanante storage
+pub trait PermanentStorageHandler {
+    fn write_to_storage(data: &[u8]) -> Result<()>;
+    fn read_from_storage() -> Result<Vec<u8>>;
 }
