@@ -33,11 +33,11 @@ pub struct PolkadexBalanceStorage {
     pub storage: HashMap<EncodedKey, Balances>,
 }
 
-fn balance_change(account: AccountId, new_balance: Balances) {
+fn balance_change(account: PolkadexBalanceKey, new_balance: Balances) {
     crate::channel_storage::load_sender()
         .unwrap()
         .send(crate::channel_storage::ChannelType::Balances(
-            _main_account,
+            account,
             new_balance,
         ))
         .unwrap();
@@ -58,10 +58,13 @@ impl PolkadexBalanceStorage {
     }
 
     pub fn initialize_balance(&mut self, token: AssetId, acc: AccountId, free: Balance) {
-        let key = PolkadexBalanceKey::from(token, acc).encode();
+        let key = PolkadexBalanceKey::from(token, acc.clone()).encode();
         debug!("creating new entry for key: {:?}", key);
         self.storage.insert(key, Balances::from(free, 0u128));
-        balance_change(key, Balances::from(free, 0u128));
+        balance_change(
+            PolkadexBalanceKey::from(token, acc),
+            Balances::from(free, 0u128),
+        );
     }
 
     pub fn set_free_balance(

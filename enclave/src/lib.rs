@@ -84,8 +84,6 @@ use substratee_worker_primitives::block::{
 use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
-use sgx_types::sgx_enclave_id_t;
-
 mod accounts_nonce_storage;
 mod aes;
 mod attestation;
@@ -428,7 +426,6 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 
 extern "C" {
     fn ocall_send_nonce(
-        eid: sgx_enclave_id_t,
         ret_val: *mut sgx_status_t,
         account_encoded: *const u8,
         account_size: u32,
@@ -445,7 +442,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn run_db_thread(eid: sgx_enclave_id_t) -> sgx_status_t {
+pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
     if crate::channel_storage::create_in_memory_channel_storage().is_err() {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
@@ -466,7 +463,7 @@ pub unsafe extern "C" fn run_db_thread(eid: sgx_enclave_id_t) -> sgx_status_t {
                 let slice: &[u8] = account.as_ref();
                 println!(
                     "{:#?}",
-                    ocall_send_nonce(eid, &mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce)
+                    ocall_send_nonce(&mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce)
                 )
             }
             crate::channel_storage::ChannelType::Balances(account, balances) => {
