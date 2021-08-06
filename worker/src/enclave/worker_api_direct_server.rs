@@ -26,7 +26,7 @@ use std::sync::{
     Arc, Mutex, MutexGuard,
 };
 use std::thread;
-use ws::{listen, CloseCode, Handler, Message, Result, Sender};
+use ws::{Builder, CloseCode, Handler, Message, Result, Sender, Settings};
 
 use substratee_worker_primitives::{
     DirectRequestStatus, RpcResponse, RpcReturnValue, TrustedOperationStatus,
@@ -34,6 +34,7 @@ use substratee_worker_primitives::{
 
 static WATCHED_LIST: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 static EID: AtomicPtr<u64> = AtomicPtr::new(0 as *mut sgx_enclave_id_t);
+const CONNECTIONS: usize = 10_000; // simultaneous ws connections
 
 extern "C" {
     fn initialize_pool(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
@@ -101,10 +102,21 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
             );
         }
     }
+
     // Server thread
     info!("Starting direct invocation WebSocket server on {}", addr);
     thread::spawn(move || {
-        match listen(addr.clone(), |out| Server { client: out }) {
+        let settings = Settings {
+            max_connections: CONNECTIONS,
+            ..Default::default()
+        };
+
+        match Builder::new()
+            .with_settings(settings)
+            .build(|out: Sender| Server { client: out })
+            .unwrap()
+            .listen(addr.clone())
+        {
             Ok(_) => (),
             Err(e) => {
                 error!(
@@ -112,7 +124,7 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
                     addr, e
                 );
             }
-        };
+        }
     });
 
     // initialize static pointer to empty HashMap
