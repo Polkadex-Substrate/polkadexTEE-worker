@@ -48,7 +48,7 @@ pub type OpenFinexApiResult<T> = Result<T, OpenFinexApiError>;
 
 /// OpenFinex API trait
 pub trait OpenFinexApi {
-    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<()>;
+    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<RequestId>;
 
     fn cancel_order(
         &self,

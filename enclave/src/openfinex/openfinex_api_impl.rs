@@ -50,7 +50,7 @@ impl OpenFinexApiImpl {
 
 /// implementation
 impl OpenFinexApi for OpenFinexApiImpl {
-    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<RequestId> {
         let user_id = user_id_to_request_string(&order.user_uid);
         let market_type = market_type_to_request_string(order.market_type)?;
         let order_type = order_type_to_request_string(order.order_type);
@@ -78,7 +78,8 @@ impl OpenFinexApi for OpenFinexApiImpl {
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-            .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)))
+            .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)));
+        Ok(request_id)
     }
 
     fn cancel_order(

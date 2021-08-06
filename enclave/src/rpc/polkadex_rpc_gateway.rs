@@ -34,6 +34,7 @@ use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
+use crate::polkadex_cache::cache_api::RequestId;
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
 pub trait RpcGateway: Send + Sync {
@@ -71,7 +72,7 @@ pub trait RpcGateway: Send + Sync {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<(), GatewayError>;
+    ) -> Result<RequestId, GatewayError>;
 
     /// cancel an order, identified by UUID
     fn cancel_order(
@@ -148,7 +149,7 @@ impl RpcGateway for PolkadexRpcGateway {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         let gateway = OpenfinexPolkaDexGateway::new(OpenFinexApiImpl::new(
             OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
         ));

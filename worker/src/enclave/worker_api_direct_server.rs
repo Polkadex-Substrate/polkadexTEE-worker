@@ -116,7 +116,7 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
     });
 
     // initialize static pointer to empty HashMap
-    let new_map: HashMap<Hash, WatchingClient> = HashMap::new();
+    let new_map: HashMap<u128, WatchingClient> = HashMap::new();
     let pool_ptr = Arc::new(Mutex::new(new_map));
     let ptr = Arc::into_raw(pool_ptr);
     WATCHED_LIST.store(ptr as *mut (), Ordering::SeqCst);
@@ -131,8 +131,8 @@ struct WatchingClient {
     response: RpcResponse,
 }
 
-fn load_watched_list() -> Option<&'static Mutex<HashMap<Hash, WatchingClient>>> {
-    let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<Hash, WatchingClient>>;
+fn load_watched_list() -> Option<&'static Mutex<HashMap<u128, WatchingClient>>> {
+    let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<u128, WatchingClient>>;
     if ptr.is_null() {
         None
     } else {
@@ -179,10 +179,11 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
             if let DirectRequestStatus::TrustedOperationStatus(_) = result_of_rpc_response.status {
                 if result_of_rpc_response.do_watch {
                     // start watching the call with the specific hash
-                    if let Ok(hash) = Hash::decode(&mut result_of_rpc_response.value.as_slice()) {
+
+                    if let Ok(request) = u128::decode(&mut result_of_rpc_response.value.as_slice()) {
                         // Aquire lock on watched list
                         let mutex = load_watched_list().unwrap();
-                        let mut watch_list: MutexGuard<HashMap<Hash, WatchingClient>> =
+                        let mut watch_list: MutexGuard<HashMap<u128, WatchingClient>> =
                             mutex.lock().unwrap();
 
                         // create new key and value entries to store
@@ -195,7 +196,7 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                             },
                         };
                         // save in watch list
-                        watch_list.insert(hash, new_client);
+                        watch_list.insert(request, new_client);
                     }
                 }
             }

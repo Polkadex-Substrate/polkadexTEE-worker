@@ -28,6 +28,7 @@ use log::*;
 use polkadex_sgx_primitives::types::{DirectRequest, OrderUUID};
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
+use crate::polkadex_cache::cache_api::RequestId;
 
 pub struct RpcPlaceOrder {
     top_extractor: Box<dyn TrustedOperationExtractor + 'static>,
@@ -48,7 +49,7 @@ impl RpcPlaceOrder {
     fn method_impl(
         &self,
         request: DirectRequest,
-    ) -> Result<(OrderUUID, bool, DirectRequestStatus), String> {
+    ) -> Result<(RequestId, bool, DirectRequestStatus), String> {
         debug!("entering place_order RPC");
 
         let verified_trusted_operation =
@@ -70,11 +71,11 @@ impl RpcPlaceOrder {
             .rpc_gateway
             .place_order(main_account, proxy_account, order)
         {
-            Ok(_) => Ok(OrderUUID::new()), //FIXME: this is not ok!
+            Ok(request_id) => Ok(request_id), //FIXME: this is not ok!
             Err(e) => Err(e.to_string()),
         }?;
 
-        Ok((result, false, DirectRequestStatus::Ok))
+        Ok((result, true, DirectRequestStatus::Ok))
     }
 }
 

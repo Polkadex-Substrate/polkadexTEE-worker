@@ -107,7 +107,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         debug!("Received Order: {:?}", order);
         authenticate_user(main_account.clone(), proxy_acc)?;
         basic_order_checks(&order)?;
@@ -164,16 +164,16 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             }
         };
 
-        self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
+        let request_id = self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
         cache.insert_order(order);
-        Ok(())
+        Ok(request_id)
     }
 
     fn send_order_to_open_finex(
         &self,
         order: Order,
         request_id: RequestId,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         // TODO: Send order to Openfinex for inclusion ( this is a non-blocking call )
         /* let openfinex_api = OpenFinexApiImpl::new(
             OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
