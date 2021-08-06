@@ -54,8 +54,8 @@ impl OpenFinexApiMock {
 }
 
 impl OpenFinexApi for OpenFinexApiMock {
-    fn create_order(&self, _order: Order, _request_id: RequestId) -> OpenFinexApiResult<()> {
-        Ok(())
+    fn create_order(&self, _order: Order, _request_id: RequestId) -> OpenFinexApiResult<u128> { // FIXME Verify
+        Ok(0u128)
     }
 
     fn cancel_order(

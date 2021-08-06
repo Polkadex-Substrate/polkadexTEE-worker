@@ -216,7 +216,8 @@ pub unsafe extern "C" fn ocall_update_status_event(
     status_update_encoded: *const u8,
     status_size: u32,
 ) -> sgx_status_t {
-    let mut status_update_slice =
+    /// Not removing this function, as we may need this function later. So commented it out
+/*    let mut status_update_slice =
         slice::from_raw_parts(status_update_encoded, status_size as usize);
     let status_update = TrustedOperationStatus::decode(&mut status_update_slice).unwrap();
     let mut hash_slice = slice::from_raw_parts(hash_encoded, hash_size as usize);
@@ -260,7 +261,34 @@ pub unsafe extern "C" fn ocall_update_status_event(
             watch_list.remove(&hash);
         }
     }
+*/
+    sgx_status_t::SGX_SUCCESS
+}
 
+#[no_mangle]
+pub unsafe extern "C" fn ocall_send_response_with_uuid(
+    request_id_encoded: *const u8,
+    request_id_size: u32,
+    uuid_encoded: *const u8,
+    uuid_size: u32,
+) -> sgx_status_t {
+    let mut request_id_slice = slice::from_raw_parts(request_id_encoded, request_id_size as usize);
+    let mut uuid_slice = slice::from_raw_parts(uuid_encoded, uuid_size as usize);
+    if let Ok(request_id) = u128::decode(&mut request_id_slice) {
+        let mutex = load_watched_list().unwrap();
+        let mut guard = mutex.lock().unwrap();
+        if let Some(client_response) = guard.get_mut(&request_id) {
+            let uuid = String::decode(&mut uuid_slice).unwrap();
+            let uuid = uuid.encode(); // TODO @Bigna do we need this?
+            client_response
+                .client
+                .send(serde_json::to_string(&uuid).unwrap())
+                .unwrap();
+
+            client_response.client.close(CloseCode::Normal).unwrap();
+        }
+        guard.remove(&request_id);
+    }
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -271,6 +299,8 @@ pub unsafe extern "C" fn ocall_send_status(
     status_encoded: *const u8,
     status_size: u32,
 ) -> sgx_status_t {
+    // Not removing this function, as we may need this function later. So commented it out
+    /*
     let status_slice = slice::from_raw_parts(status_encoded, status_size as usize);
     let mut hash_slice = slice::from_raw_parts(hash_encoded, hash_size as usize);
     if let Ok(hash) = Hash::decode(&mut hash_slice) {
@@ -297,6 +327,7 @@ pub unsafe extern "C" fn ocall_send_status(
         }
         guard.remove(&hash);
     }
+     */
 
     sgx_status_t::SGX_SUCCESS
 }

@@ -138,9 +138,9 @@ impl RpcGateway for RpcGatewayMock {
         _main_account: AccountId,
         _proxy_acc: Option<AccountId>,
         _order: Order,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<u128, GatewayError> {
         match &self.order_uuid {
-            Some(_) => Ok(()),
+            Some(_) => Ok(0u128), //FIXME Verify again
             None => Err(GatewayError::OrderNotFound),
         }
     }
