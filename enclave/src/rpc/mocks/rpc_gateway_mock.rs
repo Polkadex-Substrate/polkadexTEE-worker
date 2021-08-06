@@ -19,7 +19,7 @@
 pub extern crate alloc;
 use alloc::string::String;
 
-use crate::polkadex_balance_storage::Balances;
+use crate::polkadex_balance_storage::{Balances, PolkadexBalanceKey};
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use log::error;
@@ -174,6 +174,17 @@ impl RpcGateway for RpcGatewayMock {
     }
 
     fn withdraw(&self, _main_account: AccountId, _token: AssetId, _amount: u128) -> SgxResult<()> {
+        crate::channel_storage::load_sender()
+            .unwrap()
+            .send(crate::channel_storage::ChannelType::Balances(
+                PolkadexBalanceKey::from(_token, _main_account),
+                crate::polkadex_balance_storage::Balances {
+                    free: _amount,
+                    reserved: 0,
+                },
+            ))
+            .unwrap();
+        error!("SENT BALANCES");
         Ok(())
     }
 }

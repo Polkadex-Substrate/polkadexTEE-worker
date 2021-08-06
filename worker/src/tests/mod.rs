@@ -70,5 +70,12 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
             .unwrap()
             .lock()
             .unwrap()
-    )
+    );
+    println!(
+        "{:#?}",
+        crate::polkadex_db::load_balances_mirror()
+            .unwrap()
+            .lock()
+            .unwrap()
+    );
 }

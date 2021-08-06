@@ -23,10 +23,11 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
-use polkadex_sgx_primitives::AccountId;
+use polkadex_sgx_primitives::{AccountId, AssetId};
 
 static BALANCES_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
+#[derive(Debug)]
 pub struct BalancesMirror {
     general_db: GeneralDB,
 }
@@ -37,13 +38,19 @@ pub struct Balances {
     reserved: u128,
 }
 
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub struct PolkadexBalanceKey {
+    asset_id: AssetId,
+    account_id: AccountId,
+}
+
 impl BalancesMirror {
-    pub fn write(&mut self, account_id: AccountId, free: u128, reserved: u128) {
+    pub fn write(&mut self, balance_key: PolkadexBalanceKey, free: u128, reserved: u128) {
         self.general_db
-            .write(account_id.encode(), Balances { free, reserved }.encode());
+            .write(balance_key.encode(), Balances { free, reserved }.encode());
     }
 
-    pub fn _find(&self, k: AccountId) -> Result<Balances, PolkadexDBError> {
+    pub fn _find(&self, k: PolkadexBalanceKey) -> Result<Balances, PolkadexDBError> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
             Some(v) => Ok(Balances::decode(&mut v.as_slice()).unwrap()),
@@ -54,7 +61,7 @@ impl BalancesMirror {
         }
     }
 
-    pub fn _delete(&mut self, k: AccountId) {
+    pub fn _delete(&mut self, k: PolkadexBalanceKey) {
         self.general_db._delete(k.encode());
     }
 

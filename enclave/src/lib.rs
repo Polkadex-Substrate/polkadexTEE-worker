@@ -438,8 +438,9 @@ extern "C" {
     pub fn ocall_send_balances(
         account_encoded: *const u8,
         account_size: u32,
-        free: u128,
-        reserved: u128,
+        free: *mut u8,
+        reserved: *mut u8,
+        balance_size: u32,
     ) -> sgx_status_t;
 }
 
@@ -449,7 +450,11 @@ pub unsafe extern "C" fn run_db_thread(eid: sgx_enclave_id_t) -> sgx_status_t {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    let receiver = crate::channel_storage::load_receiver().unwrap();
+    let receiver = if let Ok(receiver) = crate::channel_storage::load_receiver() {
+        receiver
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
 
     let receiver = receiver.lock().unwrap();
 
@@ -465,9 +470,20 @@ pub unsafe extern "C" fn run_db_thread(eid: sgx_enclave_id_t) -> sgx_status_t {
                 )
             }
             crate::channel_storage::ChannelType::Balances(account, balances) => {
-                let slice: &[u8] = account.as_ref();
-                let (free, reserved) = (balances.free, balances.reserved);
-                ocall_send_balances(slice.as_ptr(), 32, free, reserved);
+                let slice = account.encode();
+                let slice: &[u8] = slice.as_ref();
+                error!("Received Balances channel call");
+                let (mut free, mut reserved) = (balances.free.encode(), balances.reserved.encode());
+                println!(
+                    "{:#?}",
+                    ocall_send_balances(
+                        slice.as_ptr(),
+                        32,
+                        free.as_mut_ptr(),
+                        reserved.as_mut_ptr(),
+                        free.len() as u32,
+                    )
+                );
             }
         }
     }

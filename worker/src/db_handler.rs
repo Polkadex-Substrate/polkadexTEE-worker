@@ -17,14 +17,20 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>
 
 use crate::enclave::api::enclave_run_db_thread;
+use crate::polkadex_db::{initialize_balances_mirror, initialize_nonce_mirror};
 use sgx_types::sgx_enclave_id_t;
 use std::thread;
 
 pub struct DBHandler {}
 
 impl DBHandler {
+    fn initialize_mirrors() {
+        initialize_nonce_mirror();
+        initialize_balances_mirror();
+    }
+
     pub fn initialize(eid: sgx_enclave_id_t) {
-        crate::polkadex_db::nonce::initialize_nonce_mirror();
+        DBHandler::initialize_mirrors();
         thread::spawn(move || -> Result<(), String> {
             println!("started");
             let result = enclave_run_db_thread(eid);

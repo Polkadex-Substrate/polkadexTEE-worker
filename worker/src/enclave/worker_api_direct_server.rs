@@ -31,6 +31,7 @@ use ws::{listen, CloseCode, Handler, Message, Result, Sender};
 
 use crate::polkadex_db::balances::load_balances_mirror;
 use crate::polkadex_db::nonce::load_nonce_mirror;
+use crate::polkadex_db::PolkadexBalanceKey;
 use polkadex_sgx_primitives::AccountId;
 use substratee_worker_primitives::{
     DirectRequestStatus, RpcResponse, RpcReturnValue, TrustedOperationStatus,
@@ -310,10 +311,19 @@ pub unsafe extern "C" fn ocall_send_nonce(
     account_size: u32,
     nonce: u32,
 ) -> sgx_status_t {
-    let account_slice = slice::from_raw_parts(account_encoded, account_size as usize);
-    let slice: [u8; 32] = account_slice.try_into().unwrap();
-    let account = AccountId::from(slice);
-    let mutex = load_nonce_mirror().unwrap();
+    let account_slice: [u8; 32] = if let Ok(account) =
+        slice::from_raw_parts(account_encoded, account_size as usize).try_into()
+    {
+        account
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+    let account = AccountId::from(account_slice);
+    let mutex = if let Ok(mutex) = load_nonce_mirror() {
+        mutex
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
     let mut nonce_mirror = mutex.lock().unwrap();
     nonce_mirror.write(account, nonce);
     error!("Nonce written: {}", nonce);
@@ -324,14 +334,34 @@ pub unsafe extern "C" fn ocall_send_nonce(
 pub unsafe extern "C" fn ocall_send_balances(
     account_encoded: *const u8,
     account_size: u32,
-    free: u128,
-    reserved: u128,
+    free: *mut u8,
+    reserved: *mut u8,
+    balance_size: u32,
 ) -> sgx_status_t {
-    let account_slice = slice::from_raw_parts(account_encoded, account_size as usize);
-    let slice: [u8; 32] = account_slice.try_into().unwrap();
-    let account = AccountId::from(slice);
-    let mutex = load_balances_mirror().unwrap();
+    let mut account_slice = slice::from_raw_parts(account_encoded, account_size as usize);
+
+    let account = if let Ok(key) = PolkadexBalanceKey::decode(&mut account_slice) {
+        key
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
+    let mutex = if let Ok(mutex) = load_balances_mirror() {
+        mutex
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
     let mut balances_mirror = mutex.lock().unwrap();
+
+    let (free, reserved) = if let (Ok(free), Ok(reserved)) = (
+        u128::decode(&mut slice::from_raw_parts(free, balance_size as usize)),
+        u128::decode(&mut slice::from_raw_parts(reserved, balance_size as usize)),
+    ) {
+        (free, reserved)
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
     balances_mirror.write(account, free, reserved);
 
     sgx_status_t::SGX_SUCCESS

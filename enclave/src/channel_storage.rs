@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polkadex_balance_storage::Balances;
+use crate::polkadex_balance_storage::{Balances, PolkadexBalanceKey};
 use crate::polkadex_gateway::GatewayError;
 use log::*;
 use polkadex_sgx_primitives::AccountId;
@@ -54,7 +54,7 @@ impl Default for ChannelStorage {
 
 pub enum ChannelType {
     Nonce(AccountId, u32),
-    Balances(AccountId, Balances),
+    Balances(PolkadexBalanceKey, Balances),
 }
 
 pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
@@ -76,46 +76,6 @@ pub fn load_receiver() -> Result<Arc<SgxMutex<Receiver<ChannelType>>>, ChannelSt
     let result = storage.receiver.clone();
     Ok(result)
 }
-
-// pub fn load_balance_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
-//     // Acquire lock on proxy_registry
-//     let mutex = load_channel_storage()?;
-//     let storage: SgxMutexGuard<ChannelStorage> = mutex
-//         .lock()
-//         .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
-//     let result = storage.balance.sender.clone();
-//     Ok(result)
-// }
-//
-// pub fn load_balance_receiver() -> Result<&'static Receiver<ChannelType>, ChannelStorageError> {
-//     // Acquire lock on proxy_registry
-//     let mutex = load_channel_storage()?;
-//     let storage: SgxMutexGuard<ChannelStorage> = mutex
-//         .lock()
-//         .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
-//     let result = &storage.balance.receiver;
-//     Ok(result)
-// }
-//
-// pub fn load_nonce_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
-//     // Acquire lock on proxy_registry
-//     let mutex = load_channel_storage()?;
-//     let storage: SgxMutexGuard<ChannelStorage> = mutex
-//         .lock()
-//         .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
-//     let result = storage.nonce.sender.clone();
-//     Ok(result)
-// }
-//
-// pub fn load_nonce_receiver() -> Result<&'static Receiver<ChannelType>, ChannelStorageError> {
-//     // Acquire lock on proxy_registry
-//     let mutex = load_channel_storage()?;
-//     let storage: SgxMutexGuard<ChannelStorage> = mutex
-//         .lock()
-//         .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
-//     let result = &storage.nonce.receiver;
-//     Ok(result)
-// }
 
 pub fn load_channel_storage() -> Result<&'static SgxMutex<ChannelStorage>, ChannelStorageError> {
     let ptr = GLOBAL_CHANNEL_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<ChannelStorage>;
