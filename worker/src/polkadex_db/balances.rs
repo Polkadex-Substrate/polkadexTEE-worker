@@ -62,7 +62,9 @@ impl BalancesMirror {
     pub fn _find(&self, k: PolkadexBalanceKey) -> Result<Balances, PolkadexDBError> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
-            Some(v) => Ok(Balances::decode(&mut v.as_slice()).unwrap()),
+            Some(v) => {
+                Balances::decode(&mut v.as_slice()).map_err(|_| PolkadexDBError::_DecodeError)
+            }
             None => {
                 println!("Key returns None");
                 Err(PolkadexDBError::_KeyNotFound)

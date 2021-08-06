@@ -30,6 +30,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
+use crate::channel_storage::{create_in_memory_channel_storage, load_receiver, ChannelType};
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
@@ -446,27 +447,33 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
-    if crate::channel_storage::create_in_memory_channel_storage().is_err() {
+    if create_in_memory_channel_storage().is_err() {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    let receiver = if let Ok(receiver) = crate::channel_storage::load_receiver() {
-        receiver
+    let mutex = if let Ok(mutex) = load_receiver() {
+        mutex
     } else {
+        error!("Failed to load mutex");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
-    let receiver = receiver.lock().unwrap();
+    let receiver = if let Ok(receiver) = mutex.lock() {
+        receiver
+    } else {
+        error!("Failed to lock receiver");
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
 
     loop {
-        match receiver.recv().unwrap() {
-            crate::channel_storage::ChannelType::Nonce(account, nonce) => {
+        match receiver.recv() {
+            Ok(ChannelType::Nonce(account, nonce)) => {
                 let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
                 let slice: &[u8] = account.as_ref();
 
                 ocall_send_nonce(&mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce);
             }
-            crate::channel_storage::ChannelType::Balances(account, balances) => {
+            Ok(ChannelType::Balances(account, balances)) => {
                 let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
                 let account_slice: &[u8] = account.account_id.as_ref();
                 let token_slice = account.asset_id.encode();
@@ -483,6 +490,9 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
                     reserved.as_mut_ptr(),
                     free.len() as u32,
                 );
+            }
+            Err(_) => {
+                error!("Failed to receive message from sender");
             }
         }
     }

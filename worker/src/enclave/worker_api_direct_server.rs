@@ -326,7 +326,12 @@ pub unsafe extern "C" fn ocall_send_nonce(
         error!("Failed to load nonce mirror");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
-    let mut nonce_mirror = mutex.lock().unwrap();
+    let mut nonce_mirror = if let Ok(nonce_mirror) = mutex.lock() {
+        nonce_mirror
+    } else {
+        error!("Failed to lock nonce_mirror");
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
     nonce_mirror.write(account, nonce);
     sgx_status_t::SGX_SUCCESS
 }
@@ -367,7 +372,12 @@ pub unsafe extern "C" fn ocall_send_balances(
         error!("Failed to load balance mirror");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
-    let mut balances_mirror = mutex.lock().unwrap();
+    let mut balances_mirror = if let Ok(balances_mirror) = mutex.lock() {
+        balances_mirror
+    } else {
+        error!("Failed to lock balances_mirror");
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
 
     let (free, reserved) = if let (Ok(free), Ok(reserved)) = (
         u128::decode(&mut slice::from_raw_parts(free, balance_size as usize)),

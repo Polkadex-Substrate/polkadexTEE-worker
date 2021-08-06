@@ -46,7 +46,9 @@ impl NonceMirror {
     pub fn _find(&self, k: AccountId) -> Result<u32, PolkadexDBError> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
-            Some(v) => Ok(Nonce::decode(&mut v.as_slice()).unwrap().nonce),
+            Some(v) => Ok(Nonce::decode(&mut v.as_slice())
+                .map_err(|_| PolkadexDBError::_DecodeError)?
+                .nonce),
             None => {
                 println!("Key returns None");
                 Err(PolkadexDBError::_KeyNotFound)

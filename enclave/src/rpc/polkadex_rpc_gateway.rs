@@ -20,6 +20,7 @@ pub extern crate alloc;
 use alloc::{string::String, string::ToString};
 use log::error;
 
+use crate::channel_storage::{load_sender, ChannelType};
 use crate::execute_ocex_release_extrinsic;
 use crate::openfinex::openfinex_api_impl::OpenFinexApiImpl;
 use crate::openfinex::openfinex_client::OpenFinexClientInterface;
@@ -105,17 +106,13 @@ impl RpcGateway for PolkadexRpcGateway {
         let result =
             authenticate_user_and_validate_nonce(main_account.clone(), proxy_account, nonce);
         if result.is_ok() {
-            crate::channel_storage::load_sender()
-                .unwrap()
-                .send(crate::channel_storage::ChannelType::Nonce(
-                    main_account,
-                    nonce + 1,
-                ))
-                .unwrap();
+            load_sender()
+                .map_err(|_| GatewayError::UnableToLoadPointer)?
+                .send(ChannelType::Nonce(main_account, nonce + 1))
+                .map_err(|_| GatewayError::UndefinedBehaviour)?;
         }
         result
     }
-
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
