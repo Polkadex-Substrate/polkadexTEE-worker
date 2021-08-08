@@ -26,6 +26,7 @@ use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
+use crate::polkadex_cache::cache_api::RequestId;
 use crate::polkadex_gateway::{
     authenticate_user, authenticate_user_and_validate_nonce, GatewayError, OpenfinexPolkaDexGateway,
 };
@@ -34,7 +35,6 @@ use polkadex_sgx_primitives::types::{CancelOrder, Order};
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_types::{sgx_status_t, SgxResult};
 use substratee_stf::{TrustedCall, TrustedOperation};
-use crate::polkadex_cache::cache_api::RequestId;
 
 /// Gateway trait from RPC API -> Polkadex gateway implementation
 pub trait RpcGateway: Send + Sync {

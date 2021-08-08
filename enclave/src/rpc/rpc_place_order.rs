@@ -19,6 +19,7 @@
 pub extern crate alloc;
 use alloc::{boxed::Box, string::String, string::ToString};
 
+use crate::polkadex_cache::cache_api::RequestId;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
 use crate::rpc::rpc_info::RpcCallStatus;
@@ -28,7 +29,6 @@ use log::*;
 use polkadex_sgx_primitives::types::{DirectRequest, OrderUUID};
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
-use crate::polkadex_cache::cache_api::RequestId;
 
 pub struct RpcPlaceOrder {
     top_extractor: Box<dyn TrustedOperationExtractor + 'static>,

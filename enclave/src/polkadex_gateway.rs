@@ -36,6 +36,7 @@ use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_gateway;
 use crate::polkadex_orderbook_storage;
+use crate::rpc::worker_api_direct::send_uuid;
 use accounts_nonce_storage::AccountRegistryError;
 
 impl alloc::fmt::Display for GatewayError {
@@ -164,7 +165,8 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             }
         };
 
-        let request_id = self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
+        let request_id =
+            self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
         cache.insert_order(order);
         Ok(request_id)
     }
@@ -317,7 +319,7 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
     Ok(())
 }
 
-pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+pub fn process_create_order(request_id: u128, order_uuid: OrderUUID) -> Result<(), GatewayError> {
     // TODO check that this is correct @Bigna
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
     let mut create_cache = match mutex.lock() {
@@ -328,15 +330,18 @@ pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), Ga
         }
     };
 
-    if let Some(order) = create_cache.remove_order(&nonce) {
+    if let Some(order) = create_cache.remove_order(&request_id) {
         // Insert order in order book
-        if let Err(e) = polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid) {
+        if let Err(e) =
+            polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid.clone())
+        {
             error!("Locking storage and adding order failed. Error: {:?}", e);
             return Err(GatewayError::UnableToLock); // TODO: Use the correct error / Handle in the function
         };
     } else {
         return Err(GatewayError::NonceNotPresent);
     }
+    send_uuid(request_id, order_uuid);
     Ok(())
 }
 

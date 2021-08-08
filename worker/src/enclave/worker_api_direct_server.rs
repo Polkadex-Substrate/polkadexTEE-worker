@@ -18,7 +18,6 @@ use sgx_types::*;
 
 use codec::{Decode, Encode};
 use log::*;
-use sp_core::H256 as Hash;
 use std::collections::HashMap;
 use std::slice;
 use std::sync::{
@@ -28,9 +27,7 @@ use std::sync::{
 use std::thread;
 use ws::{listen, CloseCode, Handler, Message, Result, Sender};
 
-use substratee_worker_primitives::{
-    DirectRequestStatus, RpcResponse, RpcReturnValue, TrustedOperationStatus,
-};
+use substratee_worker_primitives::{DirectRequestStatus, RpcResponse, RpcReturnValue};
 
 static WATCHED_LIST: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 static EID: AtomicPtr<u64> = AtomicPtr::new(0 as *mut sgx_enclave_id_t);
@@ -180,7 +177,8 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                 if result_of_rpc_response.do_watch {
                     // start watching the call with the specific hash
 
-                    if let Ok(request) = u128::decode(&mut result_of_rpc_response.value.as_slice()) {
+                    if let Ok(request) = u128::decode(&mut result_of_rpc_response.value.as_slice())
+                    {
                         // Aquire lock on watched list
                         let mutex = load_watched_list().unwrap();
                         let mut watch_list: MutexGuard<HashMap<u128, WatchingClient>> =
@@ -216,52 +214,52 @@ pub unsafe extern "C" fn ocall_update_status_event(
     status_update_encoded: *const u8,
     status_size: u32,
 ) -> sgx_status_t {
-    /// Not removing this function, as we may need this function later. So commented it out
-/*    let mut status_update_slice =
-        slice::from_raw_parts(status_update_encoded, status_size as usize);
-    let status_update = TrustedOperationStatus::decode(&mut status_update_slice).unwrap();
-    let mut hash_slice = slice::from_raw_parts(hash_encoded, hash_size as usize);
-    if let Ok(hash) = Hash::decode(&mut hash_slice) {
-        // Aquire watched list lock
-        let mutex = load_watched_list().unwrap();
-        let mut watch_list = mutex.lock().unwrap();
-        let mut continue_watching = true;
-        if let Some(client_event) = watch_list.get_mut(&hash) {
-            let mut event = &mut client_event.response;
-            // Aquire result of old RpcResponse
-            let old_result: Vec<u8> = event.result.clone();
-            let mut result = RpcReturnValue::decode(&mut old_result.as_slice()).unwrap();
+    // Not removing this function, as we may need this function later. So commented it out
+    /*    let mut status_update_slice =
+            slice::from_raw_parts(status_update_encoded, status_size as usize);
+        let status_update = TrustedOperationStatus::decode(&mut status_update_slice).unwrap();
+        let mut hash_slice = slice::from_raw_parts(hash_encoded, hash_size as usize);
+        if let Ok(hash) = Hash::decode(&mut hash_slice) {
+            // Aquire watched list lock
+            let mutex = load_watched_list().unwrap();
+            let mut watch_list = mutex.lock().unwrap();
+            let mut continue_watching = true;
+            if let Some(client_event) = watch_list.get_mut(&hash) {
+                let mut event = &mut client_event.response;
+                // Aquire result of old RpcResponse
+                let old_result: Vec<u8> = event.result.clone();
+                let mut result = RpcReturnValue::decode(&mut old_result.as_slice()).unwrap();
 
-            match status_update {
-                TrustedOperationStatus::Invalid
-                | TrustedOperationStatus::InSidechainBlock(_)
-                | TrustedOperationStatus::Finalized
-                | TrustedOperationStatus::Usurped => {
-                    // Stop watching
-                    result.do_watch = false;
-                    continue_watching = false;
+                match status_update {
+                    TrustedOperationStatus::Invalid
+                    | TrustedOperationStatus::InSidechainBlock(_)
+                    | TrustedOperationStatus::Finalized
+                    | TrustedOperationStatus::Usurped => {
+                        // Stop watching
+                        result.do_watch = false;
+                        continue_watching = false;
+                    }
+                    _ => {}
+                };
+                // update response
+                result.status = DirectRequestStatus::TrustedOperationStatus(status_update);
+                event.result = result.encode();
+                client_event
+                    .client
+                    .send(serde_json::to_string(&event).unwrap())
+                    .unwrap();
+
+                if !continue_watching {
+                    client_event.client.close(CloseCode::Normal).unwrap();
                 }
-                _ => {}
-            };
-            // update response
-            result.status = DirectRequestStatus::TrustedOperationStatus(status_update);
-            event.result = result.encode();
-            client_event
-                .client
-                .send(serde_json::to_string(&event).unwrap())
-                .unwrap();
-
-            if !continue_watching {
-                client_event.client.close(CloseCode::Normal).unwrap();
+            } else {
+                continue_watching = false;
             }
-        } else {
-            continue_watching = false;
+            if !continue_watching {
+                watch_list.remove(&hash);
+            }
         }
-        if !continue_watching {
-            watch_list.remove(&hash);
-        }
-    }
-*/
+    */
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -278,8 +276,7 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
         let mutex = load_watched_list().unwrap();
         let mut guard = mutex.lock().unwrap();
         if let Some(client_response) = guard.get_mut(&request_id) {
-            let uuid = String::decode(&mut uuid_slice).unwrap();
-            let uuid = uuid.encode(); // TODO @Bigna do we need this?
+            let uuid = uuid_slice.to_vec(); // TODO @Bigna do we need this?
             client_response
                 .client
                 .send(serde_json::to_string(&uuid).unwrap())
