@@ -17,22 +17,25 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
-
-use crate::constants::ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT;
+use crate::constants::{ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT, ORDERBOOK_DISK_STORAGE_FILENAME};
 use codec::Encode;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::types::SignedOrder;
 
+use super::PermanentStorageHandler;
+use super::disc_storage_handler::DiscStorageHandler;
+
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
-pub struct OrderbookMirror {
-    general_db: GeneralDB,
+pub struct OrderbookMirror<D: PermanentStorageHandler> {
+    general_db: GeneralDB<D>,
 }
 
-impl<D> OrderbookMirror<D> {
+impl<D: PermanentStorageHandler> OrderbookMirror<D> {
     pub fn write(&mut self, order_uid: Vec<u8>, signed_order: &SignedOrder) {
         self.general_db.write(order_uid, signed_order.encode());
     }
@@ -78,15 +81,15 @@ impl<D> OrderbookMirror<D> {
 }
 
 pub fn initialize_orderbook_mirror() {
-    let storage_ptr = Arc::new(Mutex::<OrderbookMirror>::new(OrderbookMirror {
-        general_db: GeneralDB { db: HashMap::new() },
+    let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiscStorageHandler>>::new(OrderbookMirror {
+        general_db: GeneralDB { db: HashMap::new(), disc_storage: DiscStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME)) },
     }));
     let ptr = Arc::into_raw(storage_ptr);
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
 pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror>, PolkadexDBError> {
-    let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror>;
+    let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiscStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)

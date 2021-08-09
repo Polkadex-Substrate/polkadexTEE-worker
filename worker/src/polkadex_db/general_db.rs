@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use codec::{Encode, Decode};
 use super::PermanentStorageHandler;
 use super::Result;
+use super::PolkadexDBError as Error;
 
 pub type EncodableDB = Vec<(Vec<u8>, Vec<u8>)>;
 #[derive(Debug)]
@@ -28,7 +29,7 @@ pub struct GeneralDB<D: PermanentStorageHandler> {
     pub disc_storage: D
 }
 
-impl<D> GeneralDB<D> {
+impl<D: PermanentStorageHandler> GeneralDB<D> {
     pub fn write(&mut self, key: Vec<u8>, data: Vec<u8>) {
         self.db.insert(key, data);
     }
@@ -41,6 +42,7 @@ impl<D> GeneralDB<D> {
         self.db.remove(&k);
     }
 
+    /// reads from memory
     pub fn read_all(&self) -> EncodableDB {
         self.db
             .clone()
@@ -51,20 +53,22 @@ impl<D> GeneralDB<D> {
     /// writes from memory to permanent disc storage
     pub fn write_disk(&self) -> Result<()> {
         self.disc_storage.write_to_storage(
-            self.read_all()
+            &self.read_all()
                 .encode()
+                .as_slice()
         )
     }
 
     /// reads from permanent disc storage to memory
-    pub fn read_disk(&self) -> Result<Self> {
+    pub fn read_disk(&mut self) -> Result<()> {
         let data = EncodableDB::decode(
-            self.disc_storage.read_from_storage()?
-        )?;
-        for data_point in self.data {
+            &mut self.disc_storage.read_from_storage()?
+            .as_slice()
+        ).map_err(Error::DecodeError)?;
+        for data_point in self.db.clone() {
             self.write(data_point.0, data_point.1);
         }
-        Ok(self)
+        Ok(())
     }
 }
 #[cfg(test)]
@@ -72,10 +76,11 @@ mod tests {
     use super::GeneralDB;
     use codec::Encode;
     use std::collections::HashMap;
+    use super::mock::PermanentStorageMock;
 
     #[test]
     fn write() {
-        let mut general_db = GeneralDB { db: HashMap::new() };
+        let mut general_db = GeneralDB { db: HashMap::new(), disc_storage: PermanentStorageMock::default() };
         assert_eq!(general_db.db, HashMap::new());
         general_db.write("key".encode(), "data".encode());
         assert_eq!(general_db.db.get(&"key".encode()), Some(&"data".encode()));

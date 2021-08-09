@@ -16,16 +16,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use codec;
+
 pub mod general_db;
 pub mod disc_storage_handler;
 pub mod mock;
-pub use general_db::*;
 pub mod orderbook;
+
+// public exports
 pub use orderbook::*;
 pub mod nonce;
 pub use nonce::*;
 pub mod balances;
 pub use balances::*;
+pub use general_db::*;
+pub use disc_storage_handler::DiscStorageHandler;
 
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
@@ -42,6 +47,8 @@ pub enum PolkadexDBError {
     _DecodeError,
     /// File system interaction error
     FsError(std::io::Error),
+    /// Decode Error
+    DecodeError(codec::Error)
 }
 
 /// Trait for handling permanante storage
