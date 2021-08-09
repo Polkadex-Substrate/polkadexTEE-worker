@@ -16,15 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-
 use super::PermanentStorageHandler;
-use std::path::PathBuf;
-use std::fs;
 use log::*;
-use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 
-use super::Result;
 use super::PolkadexDBError as Error;
+use super::Result;
 
 const DEFAULT_STORAGE_PATH: &str = "polkadex_storage";
 /// handles all disc permanent storage interactions of polkadex databases

@@ -16,24 +16,22 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use codec::{Encode, Decode};
 use super::PermanentStorageHandler;
-use super::Result;
 use super::PolkadexDBError as Error;
+use super::Result;
+use codec::{Decode, Encode};
+use std::collections::HashMap;
 
 pub type EncodableDB = Vec<(Vec<u8>, Vec<u8>)>;
 #[derive(Debug)]
 pub struct GeneralDB<D: PermanentStorageHandler> {
     pub db: HashMap<Vec<u8>, Vec<u8>>,
-    pub disc_storage: D
+    pub disc_storage: D,
 }
 
 impl<D: PermanentStorageHandler> GeneralDB<D> {
     pub fn new(db: HashMap<Vec<u8>, Vec<u8>>, disc_storage: D) -> Self {
-        GeneralDB {
-            db, disc_storage
-        }
+        GeneralDB { db, disc_storage }
     }
     pub fn write(&mut self, key: Vec<u8>, data: Vec<u8>) {
         self.db.insert(key, data);
@@ -57,19 +55,14 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
 
     /// writes from memory to permanent disc storage
     pub fn write_disk(&self) -> Result<()> {
-        self.disc_storage.write_to_storage(
-            &self.read_all()
-                .encode()
-                .as_slice()
-        )
+        self.disc_storage
+            .write_to_storage(&self.read_all().encode().as_slice())
     }
 
     /// reads from permanent disc storage to memory
     pub fn read_disk(&mut self) -> Result<()> {
-        let data = EncodableDB::decode(
-            &mut self.disc_storage.read_from_storage()?
-            .as_slice()
-        ).map_err(Error::DecodeError)?;
+        let data = EncodableDB::decode(&mut self.disc_storage.read_from_storage()?.as_slice())
+            .map_err(Error::DecodeError)?;
         for data_point in self.db.clone() {
             self.write(data_point.0, data_point.1);
         }
@@ -79,13 +72,13 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
 #[cfg(test)]
 mod tests {
     use super::GeneralDB;
+    use crate::polkadex_db::mock::PermanentStorageMock;
     use codec::Encode;
     use std::collections::HashMap;
-    use crate::polkadex_db::mock::PermanentStorageMock;
 
     #[test]
     fn write() {
-        let mut general_db = GeneralDB { db: HashMap::new(), disc_storage: PermanentStorageMock::default() };
+        let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
         assert_eq!(general_db.db, HashMap::new());
         general_db.write("key".encode(), "data".encode());
         assert_eq!(general_db.db.get(&"key".encode()), Some(&"data".encode()));
@@ -93,7 +86,7 @@ mod tests {
 
     #[test]
     fn find() {
-        let mut general_db = GeneralDB::new(HashMap::new(),PermanentStorageMock::default() );
+        let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
         general_db.db.insert("key".encode(), "data".encode());
         assert_eq!(general_db._find("key".encode()), Some(&"data".encode()));
         assert_eq!(general_db._find("key1".encode()), None);
@@ -101,7 +94,7 @@ mod tests {
 
     #[test]
     fn delete() {
-        let mut general_db = GeneralDB::new(HashMap::new(),PermanentStorageMock::default() );
+        let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
         general_db.db.insert("key".encode(), "data".encode());
         assert_eq!(general_db.db.contains_key(&"key".encode()), true);
         general_db._delete("key".encode());
@@ -110,7 +103,7 @@ mod tests {
 
     #[test]
     fn read_all() {
-        let mut general_db = GeneralDB::new(HashMap::new(),PermanentStorageMock::default() );
+        let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
         general_db.db.insert("key".encode(), "data".encode());
         general_db.db.insert("key1".encode(), "data1".encode());
         assert_eq!(

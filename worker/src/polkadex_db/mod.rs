@@ -18,8 +18,8 @@
 
 use codec;
 
-pub mod general_db;
 pub mod disc_storage_handler;
+pub mod general_db;
 pub mod orderbook;
 
 #[cfg(test)]
@@ -35,6 +35,8 @@ pub mod balances;
 pub use balances::*;
 pub use general_db::*;
 pub use disc_storage_handler::DiscStorageHandler;
+pub use general_db::*;
+pub use orderbook::*;
 
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
@@ -52,7 +54,7 @@ pub enum PolkadexDBError {
     /// File system interaction error
     FsError(std::io::Error),
     /// Decode Error
-    DecodeError(codec::Error)
+    DecodeError(codec::Error),
 }
 
 /// Trait for handling permanante storage

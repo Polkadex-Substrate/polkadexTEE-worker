@@ -16,18 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use crate::constants::{ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT, ORDERBOOK_DISK_STORAGE_FILENAME};
+use crate::constants::{ORDERBOOK_DISK_STORAGE_FILENAME, ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT};
 use codec::Encode;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::types::SignedOrder;
 
-use super::PermanentStorageHandler;
 use super::disc_storage_handler::DiscStorageHandler;
+use super::PermanentStorageHandler;
 
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -81,15 +81,23 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
 }
 
 pub fn initialize_orderbook_mirror() {
-    let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiscStorageHandler>>::new(OrderbookMirror {
-        general_db: GeneralDB { db: HashMap::new(), disc_storage: DiscStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME)) },
-    }));
+    let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiscStorageHandler>>::new(
+        OrderbookMirror {
+            general_db: GeneralDB {
+                db: HashMap::new(),
+                disc_storage: DiscStorageHandler::open_default(PathBuf::from(
+                    ORDERBOOK_DISK_STORAGE_FILENAME,
+                )),
+            },
+        },
+    ));
     let ptr = Arc::into_raw(storage_ptr);
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror>, PolkadexDBError> {
-    let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiscStorageHandler>>;
+pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror<DiscStorageHandler>>, PolkadexDBError> {
+    let ptr =
+        ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiscStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)
@@ -150,7 +158,7 @@ mod tests {
     #[test]
     fn write() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         assert_eq!(orderbook.general_db.db, HashMap::new());
         orderbook.write("FIRST_ORDER".encode(), &first_order());
@@ -163,7 +171,7 @@ mod tests {
     #[test]
     fn find() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         orderbook
             .general_db
@@ -179,7 +187,7 @@ mod tests {
     #[test]
     fn delete() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         orderbook
             .general_db
@@ -205,7 +213,7 @@ mod tests {
     #[test]
     fn read_all() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         orderbook
             .general_db

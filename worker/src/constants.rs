@@ -34,8 +34,6 @@ pub static RA_SPID_FILE: &str = "../bin/spid.txt";
 #[cfg(not(feature = "production"))]
 pub static RA_API_KEY_FILE: &str = "../bin/key.txt";
 
-
-
 // the maximum size of any extrinsic that the enclave will ever generate in B
 pub static EXTRINSIC_MAX_SIZE: usize = 4196;
 // the maximum size of a value that will be queried from the state in B

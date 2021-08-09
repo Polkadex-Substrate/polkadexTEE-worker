@@ -20,17 +20,17 @@ use super::PermanentStorageHandler;
 use super::Result;
 
 pub struct PermanentStorageMock {
-    pub contained_data: Vec<u8>
+    pub contained_data: Vec<u8>,
 }
 impl Default for PermanentStorageMock {
     fn default() -> Self {
         PermanentStorageMock {
-            contained_data: vec![]
+            contained_data: vec![],
         }
     }
 }
 
-impl PermanentStorageHandler for PermanentStorageMock{
+impl PermanentStorageHandler for PermanentStorageMock {
     fn write_to_storage(&self, _data: &[u8]) -> Result<()> {
         Ok(())
     }
