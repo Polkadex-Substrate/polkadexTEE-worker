@@ -83,12 +83,10 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
 pub fn initialize_orderbook_mirror() {
     let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiscStorageHandler>>::new(
         OrderbookMirror {
-            general_db: GeneralDB {
-                db: HashMap::new(),
-                disc_storage: DiscStorageHandler::open_default(PathBuf::from(
-                    ORDERBOOK_DISK_STORAGE_FILENAME,
-                )),
-            },
+            general_db: GeneralDB::new(
+                HashMap::new(),
+                DiscStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME)),
+            ),
         },
     ));
     let ptr = Arc::into_raw(storage_ptr);
@@ -193,21 +191,15 @@ mod tests {
             .general_db
             .db
             .insert("FIRST_ORDER".encode(), first_order().encode());
-        assert_eq!(
-            orderbook
-                .general_db
-                .db
-                .contains_key(&"FIRST_ORDER".encode()),
-            true
-        );
+        assert!(orderbook
+            .general_db
+            .db
+            .contains_key(&"FIRST_ORDER".encode()));
         orderbook._delete("FIRST_ORDER".encode());
-        assert_eq!(
-            orderbook
-                .general_db
-                .db
-                .contains_key(&"FIRST_ORDER".encode()),
-            false
-        );
+        assert!(!orderbook
+            .general_db
+            .db
+            .contains_key(&"FIRST_ORDER".encode()));
     }
 
     #[test]

@@ -47,20 +47,17 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
 
     /// reads from memory
     pub fn read_all(&self) -> EncodableDB {
-        self.db
-            .clone()
-            .into_iter()
-            .collect::<EncodableDB>()
+        self.db.clone().into_iter().collect::<EncodableDB>()
     }
 
     /// writes from memory to permanent disc storage
-    pub fn write_disk(&self) -> Result<()> {
+    pub fn _write_disk(&self) -> Result<()> {
         self.disc_storage
             .write_to_storage(&self.read_all().encode().as_slice())
     }
 
     /// reads from permanent disc storage to memory
-    pub fn read_disk(&mut self) -> Result<EncodableDB> {
+    pub fn _read_disk(&mut self) -> Result<EncodableDB> {
         let data = EncodableDB::decode(&mut self.disc_storage.read_from_storage()?.as_slice())
             .map_err(Error::DecodeError)?;
         for data_point in self.db.clone() {
@@ -96,9 +93,9 @@ mod tests {
     fn delete() {
         let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
         general_db.db.insert("key".encode(), "data".encode());
-        assert_eq!(general_db.db.contains_key(&"key".encode()), true);
+        assert!(general_db.db.contains_key(&"key".encode()));
         general_db._delete("key".encode());
-        assert_eq!(general_db.db.contains_key(&"key".encode()), false);
+        assert!(!general_db.db.contains_key(&"key".encode()));
     }
 
     #[test]

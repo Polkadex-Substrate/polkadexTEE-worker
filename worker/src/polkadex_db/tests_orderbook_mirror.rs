@@ -60,7 +60,8 @@ fn test_write_and_delete() {
         let mutex = load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiscStorageHandler>> =
             mutex.lock().unwrap();
-        Ok(orderbook_mirror.write("FIRST_ORDER".to_string().into_bytes(), &first_order))
+        orderbook_mirror.write("FIRST_ORDER".to_string().into_bytes(), &first_order);
+        Ok(())
     });
 
     let result = handler.join().unwrap();
@@ -70,9 +71,10 @@ fn test_write_and_delete() {
         let mutex = load_orderbook_mirror()?;
         let orderbook_mirror: MutexGuard<OrderbookMirror<DiscStorageHandler>> =
             mutex.lock().unwrap();
-        Ok(orderbook_mirror
+        let signed_order = orderbook_mirror
             ._find("FIRST_ORDER".to_string().into_bytes())
-            .unwrap_or(SignedOrder::default()))
+            .unwrap_or(SignedOrder::default());
+        Ok(signed_order)
     });
 
     let order_read = handler.join().unwrap().unwrap();
@@ -172,7 +174,8 @@ fn test_read_all() {
         let mutex = load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiscStorageHandler>> =
             mutex.lock().unwrap();
-        Ok(orderbook_mirror.write("FIRST_ORDER1".to_string().into_bytes(), &first_order))
+        orderbook_mirror.write("FIRST_ORDER1".to_string().into_bytes(), &first_order);
+        Ok(())
     });
 
     let result = handler.join().unwrap();
@@ -182,7 +185,8 @@ fn test_read_all() {
         let mutex = load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiscStorageHandler>> =
             mutex.lock().unwrap();
-        Ok(orderbook_mirror.write("SECOND_ORDER1".to_string().into_bytes(), &second_order))
+        orderbook_mirror.write("SECOND_ORDER1".to_string().into_bytes(), &second_order);
+        Ok(())
     });
 
     let result = handler.join().unwrap();
