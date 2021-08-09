@@ -18,6 +18,7 @@
 
 pub mod general_db;
 pub mod disc_storage_handler;
+pub mod mock;
 pub use general_db::*;
 pub mod orderbook;
 pub use orderbook::*;
