@@ -52,6 +52,7 @@ pub enum PolkadexDBError {
     /// File system interaction error
     FsError(std::io::Error),
     /// Decode Error
+    #[allow(dead_code)] //FIXME: remove as soon _read_disk is actually used
     DecodeError(codec::Error),
 }
 
