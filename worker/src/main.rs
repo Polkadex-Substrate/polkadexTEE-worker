@@ -71,9 +71,6 @@ mod polkadex;
 mod polkadex_db;
 mod tests;
 
-#[cfg(test)]
-mod tests_orderbook_mirror;
-
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");

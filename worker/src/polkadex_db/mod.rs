@@ -20,8 +20,12 @@ use codec;
 
 pub mod general_db;
 pub mod disc_storage_handler;
-pub mod mock;
 pub mod orderbook;
+
+#[cfg(test)]
+pub mod mock;
+#[cfg(test)]
+pub mod tests_orderbook_mirror;
 
 // public exports
 pub use orderbook::*;

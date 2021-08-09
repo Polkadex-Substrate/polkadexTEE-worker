@@ -19,14 +19,15 @@
 use std::{thread, time};
 
 use crate::polkadex_db::{
-    orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, OrderbookMirror,
-    PolkadexDBError,
+    orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, OrderbookMirror, mock::PermanentStorageMock,
 };
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
 use polkadex_sgx_primitives::AssetId;
 use sp_core::ed25519::Signature;
 use std::sync::MutexGuard;
 use substratee_worker_primitives::get_account;
+
+
 
 #[test]
 fn test_db_initialization() {
@@ -183,7 +184,7 @@ fn test_read_all() {
 
     let handler = thread::spawn(move || -> Result<Vec<SignedOrder>, PolkadexDBError> {
         let mutex = load_orderbook_mirror()?;
-        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        let orderbook_mirror: MutexGuard<OrderbookMirror<PermanentStorageMock>> = mutex.lock().unwrap();
         orderbook_mirror.read_all()
     });
 
