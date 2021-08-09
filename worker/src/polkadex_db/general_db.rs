@@ -51,12 +51,14 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
     }
 
     /// writes from memory to permanent disc storage
+    /// FIXME: Should be signed by enclave! (issue #15)
     pub fn _write_disk(&self) -> Result<()> {
         self.disc_storage
             .write_to_storage(&self.read_all().encode().as_slice())
     }
 
     /// reads from permanent disc storage to memory
+    /// FIXME: Should be signed by enclave! (issue #15)
     pub fn _read_disk(&mut self) -> Result<EncodableDB> {
         let data = EncodableDB::decode(&mut self.disc_storage.read_from_storage()?.as_slice())
             .map_err(Error::DecodeError)?;

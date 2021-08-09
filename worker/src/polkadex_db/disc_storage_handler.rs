@@ -48,16 +48,6 @@ impl DiscStorageHandler {
         DiscStorageHandler::new(path, filename)
     }
 
-    pub fn _set_path(mut self, path: PathBuf) -> Self {
-        self.path = path;
-        self
-    }
-
-    pub fn _set_filename(mut self, filename: PathBuf) -> Self {
-        self.filename = filename;
-        self
-    }
-
     pub fn filepath(&self) -> PathBuf {
         self.path.join(self.filename.to_owned())
     }
