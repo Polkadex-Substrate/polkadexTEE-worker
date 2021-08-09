@@ -26,7 +26,6 @@ pub use nonce::*;
 pub mod balances;
 pub use balances::*;
 
-
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 #[derive(Debug)]
@@ -40,12 +39,14 @@ pub enum PolkadexDBError {
     _KeyNotFound,
     /// Failed to decode
     _DecodeError,
+    /// File system interaction error
+    FsError(std::io::Error),
 }
-
-
 
 /// Trait for handling permanante storage
 pub trait PermanentStorageHandler {
-    fn write_to_storage(data: &[u8]) -> Result<()>;
-    fn read_from_storage() -> Result<Vec<u8>>;
+    /// writes a slice of data into permanent storage of choice
+    fn write_to_storage(&self, data: &[u8]) -> Result<()>;
+    /// reads an vector of data from the permanent storage of choice
+    fn read_from_storage(&self) -> Result<Vec<u8>>;
 }

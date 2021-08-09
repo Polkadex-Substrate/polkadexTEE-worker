@@ -32,7 +32,7 @@ pub struct OrderbookMirror {
     general_db: GeneralDB,
 }
 
-impl OrderbookMirror {
+impl<D> OrderbookMirror<D> {
     pub fn write(&mut self, order_uid: Vec<u8>, signed_order: &SignedOrder) {
         self.general_db.write(order_uid, signed_order.encode());
     }
@@ -79,7 +79,7 @@ impl OrderbookMirror {
 
 pub fn initialize_orderbook_mirror() {
     let storage_ptr = Arc::new(Mutex::<OrderbookMirror>::new(OrderbookMirror {
-        general_db: GeneralDB { db: HashMap::new() },
+        general_db: GeneralDB::< { db: HashMap::new() },
     }));
     let ptr = Arc::into_raw(storage_ptr);
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);

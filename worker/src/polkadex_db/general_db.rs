@@ -17,13 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use std::collections::HashMap;
+use codec::{Encode, Decode};
+use super::PermanentStorageHandler;
+use super::Result;
 
+pub type EncodableDB = Vec<(Vec<u8>, Vec<u8>)>;
 #[derive(Debug)]
-pub struct GeneralDB {
+pub struct GeneralDB<D: PermanentStorageHandler> {
     pub db: HashMap<Vec<u8>, Vec<u8>>,
+    pub disc_storage: D
 }
 
-impl GeneralDB {
+impl<D> GeneralDB<D> {
     pub fn write(&mut self, key: Vec<u8>, data: Vec<u8>) {
         self.db.insert(key, data);
     }
@@ -36,14 +41,21 @@ impl GeneralDB {
         self.db.remove(&k);
     }
 
-    pub fn read_all(&self) -> Vec<(Vec<u8>, Vec<u8>)> {
+    pub fn read_all(&self) -> EncodableDB {
         self.db
             .clone()
             .into_iter()
             .collect::<Vec<(Vec<u8>, Vec<u8>)>>()
     }
-}
 
+    /// writes from memory to permanent disc storage
+    pub fn write_disk(&self) -> Result<()> {
+        self.disc_storage.write_to_storage(
+            self.read_all()
+                .encode()
+        )
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::GeneralDB;

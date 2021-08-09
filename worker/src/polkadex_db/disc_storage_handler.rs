@@ -19,29 +19,36 @@
 
 use super::PermanentStorageHandler;
 use std::path::PathBuf;
-use rocksdb::{DB, Options};
+use std::fs;
+use log::*;
+use std::collections::HashMap;
+
+use super::Result;
+use super::PolkadexDBError as Error;
+
+const DEFAULT_STORAGE_PATH: &str = "polkadex_storage";
+/// handles all disc permanent storage interactions of polkadex databases
 pub struct DiscStorageHandler {
-    storage_location: PathBuf,
-    storage: DB,
+    path: PathBuf,
+    filename: PathBuf,
 }
 
 impl Default for DiscStorageHandler {
     fn default() -> Self {
-        let path = "some_db.bin";
-        DiscStorageHandler::open_default(path)
+        let filename = PathBuf::from("some_db.bin");
+        DiscStorageHandler::open_default(filename)
     }
 }
+
 impl DiscStorageHandler {
-    fn new(path: PathBuf, storage: DB) -> Self {
-        DiscStorageHandler { path, storage }
+    pub fn new(path: PathBuf, filename: PathBuf) -> Self {
+        DiscStorageHandler { path, filename }
     }
 
-    pub fn open_default(path: PathBuf) -> Self {
-        storage = DB::open_default(path);
-        DiscStorageHandler::new(path, storage)
+    pub fn open_default(filename: PathBuf) -> Self {
+        let path = PathBuf::from(DEFAULT_STORAGE_PATH);
+        DiscStorageHandler::new(path, filename)
     }
-
-
 
     pub fn set_path(mut self, path: PathBuf) -> Self {
         self.path = path;
@@ -59,13 +66,22 @@ impl DiscStorageHandler {
 
     /// checks if the dir exists, and if not, creates a new one
     fn ensure_dir_exists(&self) -> Result<()> {
-        if !&self.path.is_dir() {
-            fs::create_dir_all(&self.path)?
-        }
-        Ok(())
+        fs::create_dir_all(&self.path).map_err(Error::FsError)
     }
 }
 
-impl DiscStorageHandler for PermanentStorageHandler {
-    write_to_storage()
+impl PermanentStorageHandler for DiscStorageHandler {
+    fn write_to_storage(&self, data: &[u8]) -> Result<()> {
+        self.ensure_dir_exists()?;
+        // copy existing db to backup file:
+        debug!("backup db state");
+        if fs::copy(self.path.clone(), self.path.with_extension("bin.1")).is_err() {
+            warn!("could not backup previous db state");
+        };
+        fs::write(&self.filepath(), data).map_err(Error::FsError)
+    }
+
+    fn read_from_storage(&self) -> Result<Vec<u8>> {
+        fs::read(&self.filepath()).map_err(Error::FsError)
+    }
 }
