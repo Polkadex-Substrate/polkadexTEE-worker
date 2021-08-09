@@ -38,6 +38,10 @@ else
 	CARGO_TARGET := --release
 endif
 
+ifeq ($(BENCHMARK), 1)
+		CARGO_TARGET += --features "benchmarking"
+endif
+
 .PHONY: all
 
 all: $(Rust_Enclave_Name)
