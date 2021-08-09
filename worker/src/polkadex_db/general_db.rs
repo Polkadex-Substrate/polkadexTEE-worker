@@ -50,7 +50,7 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
         self.db
             .clone()
             .into_iter()
-            .collect::<Vec<(Vec<u8>, Vec<u8>)>>()
+            .collect::<EncodableDB>()
     }
 
     /// writes from memory to permanent disc storage
@@ -60,13 +60,13 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
     }
 
     /// reads from permanent disc storage to memory
-    pub fn read_disk(&mut self) -> Result<()> {
+    pub fn read_disk(&mut self) -> Result<EncodableDB> {
         let data = EncodableDB::decode(&mut self.disc_storage.read_from_storage()?.as_slice())
             .map_err(Error::DecodeError)?;
         for data_point in self.db.clone() {
             self.write(data_point.0, data_point.1);
         }
-        Ok(())
+        Ok(data)
     }
 }
 #[cfg(test)]
