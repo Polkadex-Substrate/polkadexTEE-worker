@@ -55,6 +55,17 @@ impl<D> GeneralDB<D> {
                 .encode()
         )
     }
+
+    /// reads from permanent disc storage to memory
+    pub fn read_disk(&self) -> Result<Self> {
+        let data = EncodableDB::decode(
+            self.disc_storage.read_from_storage()?
+        )?;
+        for data_point in self.data {
+            self.write(data_point.0, data_point.1);
+        }
+        Ok(self)
+    }
 }
 #[cfg(test)]
 mod tests {
