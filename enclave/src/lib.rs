@@ -491,6 +491,15 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
                     free.len() as u32,
                 );
             }
+            Ok(ChannelType::Order(order)) => {
+                let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+                ocall_write_order_to_db(
+                    &mut rt as *mut sgx_status_t,
+                    order.encode().as_ptr(),
+                    order.encode().len() as u32,
+                );
+            }
             Err(_) => {
                 error!("Failed to receive message from sender");
             }
@@ -1476,26 +1485,26 @@ fn worker_request<V: Encode + Decode>(
     Ok(Decode::decode(&mut resp.as_slice()).unwrap())
 }
 
-fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-
-    let res = unsafe {
-        ocall_write_order_to_db(
-            &mut rt as *mut sgx_status_t,
-            order.encode().as_ptr(),
-            order.encode().len() as u32,
-        )
-    };
-
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(rt);
-    }
-
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(res);
-    }
-    Ok(())
-}
+// fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
+//     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+//
+//     let res = unsafe {
+//         ocall_write_order_to_db(
+//             &mut rt as *mut sgx_status_t,
+//             order.encode().as_ptr(),
+//             order.encode().len() as u32,
+//         )
+//     };
+//
+//     if rt != sgx_status_t::SGX_SUCCESS {
+//         return Err(rt);
+//     }
+//
+//     if res != sgx_status_t::SGX_SUCCESS {
+//         return Err(res);
+//     }
+//     Ok(())
+// }
 
 /// sends an release extrsinic per ocall to the node
 fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {

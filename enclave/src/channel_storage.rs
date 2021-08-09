@@ -19,6 +19,7 @@
 use crate::polkadex_balance_storage::{Balances, PolkadexBalanceKey};
 use crate::polkadex_gateway::GatewayError;
 use log::*;
+use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::AccountId;
 use sp_std::prelude::*;
 use std::sync::{
@@ -55,6 +56,7 @@ impl Default for ChannelStorage {
 pub enum ChannelType {
     Nonce(AccountId, u32),
     Balances(PolkadexBalanceKey, Balances),
+    Order(SignedOrder),
 }
 
 pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {

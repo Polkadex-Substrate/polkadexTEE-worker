@@ -364,12 +364,12 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
-    let mut latest_head = init_chain_relay(eid, &api);
-    println!("*** [+] Finished syncing chain relay\n");
-
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
     crate::db_handler::DBHandler::initialize(eid);
+
+    let mut latest_head = init_chain_relay(eid, &api);
+    println!("*** [+] Finished syncing chain relay\n");
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
@@ -564,10 +564,8 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Initializing Polkadex Orderbook Mirror");
 
-    polkadex_db::orderbook::initialize_orderbook();
-
     info!("Loading Orders from Orderbook Storage");
-    let signed_orders = polkadex_db::orderbook::load_orderbook()
+    let signed_orders = polkadex_db::orderbook::load_orderbook_mirror()
         .unwrap() // TODO: Replace unwrap
         .lock()
         .unwrap()
@@ -833,7 +831,7 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     // TODO: Do we need error handling here?
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = polkadex_db::orderbook::load_orderbook()?;
+        let mutex = polkadex_db::orderbook::load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
         orderbook_mirror.write(order_id, &signed_order);
         Ok(())
