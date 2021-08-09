@@ -101,6 +101,7 @@ pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror>, Polkad
 #[cfg(test)]
 mod tests {
     use super::{GeneralDB, OrderbookMirror};
+    use crate::polkadex_db::mock::PermanentStorageMock;
     use codec::Encode;
     use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
     use polkadex_sgx_primitives::AssetId;
@@ -149,7 +150,7 @@ mod tests {
     #[test]
     fn write() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
         };
         assert_eq!(orderbook.general_db.db, HashMap::new());
         orderbook.write("FIRST_ORDER".encode(), &first_order());
@@ -162,7 +163,7 @@ mod tests {
     #[test]
     fn find() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
         };
         orderbook
             .general_db
@@ -178,7 +179,7 @@ mod tests {
     #[test]
     fn delete() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
         };
         orderbook
             .general_db
@@ -204,7 +205,7 @@ mod tests {
     #[test]
     fn read_all() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(),PermanentStorageMock::default() ),
         };
         orderbook
             .general_db

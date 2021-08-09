@@ -30,6 +30,11 @@ pub struct GeneralDB<D: PermanentStorageHandler> {
 }
 
 impl<D: PermanentStorageHandler> GeneralDB<D> {
+    pub fn new(db: HashMap<Vec<u8>, Vec<u8>>, disc_storage: D) -> Self {
+        GeneralDB {
+            db, disc_storage
+        }
+    }
     pub fn write(&mut self, key: Vec<u8>, data: Vec<u8>) {
         self.db.insert(key, data);
     }
@@ -76,7 +81,7 @@ mod tests {
     use super::GeneralDB;
     use codec::Encode;
     use std::collections::HashMap;
-    use super::mock::PermanentStorageMock;
+    use crate::polkadex_db::mock::PermanentStorageMock;
 
     #[test]
     fn write() {
@@ -88,7 +93,7 @@ mod tests {
 
     #[test]
     fn find() {
-        let mut general_db = GeneralDB { db: HashMap::new() };
+        let mut general_db = GeneralDB::new(HashMap::new(),PermanentStorageMock::default() );
         general_db.db.insert("key".encode(), "data".encode());
         assert_eq!(general_db._find("key".encode()), Some(&"data".encode()));
         assert_eq!(general_db._find("key1".encode()), None);
@@ -96,7 +101,7 @@ mod tests {
 
     #[test]
     fn delete() {
-        let mut general_db = GeneralDB { db: HashMap::new() };
+        let mut general_db = GeneralDB::new(HashMap::new(),PermanentStorageMock::default() );
         general_db.db.insert("key".encode(), "data".encode());
         assert_eq!(general_db.db.contains_key(&"key".encode()), true);
         general_db._delete("key".encode());
@@ -105,7 +110,7 @@ mod tests {
 
     #[test]
     fn read_all() {
-        let mut general_db = GeneralDB { db: HashMap::new() };
+        let mut general_db = GeneralDB::new(HashMap::new(),PermanentStorageMock::default() );
         general_db.db.insert("key".encode(), "data".encode());
         general_db.db.insert("key1".encode(), "data1".encode());
         assert_eq!(
