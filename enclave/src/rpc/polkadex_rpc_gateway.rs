@@ -104,7 +104,7 @@ impl RpcGateway for PolkadexRpcGateway {
     ) -> Result<(), GatewayError> {
         authenticate_user_and_validate_nonce(main_account, proxy_account, nonce)
     }
-
+    #[cfg(not(feature = "benchmarking"))]
     fn authorize_trusted_call(
         &self,
         trusted_operation: TrustedOperation,
@@ -127,6 +127,25 @@ impl RpcGateway for PolkadexRpcGateway {
                 Err(format!("Authorization error: {}", e))
             }
         }
+    }
+
+    #[cfg(feature = "benchmarking")]
+    fn authorize_trusted_call(
+        &self,
+        trusted_operation: TrustedOperation,
+    ) -> Result<TrustedCall, String> {
+        let (trusted_call, nonce) = match trusted_operation {
+            TrustedOperation::direct_call(tcs) => Ok((tcs.call, tcs.nonce)),
+            _ => {
+                error!("Trusted calls entering via RPC must be direct");
+                Err(RpcCallStatus::operation_type_mismatch.to_string())
+            }
+        }?;
+
+        let main_account = trusted_call.main_account().clone();
+        let proxy_account = trusted_call.proxy_account();
+
+        Ok(trusted_call)
     }
 
     fn get_balances(&self, main_account: AccountId, asset_id: AssetId) -> SgxResult<Balances> {
