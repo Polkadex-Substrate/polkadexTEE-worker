@@ -125,8 +125,9 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
 
 struct WatchingClient {
     client: Sender,
-    response: RpcResponse,
+    _response: RpcResponse,
 }
+
 
 fn load_watched_list() -> Option<&'static Mutex<HashMap<u128, WatchingClient>>> {
     let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<u128, WatchingClient>>;
@@ -187,7 +188,7 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                         // create new key and value entries to store
                         let new_client = WatchingClient {
                             client: req.client.clone(),
-                            response: RpcResponse {
+                            _response: RpcResponse {
                                 result: result_of_rpc_response.encode(),
                                 jsonrpc: full_rpc_response.jsonrpc.clone(),
                                 id: full_rpc_response.id,
@@ -209,10 +210,10 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
 
 #[no_mangle]
 pub unsafe extern "C" fn ocall_update_status_event(
-    hash_encoded: *const u8,
-    hash_size: u32,
-    status_update_encoded: *const u8,
-    status_size: u32,
+    _hash_encoded: *const u8,
+    _hash_size: u32,
+    _status_update_encoded: *const u8,
+    _status_size: u32,
 ) -> sgx_status_t {
     // Not removing this function, as we may need this function later. So commented it out
     /*    let mut status_update_slice =
@@ -271,18 +272,23 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
     uuid_size: u32,
 ) -> sgx_status_t {
     let mut request_id_slice = slice::from_raw_parts(request_id_encoded, request_id_size as usize);
-    let mut uuid_slice = slice::from_raw_parts(uuid_encoded, uuid_size as usize);
+    let uuid_slice = slice::from_raw_parts(uuid_encoded, uuid_size as usize);
     if let Ok(request_id) = u128::decode(&mut request_id_slice) {
-        let mutex = load_watched_list().unwrap();
+        let mutex = if let Some(mutex) = load_watched_list() {
+            mutex
+        } else {
+            return sgx_status_t::SGX_ERROR_UNEXPECTED
+        };
         let mut guard = mutex.lock().unwrap();
-        if let Some(client_response) = guard.get_mut(&request_id) {
-            let uuid = uuid_slice.to_vec(); // TODO @Bigna do we need this?
+        if let Some(client_response) = guard.get_mut(&request_id) { // TODO @Bigna do we need this?
             client_response
                 .client
-                .send(serde_json::to_string(&uuid).unwrap())
+                .send(serde_json::to_string(uuid_slice).unwrap())
                 .unwrap();
 
             client_response.client.close(CloseCode::Normal).unwrap();
+        } else {
+            return sgx_status_t::SGX_ERROR_UNEXPECTED
         }
         guard.remove(&request_id);
     }
@@ -291,10 +297,10 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
 
 #[no_mangle]
 pub unsafe extern "C" fn ocall_send_status(
-    hash_encoded: *const u8,
-    hash_size: u32,
-    status_encoded: *const u8,
-    status_size: u32,
+    _hash_encoded: *const u8,
+    _hash_size: u32,
+    _status_encoded: *const u8,
+    _status_size: u32,
 ) -> sgx_status_t {
     // Not removing this function, as we may need this function later. So commented it out
     /*

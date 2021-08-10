@@ -118,7 +118,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_polkadex_gateway::test_settle_trade_partial_two_bid_market,
         test_polkadex_gateway::test_cancel_limit_bid_order,
         test_polkadex_gateway::test_cancel_ask_order,
-        //test_polkadex_gateway::test_process_create_order,  //FIXME Failing
+        test_polkadex_gateway::test_process_create_order,  //FIXME Failing
 		test_polkadex_gateway::test_basic_order_checks,
         // Polkadex Balance Storage
         test_polkadex_balance_storage::test_deposit,
@@ -139,7 +139,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,
         test_proxy::test_remove_main_account,
-		//happy_path::test_happy_path, //FIXME Failing
+		happy_path::test_happy_path,
 
         // Polkadex Orderbook Storage Test Cases
         test_orderbook_storage::test_create_orderbook_storage,

@@ -341,7 +341,9 @@ pub fn process_create_order(request_id: u128, order_uuid: OrderUUID) -> Result<(
     } else {
         return Err(GatewayError::NonceNotPresent);
     }
-    send_uuid(request_id, order_uuid);
+    if send_uuid(request_id, order_uuid).is_err() {
+        return Err(GatewayError::NotAbleToSendUUID)
+    }
     Ok(())
 }
 
@@ -872,4 +874,6 @@ pub enum GatewayError {
     OpenFinexApiError(OpenFinexApiError),
     /// Error within polkadex account registry
     AccountRegistryError(AccountRegistryError),
+    /// Send UUID
+    NotAbleToSendUUID
 }

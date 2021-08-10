@@ -26,7 +26,7 @@ use crate::rpc::rpc_info::RpcCallStatus;
 use crate::rpc::trusted_operation_verifier::TrustedOperationExtractor;
 use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
-use polkadex_sgx_primitives::types::{DirectRequest, OrderUUID};
+use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 

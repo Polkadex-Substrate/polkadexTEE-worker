@@ -551,7 +551,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_limit() {
     };
 
     setup(buy_order_user.clone());
-    error!("tesm1");
     assert_eq!(
         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
         Ok(())
@@ -559,7 +558,6 @@ pub fn setup_place_buy_and_sell_order_partial_two_ask_limit() {
     assert!(gateway
         .place_order(buy_order_user.clone(), None, new_order.clone())
         .is_ok());
-    error!("temp2");
     assert_eq!(
         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
         Ok(())
@@ -1945,11 +1943,12 @@ pub fn setup_process_create_order() {
     );
 }
 
+
 pub fn test_process_create_order() {
     setup_process_create_order();
     let request_id: u128 = 1;
     let order_uuid: OrderUUID = (200..201).collect();
-    assert_eq!(process_create_order(request_id, order_uuid.clone()), Ok(()));
+    assert_eq!(process_create_order(request_id, order_uuid.clone()), Err(GatewayError::NotAbleToSendUUID));
     assert_eq!(
         load_storage_check_id_in_insert_order_cache(request_id),
         Ok(false)

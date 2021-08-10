@@ -3,7 +3,7 @@ use crate::constants::UNIT;
 use crate::polkadex_balance_storage::{
     lock_storage_and_deposit, lock_storage_and_initialize_balance,
 };
-use crate::polkadex_gateway::lock_storage_get_cache_nonce;
+use crate::polkadex_gateway::{lock_storage_get_cache_nonce, GatewayError};
 use crate::polkadex_gateway::{process_create_order, settle_trade};
 use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
 use polkadex_sgx_primitives::types::{
@@ -11,6 +11,7 @@ use polkadex_sgx_primitives::types::{
 };
 use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
+use log::*;
 
 pub fn test_happy_path() {
     let gateway = create_mock_gateway();
@@ -18,19 +19,15 @@ pub fn test_happy_path() {
     let bob: AccountId = get_account("happy_path_user_bob");
     let token_a = AssetId::BTC;
     let token_b = AssetId::USD;
-
     // Create Account
     assert!(add_main_account(alice.clone()).is_ok());
     assert!(add_main_account(bob.clone()).is_ok());
-
     //Initialize Balance
     assert!(lock_storage_and_initialize_balance(alice.clone(), token_a).is_ok());
     assert!(lock_storage_and_initialize_balance(bob.clone(), token_b).is_ok());
-
     //Deposit some balance
     assert!(lock_storage_and_deposit(alice.clone(), token_a, 500 * UNIT).is_ok());
     assert!(lock_storage_and_deposit(bob.clone(), token_b, 500 * UNIT).is_ok());
-
     //Check Balance
     assert_eq!(
         check_balance(500 * UNIT, 0u128, alice.clone(), token_a),
@@ -68,7 +65,7 @@ pub fn test_happy_path() {
         quantity: 50 * UNIT,
         price: Some(UNIT),
     };
-
+    error!(">6");
     // Place Ask limit Order
     assert!(gateway
         .place_order(alice.clone(), None, ask_limit_order)
@@ -76,8 +73,7 @@ pub fn test_happy_path() {
 
     let ask_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let ask_limit_order_uuid: OrderUUID = (200..202).collect();
-    process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone()).unwrap(); //TODO: Proper error handing
-
+    assert_eq!(process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone()), Err(GatewayError::NotAbleToSendUUID));
     // Place Bid Limit Order
     assert!(gateway
         .place_order(bob.clone(), None, buy_limit_order)
@@ -85,8 +81,9 @@ pub fn test_happy_path() {
 
     let bid_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let buy_limit_order_uuid: OrderUUID = (202..204).collect();
-    process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone()).unwrap(); //TODO: Proper error handing
-
+    error!(">8");
+    assert_eq!(process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone()), Err(GatewayError::NotAbleToSendUUID));
+    error!(">9");
     //Order Event
     let trade_event = TradeEvent {
         market_id: MarketId {
