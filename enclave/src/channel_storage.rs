@@ -33,16 +33,13 @@ lazy_static! {
 
 pub struct ChannelStorage {
     pub sender: Sender<ChannelType>,
-    pub receiver: Arc<SgxMutex<Receiver<ChannelType>>>,
+    pub receiver: Receiver<ChannelType>,
 }
 
 impl Default for ChannelStorage {
     fn default() -> Self {
         let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Arc::new(SgxMutex::new(receiver)),
-        }
+        Self { sender, receiver }
     }
 }
 
@@ -57,14 +54,6 @@ pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
     let storage = load_channel_storage()?;
 
     let result = storage.sender.clone();
-    Ok(result)
-}
-
-pub fn load_receiver() -> Result<Arc<SgxMutex<Receiver<ChannelType>>>, ChannelStorageError> {
-    // Acquire lock on channel storage
-    let storage = load_channel_storage()?;
-
-    let result = storage.receiver.clone();
     Ok(result)
 }
 

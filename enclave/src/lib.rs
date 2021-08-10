@@ -30,7 +30,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::channel_storage::{load_receiver, ChannelType};
+use crate::channel_storage::{load_channel_storage, ChannelType};
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
@@ -447,19 +447,13 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
-    let mutex = if let Ok(mutex) = load_receiver() {
-        mutex
+    let receiver = &if let Ok(channel) = load_channel_storage() {
+        channel
     } else {
-        error!("Failed to load mutex");
+        error!("Failed to load channel");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
-
-    let receiver = if let Ok(receiver) = mutex.lock() {
-        receiver
-    } else {
-        error!("Failed to lock receiver");
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
+    }
+    .receiver;
 
     loop {
         match receiver.recv() {
