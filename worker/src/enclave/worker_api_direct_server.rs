@@ -128,7 +128,6 @@ struct WatchingClient {
     _response: RpcResponse,
 }
 
-
 fn load_watched_list() -> Option<&'static Mutex<HashMap<u128, WatchingClient>>> {
     let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<u128, WatchingClient>>;
     if ptr.is_null() {
@@ -277,10 +276,11 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
         let mutex = if let Some(mutex) = load_watched_list() {
             mutex
         } else {
-            return sgx_status_t::SGX_ERROR_UNEXPECTED
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
         let mut guard = mutex.lock().unwrap();
-        if let Some(client_response) = guard.get_mut(&request_id) { // TODO @Bigna do we need this?
+        if let Some(client_response) = guard.get_mut(&request_id) {
+            // TODO @Bigna do we need this?
             client_response
                 .client
                 .send(serde_json::to_string(uuid_slice).unwrap())
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
 
             client_response.client.close(CloseCode::Normal).unwrap();
         } else {
-            return sgx_status_t::SGX_ERROR_UNEXPECTED
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
         }
         guard.remove(&request_id);
     }

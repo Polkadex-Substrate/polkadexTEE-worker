@@ -1943,12 +1943,14 @@ pub fn setup_process_create_order() {
     );
 }
 
-
 pub fn test_process_create_order() {
     setup_process_create_order();
     let request_id: u128 = 1;
     let order_uuid: OrderUUID = (200..201).collect();
-    assert_eq!(process_create_order(request_id, order_uuid.clone()), Err(GatewayError::NotAbleToSendUUID));
+    assert_eq!(
+        process_create_order(request_id, order_uuid.clone()),
+        Err(GatewayError::NotAbleToSendUUID)
+    );
     assert_eq!(
         load_storage_check_id_in_insert_order_cache(request_id),
         Ok(false)

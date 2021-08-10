@@ -6,12 +6,12 @@ use crate::polkadex_balance_storage::{
 use crate::polkadex_gateway::{lock_storage_get_cache_nonce, GatewayError};
 use crate::polkadex_gateway::{process_create_order, settle_trade};
 use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
+use log::*;
 use polkadex_sgx_primitives::types::{
     MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
 };
 use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
-use log::*;
 
 pub fn test_happy_path() {
     let gateway = create_mock_gateway();
@@ -73,7 +73,10 @@ pub fn test_happy_path() {
 
     let ask_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let ask_limit_order_uuid: OrderUUID = (200..202).collect();
-    assert_eq!(process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone()), Err(GatewayError::NotAbleToSendUUID));
+    assert_eq!(
+        process_create_order(ask_limit_order_request_id, ask_limit_order_uuid.clone()),
+        Err(GatewayError::NotAbleToSendUUID)
+    );
     // Place Bid Limit Order
     assert!(gateway
         .place_order(bob.clone(), None, buy_limit_order)
@@ -82,7 +85,10 @@ pub fn test_happy_path() {
     let bid_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let buy_limit_order_uuid: OrderUUID = (202..204).collect();
     error!(">8");
-    assert_eq!(process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone()), Err(GatewayError::NotAbleToSendUUID));
+    assert_eq!(
+        process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone()),
+        Err(GatewayError::NotAbleToSendUUID)
+    );
     error!(">9");
     //Order Event
     let trade_event = TradeEvent {
