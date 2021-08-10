@@ -28,7 +28,6 @@ use crate::accounts_nonce_storage::{
     add_main_account, check_if_main_account_registered,
     create_in_memory_accounts_and_nonce_storage, test_proxy::initialize_dummy,
 };
-use crate::channel_storage::create_in_memory_channel_storage;
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
 use crate::polkadex_balance_storage::{
@@ -81,7 +80,6 @@ pub fn create_mock_gateway() -> OpenfinexPolkaDexGateway<OpenFinexApiMock> {
 }
 
 pub fn initialize_storage() {
-    assert!(create_in_memory_channel_storage().is_ok());
     // Initialize Gateway
     initialize_polkadex_gateway();
     // Initialize Account Storage

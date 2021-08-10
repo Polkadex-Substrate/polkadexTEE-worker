@@ -36,9 +36,10 @@ impl DBHandler {
         DBHandler::initialize_mirrors();
         thread::spawn(move || -> Result<(), String> {
             if enclave_run_db_thread(eid).is_err() {
-                return Err(String::from("Failed to run DB Thread"));
+                Err(String::from("Failed to run DB Thread"))
+            } else {
+                Ok(())
             }
-            Ok(())
         });
     }
 }

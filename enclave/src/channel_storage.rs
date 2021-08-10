@@ -17,25 +17,18 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::polkadex_balance_storage::{Balances, PolkadexBalanceKey};
-use crate::polkadex_gateway::GatewayError;
-use log::*;
+use lazy_static::lazy_static;
 use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::AccountId;
 use sp_std::prelude::*;
 use std::sync::{
-    atomic::{AtomicPtr, Ordering},
     mpsc::{channel, Receiver, Sender},
     Arc, SgxMutex, SgxMutexGuard,
 };
 
-static GLOBAL_CHANNEL_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-
-pub fn create_in_memory_channel_storage() -> Result<(), GatewayError> {
-    let storage = ChannelStorage::default();
-    let storage_ptr = Arc::new(SgxMutex::<ChannelStorage>::new(storage));
-    let ptr = Arc::into_raw(storage_ptr);
-    GLOBAL_CHANNEL_STORAGE.store(ptr as *mut (), Ordering::SeqCst);
-    Ok(())
+lazy_static! {
+    static ref GLOBAL_CHANNEL_STORAGE: Arc<SgxMutex<ChannelStorage>> =
+        Arc::new(SgxMutex::new(ChannelStorage::default()));
 }
 
 pub struct ChannelStorage {
@@ -60,33 +53,26 @@ pub enum ChannelType {
 }
 
 pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
-    // Acquire lock on proxy_registry
-    let mutex = load_channel_storage()?;
-    let storage: SgxMutexGuard<ChannelStorage> = mutex
-        .lock()
-        .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
+    // Acquire lock on channel storage
+    let storage = load_channel_storage()?;
+
     let result = storage.sender.clone();
     Ok(result)
 }
 
 pub fn load_receiver() -> Result<Arc<SgxMutex<Receiver<ChannelType>>>, ChannelStorageError> {
-    // Acquire lock on proxy_registry
-    let mutex = load_channel_storage()?;
-    let storage: SgxMutexGuard<ChannelStorage> = mutex
-        .lock()
-        .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
+    // Acquire lock on channel storage
+    let storage = load_channel_storage()?;
+
     let result = storage.receiver.clone();
     Ok(result)
 }
 
-pub fn load_channel_storage() -> Result<&'static SgxMutex<ChannelStorage>, ChannelStorageError> {
-    let ptr = GLOBAL_CHANNEL_STORAGE.load(Ordering::SeqCst) as *mut SgxMutex<ChannelStorage>;
-    if ptr.is_null() {
-        error!("Null pointer to polkadex account registry");
-        Err(ChannelStorageError::CouldNotLoadStorage)
-    } else {
-        Ok(unsafe { &*ptr })
-    }
+pub fn load_channel_storage() -> Result<SgxMutexGuard<'static, ChannelStorage>, ChannelStorageError>
+{
+    GLOBAL_CHANNEL_STORAGE
+        .lock()
+        .map_err(|_| ChannelStorageError::CouldNotGetMutex)
 }
 
 #[derive(Eq, Debug, PartialEq, PartialOrd)]

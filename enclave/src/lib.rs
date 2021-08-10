@@ -30,7 +30,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::channel_storage::{create_in_memory_channel_storage, load_receiver, ChannelType};
+use crate::channel_storage::{load_receiver, ChannelType};
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
@@ -447,10 +447,6 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
-    if create_in_memory_channel_storage().is_err() {
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    }
-
     let mutex = if let Ok(mutex) = load_receiver() {
         mutex
     } else {
