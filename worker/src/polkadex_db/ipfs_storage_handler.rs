@@ -25,13 +25,16 @@ use crate::ipfs;
 
 use super::PolkadexDBError as Error;
 use super::Result;
+use ipfs_api::{IpfsClient, TryFromUri};
+use http::uri::Scheme;
 
 use crate::constants::DEFAULT_STORAGE_PATH;
+
 
 /// handles all disc permanent storage interactions of polkadex databases
 pub struct IpfsStorageHandler {
     port: u32,
-    address: String,
+    host: String,
 }
 
 impl Default for IpfsStorageHandler {
@@ -41,9 +44,10 @@ impl Default for IpfsStorageHandler {
 }
 
 impl IpfsStorageHandler {
-    pub fn new(port: u32, address: String) -> Self {
-        IpfsStorageHandler { port, address }
+    pub fn new(port: u32, host: String) -> Self {
+        IpfsStorageHandler { port, host }
     }
+
     pub fn filepath(&self) -> PathBuf {
         self.path.join(self.filename.to_owned())
     }
@@ -60,7 +64,9 @@ impl IpfsStorageHandler {
 
 impl PermanentStorageHandler for IpfsStorageHandler {
     fn write_to_storage(&mut self, data: &[u8]) -> Result<()> {
-        ipfs::write
+        let client = IpfsClient::from_host_and_port(Scheme::HTTP, self.host, self.port).unwrap();
+        let cid = write_to_ipfs(client, data);
+
     }
 
     fn read_from_storage(&self) -> Result<Vec<u8>> {
