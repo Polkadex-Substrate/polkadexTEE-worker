@@ -19,17 +19,17 @@
 use std::collections::HashMap;
 
 use codec::{Decode, Encode};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 
-use crate::constants::BALANCE_DISK_STORAGE_FILENAME;
-use super::Result;
 use super::disk_storage_handler::DiskStorageHandler;
 use super::PermanentStorageHandler;
+use super::Result;
+use crate::constants::BALANCE_DISK_STORAGE_FILENAME;
 
 static BALANCES_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -88,18 +88,21 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
 }
 
 pub fn initialize_balances_mirror() {
-    let storage_ptr = Arc::new(Mutex::<BalancesMirror<DiskStorageHandler>>::new(BalancesMirror {
-        general_db: GeneralDB::new(
-            HashMap::new(),
-            DiskStorageHandler::open_default(PathBuf::from(BALANCE_DISK_STORAGE_FILENAME)),
-        ),
-    }));
+    let storage_ptr = Arc::new(Mutex::<BalancesMirror<DiskStorageHandler>>::new(
+        BalancesMirror {
+            general_db: GeneralDB::new(
+                HashMap::new(),
+                DiskStorageHandler::open_default(PathBuf::from(BALANCE_DISK_STORAGE_FILENAME)),
+            ),
+        },
+    ));
     let ptr = Arc::into_raw(storage_ptr);
     BALANCES_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
 pub fn load_balances_mirror() -> Result<&'static Mutex<BalancesMirror<DiskStorageHandler>>> {
-    let ptr = BALANCES_MIRROR.load(Ordering::SeqCst) as *mut Mutex<BalancesMirror<DiskStorageHandler>>;
+    let ptr =
+        BALANCES_MIRROR.load(Ordering::SeqCst) as *mut Mutex<BalancesMirror<DiskStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)
@@ -194,18 +197,14 @@ mod tests {
             }
             .encode(),
         );
-        assert!(
-            balances_mirror
-                .general_db
-                .db
-                .contains_key(&dummy_key.encode())
-        );
+        assert!(balances_mirror
+            .general_db
+            .db
+            .contains_key(&dummy_key.encode()));
         balances_mirror._delete(dummy_key.clone());
-        assert!(
-            !balances_mirror
-                .general_db
-                .db
-                .contains_key(&dummy_key.encode())
-        );
+        assert!(!balances_mirror
+            .general_db
+            .db
+            .contains_key(&dummy_key.encode()));
     }
 }

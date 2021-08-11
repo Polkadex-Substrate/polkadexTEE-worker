@@ -31,17 +31,17 @@ pub mod nonce;
 pub use nonce::*;
 pub mod balances;
 pub use balances::*;
-pub use general_db::*;
 pub use disk_storage_handler::DiskStorageHandler;
+pub use general_db::*;
 pub use general_db::*;
 pub use orderbook::*;
 
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 use crate::constants::DISK_SNAPSHOT_INTERVAL;
+use log::*;
 use std::thread;
 use std::time::{Duration, SystemTime};
-use log::*;
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -69,13 +69,12 @@ pub trait PermanentStorageHandler {
     fn read_from_storage(&self) -> Result<Vec<u8>>;
 }
 
-
 // Disk snapshot loop
 pub fn start_disk_snapshot_loop() {
     thread::spawn(move || {
         println!("Successfully started disk snapshot loop");
         let block_production_interval = Duration::from_millis(DISK_SNAPSHOT_INTERVAL);
-	    let mut interval_start = SystemTime::now();
+        let mut interval_start = SystemTime::now();
         loop {
             if let Ok(elapsed) = interval_start.elapsed() {
                 if elapsed >= block_production_interval {
@@ -95,12 +94,10 @@ pub fn start_disk_snapshot_loop() {
     });
 }
 
-
 // Disk snapshot loop
 pub fn start_ipfs_snapshot_loop() {
     // TODO
 }
-
 
 // take a disk snapshot of orderbookmirror
 fn take_orderbook_snapshot() {

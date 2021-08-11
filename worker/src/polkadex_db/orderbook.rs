@@ -16,13 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::Result;
 use crate::constants::{ORDERBOOK_DISK_STORAGE_FILENAME, ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT};
 use codec::Encode;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-use super::Result;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::types::SignedOrder;
@@ -83,7 +83,6 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
     pub fn take_disk_snapshot(&mut self) -> Result<()> {
         self.general_db.write_disk_from_memory()
     }
-
 }
 
 pub fn initialize_orderbook_mirror() {

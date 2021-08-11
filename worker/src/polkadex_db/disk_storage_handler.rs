@@ -125,7 +125,10 @@ mod tests {
         let handler = DiskStorageHandler::new(PathBuf::from("hello"), PathBuf::from("world.bin"));
 
         // then
-        assert_eq!(handler.backup_filepath(), PathBuf::from("hello/world.bin.1"));
+        assert_eq!(
+            handler.backup_filepath(),
+            PathBuf::from("hello/world.bin.1")
+        );
     }
 
     #[test]

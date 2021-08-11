@@ -52,7 +52,6 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
 
     /// writes from memory to permanent disc storage
     /// FIXME: Should be signed by enclave! (issue #15)
-    #[allow(unused)]
     pub fn write_disk_from_memory(&mut self) -> Result<()> {
         self.disk_storage
             .write_to_storage(&self.read_all().encode().as_slice())
@@ -126,13 +125,17 @@ mod tests {
         let (key_one, entry_one) = ("key_one".encode(), "Oh wow, I'm being written!".encode());
         let (key_two, entry_two) = ("key_two".encode(), "Congrats....".encode());
         let (key_three, entry_three) = ("key_three".encode(), "Mee too, me too".encode());
-        let vector: EncodableDB = vec![(key_one, entry_one), (key_two, entry_two), (key_three, entry_three)];
+        let vector: EncodableDB = vec![
+            (key_one, entry_one),
+            (key_two, entry_two),
+            (key_three, entry_three),
+        ];
 
         // when
         let vector_encoded = vector.encode();
 
         // then
-        let decoded_vector =  EncodableDB::decode(&mut vector_encoded.as_slice()).unwrap();
+        let decoded_vector = EncodableDB::decode(&mut vector_encoded.as_slice()).unwrap();
         assert_eq!(vector, decoded_vector);
     }
 
@@ -142,7 +145,7 @@ mod tests {
         let entry_one = ("key_one".encode(), "Oh wow, I'm being written!".encode());
         let entry_two = ("key_two".encode(), "Congrats....".encode());
         let entry_three = ("key_three".encode(), "Mee too, me too".encode());
-        let mut map  = HashMap::new();
+        let mut map = HashMap::new();
         map.insert(entry_one.0.clone(), entry_one.1.clone());
         map.insert(entry_two.0.clone(), entry_two.1.clone());
         map.insert(entry_three.0.clone(), entry_three.1.clone());
@@ -152,7 +155,8 @@ mod tests {
         general_db.write_disk_from_memory().unwrap();
 
         // then
-        let contains =  EncodableDB::decode(&mut general_db.disk_storage.contained_data.as_slice()).unwrap();
+        let contains =
+            EncodableDB::decode(&mut general_db.disk_storage.contained_data.as_slice()).unwrap();
         assert!(contains.contains(&entry_one));
         assert!(contains.contains(&entry_two));
         assert!(contains.contains(&entry_three));
@@ -164,7 +168,11 @@ mod tests {
         let (key_one, entry_one) = ("key_one".encode(), "Oh wow, I'm being written!".encode());
         let (key_two, entry_two) = ("key_two".encode(), "Congrats....".encode());
         let (key_three, entry_three) = ("key_three".encode(), "Mee too, me too".encode());
-        let assosciated_vector: EncodableDB = vec![(key_one, entry_one), (key_two, entry_two), (key_three, entry_three)];
+        let assosciated_vector: EncodableDB = vec![
+            (key_one, entry_one),
+            (key_two, entry_two),
+            (key_three, entry_three),
+        ];
         let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
 
         general_db.disk_storage.contained_data = assosciated_vector.encode();
@@ -185,11 +193,15 @@ mod tests {
         let (key_one, entry_one) = ("key_one".encode(), "Oh wow, I'm being written!".encode());
         let (key_two, entry_two) = ("key_two".encode(), "Congrats....".encode());
         let (key_three, entry_three) = ("key_three".encode(), "Mee too, me too".encode());
-        let mut map  = HashMap::new();
+        let mut map = HashMap::new();
         map.insert(key_one.clone(), entry_one.clone());
         map.insert(key_two.clone(), entry_two.clone());
         map.insert(key_three.clone(), entry_three.clone());
-        let assosciated_vector: EncodableDB = vec![(key_one, entry_one), (key_two, entry_two), (key_three, entry_three)];
+        let assosciated_vector: EncodableDB = vec![
+            (key_one, entry_one),
+            (key_two, entry_two),
+            (key_three, entry_three),
+        ];
         general_db.disk_storage.contained_data = assosciated_vector.encode();
 
         // when

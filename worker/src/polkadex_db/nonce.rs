@@ -18,17 +18,17 @@
 
 use std::collections::HashMap;
 
+use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use codec::{Decode, Encode};
+use polkadex_sgx_primitives::AccountId;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
-use crate::polkadex_db::{GeneralDB, PolkadexDBError};
-use polkadex_sgx_primitives::AccountId;
 
-use crate::constants::NONCE_DISK_STORAGE_FILENAME;
 use super::disk_storage_handler::DiskStorageHandler;
 use super::PermanentStorageHandler;
 use super::Result;
+use crate::constants::NONCE_DISK_STORAGE_FILENAME;
 
 static NONCE_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -148,18 +148,14 @@ mod tests {
             .general_db
             .db
             .insert(dummy_account.encode(), 42u32.encode());
-        assert!(
-            nonce_mirror
-                .general_db
-                .db
-                .contains_key(&dummy_account.encode())
-        );
+        assert!(nonce_mirror
+            .general_db
+            .db
+            .contains_key(&dummy_account.encode()));
         nonce_mirror._delete(dummy_account.clone());
-        assert!(
-            !nonce_mirror
-                .general_db
-                .db
-                .contains_key(&dummy_account.encode())
-        );
+        assert!(!nonce_mirror
+            .general_db
+            .db
+            .contains_key(&dummy_account.encode()));
     }
 }
