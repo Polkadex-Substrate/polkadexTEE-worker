@@ -26,12 +26,12 @@ pub type EncodableDB = Vec<(Vec<u8>, Vec<u8>)>;
 #[derive(Debug)]
 pub struct GeneralDB<D: PermanentStorageHandler> {
     pub db: HashMap<Vec<u8>, Vec<u8>>,
-    pub disc_storage: D,
+    pub disk_storage: D,
 }
 
 impl<D: PermanentStorageHandler> GeneralDB<D> {
-    pub fn new(db: HashMap<Vec<u8>, Vec<u8>>, disc_storage: D) -> Self {
-        GeneralDB { db, disc_storage }
+    pub fn new(db: HashMap<Vec<u8>, Vec<u8>>, disk_storage: D) -> Self {
+        GeneralDB { db, disk_storage }
     }
     pub fn write(&mut self, key: Vec<u8>, data: Vec<u8>) {
         self.db.insert(key, data);
@@ -54,7 +54,7 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
     /// FIXME: Should be signed by enclave! (issue #15)
     #[allow(unused)]
     pub fn write_disk_from_memory(&mut self) -> Result<()> {
-        self.disc_storage
+        self.disk_storage
             .write_to_storage(&self.read_all().encode().as_slice())
     }
 
@@ -62,7 +62,7 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
     /// FIXME: Should be signed by enclave! (issue #15)
     #[allow(unused)]
     pub fn read_disk_into_memory(&mut self) -> Result<EncodableDB> {
-        let data = EncodableDB::decode(&mut self.disc_storage.read_from_storage()?.as_slice())
+        let data = EncodableDB::decode(&mut self.disk_storage.read_from_storage()?.as_slice())
             .map_err(Error::DecodeError)?;
         for data_point in data.clone() {
             self.write(data_point.0, data_point.1);
@@ -152,7 +152,7 @@ mod tests {
         general_db.write_disk_from_memory().unwrap();
 
         // then
-        let contains =  EncodableDB::decode(&mut general_db.disc_storage.contained_data.as_slice()).unwrap();
+        let contains =  EncodableDB::decode(&mut general_db.disk_storage.contained_data.as_slice()).unwrap();
         assert!(contains.contains(&entry_one));
         assert!(contains.contains(&entry_two));
         assert!(contains.contains(&entry_three));
@@ -167,7 +167,7 @@ mod tests {
         let assosciated_vector: EncodableDB = vec![(key_one, entry_one), (key_two, entry_two), (key_three, entry_three)];
         let mut general_db = GeneralDB::new(HashMap::new(), PermanentStorageMock::default());
 
-        general_db.disc_storage.contained_data = assosciated_vector.encode();
+        general_db.disk_storage.contained_data = assosciated_vector.encode();
 
         // when
         let read_data = general_db.read_disk_into_memory().unwrap();
@@ -190,7 +190,7 @@ mod tests {
         map.insert(key_two.clone(), entry_two.clone());
         map.insert(key_three.clone(), entry_three.clone());
         let assosciated_vector: EncodableDB = vec![(key_one, entry_one), (key_two, entry_two), (key_three, entry_three)];
-        general_db.disc_storage.contained_data = assosciated_vector.encode();
+        general_db.disk_storage.contained_data = assosciated_vector.encode();
 
         // when
         general_db.read_disk_into_memory().unwrap();
