@@ -83,10 +83,9 @@ pub fn start_disk_snapshot_loop() {
                     interval_start = SystemTime::now();
 
                     // Take snapshots of all storages
-                    take_order_book_snapshot();
-                    // TODO: Add the following snapshot:
-                    // balance
-                    // nonce
+                    take_orderbook_snapshot();
+                    take_balance_snapshot();
+                    take_nonce_snapshot();
                 } else {
                     // sleep for the rest of the interval
                     thread::sleep(block_production_interval - elapsed);
@@ -104,11 +103,33 @@ pub fn start_ipfs_snapshot_loop() {
 
 
 // take a disk snapshot of orderbookmirror
-fn take_order_book_snapshot() {
+fn take_orderbook_snapshot() {
     if let Ok(mutex) = crate::polkadex_db::orderbook::load_orderbook_mirror() {
         if let Ok(mut orderbook_mirror) = mutex.lock() {
             if let Err(e) = orderbook_mirror.take_disk_snapshot() {
-                error!("Could not take an orderbook snaphot due to {:?}", e);
+                error!("Could not take an orderbook mirror snaphot due to {:?}", e);
+            }
+        }
+    }
+}
+
+// take a disk snapshot of balancemirror
+fn take_balance_snapshot() {
+    if let Ok(mutex) = crate::polkadex_db::balances::load_balances_mirror() {
+        if let Ok(mut balance_mirror) = mutex.lock() {
+            if let Err(e) = balance_mirror.take_disk_snapshot() {
+                error!("Could not take an balnace mirror snaphot due to {:?}", e);
+            }
+        }
+    }
+}
+
+// take a disk snapshot of balancemirror
+fn take_nonce_snapshot() {
+    if let Ok(mutex) = crate::polkadex_db::nonce::load_nonce_mirror() {
+        if let Ok(mut nonce_mirror) = mutex.lock() {
+            if let Err(e) = nonce_mirror.take_disk_snapshot() {
+                error!("Could not take a nonce mirror snaphot due to {:?}", e);
             }
         }
     }

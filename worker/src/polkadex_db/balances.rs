@@ -81,6 +81,10 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
     pub fn _delete(&mut self, k: PolkadexBalanceKey) {
         self.general_db._delete(k.encode());
     }
+
+    pub fn take_disk_snapshot(&mut self) -> Result<()> {
+        self.general_db.write_disk_from_memory()
+    }
 }
 
 pub fn initialize_balances_mirror() {

@@ -64,6 +64,10 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
     pub fn _delete(&mut self, k: AccountId) {
         self.general_db._delete(k.encode());
     }
+
+    pub fn take_disk_snapshot(&mut self) -> Result<()> {
+        self.general_db.write_disk_from_memory()
+    }
 }
 
 pub fn initialize_nonce_mirror() {
