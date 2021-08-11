@@ -63,7 +63,7 @@ impl DiskStorageHandler {
 }
 
 impl PermanentStorageHandler for DiskStorageHandler {
-    fn write_to_storage(&self, data: &[u8]) -> Result<()> {
+    fn write_to_storage(&mut self, data: &[u8]) -> Result<()> {
         self.ensure_dir_exists()?;
         // copy existing db to backup file:
         debug!("backup db state");
@@ -182,7 +182,7 @@ mod tests {
         // create file
         fs::create_dir_all(path.clone()).unwrap();
         let mut file = fs::File::create(path.join(filename)).unwrap();
-        file.write(data).unwrap();
+        file.write_all(data).unwrap();
 
         // when
         let read_data: Vec<u8> = disk_storage.read_from_storage().unwrap();
@@ -201,7 +201,7 @@ mod tests {
         let path = PathBuf::from("write_to_storage_works");
         let filename = PathBuf::from("write_file.bin");
         let data = "hello_world, nice to meet ya".as_bytes();
-        let disk_storage = DiskStorageHandler::new(path.clone(), filename.clone());
+        let mut disk_storage = DiskStorageHandler::new(path.clone(), filename.clone());
 
         // when
         disk_storage.write_to_storage(data).unwrap();
@@ -222,7 +222,7 @@ mod tests {
         let filename = PathBuf::from("file_to_backup.bin");
         let data_to_backup = "Am I really backuped?".as_bytes();
         let data_second_write = "I hope you are..".as_bytes();
-        let disk_storage = DiskStorageHandler::new(path.clone(), filename.clone());
+        let mut disk_storage = DiskStorageHandler::new(path.clone(), filename.clone());
 
         // when
         disk_storage.write_to_storage(data_to_backup).unwrap();

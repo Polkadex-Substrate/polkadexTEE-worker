@@ -31,7 +31,8 @@ impl Default for PermanentStorageMock {
 }
 
 impl PermanentStorageHandler for PermanentStorageMock {
-    fn write_to_storage(&self, _data: &[u8]) -> Result<()> {
+    fn write_to_storage(&mut self, data: &[u8]) -> Result<()> {
+        self.contained_data = data.to_owned();
         Ok(())
     }
     fn read_from_storage(&self) -> Result<Vec<u8>> {

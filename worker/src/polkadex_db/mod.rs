@@ -59,7 +59,7 @@ pub enum PolkadexDBError {
 /// Trait for handling permanante storage
 pub trait PermanentStorageHandler {
     /// writes a slice of data into permanent storage of choice
-    fn write_to_storage(&self, data: &[u8]) -> Result<()>;
+    fn write_to_storage(&mut self, data: &[u8]) -> Result<()>;
     /// reads an vector of data from the permanent storage of choice
     fn read_from_storage(&self) -> Result<Vec<u8>>;
 }
