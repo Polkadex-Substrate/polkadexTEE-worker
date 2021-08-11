@@ -35,10 +35,12 @@ pub use orderbook::*;
 
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
-use crate::constants::DISK_SNAPSHOT_INTERVAL;
+use crate::constants::{DISK_SNAPSHOT_INTERVAL, IPFS_SNAPSHOT_INTERVAL, ORDERBOOK_DISK_STORAGE_FILENAME, NONCE_DISK_STORAGE_FILENAME, BALANCE_DISK_STORAGE_FILENAME};
 use log::*;
 use std::thread;
 use std::time::{Duration, SystemTime};
+use std::path::PathBuf;
+
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -70,11 +72,11 @@ pub trait PermanentStorageHandler {
 pub fn start_disk_snapshot_loop() {
     thread::spawn(move || {
         println!("Successfully started disk snapshot loop");
-        let block_production_interval = Duration::from_millis(DISK_SNAPSHOT_INTERVAL);
+        let disk_snapshot_interval = Duration::from_millis(DISK_SNAPSHOT_INTERVAL);
         let mut interval_start = SystemTime::now();
         loop {
             if let Ok(elapsed) = interval_start.elapsed() {
-                if elapsed >= block_production_interval {
+                if elapsed >= disk_snapshot_interval {
                     // update interval time
                     interval_start = SystemTime::now();
 
@@ -84,7 +86,7 @@ pub fn start_disk_snapshot_loop() {
                     take_nonce_snapshot();
                 } else {
                     // sleep for the rest of the interval
-                    thread::sleep(block_production_interval - elapsed);
+                    thread::sleep(disk_snapshot_interval - elapsed);
                 }
             }
         }
@@ -93,7 +95,26 @@ pub fn start_disk_snapshot_loop() {
 
 // Disk snapshot loop
 pub fn start_ipfs_snapshot_loop() {
-    // TODO
+    thread::spawn(move || {
+        println!("Successfully started ipfs snapshot loop");
+        let ipfs_snapshot_interval = Duration::from_millis(IPFS_SNAPSHOT_INTERVAL);
+        let mut interval_start = SystemTime::now();
+        loop {
+            if let Ok(elapsed) = interval_start.elapsed() {
+                if elapsed >= ipfs_snapshot_interval {
+                    // update interval time
+                    interval_start = SystemTime::now();
+
+                    // Upload backup storages to ipfs
+                    let orderbook_handler = DiskStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME));
+
+                } else {
+                    // sleep for the rest of the interval
+                    thread::sleep(ipfs_snapshot_interval - elapsed);
+                }
+            }
+        }
+    });
 }
 
 // take a disk snapshot of orderbookmirror

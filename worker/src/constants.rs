@@ -43,9 +43,12 @@ pub static STATE_VALUE_MAX_SIZE: usize = 1024;
 pub static ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT: usize = 1000;
 
 // polkadex DB file names
+pub static DEFAULT_STORAGE_PATH: &str = "polkadex_storage";
 pub static ORDERBOOK_DISK_STORAGE_FILENAME: &str = "orderbook.bin";
 pub static NONCE_DISK_STORAGE_FILENAME: &str = "nonce.bin";
 pub static BALANCE_DISK_STORAGE_FILENAME: &str = "balance.bin";
 
 // Interval of disk snapshot
 pub static DISK_SNAPSHOT_INTERVAL: u64 = 1000; // ms
+// Interval of ipfs snapshot
+pub static IPFS_SNAPSHOT_INTERVAL: u64 = 1000; // ms
