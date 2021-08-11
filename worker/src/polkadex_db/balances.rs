@@ -21,15 +21,21 @@ use std::collections::HashMap;
 use codec::{Decode, Encode};
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::{AccountId, AssetId};
 
+use crate::constants::BALANCE_DISK_STORAGE_FILENAME;
+use super::Result;
+use super::disk_storage_handler::DiskStorageHandler;
+use super::PermanentStorageHandler;
+
 static BALANCES_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
-pub struct BalancesMirror {
-    general_db: GeneralDB,
+pub struct BalancesMirror<D: PermanentStorageHandler> {
+    general_db: GeneralDB<D>,
 }
 
 #[derive(Encode, Decode, PartialEq, Debug)]
@@ -53,13 +59,13 @@ impl PolkadexBalanceKey {
     }
 }
 
-impl BalancesMirror {
+impl<D: PermanentStorageHandler> BalancesMirror<D> {
     pub fn write(&mut self, balance_key: PolkadexBalanceKey, free: u128, reserved: u128) {
         self.general_db
             .write(balance_key.encode(), Balances { free, reserved }.encode());
     }
 
-    pub fn _find(&self, k: PolkadexBalanceKey) -> Result<Balances, PolkadexDBError> {
+    pub fn _find(&self, k: PolkadexBalanceKey) -> Result<Balances> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
             Some(v) => {
@@ -78,15 +84,18 @@ impl BalancesMirror {
 }
 
 pub fn initialize_balances_mirror() {
-    let storage_ptr = Arc::new(Mutex::<BalancesMirror>::new(BalancesMirror {
-        general_db: GeneralDB { db: HashMap::new() },
+    let storage_ptr = Arc::new(Mutex::<BalancesMirror<DiskStorageHandler>>::new(BalancesMirror {
+        general_db: GeneralDB::new(
+            HashMap::new(),
+            DiskStorageHandler::open_default(PathBuf::from(BALANCE_DISK_STORAGE_FILENAME)),
+        ),
     }));
     let ptr = Arc::into_raw(storage_ptr);
     BALANCES_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_balances_mirror() -> Result<&'static Mutex<BalancesMirror>, PolkadexDBError> {
-    let ptr = BALANCES_MIRROR.load(Ordering::SeqCst) as *mut Mutex<BalancesMirror>;
+pub fn load_balances_mirror() -> Result<&'static Mutex<BalancesMirror<DiskStorageHandler>>> {
+    let ptr = BALANCES_MIRROR.load(Ordering::SeqCst) as *mut Mutex<BalancesMirror<DiskStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)
@@ -98,6 +107,7 @@ pub fn load_balances_mirror() -> Result<&'static Mutex<BalancesMirror>, Polkadex
 #[cfg(test)]
 mod tests {
     use super::GeneralDB;
+    use crate::polkadex_db::mock::PermanentStorageMock;
     use crate::polkadex_db::{Balances, BalancesMirror, PolkadexBalanceKey};
     use codec::Encode;
     use polkadex_primitives::AccountId;
@@ -126,7 +136,7 @@ mod tests {
     fn write() {
         let dummy_key = create_dummy_key();
         let mut balances_mirror = BalancesMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         assert_eq!(balances_mirror.general_db.db, HashMap::new());
         balances_mirror.write(dummy_key.clone(), 42u128, 0u128);
@@ -146,7 +156,7 @@ mod tests {
     fn find() {
         let dummy_key = create_dummy_key();
         let mut balances_mirror = BalancesMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         balances_mirror.general_db.db.insert(
             dummy_key.encode(),
@@ -170,7 +180,7 @@ mod tests {
     fn delete() {
         let dummy_key = create_dummy_key();
         let mut balances_mirror = BalancesMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         balances_mirror.general_db.db.insert(
             dummy_key.encode(),
@@ -180,20 +190,18 @@ mod tests {
             }
             .encode(),
         );
-        assert_eq!(
+        assert!(
             balances_mirror
                 .general_db
                 .db
-                .contains_key(&dummy_key.encode()),
-            true
+                .contains_key(&dummy_key.encode())
         );
         balances_mirror._delete(dummy_key.clone());
-        assert_eq!(
-            balances_mirror
+        assert!(
+            !balances_mirror
                 .general_db
                 .db
-                .contains_key(&dummy_key.encode()),
-            false
+                .contains_key(&dummy_key.encode())
         );
     }
 }

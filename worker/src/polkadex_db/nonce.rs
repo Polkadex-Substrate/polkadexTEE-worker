@@ -21,15 +21,20 @@ use std::collections::HashMap;
 use codec::{Decode, Encode};
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-
+use std::path::PathBuf;
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::AccountId;
+
+use crate::constants::NONCE_DISK_STORAGE_FILENAME;
+use super::disk_storage_handler::DiskStorageHandler;
+use super::PermanentStorageHandler;
+use super::Result;
 
 static NONCE_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
-pub struct NonceMirror {
-    general_db: GeneralDB,
+pub struct NonceMirror<D: PermanentStorageHandler> {
+    general_db: GeneralDB<D>,
 }
 
 #[derive(Encode, Decode)]
@@ -37,13 +42,13 @@ struct Nonce {
     nonce: u32,
 }
 
-impl NonceMirror {
+impl<D: PermanentStorageHandler> NonceMirror<D> {
     pub fn write(&mut self, account_id: AccountId, nonce: u32) {
         self.general_db
             .write(account_id.encode(), Nonce { nonce }.encode());
     }
 
-    pub fn _find(&self, k: AccountId) -> Result<u32, PolkadexDBError> {
+    pub fn _find(&self, k: AccountId) -> Result<u32> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
             Some(v) => Ok(Nonce::decode(&mut v.as_slice())
@@ -62,15 +67,18 @@ impl NonceMirror {
 }
 
 pub fn initialize_nonce_mirror() {
-    let storage_ptr = Arc::new(Mutex::<NonceMirror>::new(NonceMirror {
-        general_db: GeneralDB { db: HashMap::new() },
+    let storage_ptr = Arc::new(Mutex::<NonceMirror<DiskStorageHandler>>::new(NonceMirror {
+        general_db: GeneralDB::new(
+            HashMap::new(),
+            DiskStorageHandler::open_default(PathBuf::from(NONCE_DISK_STORAGE_FILENAME)),
+        ),
     }));
     let ptr = Arc::into_raw(storage_ptr);
     NONCE_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_nonce_mirror() -> Result<&'static Mutex<NonceMirror>, PolkadexDBError> {
-    let ptr = NONCE_MIRROR.load(Ordering::SeqCst) as *mut Mutex<NonceMirror>;
+pub fn load_nonce_mirror() -> Result<&'static Mutex<NonceMirror<DiskStorageHandler>>> {
+    let ptr = NONCE_MIRROR.load(Ordering::SeqCst) as *mut Mutex<NonceMirror<DiskStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)
@@ -82,6 +90,7 @@ pub fn load_nonce_mirror() -> Result<&'static Mutex<NonceMirror>, PolkadexDBErro
 #[cfg(test)]
 mod tests {
     use super::GeneralDB;
+    use crate::polkadex_db::mock::PermanentStorageMock;
     use crate::polkadex_db::NonceMirror;
     use codec::Encode;
     use polkadex_primitives::AccountId;
@@ -99,7 +108,7 @@ mod tests {
     fn write() {
         let dummy_account = create_dummy_account();
         let mut nonce_mirror = NonceMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         assert_eq!(nonce_mirror.general_db.db, HashMap::new());
         nonce_mirror.write(dummy_account.clone(), 42u32);
@@ -113,7 +122,7 @@ mod tests {
     fn find() {
         let dummy_account = create_dummy_account();
         let mut nonce_mirror = NonceMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         nonce_mirror
             .general_db
@@ -129,26 +138,24 @@ mod tests {
     fn delete() {
         let dummy_account = create_dummy_account();
         let mut nonce_mirror = NonceMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         nonce_mirror
             .general_db
             .db
             .insert(dummy_account.encode(), 42u32.encode());
-        assert_eq!(
+        assert!(
             nonce_mirror
                 .general_db
                 .db
-                .contains_key(&dummy_account.encode()),
-            true
+                .contains_key(&dummy_account.encode())
         );
         nonce_mirror._delete(dummy_account.clone());
-        assert_eq!(
-            nonce_mirror
+        assert!(
+            !nonce_mirror
                 .general_db
                 .db
-                .contains_key(&dummy_account.encode()),
-            false
+                .contains_key(&dummy_account.encode())
         );
     }
 }

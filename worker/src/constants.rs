@@ -41,6 +41,8 @@ pub static STATE_VALUE_MAX_SIZE: usize = 1024;
 // Iterator for RocksDB returns these many elements in a single yield
 pub static ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT: usize = 1000;
 pub static ORDERBOOK_DISK_STORAGE_FILENAME: &str = "orderbook.bin";
+pub static NONCE_DISK_STORAGE_FILENAME: &str = "nonce.bin";
+pub static BALANCE_DISK_STORAGE_FILENAME: &str = "balance.bin";
 
 // Interval of disk snapshot
 pub static DISK_SNAPSHOT_INTERVAL: u64 = 1000; // ms

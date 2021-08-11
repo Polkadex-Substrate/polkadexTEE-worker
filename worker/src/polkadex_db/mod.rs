@@ -105,7 +105,7 @@ pub fn start_ipfs_snapshot_loop() {
 
 // take a disk snapshot of orderbookmirror
 fn take_order_book_snapshot() {
-    if let Ok(mutex) = crate::polkadex_db::orderbook::load_orderbook() {
+    if let Ok(mutex) = crate::polkadex_db::orderbook::load_orderbook_mirror() {
         if let Ok(mut orderbook_mirror) = mutex.lock() {
             if let Err(e) = orderbook_mirror.take_disk_snapshot() {
                 error!("Could not take an orderbook snaphot due to {:?}", e);

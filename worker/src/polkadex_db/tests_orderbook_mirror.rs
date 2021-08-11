@@ -19,7 +19,7 @@
 use std::{thread, time};
 
 use crate::polkadex_db::{
-    orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, mock::PermanentStorageMock, DiskStorageHandler,
+    orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, DiskStorageHandler,
     OrderbookMirror, PolkadexDBError,
 };
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
