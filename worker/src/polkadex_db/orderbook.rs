@@ -77,7 +77,7 @@ impl OrderbookMirror {
     }
 }
 
-pub fn initialize_orderbook() {
+pub fn initialize_orderbook_mirror() {
     let storage_ptr = Arc::new(Mutex::<OrderbookMirror>::new(OrderbookMirror {
         general_db: GeneralDB { db: HashMap::new() },
     }));
@@ -85,7 +85,7 @@ pub fn initialize_orderbook() {
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_orderbook() -> Result<&'static Mutex<OrderbookMirror>, PolkadexDBError> {
+pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror>, PolkadexDBError> {
     let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror>;
     if ptr.is_null() {
         println!("Unable to load the pointer");

@@ -16,13 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::_write_order_to_disk;
+//use crate::_write_order_to_disk;
+use crate::channel_storage::{load_sender, ChannelType};
 use crate::ed25519;
 use crate::polkadex_gateway::GatewayError;
 use log::error;
 use log::*;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
-use sgx_types::SgxResult;
+use sgx_types::{sgx_status_t, SgxResult};
 use sp_core::ed25519::Signature;
 use std::collections::HashMap;
 use std::sync::{
@@ -79,7 +80,12 @@ impl OrderbookStorage {
             signature: Signature::default(),
         };
         signed_order.sign(&signer_pair);
-        _write_order_to_disk(signed_order)?;
+
+        load_sender()
+            .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)?
+            .send(ChannelType::Order(signed_order))
+            .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)?;
+        //_write_order_to_disk(signed_order)?;
         Ok(())
     }
 }

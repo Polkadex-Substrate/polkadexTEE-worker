@@ -20,6 +20,10 @@ pub mod general_db;
 pub use general_db::*;
 pub mod orderbook;
 pub use orderbook::*;
+pub mod nonce;
+pub use nonce::*;
+pub mod balances;
+pub use balances::*;
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -30,4 +34,6 @@ pub enum PolkadexDBError {
     UnableToDeseralizeValue,
     /// Failed to find key in the DB
     _KeyNotFound,
+    /// Failed to decode
+    _DecodeError,
 }

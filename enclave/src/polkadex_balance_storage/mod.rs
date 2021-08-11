@@ -181,7 +181,7 @@ pub fn lock_storage_and_initialize_balance(
             error!("Could not lock mutex of balance storage");
             GatewayError::UnableToLock
         })?;
-    balance_storage.initialize_balance(token, main_acc, 0);
+    balance_storage.initialize_balance(token, main_acc, 0)?;
     Ok(())
 }
 

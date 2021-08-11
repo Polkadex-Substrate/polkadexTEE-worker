@@ -18,6 +18,7 @@
 
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct GeneralDB {
     pub db: HashMap<Vec<u8>, Vec<u8>>,
 }
