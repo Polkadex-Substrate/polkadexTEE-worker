@@ -16,21 +16,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod balances;
 pub mod disk_storage_handler;
 pub mod general_db;
-pub mod orderbook;
-pub mod nonce;
-pub mod balances;
 #[cfg(test)]
 pub mod mock;
+pub mod nonce;
+pub mod orderbook;
 #[cfg(test)]
 pub mod tests_orderbook_mirror;
 
 // public exports
-pub use nonce::*;
 pub use balances::*;
 pub use disk_storage_handler::DiskStorageHandler;
 pub use general_db::*;
+pub use nonce::*;
 pub use orderbook::*;
 
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
