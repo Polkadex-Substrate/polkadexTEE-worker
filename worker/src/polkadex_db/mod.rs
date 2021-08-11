@@ -73,6 +73,7 @@ pub trait PermanentStorageHandler {
 // Disk snapshot loop
 pub fn start_disk_snapshot_loop() {
     thread::spawn(move || {
+        println!("Successfully started disk snapshot loop");
         let block_production_interval = Duration::from_millis(DISK_SNAPSHOT_INTERVAL);
 	    let mut interval_start = SystemTime::now();
         loop {

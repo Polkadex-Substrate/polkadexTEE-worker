@@ -50,6 +50,7 @@ bin/key_production.txt
 bin/attestation_report.json
 bin/shards
 bin/*.der
+bin/polkadex_storage
 bin/enclave-shielding-pubkey.json
 
 # in order to have 2 workers run and exchange keys
