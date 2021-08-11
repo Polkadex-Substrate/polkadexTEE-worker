@@ -21,20 +21,16 @@ use std::slice;
 use std::str;
 use std::sync::mpsc::channel;
 
-use http::uri::Scheme;
-
 use sgx_types::*;
 
 use futures::TryStreamExt;
-use ipfs_api::{IpfsClient, TryFromUri};
+use ipfs_api::IpfsClient;
 use log::*;
 
 pub type Cid = [u8; 46];
 
 #[tokio::main]
-async fn write_to_ipfs(data: &'static [u8]) -> Cid {
-    let client = IpfsClient::from_host_and_port(Scheme::HTTP, "localhost", 5001).unwrap();
-
+async fn write_to_ipfs(client: IpfsClient, data: &'static [u8]) -> Cid {
     match client.version().await {
         Ok(version) => info!("version: {:?}", version.version),
         Err(e) => eprintln!("error getting version: {}", e),
@@ -56,10 +52,15 @@ async fn write_to_ipfs(data: &'static [u8]) -> Cid {
 }
 
 #[tokio::main]
-pub async fn read_from_ipfs(cid: Cid) -> Result<Vec<u8>, String> {
+async fn write_to_ipfs_default(data: &'static [u8]) -> Cid {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
+    write_to_ipfs(client, data)
+}
+
+#[tokio::main]
+pub async fn read_from_ipfs(client: IpfsClient, cid: Cid) -> Result<Vec<u8>, String> {
     let h = str::from_utf8(&cid).unwrap();
 
     info!("Fetching content from: {}", h);
@@ -70,6 +71,14 @@ pub async fn read_from_ipfs(cid: Cid) -> Result<Vec<u8>, String> {
         .map_err(|e| e.to_string())
         .try_concat()
         .await
+}
+
+#[tokio::main]
+pub async fn read_from_ipfs_default(cid: Cid) -> Result<Vec<u8>, String> {
+    // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
+    // If not found, tries to connect to `localhost:5001`.
+    let client = IpfsClient::default();
+    read_from_ipfs(client, cid)
 }
 
 #[no_mangle]
@@ -84,7 +93,7 @@ pub unsafe extern "C" fn ocall_write_ipfs(
     let state = slice::from_raw_parts(enc_state, enc_state_size as usize);
     let cid = slice::from_raw_parts_mut(cid, cid_size as usize);
 
-    let _cid = write_to_ipfs(state);
+    let _cid = write_to_ipfs_default(state);
     cid.clone_from_slice(&_cid);
     sgx_status_t::SGX_SUCCESS
 }
