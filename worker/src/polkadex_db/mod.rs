@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod disc_storage_handler;
+pub mod disk_storage_handler;
 pub mod general_db;
 pub mod orderbook;
 
@@ -32,7 +32,7 @@ pub use nonce::*;
 pub mod balances;
 pub use balances::*;
 pub use general_db::*;
-pub use disc_storage_handler::DiscStorageHandler;
+pub use disk_storage_handler::DiskStorageHandler;
 pub use general_db::*;
 pub use orderbook::*;
 

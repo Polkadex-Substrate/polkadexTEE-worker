@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex};
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::types::SignedOrder;
 
-use super::disc_storage_handler::DiscStorageHandler;
+use super::disk_storage_handler::DiskStorageHandler;
 use super::PermanentStorageHandler;
 
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
@@ -81,11 +81,11 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
 }
 
 pub fn initialize_orderbook_mirror() {
-    let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiscStorageHandler>>::new(
+    let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiskStorageHandler>>::new(
         OrderbookMirror {
             general_db: GeneralDB::new(
                 HashMap::new(),
-                DiscStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME)),
+                DiskStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME)),
             ),
         },
     ));
@@ -93,9 +93,9 @@ pub fn initialize_orderbook_mirror() {
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror<DiscStorageHandler>>, PolkadexDBError> {
+pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror<DiskStorageHandler>>, PolkadexDBError> {
     let ptr =
-        ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiscStorageHandler>>;
+        ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiskStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)

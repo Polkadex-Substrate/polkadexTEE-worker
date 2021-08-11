@@ -53,7 +53,7 @@ use crate::enclave::api::{
     enclave_sync_chain,
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
-use crate::polkadex_db::{DiscStorageHandler, OrderbookMirror, PolkadexDBError};
+use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
@@ -829,7 +829,7 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = polkadex_db::orderbook::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiscStorageHandler>> =
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
             mutex.lock().unwrap();
         orderbook_mirror.write(order_id, &signed_order);
         Ok(())
