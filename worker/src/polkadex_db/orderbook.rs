@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
+use super::Result;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::types::SignedOrder;
@@ -40,7 +41,7 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
         self.general_db.write(order_uid, signed_order.encode());
     }
 
-    pub fn _find(&self, k: Vec<u8>) -> Result<SignedOrder, PolkadexDBError> {
+    pub fn _find(&self, k: Vec<u8>) -> Result<SignedOrder> {
         println!("Searching for Key");
         match self.general_db._find(k) {
             Some(v) => match SignedOrder::from_vec(&v) {
@@ -64,7 +65,7 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
         self.general_db._delete(k);
     }
 
-    pub fn read_all(&self) -> Result<Vec<SignedOrder>, PolkadexDBError> {
+    pub fn read_all(&self) -> Result<Vec<SignedOrder>> {
         let iterator = self.general_db.read_all().into_iter();
         let mut orders: Vec<SignedOrder> = vec![];
         for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
@@ -78,6 +79,11 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
         }
         Ok(orders)
     }
+
+    pub fn take_disk_snapshot(&mut self) -> Result<()> {
+        self.general_db.write_disk_from_memory()
+    }
+
 }
 
 pub fn initialize_orderbook_mirror() {
@@ -93,7 +99,7 @@ pub fn initialize_orderbook_mirror() {
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror<DiskStorageHandler>>, PolkadexDBError> {
+pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror<DiskStorageHandler>>> {
     let ptr =
         ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiskStorageHandler>>;
     if ptr.is_null() {

@@ -38,6 +38,11 @@ pub use orderbook::*;
 
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
+use crate::constants::DISK_SNAPSHOT_INTERVAL;
+use std::thread;
+use std::time::{Duration, SystemTime};
+use log::*;
+
 #[derive(Debug)]
 /// Polkadex DB Error
 pub enum PolkadexDBError {
@@ -62,4 +67,48 @@ pub trait PermanentStorageHandler {
     fn write_to_storage(&mut self, data: &[u8]) -> Result<()>;
     /// reads an vector of data from the permanent storage of choice
     fn read_from_storage(&self) -> Result<Vec<u8>>;
+}
+
+
+// Disk snapshot loop
+pub fn start_disk_snapshot_loop() {
+    thread::spawn(move || {
+        let block_production_interval = Duration::from_millis(DISK_SNAPSHOT_INTERVAL);
+	    let mut interval_start = SystemTime::now();
+        loop {
+            if let Ok(elapsed) = interval_start.elapsed() {
+                if elapsed >= block_production_interval {
+                    // update interval time
+                    interval_start = SystemTime::now();
+
+                    // Take snapshots of all storages
+                    take_order_book_snapshot();
+                    // TODO: Add the following snapshot:
+                    // balance
+                    // nonce
+                } else {
+                    // sleep for the rest of the interval
+                    thread::sleep(block_production_interval - elapsed);
+                }
+            }
+        }
+    });
+}
+
+
+// Disk snapshot loop
+pub fn start_ipfs_snapshot_loop() {
+    // TODO
+}
+
+
+// take a disk snapshot of orderbookmirror
+fn take_order_book_snapshot() {
+    if let Ok(mutex) = crate::polkadex_db::orderbook::load_orderbook() {
+        if let Ok(mut orderbook_mirror) = mutex.lock() {
+            if let Err(e) = orderbook_mirror.take_disk_snapshot() {
+                error!("Could not take an orderbook snaphot due to {:?}", e);
+            }
+        }
+    }
 }
