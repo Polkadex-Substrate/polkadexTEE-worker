@@ -31,11 +31,6 @@ pub type Cid = [u8; 46];
 
 #[tokio::main]
 async fn write_to_ipfs(client: IpfsClient, data: &'static [u8]) -> Cid {
-    match client.version().await {
-        Ok(version) => info!("version: {:?}", version.version),
-        Err(e) => eprintln!("error getting version: {}", e),
-    }
-
     let datac = Cursor::new(data);
     let (tx, rx) = channel();
 
