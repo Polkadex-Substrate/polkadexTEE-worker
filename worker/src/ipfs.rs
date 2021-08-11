@@ -21,19 +21,19 @@ use std::slice;
 use std::str;
 use std::sync::mpsc::channel;
 
+use http::uri::Scheme;
+
 use sgx_types::*;
 
 use futures::TryStreamExt;
-use ipfs_api::IpfsClient;
+use ipfs_api::{IpfsClient, TryFromUri};
 use log::*;
 
 pub type Cid = [u8; 46];
 
 #[tokio::main]
 async fn write_to_ipfs(data: &'static [u8]) -> Cid {
-    // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
-    // If not found, tries to connect to `localhost:5001`.
-    let client = IpfsClient::default();
+    let client = IpfsClient::from_host_and_port(Scheme::HTTP, "localhost", 5001).unwrap();
 
     match client.version().await {
         Ok(version) => info!("version: {:?}", version.version),
