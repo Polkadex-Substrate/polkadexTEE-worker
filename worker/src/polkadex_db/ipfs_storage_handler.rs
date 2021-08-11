@@ -21,34 +21,29 @@ use log::*;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::ipfs;
+
 use super::PolkadexDBError as Error;
 use super::Result;
 
 use crate::constants::DEFAULT_STORAGE_PATH;
 
 /// handles all disc permanent storage interactions of polkadex databases
-pub struct DiskStorageHandler {
-    path: PathBuf,
-    filename: PathBuf,
+pub struct IpfsStorageHandler {
+    port: u32,
+    address: String,
 }
 
-impl Default for DiskStorageHandler {
+impl Default for IpfsStorageHandler {
     fn default() -> Self {
-        let filename = PathBuf::from("some_db.bin");
-        DiskStorageHandler::open_default(filename)
+        DiskStorageHandler::new(8001, "localhost")
     }
 }
 
-impl DiskStorageHandler {
-    pub fn new(path: PathBuf, filename: PathBuf) -> Self {
-        DiskStorageHandler { path, filename }
+impl IpfsStorageHandler {
+    pub fn new(port: u32, address: String) -> Self {
+        IpfsStorageHandler { port, address }
     }
-
-    pub fn open_default(filename: PathBuf) -> Self {
-        let path = PathBuf::from(DEFAULT_STORAGE_PATH);
-        DiskStorageHandler::new(path, filename)
-    }
-
     pub fn filepath(&self) -> PathBuf {
         self.path.join(self.filename.to_owned())
     }
@@ -63,15 +58,9 @@ impl DiskStorageHandler {
     }
 }
 
-impl PermanentStorageHandler for DiskStorageHandler {
+impl PermanentStorageHandler for IpfsStorageHandler {
     fn write_to_storage(&mut self, data: &[u8]) -> Result<()> {
-        self.ensure_dir_exists()?;
-        // copy existing db to backup file:
-        debug!("backup db state");
-        if fs::copy(self.filepath(), self.backup_filepath()).is_err() {
-            warn!("could not backup previous db state");
-        };
-        fs::write(&self.filepath(), data).map_err(Error::FsError)
+        ipfs::write
     }
 
     fn read_from_storage(&self) -> Result<Vec<u8>> {
