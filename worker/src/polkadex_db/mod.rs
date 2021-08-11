@@ -19,20 +19,17 @@
 pub mod disk_storage_handler;
 pub mod general_db;
 pub mod orderbook;
-
+pub mod nonce;
+pub mod balances;
 #[cfg(test)]
 pub mod mock;
 #[cfg(test)]
 pub mod tests_orderbook_mirror;
 
 // public exports
-pub use orderbook::*;
-pub mod nonce;
 pub use nonce::*;
-pub mod balances;
 pub use balances::*;
 pub use disk_storage_handler::DiskStorageHandler;
-pub use general_db::*;
 pub use general_db::*;
 pub use orderbook::*;
 
