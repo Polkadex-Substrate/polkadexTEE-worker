@@ -73,7 +73,7 @@ fn test_write_and_delete() {
             mutex.lock().unwrap();
         let signed_order = orderbook_mirror
             ._find("FIRST_ORDER".to_string().into_bytes())
-            .unwrap_or(SignedOrder::default());
+            .unwrap_or_default();
         Ok(signed_order)
     });
 
@@ -96,7 +96,8 @@ fn test_write_and_delete() {
         let mutex = load_orderbook_mirror()?;
         let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
             mutex.lock().unwrap();
-        Ok(orderbook_mirror._delete("FIRST_ORDER".to_string().into_bytes()))
+        orderbook_mirror._delete("FIRST_ORDER".to_string().into_bytes());
+        Ok(())
     });
 
     let result = delete_handler.join().unwrap();
