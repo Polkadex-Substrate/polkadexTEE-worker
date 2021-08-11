@@ -18,6 +18,7 @@
 
 pub mod balances;
 pub mod disk_storage_handler;
+pub mod ipfs_storage_handler;
 pub mod general_db;
 #[cfg(test)]
 pub mod mock;
@@ -29,6 +30,7 @@ pub mod tests_orderbook_mirror;
 // public exports
 pub use balances::*;
 pub use disk_storage_handler::DiskStorageHandler;
+pub use ipfs_storage_handler::IpfsStorageHandler;
 pub use general_db::*;
 pub use nonce::*;
 pub use orderbook::*;

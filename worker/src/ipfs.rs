@@ -30,7 +30,7 @@ use log::*;
 pub type Cid = [u8; 46];
 
 #[tokio::main]
-async fn write_to_ipfs(client: IpfsClient, data: &'static [u8]) -> Cid {
+pub async fn write_to_ipfs(client: IpfsClient, data: &'static [u8]) -> Cid {
     let datac = Cursor::new(data);
     let (tx, rx) = channel();
 
@@ -47,7 +47,7 @@ async fn write_to_ipfs(client: IpfsClient, data: &'static [u8]) -> Cid {
 }
 
 #[tokio::main]
-async fn write_to_ipfs_default(data: &'static [u8]) -> Cid {
+pub async fn write_to_ipfs_default(data: &'static [u8]) -> Cid {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn ocall_read_ipfs(cid: *const u8, cid_size: u32) -> sgx_s
     let mut cid = [0; 46];
     cid.clone_from_slice(_cid);
 
-    let result = read_from_ipfs(cid);
+    let result = read_from_ipfs_default(cid);
     match result {
         Ok(res) => {
             let filename = str::from_utf8(&cid).unwrap();

@@ -20,11 +20,14 @@ use super::PermanentStorageHandler;
 use log::*;
 use std::fs;
 use std::path::PathBuf;
+use std::io::{Cursor, Write};
 
 use crate::ipfs;
 
 use super::PolkadexDBError as Error;
 use super::Result;
+use super::DiskStorageHandler;
+
 use ipfs_api::{IpfsClient, TryFromUri};
 use http::uri::Scheme;
 
@@ -33,48 +36,47 @@ use crate::constants::DEFAULT_STORAGE_PATH;
 
 /// handles all disc permanent storage interactions of polkadex databases
 pub struct IpfsStorageHandler {
-    port: u32,
+    port: u16,
     host: String,
 }
 
 impl Default for IpfsStorageHandler {
     fn default() -> Self {
-        DiskStorageHandler::new(8001, "localhost")
+        IpfsStorageHandler::new(8001, "localhost".to_string())
     }
 }
 
 impl IpfsStorageHandler {
-    pub fn new(port: u32, host: String) -> Self {
+    pub fn new(port: u16, host: String) -> Self {
         IpfsStorageHandler { port, host }
     }
 
-    pub fn filepath(&self) -> PathBuf {
-        self.path.join(self.filename.to_owned())
+    pub fn snapshot_from_disk(&mut self, filename: PathBuf) -> Result<()> {
+        let disk_storage = DiskStorageHandler::open_default(filename);
+        if let Ok(data) = disk_storage.read_from_storage() {
+            self.write_to_storage(&data)
+        } else {
+            Ok(()) //FIXME
+        }
     }
 
-    pub fn backup_filepath(&self) -> PathBuf {
-        self.filepath().with_extension("bin.1")
-    }
 
-    /// checks if the dir exists, and if not, creates a new one
-    fn ensure_dir_exists(&self) -> Result<()> {
-        fs::create_dir_all(&self.path).map_err(Error::FsError)
-    }
 }
 
 impl PermanentStorageHandler for IpfsStorageHandler {
-    fn write_to_storage(&mut self, data: &[u8]) -> Result<()> {
-        let client = IpfsClient::from_host_and_port(Scheme::HTTP, self.host, self.port).unwrap();
-        let cid = write_to_ipfs(client, data);
-
+    fn write_to_storage(&mut self, data: &'static [u8]) -> Result<()> {
+        let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port).unwrap();
+        let cid = ipfs::write_to_ipfs(client, data);
+        Ok(())
     }
 
     fn read_from_storage(&self) -> Result<Vec<u8>> {
-        fs::read(&self.filepath()).map_err(Error::FsError)
+        //fs::read(&self.filepath()).map_err(Error::FsError)
+        Ok(vec![])
     }
 }
 
-#[cfg(test)]
+/* #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
@@ -238,3 +240,4 @@ mod tests {
         assert!(!path.is_dir());
     }
 }
+ */
