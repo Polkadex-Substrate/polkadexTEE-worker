@@ -91,7 +91,7 @@ mod tests {
     }
 
     // this test needs a local ipfs node running!
-    #[test]
+    #[test] #[ignore]
     fn snapshotting_to_ipfs_works() {
         // given
         let port = 5001;
