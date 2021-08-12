@@ -86,11 +86,11 @@ mod tests {
         assert_eq!(handler.port, port);
     }
 
-    // this test needs an ipfs node running!
+    // this test needs a local ipfs node running!
     #[test]
     fn snapshotting_to_ipfs_works() {
         // given
-        let port = 8001;
+        let port = 5001;
         let host = "localhost".to_string();
         let mut handler = IpfsStorageHandler::new(port, host);
         let data = "hello_world".encode();
