@@ -28,13 +28,11 @@ use std::sync::mpsc::channel;
 
 use super::PolkadexDBError::IpfsError;
 use super::Result;
-use super::DiskStorageHandler;
+
+use crate::constants::{IPFS_HOST, IPFS_PORT};
 
 use ipfs_api::{IpfsClient, TryFromUri};
 use http::uri::Scheme;
-
-use crate::constants::DEFAULT_STORAGE_PATH;
-
 
 /// handles all disc permanent storage interactions of polkadex databases
 pub struct IpfsStorageHandler {
@@ -44,19 +42,17 @@ pub struct IpfsStorageHandler {
 
 impl Default for IpfsStorageHandler {
     fn default() -> Self {
-        IpfsStorageHandler::new(8001, "localhost".to_string())
+        IpfsStorageHandler::new(IPFS_PORT, IPFS_HOST.to_string())
     }
 }
 
 impl IpfsStorageHandler {
-    pub fn new(port: u16, host: String) -> Self {
+    fn new(port: u16, host: String) -> Self {
         IpfsStorageHandler { port, host }
     }
 
     #[tokio::main]
-    pub async fn snapshot_from_disk_to_ipfs(&mut self, filename: PathBuf) -> Result<()> {
-        let disk_storage = DiskStorageHandler::open_default(filename);
-        let data = disk_storage.read_from_storage()?;
+    pub async fn snapshot_to_ipfs(&mut self, data: Vec<u8>) -> Result<()> {
         let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port)
             .map_err(|e| {IpfsError(format!("{:?}", e))})?;
         let datac = Cursor::new(data);
@@ -75,8 +71,6 @@ impl IpfsStorageHandler {
         Ok(())
 
     }
-
-
 }
 
 /* #[cfg(test)]

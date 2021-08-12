@@ -48,5 +48,9 @@ pub static ORDERBOOK_DISK_STORAGE_FILENAME: &str = "orderbook.bin";
 pub static NONCE_DISK_STORAGE_FILENAME: &str = "nonce.bin";
 pub static BALANCE_DISK_STORAGE_FILENAME: &str = "balance.bin";
 
+// IPFS gateway
+pub static IPFS_HOST: &str = "localhost";
+pub static IPFS_PORT: u16 = 8001;
+
 // Interval of disk snapshot
 pub static SNAPSHOT_INTERVAL: u64 = 1000; // ms

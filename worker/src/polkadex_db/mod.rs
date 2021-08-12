@@ -85,9 +85,15 @@ pub fn start_snapshot_loop() {
                     interval_start = SystemTime::now();
 
                     // Take snapshots of all storages
-                    take_orderbook_snapshot();
-                    take_balance_snapshot();
-                    take_nonce_snapshot();
+                    if let Err(e) = take_orderbook_snapshot() {
+                        error!("Could not take orderbook snapshot: {:?}", e);
+                    };
+                    if let Err(e) = take_balance_snapshot() {
+                        error!("Could not take balance snapshot: {:?}", e);
+                    };
+                    if let Err(e) = take_nonce_snapshot() {
+                        error!("Could not take nonce snapshot: {:?}", e);
+                    };
                 } else {
                     // sleep for the rest of the interval
                     thread::sleep(snapshot_interval - elapsed);
@@ -98,34 +104,33 @@ pub fn start_snapshot_loop() {
 }
 
 // take a disk snapshot of orderbookmirror
-fn take_orderbook_snapshot() {
-    if let Ok(mutex) = crate::polkadex_db::orderbook::load_orderbook_mirror() {
-        if let Ok(mut orderbook_mirror) = mutex.lock() {
-            if let Err(e) = orderbook_mirror.take_disk_snapshot() {
-                error!("Could not take an orderbook mirror snaphot due to {:?}", e);
-            }
-        }
-    }
+fn take_orderbook_snapshot() -> Result<()> {
+    let mutex = crate::polkadex_db::orderbook::load_orderbook_mirror()?;
+    let mut orderbook_mirror = mutex.lock().map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
+    let data  = orderbook_mirror.take_disk_snapshot()?;
+    let mut ipfs_handler = IpfsStorageHandler::default();
+    ipfs_handler.snapshot_to_ipfs(data)?;
+    Ok(())
+
 }
 
 // take a disk snapshot of balancemirror
-fn take_balance_snapshot() {
-    if let Ok(mutex) = crate::polkadex_db::balances::load_balances_mirror() {
-        if let Ok(mut balance_mirror) = mutex.lock() {
-            if let Err(e) = balance_mirror.take_disk_snapshot() {
-                error!("Could not take an balnace mirror snaphot due to {:?}", e);
-            }
-        }
-    }
+fn take_balance_snapshot() -> Result<()> {
+    let mutex = crate::polkadex_db::balances::load_balances_mirror()?;
+    let mut balance_mirror = mutex.lock().map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
+    let data  = balance_mirror.take_disk_snapshot()?;
+    let mut ipfs_handler = IpfsStorageHandler::default();
+    ipfs_handler.snapshot_to_ipfs(data)?;
+    Ok(())
+
 }
 
 // take a disk snapshot of balancemirror
-fn take_nonce_snapshot() {
-    if let Ok(mutex) = crate::polkadex_db::nonce::load_nonce_mirror() {
-        if let Ok(mut nonce_mirror) = mutex.lock() {
-            if let Err(e) = nonce_mirror.take_disk_snapshot() {
-                error!("Could not take a nonce mirror snaphot due to {:?}", e);
-            }
-        }
-    }
-}
+fn take_nonce_snapshot() -> Result<()> {
+    let mutex = crate::polkadex_db::nonce::load_nonce_mirror()?;
+    let mut nonce_mirror = mutex.lock().map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
+    let data  = nonce_mirror.take_disk_snapshot()?;
+    let mut ipfs_handler = IpfsStorageHandler::default();
+    ipfs_handler.snapshot_to_ipfs(data)?;
+    Ok(())
+ }
