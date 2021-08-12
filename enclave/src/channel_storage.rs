@@ -27,20 +27,22 @@ use std::sync::{
 };
 
 lazy_static! {
-    static ref GLOBAL_CHANNEL_STORAGE: Arc<SgxMutex<ChannelStorage>> =
-        Arc::new(SgxMutex::new(ChannelStorage::default()));
+    static ref GLOBAL_CHANNEL_STORAGE: Arc<SgxMutex<Option<ChannelStorage>>> =
+        Arc::new(SgxMutex::new(None));
 }
 
+#[derive(Clone)]
 pub struct ChannelStorage {
     pub sender: Sender<ChannelType>,
-    pub receiver: Receiver<ChannelType>,
 }
 
-impl Default for ChannelStorage {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self { sender, receiver }
-    }
+pub fn create_channel_get_receiver() -> Result<Receiver<ChannelType>, ChannelStorageError> {
+    let (sender, receiver) = channel();
+    let mut storage = GLOBAL_CHANNEL_STORAGE
+        .lock()
+        .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
+    *storage = Some(ChannelStorage { sender });
+    Ok(receiver)
 }
 
 pub enum ChannelType {
@@ -51,14 +53,16 @@ pub enum ChannelType {
 
 pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
     // Acquire lock on channel storage
-    let storage = load_channel_storage()?;
-
-    let result = storage.sender.clone();
-    Ok(result)
+    Ok(if let Some(storage) = load_channel_storage()?.clone() {
+        storage
+    } else {
+        return Err(ChannelStorageError::ChannelNotInitialized);
+    }
+    .sender)
 }
 
-pub fn load_channel_storage() -> Result<SgxMutexGuard<'static, ChannelStorage>, ChannelStorageError>
-{
+pub fn load_channel_storage(
+) -> Result<SgxMutexGuard<'static, Option<ChannelStorage>>, ChannelStorageError> {
     GLOBAL_CHANNEL_STORAGE
         .lock()
         .map_err(|_| ChannelStorageError::CouldNotGetMutex)
@@ -70,4 +74,6 @@ pub enum ChannelStorageError {
     CouldNotLoadStorage,
     /// Could not get mutex
     CouldNotGetMutex,
+    /// Channel Not Initialized
+    ChannelNotInitialized,
 }

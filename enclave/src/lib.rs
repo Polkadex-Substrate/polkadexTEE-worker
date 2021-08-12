@@ -30,7 +30,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use crate::channel_storage::{load_channel_storage, ChannelType};
+use crate::channel_storage::{create_channel_get_receiver, ChannelType};
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
@@ -447,13 +447,11 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
-    let receiver = &if let Ok(channel) = load_channel_storage() {
-        channel
+    let receiver = if let Ok(receiver) = create_channel_get_receiver() {
+        receiver
     } else {
-        error!("Failed to load channel");
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    }
-    .receiver;
+    };
 
     loop {
         match receiver.recv() {
