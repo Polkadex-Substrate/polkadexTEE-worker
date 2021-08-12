@@ -50,7 +50,7 @@ impl IpfsStorageHandler {
     #[tokio::main]
     pub async fn snapshot_to_ipfs(&mut self, data: Vec<u8>) -> Result<Cid> {
         let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port)
-           .map_err(|e| IpfsError(format!("{:?}", e)))?;
+            .map_err(|e| IpfsError(format!("{:?}", e)))?;
 
         let datac = Cursor::new(data);
         let (tx, rx) = channel();
@@ -64,7 +64,7 @@ impl IpfsStorageHandler {
             Err(e) => {
                 eprintln!("error adding file: {}", e);
                 return Err(IpfsError(format!("{:?}", e)));
-            },
+            }
         };
         let hash: &str = &rx.recv().map_err(|e| IpfsError(format!("{:?}", e)))?;
         Cid::try_from(hash).map_err(|e| IpfsError(format!("{:?}", e)))
@@ -91,7 +91,8 @@ mod tests {
     }
 
     // this test needs a local ipfs node running!
-    #[test] #[ignore]
+    #[test]
+    #[ignore]
     fn snapshotting_to_ipfs_works() {
         // given
         let port = 5001;
@@ -104,6 +105,9 @@ mod tests {
         println!("{:?}", cid);
 
         // then
-        assert_eq!("QmNbwhCos4m8tK4uiLtJiCjEdj68XDMYFRdQNvAsqP3CFw", cid.to_string());
+        assert_eq!(
+            "QmNbwhCos4m8tK4uiLtJiCjEdj68XDMYFRdQNvAsqP3CFw",
+            cid.to_string()
+        );
     }
 }
