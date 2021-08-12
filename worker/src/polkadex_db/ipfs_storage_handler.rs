@@ -16,10 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use cid::Cid;
 use log::*;
 use std::convert::TryFrom;
 use std::io::Cursor;
-use cid::Cid;
 use std::sync::mpsc::channel;
 
 use super::PolkadexDBError::IpfsError;
@@ -27,8 +27,8 @@ use super::Result;
 
 use crate::constants::{IPFS_HOST, IPFS_PORT};
 
-use ipfs_api::{IpfsClient, TryFromUri};
 use http::uri::Scheme;
+use ipfs_api::{IpfsClient, TryFromUri};
 
 /// handles all disc permanent storage interactions of polkadex databases
 pub struct IpfsStorageHandler {
@@ -50,19 +50,20 @@ impl IpfsStorageHandler {
     #[tokio::main]
     pub async fn snapshot_to_ipfs(&mut self, data: Vec<u8>) -> Result<Cid> {
         let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port)
-            .map_err(|e| {IpfsError(format!("{:?}", e))})?;
+            .map_err(|e| IpfsError(format!("{:?}", e)))?;
         let datac = Cursor::new(data);
         let (tx, rx) = channel();
 
         match client.add(datac).await {
             Ok(res) => {
                 info!("Result Hash {}", res.hash);
-                tx.send(res.hash.into_bytes()).map_err(|e| {IpfsError(format!("{:?}", e))})?;
+                tx.send(res.hash.into_bytes())
+                    .map_err(|e| IpfsError(format!("{:?}", e)))?;
             }
             Err(e) => eprintln!("error adding file: {}", e),
         }
-        let bytes = &rx.recv().map_err(|e| {IpfsError(format!("{:?}", e))})?;
-        Cid::try_from(bytes.to_owned()).map_err(|e| {IpfsError(format!("{:?}", e))})
+        let bytes = &rx.recv().map_err(|e| IpfsError(format!("{:?}", e)))?;
+        Cid::try_from(bytes.to_owned()).map_err(|e| IpfsError(format!("{:?}", e)))
     }
 }
 
@@ -79,7 +80,6 @@ mod tests {
 
         // when
         let handler = IpfsStorageHandler::new(port, host.clone());
-
 
         // then
         assert_eq!(handler.host, host);
@@ -101,5 +101,4 @@ mod tests {
         // then
         assert!(result.is_ok());
     }
-
 }

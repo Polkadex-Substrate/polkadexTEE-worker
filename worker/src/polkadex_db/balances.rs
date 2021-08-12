@@ -68,9 +68,7 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
     pub fn _find(&self, k: PolkadexBalanceKey) -> Result<Balances> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
-            Some(v) => {
-                Balances::decode(&mut v.as_slice()).map_err(PolkadexDBError::DecodeError)
-            }
+            Some(v) => Balances::decode(&mut v.as_slice()).map_err(PolkadexDBError::DecodeError),
             None => {
                 println!("Key returns None");
                 Err(PolkadexDBError::_KeyNotFound)
