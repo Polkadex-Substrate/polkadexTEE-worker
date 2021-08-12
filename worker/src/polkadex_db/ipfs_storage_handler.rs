@@ -18,11 +18,13 @@
 
 use super::PermanentStorageHandler;
 use log::*;
+use std::convert::TryFrom;
 use std::fs;
 use std::path::PathBuf;
 use std::io::{Cursor, Write};
-
+use cid::Cid;
 use crate::ipfs;
+use std::sync::mpsc::channel;
 
 use super::PolkadexDBError as Error;
 use super::Result;
@@ -51,29 +53,30 @@ impl IpfsStorageHandler {
         IpfsStorageHandler { port, host }
     }
 
-    pub fn snapshot_from_disk(&mut self, filename: PathBuf) -> Result<()> {
+    #[tokio::main]
+    pub async fn snapshot_from_disk_to_ipfs(&mut self, filename: PathBuf) -> Result<()> {
         let disk_storage = DiskStorageHandler::open_default(filename);
         if let Ok(data) = disk_storage.read_from_storage() {
-            self.write_to_storage(&data)
+            let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port).unwrap();
+            let datac = Cursor::new(data);
+            let (tx, rx) = channel();
+
+            match client.add(datac).await {
+                Ok(res) => {
+                    info!("Result Hash {}", res.hash);
+                    tx.send(res.hash.into_bytes()).unwrap();
+                }
+                Err(e) => eprintln!("error adding file: {}", e),
+            }
+            let bytes = &rx.recv().unwrap();
+            let cid = Cid::try_from(bytes.to_owned()).unwrap();
+            Ok(())
         } else {
             Ok(()) //FIXME
         }
     }
 
 
-}
-
-impl PermanentStorageHandler for IpfsStorageHandler {
-    fn write_to_storage(&mut self, data: &'static [u8]) -> Result<()> {
-        let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port).unwrap();
-        let cid = ipfs::write_to_ipfs(client, data);
-        Ok(())
-    }
-
-    fn read_from_storage(&self) -> Result<Vec<u8>> {
-        //fs::read(&self.filepath()).map_err(Error::FsError)
-        Ok(vec![])
-    }
 }
 
 /* #[cfg(test)]
