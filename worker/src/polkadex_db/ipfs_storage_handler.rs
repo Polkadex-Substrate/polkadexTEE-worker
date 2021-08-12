@@ -69,7 +69,8 @@ impl IpfsStorageHandler {
                 Err(e) => eprintln!("error adding file: {}", e),
             }
             let bytes = &rx.recv().unwrap();
-            let cid = Cid::try_from(bytes.to_owned()).unwrap();
+            let _cid = Cid::try_from(bytes.to_owned()).unwrap();
+            // TODO: send cid to OCEX pallet (issue #241)
             Ok(())
         } else {
             Ok(()) //FIXME

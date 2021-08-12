@@ -53,13 +53,12 @@ pub enum PolkadexDBError {
     UnableToDeseralizeValue,
     /// Failed to find key in the DB
     _KeyNotFound,
-    /// Failed to decode
-    _DecodeError,
     /// File system interaction error
     FsError(std::io::Error),
     /// Decode Error
     #[allow(dead_code)] //FIXME: remove as soon _read_disk is actually used
     DecodeError(codec::Error),
+
 }
 
 /// Trait for handling permanante storage
