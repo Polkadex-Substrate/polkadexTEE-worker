@@ -60,8 +60,11 @@ impl IpfsStorageHandler {
                 tx.send(res.hash.into_bytes())
                     .map_err(|e| IpfsError(format!("{:?}", e)))?;
             }
-            Err(e) => eprintln!("error adding file: {}", e),
-        }
+            Err(e) => {
+                eprintln!("error adding file: {}", e);
+                return Err(IpfsError(format!("{:?}", e)));
+            },
+        };
         let bytes = &rx.recv().map_err(|e| IpfsError(format!("{:?}", e)))?;
         Cid::try_from(bytes.to_owned()).map_err(|e| IpfsError(format!("{:?}", e)))
     }
