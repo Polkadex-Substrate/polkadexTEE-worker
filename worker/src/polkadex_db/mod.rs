@@ -71,7 +71,7 @@ pub trait PermanentStorageHandler {
 // Disk snapshot loop
 pub fn start_snapshot_loop() {
     thread::spawn(move || {
-        println!("Successfully started disk snapshot loop");
+        println!("Successfully started snapshot loop");
         let snapshot_interval = Duration::from_millis(SNAPSHOT_INTERVAL);
         let mut interval_start = SystemTime::now();
         loop {
@@ -83,7 +83,7 @@ pub fn start_snapshot_loop() {
                     // Take snapshots of all storages
                     if let Err(e) = take_orderbook_snapshot() {
                         error!("Could not take orderbook snapshot: {:?}", e);
-                    };
+                    }
                     if let Err(e) = take_balance_snapshot() {
                         error!("Could not take balance snapshot: {:?}", e);
                     };
@@ -107,7 +107,8 @@ fn take_orderbook_snapshot() -> Result<()> {
         .map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
     let data = orderbook_mirror.take_disk_snapshot()?;
     let mut ipfs_handler = IpfsStorageHandler::default();
-    let _cid = ipfs_handler.snapshot_to_ipfs(data)?;
+    let cid = ipfs_handler.snapshot_to_ipfs(data)?;
+    debug!("Retrived cid {:?} for orderbook snapshot", cid);
     // TODO: send cid to OCEX pallet (issue #241)
     Ok(())
 }
@@ -120,7 +121,8 @@ fn take_balance_snapshot() -> Result<()> {
         .map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
     let data = balance_mirror.take_disk_snapshot()?;
     let mut ipfs_handler = IpfsStorageHandler::default();
-    let _cid = ipfs_handler.snapshot_to_ipfs(data)?;
+    let cid = ipfs_handler.snapshot_to_ipfs(data)?;
+    debug!("Retrived cid {:?} for balance snapshot", cid);
     // TODO: send cid to OCEX pallet (issue #241)
     Ok(())
 }
@@ -133,7 +135,8 @@ fn take_nonce_snapshot() -> Result<()> {
         .map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
     let data = nonce_mirror.take_disk_snapshot()?;
     let mut ipfs_handler = IpfsStorageHandler::default();
-    let _cid = ipfs_handler.snapshot_to_ipfs(data)?;
+    let cid = ipfs_handler.snapshot_to_ipfs(data)?;
+    debug!("Retrived cid {:?} for nonce snapshot", cid);
     // TODO: send cid to OCEX pallet (issue #241)
     Ok(())
 }
