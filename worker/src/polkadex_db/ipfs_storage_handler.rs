@@ -26,7 +26,7 @@ use cid::Cid;
 use crate::ipfs;
 use std::sync::mpsc::channel;
 
-use super::PolkadexDBError as Error;
+use super::PolkadexDBError::IpfsError;
 use super::Result;
 use super::DiskStorageHandler;
 
@@ -56,25 +56,24 @@ impl IpfsStorageHandler {
     #[tokio::main]
     pub async fn snapshot_from_disk_to_ipfs(&mut self, filename: PathBuf) -> Result<()> {
         let disk_storage = DiskStorageHandler::open_default(filename);
-        if let Ok(data) = disk_storage.read_from_storage() {
-            let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port).unwrap();
-            let datac = Cursor::new(data);
-            let (tx, rx) = channel();
+        let data = disk_storage.read_from_storage()?;
+        let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port)
+            .map_err(|e| {IpfsError(format!("{:?}", e))})?;
+        let datac = Cursor::new(data);
+        let (tx, rx) = channel();
 
-            match client.add(datac).await {
-                Ok(res) => {
-                    info!("Result Hash {}", res.hash);
-                    tx.send(res.hash.into_bytes()).unwrap();
-                }
-                Err(e) => eprintln!("error adding file: {}", e),
+        match client.add(datac).await {
+            Ok(res) => {
+                info!("Result Hash {}", res.hash);
+                tx.send(res.hash.into_bytes()).map_err(|e| {IpfsError(format!("{:?}", e))})?;
             }
-            let bytes = &rx.recv().unwrap();
-            let _cid = Cid::try_from(bytes.to_owned()).unwrap();
-            // TODO: send cid to OCEX pallet (issue #241)
-            Ok(())
-        } else {
-            Ok(()) //FIXME
+            Err(e) => eprintln!("error adding file: {}", e),
         }
+        let bytes = &rx.recv().map_err(|e| {IpfsError(format!("{:?}", e))})?;
+        let _cid = Cid::try_from(bytes.to_owned()).map_err(|e| {IpfsError(format!("{:?}", e))})?;
+        // TODO: send cid to OCEX pallet (issue #241)
+        Ok(())
+
     }
 
 

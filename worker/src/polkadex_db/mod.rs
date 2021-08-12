@@ -58,6 +58,9 @@ pub enum PolkadexDBError {
     /// Decode Error
     #[allow(dead_code)] //FIXME: remove as soon _read_disk is actually used
     DecodeError(codec::Error),
+    // Could not send IPFS snapshot
+    IpfsError(String),
+
 
 }
 
