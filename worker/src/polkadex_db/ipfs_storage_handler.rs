@@ -50,14 +50,15 @@ impl IpfsStorageHandler {
     #[tokio::main]
     pub async fn snapshot_to_ipfs(&mut self, data: Vec<u8>) -> Result<Cid> {
         let client = IpfsClient::from_host_and_port(Scheme::HTTP, &self.host, self.port)
-            .map_err(|e| IpfsError(format!("{:?}", e)))?;
+           .map_err(|e| IpfsError(format!("{:?}", e)))?;
+
         let datac = Cursor::new(data);
         let (tx, rx) = channel();
 
         match client.add(datac).await {
             Ok(res) => {
                 info!("Result Hash {}", res.hash);
-                tx.send(res.hash.into_bytes())
+                tx.send(res.hash)
                     .map_err(|e| IpfsError(format!("{:?}", e)))?;
             }
             Err(e) => {
@@ -65,8 +66,8 @@ impl IpfsStorageHandler {
                 return Err(IpfsError(format!("{:?}", e)));
             },
         };
-        let bytes = &rx.recv().map_err(|e| IpfsError(format!("{:?}", e)))?;
-        Cid::try_from(bytes.to_owned()).map_err(|e| IpfsError(format!("{:?}", e)))
+        let hash: &str = &rx.recv().map_err(|e| IpfsError(format!("{:?}", e)))?;
+        Cid::try_from(hash).map_err(|e| IpfsError(format!("{:?}", e)))
     }
 }
 
@@ -94,14 +95,15 @@ mod tests {
     fn snapshotting_to_ipfs_works() {
         // given
         let port = 5001;
-        let host = "localhost".to_string();
+        let host = "127.0.0.1".to_string();
         let mut handler = IpfsStorageHandler::new(port, host);
         let data = "hello_world".encode();
 
         // when
-        let result = handler.snapshot_to_ipfs(data);
+        let cid = handler.snapshot_to_ipfs(data).unwrap();
+        println!("{:?}", cid);
 
         // then
-        assert!(result.is_ok());
+        assert_eq!("QmNbwhCos4m8tK4uiLtJiCjEdj68XDMYFRdQNvAsqP3CFw", cid.to_string());
     }
 }
