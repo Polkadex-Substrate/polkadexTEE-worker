@@ -53,7 +53,7 @@ use crate::enclave::api::{
     enclave_sync_chain,
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
-use crate::polkadex_db::{OrderbookMirror, PolkadexDBError};
+use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
@@ -70,9 +70,6 @@ mod ipfs;
 mod polkadex;
 mod polkadex_db;
 mod tests;
-
-#[cfg(test)]
-mod tests_orderbook_mirror;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -370,6 +367,9 @@ fn worker(
 
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
+    // start disk & ipfs snapshotting
+    polkadex_db::start_disk_snapshot_loop();
+    polkadex_db::start_ipfs_snapshot_loop();
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
@@ -832,7 +832,8 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
         let mutex = polkadex_db::orderbook::load_orderbook_mirror()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
         orderbook_mirror.write(order_id, &signed_order);
         Ok(())
     });
