@@ -49,6 +49,4 @@ pub static NONCE_DISK_STORAGE_FILENAME: &str = "nonce.bin";
 pub static BALANCE_DISK_STORAGE_FILENAME: &str = "balance.bin";
 
 // Interval of disk snapshot
-pub static DISK_SNAPSHOT_INTERVAL: u64 = 1000; // ms
-// Interval of ipfs snapshot
-pub static IPFS_SNAPSHOT_INTERVAL: u64 = 1000; // ms
+pub static SNAPSHOT_INTERVAL: u64 = 1000; // ms

@@ -368,8 +368,7 @@ fn worker(
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
     // start disk & ipfs snapshotting
-    polkadex_db::start_disk_snapshot_loop();
-    polkadex_db::start_ipfs_snapshot_loop();
+    polkadex_db::start_snapshot_loop();
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
