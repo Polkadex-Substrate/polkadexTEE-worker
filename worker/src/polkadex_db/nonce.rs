@@ -65,7 +65,7 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
         self.general_db._delete(k.encode());
     }
 
-    pub fn take_disk_snapshot(&mut self) -> Result<()> {
+    pub fn take_disk_snapshot(&mut self) -> Result<Vec<u8>> {
         self.general_db.write_disk_from_memory()
     }
 }
