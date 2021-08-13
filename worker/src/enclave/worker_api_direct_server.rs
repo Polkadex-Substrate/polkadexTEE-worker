@@ -32,7 +32,7 @@ use std::sync::{
 };
 use std::thread;
 use substratee_worker_primitives::{
-    DirectRequestStatus, RpcResponse, RpcReturnValue, TrustedOperationStatus,
+    DirectRequestStatus, RpcResponse, RpcReturnValue,
 };
 use ws::{Builder, CloseCode, Handler, Message, Result, Sender, Settings};
 

@@ -159,7 +159,7 @@ enclave {
 	    sgx_status_t ocall_send_response_with_uuid(
         	[in, size = request_id_size] uint8_t * request_id_encoded, uint32_t request_id_size,
         	[in, size = uuid_size] uint8_t * uuid_encoded, uint32_t uuid_size
-
+        );
 	    sgx_status_t ocall_send_nonce(
             [in, size = account_size] uint8_t * account_encoded, uint32_t account_size,
             uint32_t nonce
