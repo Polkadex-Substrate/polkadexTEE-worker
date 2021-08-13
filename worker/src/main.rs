@@ -53,7 +53,7 @@ use crate::enclave::api::{
     enclave_sync_chain,
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
-use crate::polkadex_db::{OrderbookMirror, PolkadexDBError};
+use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
 use enclave::api::{
     enclave_dump_ra, enclave_init, enclave_mrenclave, enclave_perform_ra, enclave_shielding_key,
     enclave_signing_key,
@@ -64,14 +64,12 @@ use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::{OpenFinexUri, PolkadexAccount};
 use substratee_worker_primitives::block::SignedBlock as SignedSidechainBlock;
 mod constants;
+mod db_handler;
 mod enclave;
 mod ipfs;
 mod polkadex;
 mod polkadex_db;
 mod tests;
-
-#[cfg(test)]
-mod tests_orderbook_mirror;
 
 /// how many blocks will be synced before storing the chain db to disk
 const BLOCK_SYNC_BATCH_SIZE: u32 = 1000;
@@ -363,8 +361,15 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
+    // ------------------------------------------------------------------------
+    // Start DB Handler Thread
+    crate::db_handler::DBHandler::initialize(eid);
+
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
+    // start disk & ipfs snapshotting
+    polkadex_db::start_disk_snapshot_loop();
+    polkadex_db::start_ipfs_snapshot_loop();
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
@@ -559,10 +564,8 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Initializing Polkadex Orderbook Mirror");
 
-    polkadex_db::orderbook::initialize_orderbook();
-
     info!("Loading Orders from Orderbook Storage");
-    let signed_orders = polkadex_db::orderbook::load_orderbook()
+    let signed_orders = polkadex_db::orderbook::load_orderbook_mirror()
         .unwrap() // TODO: Replace unwrap
         .lock()
         .unwrap()
@@ -828,8 +831,9 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     // TODO: Do we need error handling here?
     let order_id = signed_order.order_id.clone();
     thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = polkadex_db::orderbook::load_orderbook()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        let mutex = polkadex_db::orderbook::load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
         orderbook_mirror.write(order_id, &signed_order);
         Ok(())
     });

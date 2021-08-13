@@ -19,7 +19,8 @@
 use std::{thread, time};
 
 use crate::polkadex_db::{
-    orderbook::initialize_orderbook, orderbook::load_orderbook, OrderbookMirror, PolkadexDBError,
+    orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, DiskStorageHandler,
+    OrderbookMirror, PolkadexDBError,
 };
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
 use polkadex_sgx_primitives::AssetId;
@@ -29,8 +30,8 @@ use substratee_worker_primitives::get_account;
 
 #[test]
 fn test_db_initialization() {
-    initialize_orderbook();
-    assert!(load_orderbook().is_ok());
+    initialize_orderbook_mirror();
+    assert!(load_orderbook_mirror().is_ok());
 }
 
 #[test]
@@ -56,20 +57,24 @@ fn test_write_and_delete() {
     let first_order_clone = first_order.clone();
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
-        Ok(orderbook_mirror.write("FIRST_ORDER".to_string().into_bytes(), &first_order))
+        let mutex = load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
+        orderbook_mirror.write("FIRST_ORDER".to_string().into_bytes(), &first_order);
+        Ok(())
     });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
     let handler = thread::spawn(move || -> Result<SignedOrder, PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
-        Ok(orderbook_mirror
+        let mutex = load_orderbook_mirror()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
+        let signed_order = orderbook_mirror
             ._find("FIRST_ORDER".to_string().into_bytes())
-            .unwrap_or(SignedOrder::default()))
+            .unwrap_or_default();
+        Ok(signed_order)
     });
 
     let order_read = handler.join().unwrap().unwrap();
@@ -77,8 +82,9 @@ fn test_write_and_delete() {
     assert_eq!(order_read, first_order_clone);
 
     let handler = thread::spawn(move || -> Result<SignedOrder, PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        let mutex = load_orderbook_mirror()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
         orderbook_mirror._find("SECOND_ORDER".to_string().into_bytes())
     });
 
@@ -87,17 +93,20 @@ fn test_write_and_delete() {
     assert!(second_result.is_err());
 
     let delete_handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
-        Ok(orderbook_mirror._delete("FIRST_ORDER".to_string().into_bytes()))
+        let mutex = load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
+        orderbook_mirror._delete("FIRST_ORDER".to_string().into_bytes());
+        Ok(())
     });
 
     let result = delete_handler.join().unwrap();
     assert!(result.is_ok());
 
     let handler = thread::spawn(move || -> Result<SignedOrder, PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        let mutex = load_orderbook_mirror()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
         orderbook_mirror._find("FIRST_ORDER".to_string().into_bytes())
     });
 
@@ -163,26 +172,31 @@ fn test_read_all() {
     let second_order_clone = second_order.clone();
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
-        Ok(orderbook_mirror.write("FIRST_ORDER1".to_string().into_bytes(), &first_order))
+        let mutex = load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
+        orderbook_mirror.write("FIRST_ORDER1".to_string().into_bytes(), &first_order);
+        Ok(())
     });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
     let handler = thread::spawn(move || -> Result<(), PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let mut orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
-        Ok(orderbook_mirror.write("SECOND_ORDER1".to_string().into_bytes(), &second_order))
+        let mutex = load_orderbook_mirror()?;
+        let mut orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
+        orderbook_mirror.write("SECOND_ORDER1".to_string().into_bytes(), &second_order);
+        Ok(())
     });
 
     let result = handler.join().unwrap();
     assert!(result.is_ok());
 
     let handler = thread::spawn(move || -> Result<Vec<SignedOrder>, PolkadexDBError> {
-        let mutex = load_orderbook()?;
-        let orderbook_mirror: MutexGuard<OrderbookMirror> = mutex.lock().unwrap();
+        let mutex = load_orderbook_mirror()?;
+        let orderbook_mirror: MutexGuard<OrderbookMirror<DiskStorageHandler>> =
+            mutex.lock().unwrap();
         orderbook_mirror.read_all()
     });
 

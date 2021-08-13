@@ -16,10 +16,29 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod balances;
+pub mod disk_storage_handler;
 pub mod general_db;
-pub use general_db::*;
+#[cfg(test)]
+pub mod mock;
+pub mod nonce;
 pub mod orderbook;
+#[cfg(test)]
+pub mod tests_orderbook_mirror;
+
+// public exports
+pub use balances::*;
+pub use disk_storage_handler::DiskStorageHandler;
+pub use general_db::*;
+pub use nonce::*;
 pub use orderbook::*;
+
+pub type Result<T> = std::result::Result<T, PolkadexDBError>;
+
+use crate::constants::DISK_SNAPSHOT_INTERVAL;
+use log::*;
+use std::thread;
+use std::time::{Duration, SystemTime};
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -30,4 +49,82 @@ pub enum PolkadexDBError {
     UnableToDeseralizeValue,
     /// Failed to find key in the DB
     _KeyNotFound,
+    /// Failed to decode
+    _DecodeError,
+    /// File system interaction error
+    FsError(std::io::Error),
+    /// Decode Error
+    #[allow(dead_code)] //FIXME: remove as soon _read_disk is actually used
+    DecodeError(codec::Error),
+}
+
+/// Trait for handling permanante storage
+pub trait PermanentStorageHandler {
+    /// writes a slice of data into permanent storage of choice
+    fn write_to_storage(&mut self, data: &[u8]) -> Result<()>;
+    /// reads an vector of data from the permanent storage of choice
+    fn read_from_storage(&self) -> Result<Vec<u8>>;
+}
+
+// Disk snapshot loop
+pub fn start_disk_snapshot_loop() {
+    thread::spawn(move || {
+        println!("Successfully started disk snapshot loop");
+        let block_production_interval = Duration::from_millis(DISK_SNAPSHOT_INTERVAL);
+        let mut interval_start = SystemTime::now();
+        loop {
+            if let Ok(elapsed) = interval_start.elapsed() {
+                if elapsed >= block_production_interval {
+                    // update interval time
+                    interval_start = SystemTime::now();
+
+                    // Take snapshots of all storages
+                    take_orderbook_snapshot();
+                    take_balance_snapshot();
+                    take_nonce_snapshot();
+                } else {
+                    // sleep for the rest of the interval
+                    thread::sleep(block_production_interval - elapsed);
+                }
+            }
+        }
+    });
+}
+
+// Disk snapshot loop
+pub fn start_ipfs_snapshot_loop() {
+    // TODO
+}
+
+// take a disk snapshot of orderbookmirror
+fn take_orderbook_snapshot() {
+    if let Ok(mutex) = crate::polkadex_db::orderbook::load_orderbook_mirror() {
+        if let Ok(mut orderbook_mirror) = mutex.lock() {
+            if let Err(e) = orderbook_mirror.take_disk_snapshot() {
+                error!("Could not take an orderbook mirror snaphot due to {:?}", e);
+            }
+        }
+    }
+}
+
+// take a disk snapshot of balancemirror
+fn take_balance_snapshot() {
+    if let Ok(mutex) = crate::polkadex_db::balances::load_balances_mirror() {
+        if let Ok(mut balance_mirror) = mutex.lock() {
+            if let Err(e) = balance_mirror.take_disk_snapshot() {
+                error!("Could not take an balnace mirror snaphot due to {:?}", e);
+            }
+        }
+    }
+}
+
+// take a disk snapshot of balancemirror
+fn take_nonce_snapshot() {
+    if let Ok(mutex) = crate::polkadex_db::nonce::load_nonce_mirror() {
+        if let Ok(mut nonce_mirror) = mutex.lock() {
+            if let Err(e) = nonce_mirror.take_disk_snapshot() {
+                error!("Could not take a nonce mirror snaphot due to {:?}", e);
+            }
+        }
+    }
 }

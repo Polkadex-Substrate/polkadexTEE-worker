@@ -30,6 +30,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
+use crate::channel_storage::{create_channel_get_receiver, ChannelType};
 use crate::constants::{
     CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
 };
@@ -85,10 +86,10 @@ use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
 mod accounts_nonce_storage;
-//pub mod accounts_storage;
 mod aes;
 mod attestation;
 pub mod cert;
+pub mod channel_storage;
 mod constants;
 mod ed25519;
 mod happy_path;
@@ -96,7 +97,6 @@ pub mod hex;
 mod io;
 mod ipfs;
 pub mod nonce_handler;
-//pub mod nonce_storage;
 pub mod openfinex;
 mod polkadex_balance_storage;
 pub mod polkadex_cache;
@@ -423,6 +423,76 @@ pub unsafe extern "C" fn accept_pdex_accounts(
     };
 
     sgx_status_t::SGX_SUCCESS
+}
+
+extern "C" {
+    fn ocall_send_nonce(
+        ret_val: *mut sgx_status_t,
+        account_encoded: *const u8,
+        account_size: u32,
+        nonce: u32,
+    ) -> sgx_status_t;
+
+    pub fn ocall_send_balances(
+        ret_val: *mut sgx_status_t,
+        account_encoded: *const u8,
+        account_size: u32,
+        token_encoded: *const u8,
+        token_size: u32,
+        free: *mut u8,
+        reserved: *mut u8,
+        balance_size: u32,
+    ) -> sgx_status_t;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
+    let receiver = if let Ok(receiver) = create_channel_get_receiver() {
+        receiver
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
+    loop {
+        match receiver.recv() {
+            Ok(ChannelType::Nonce(account, nonce)) => {
+                let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+                let slice: &[u8] = account.as_ref();
+
+                ocall_send_nonce(&mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce);
+            }
+            Ok(ChannelType::Balances(account, balances)) => {
+                let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+                let account_slice: &[u8] = account.account_id.as_ref();
+                let token_slice = account.asset_id.encode();
+                let token_slice: &[u8] = token_slice.as_ref();
+                let (mut free, mut reserved) = (balances.free.encode(), balances.reserved.encode());
+
+                ocall_send_balances(
+                    &mut rt as *mut sgx_status_t,
+                    account_slice.as_ptr(),
+                    32,
+                    token_slice.as_ptr(),
+                    token_slice.len() as u32,
+                    free.as_mut_ptr(),
+                    reserved.as_mut_ptr(),
+                    free.len() as u32,
+                );
+            }
+            Ok(ChannelType::Order(order)) => {
+                let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+                ocall_write_order_to_db(
+                    &mut rt as *mut sgx_status_t,
+                    order.encode().as_ptr(),
+                    order.encode().len() as u32,
+                );
+            }
+            Err(_) => {
+                error!("Failed to receive message from sender");
+            }
+        }
+    }
 }
 
 #[no_mangle]
@@ -1403,26 +1473,26 @@ fn worker_request<V: Encode + Decode>(
     Ok(Decode::decode(&mut resp.as_slice()).unwrap())
 }
 
-fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-
-    let res = unsafe {
-        ocall_write_order_to_db(
-            &mut rt as *mut sgx_status_t,
-            order.encode().as_ptr(),
-            order.encode().len() as u32,
-        )
-    };
-
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(rt);
-    }
-
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(res);
-    }
-    Ok(())
-}
+// fn _write_order_to_disk(order: SignedOrder) -> SgxResult<()> {
+//     let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+//
+//     let res = unsafe {
+//         ocall_write_order_to_db(
+//             &mut rt as *mut sgx_status_t,
+//             order.encode().as_ptr(),
+//             order.encode().len() as u32,
+//         )
+//     };
+//
+//     if rt != sgx_status_t::SGX_SUCCESS {
+//         return Err(rt);
+//     }
+//
+//     if res != sgx_status_t::SGX_SUCCESS {
+//         return Err(res);
+//     }
+//     Ok(())
+// }
 
 /// sends an release extrsinic per ocall to the node
 fn send_release_extrinsic(extrinsic: Vec<u8>) -> SgxResult<()> {

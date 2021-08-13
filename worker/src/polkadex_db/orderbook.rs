@@ -16,28 +16,32 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-
-use crate::constants::ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT;
+use super::Result;
+use crate::constants::{ORDERBOOK_DISK_STORAGE_FILENAME, ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT};
 use codec::Encode;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use polkadex_sgx_primitives::types::SignedOrder;
 
+use super::disk_storage_handler::DiskStorageHandler;
+use super::PermanentStorageHandler;
+
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
-pub struct OrderbookMirror {
-    general_db: GeneralDB,
+pub struct OrderbookMirror<D: PermanentStorageHandler> {
+    general_db: GeneralDB<D>,
 }
 
-impl OrderbookMirror {
+impl<D: PermanentStorageHandler> OrderbookMirror<D> {
     pub fn write(&mut self, order_uid: Vec<u8>, signed_order: &SignedOrder) {
         self.general_db.write(order_uid, signed_order.encode());
     }
 
-    pub fn _find(&self, k: Vec<u8>) -> Result<SignedOrder, PolkadexDBError> {
+    pub fn _find(&self, k: Vec<u8>) -> Result<SignedOrder> {
         println!("Searching for Key");
         match self.general_db._find(k) {
             Some(v) => match SignedOrder::from_vec(&v) {
@@ -61,7 +65,7 @@ impl OrderbookMirror {
         self.general_db._delete(k);
     }
 
-    pub fn read_all(&self) -> Result<Vec<SignedOrder>, PolkadexDBError> {
+    pub fn read_all(&self) -> Result<Vec<SignedOrder>> {
         let iterator = self.general_db.read_all().into_iter();
         let mut orders: Vec<SignedOrder> = vec![];
         for (_, value) in iterator.take(ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT) {
@@ -75,18 +79,28 @@ impl OrderbookMirror {
         }
         Ok(orders)
     }
+
+    pub fn take_disk_snapshot(&mut self) -> Result<()> {
+        self.general_db.write_disk_from_memory()
+    }
 }
 
-pub fn initialize_orderbook() {
-    let storage_ptr = Arc::new(Mutex::<OrderbookMirror>::new(OrderbookMirror {
-        general_db: GeneralDB { db: HashMap::new() },
-    }));
+pub fn initialize_orderbook_mirror() {
+    let storage_ptr = Arc::new(Mutex::<OrderbookMirror<DiskStorageHandler>>::new(
+        OrderbookMirror {
+            general_db: GeneralDB::new(
+                HashMap::new(),
+                DiskStorageHandler::open_default(PathBuf::from(ORDERBOOK_DISK_STORAGE_FILENAME)),
+            ),
+        },
+    ));
     let ptr = Arc::into_raw(storage_ptr);
     ORDERBOOK_MIRROR.store(ptr as *mut (), Ordering::SeqCst);
 }
 
-pub fn load_orderbook() -> Result<&'static Mutex<OrderbookMirror>, PolkadexDBError> {
-    let ptr = ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror>;
+pub fn load_orderbook_mirror() -> Result<&'static Mutex<OrderbookMirror<DiskStorageHandler>>> {
+    let ptr =
+        ORDERBOOK_MIRROR.load(Ordering::SeqCst) as *mut Mutex<OrderbookMirror<DiskStorageHandler>>;
     if ptr.is_null() {
         println!("Unable to load the pointer");
         Err(PolkadexDBError::UnableToLoadPointer)
@@ -98,6 +112,7 @@ pub fn load_orderbook() -> Result<&'static Mutex<OrderbookMirror>, PolkadexDBErr
 #[cfg(test)]
 mod tests {
     use super::{GeneralDB, OrderbookMirror};
+    use crate::polkadex_db::mock::PermanentStorageMock;
     use codec::Encode;
     use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
     use polkadex_sgx_primitives::AssetId;
@@ -146,7 +161,7 @@ mod tests {
     #[test]
     fn write() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         assert_eq!(orderbook.general_db.db, HashMap::new());
         orderbook.write("FIRST_ORDER".encode(), &first_order());
@@ -159,7 +174,7 @@ mod tests {
     #[test]
     fn find() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         orderbook
             .general_db
@@ -175,33 +190,27 @@ mod tests {
     #[test]
     fn delete() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         orderbook
             .general_db
             .db
             .insert("FIRST_ORDER".encode(), first_order().encode());
-        assert_eq!(
-            orderbook
-                .general_db
-                .db
-                .contains_key(&"FIRST_ORDER".encode()),
-            true
-        );
+        assert!(orderbook
+            .general_db
+            .db
+            .contains_key(&"FIRST_ORDER".encode()));
         orderbook._delete("FIRST_ORDER".encode());
-        assert_eq!(
-            orderbook
-                .general_db
-                .db
-                .contains_key(&"FIRST_ORDER".encode()),
-            false
-        );
+        assert!(!orderbook
+            .general_db
+            .db
+            .contains_key(&"FIRST_ORDER".encode()));
     }
 
     #[test]
     fn read_all() {
         let mut orderbook = OrderbookMirror {
-            general_db: GeneralDB { db: HashMap::new() },
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
         };
         orderbook
             .general_db
