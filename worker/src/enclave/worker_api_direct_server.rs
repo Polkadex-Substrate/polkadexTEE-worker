@@ -244,13 +244,18 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
 ) -> sgx_status_t {
     let mut request_id_slice = slice::from_raw_parts(request_id_encoded, request_id_size as usize);
     let uuid_slice = slice::from_raw_parts(uuid_encoded, uuid_size as usize);
-    if let Ok(request_id) = u128::decode(&mut request_id_slice) {
+    if let Ok(request_id) = RequestId::decode(&mut request_id_slice) {
         let mutex = if let Some(mutex) = load_watched_list() {
             mutex
         } else {
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
-        let mut guard = mutex.lock().unwrap();
+        //let mut guard = mutex.lock().unwrap();
+        let mut guard = if let Ok(value) = mutex.lock() {
+            value
+        } else {
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        };
         let submitted = DirectRequestStatus::Ok;
         let result = RpcReturnValue::new(uuid_slice.to_vec(), false, submitted);
 
