@@ -427,49 +427,59 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 
 #[no_mangle]
 pub unsafe extern "C" fn send_disk_data(encoded_data: *const u8, data_size: usize) -> sgx_status_t {
-    error!("Received data from worker");
-
     let mut data = slice::from_raw_parts(encoded_data, data_size);
 
     let decoded: polkadex_sgx_primitives::StorageData =
         polkadex_sgx_primitives::StorageData::decode(&mut data).unwrap();
 
-    error!("decoded: {:#?}", decoded);
+    let balances_data: Vec<(Vec<u8>, polkadex_balance_storage::Balances)> = decoded
+        .balances
+        .into_iter()
+        .map(|entry| {
+            (
+                polkadex_balance_storage::PolkadexBalanceKey::from(
+                    entry.asset_id,
+                    entry.account_id,
+                )
+                .encode(),
+                polkadex_balance_storage::Balances::from(entry.free, entry.reserved),
+            )
+        })
+        .collect();
+    let nonce_data: Vec<(Vec<u8>, u32)> = decoded
+        .nonce
+        .into_iter()
+        .map(|entry| (entry.account_id.encode(), entry.nonce))
+        .collect();
+    let orderbook_data: Vec<SignedOrder> = decoded
+        .orderbook
+        .into_iter()
+        .map(|entry| entry.signed_order)
+        .collect();
 
-    let balances_data = decoded.balances;
-    let nonce_data = decoded.nonce;
-    let orderbook_data = decoded.orderbook;
-
-    if crate::polkadex_balance_storage::load_balance_storage().is_err() {
-        error!("balances storage doesnt exist");
-        polkadex_balance_storage::create_in_memory_balance_storage().unwrap()
+    if crate::polkadex_balance_storage::load_balance_storage().is_err()
+        && polkadex_balance_storage::create_in_memory_balance_storage().is_err()
+    {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    if crate::accounts_nonce_storage::load_registry().is_err() {
-        error!("accounts_nonce storage doesnt exist");
-        accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]).unwrap()
+    if crate::accounts_nonce_storage::load_registry().is_err()
+        && accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]).is_err()
+    {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    let mut balances_storage = crate::polkadex_balance_storage::load_balance_storage()
-        .unwrap()
-        .lock()
-        .unwrap();
-    error!("balances_storage: {:#?}", balances_storage);
+    if polkadex_orderbook_storage::create_in_memory_orderbook_storage(orderbook_data).is_err() {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
 
-    balances_storage.initialize_from_disk_data(balances_data);
+    if crate::polkadex_balance_storage::lock_storage_extend_from_disk(balances_data).is_err() {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
 
-    error!("balances_storage: {:#?}", balances_storage);
-
-    let nonce_storage = &mut crate::accounts_nonce_storage::load_registry()
-        .unwrap()
-        .lock()
-        .unwrap()
-        .nonce_storage;
-    error!("balances_storage: {:#?}", nonce_storage);
-
-    nonce_storage.initialize_from_disk_data(nonce_data);
-
-    error!("balances_storage: {:#?}", nonce_storage);
+    if crate::accounts_nonce_storage::lock_nonce_storage_extend_from_disk(nonce_data).is_err() {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
 
     sgx_status_t::SGX_SUCCESS
 }
@@ -542,30 +552,6 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
             }
         }
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn load_orders_to_memory(
-    orders: *const u8,
-    orders_size: usize,
-) -> sgx_status_t {
-    let mut orders_slice = slice::from_raw_parts(orders, orders_size);
-
-    let signed_orders: Vec<SignedOrder> = match Decode::decode(&mut orders_slice) {
-        Ok(b) => b,
-        Err(e) => {
-            error!("Decoding signed orders failed. Error: {:?}", e);
-            return sgx_status_t::SGX_ERROR_UNEXPECTED;
-        }
-    };
-
-    if let Err(status) =
-        polkadex_orderbook_storage::create_in_memory_orderbook_storage(signed_orders)
-    {
-        return status;
-    };
-
-    sgx_status_t::SGX_SUCCESS
 }
 
 #[no_mangle]

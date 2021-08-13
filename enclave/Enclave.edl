@@ -58,10 +58,6 @@ enclave {
             [in, size=data_size] uint8_t* encoded_data, size_t data_size
         );
 
-        public sgx_status_t load_orders_to_memory(
-            [in ,size=orders_size] uint8_t* orders, size_t orders_size
-        );
-
         public sgx_status_t sync_chain(
             [in, size=blocks_size] uint8_t* blocks, size_t blocks_size,
             [in] uint32_t* nonce

@@ -31,12 +31,13 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
     let enclave = enclave_init().unwrap();
     let eid = enclave.geteid();
 
-    crate::db_handler::DBHandler::load_from_disk();
+    crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
     crate::db_handler::DBHandler::initialize(eid);
 
-    crate::db_handler::DBHandler::send_data_to_enclave(eid);
+    crate::db_handler::DBHandler::send_data_to_enclave(eid)
+        .expect("Failed to send data to enclave");
 
     if matches.is_present("all") || matches.is_present("unit") {
         println!("Running unit Tests");

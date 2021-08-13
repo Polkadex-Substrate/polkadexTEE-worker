@@ -229,13 +229,8 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn initialize_from_disk_data(&mut self, data: Vec<polkadex_sgx_primitives::BalancesData>) {
-        for item in data {
-            error!("inserting balances: {:#?}", item);
-            let key = PolkadexBalanceKey::from(item.asset_id, item.account_id).encode();
-            self.storage
-                .insert(key, Balances::from(item.free, item.reserved));
-        }
+    pub fn extend_from_disk_data(&mut self, data: Vec<(EncodedKey, Balances)>) {
+        self.storage.extend(data.into_iter());
     }
 
     // We can write functions which settle balances for two trades but we need to know the trade structure for it

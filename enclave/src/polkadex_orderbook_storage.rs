@@ -34,6 +34,7 @@ use std::vec::Vec;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
+#[derive(Debug)]
 pub struct OrderbookStorage {
     storage: HashMap<OrderUUID, Order>,
 }

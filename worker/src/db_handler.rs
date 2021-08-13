@@ -35,21 +35,38 @@ impl DBHandler {
         initialize_orderbook_mirror();
     }
 
-    pub fn load_from_disk() {
+    pub fn load_from_disk() -> Result<(), String> {
         DBHandler::initialize_mirrors();
-        let mut balances = load_balances_mirror().unwrap().lock().unwrap();
-        balances.load_disk_snapshot().unwrap_or(());
-        let mut nonce = load_nonce_mirror().unwrap().lock().unwrap();
-        nonce.load_disk_snapshot().unwrap_or(());
-        let mut orderbook = load_orderbook_mirror().unwrap().lock().unwrap();
-        orderbook.load_disk_snapshot().unwrap_or(());
+        let mut balances = load_balances_mirror()
+            .map_err(|_| String::from("Failed to load balances mirror"))?
+            .lock()
+            .map_err(|_| String::from("Failed to lock mutex"))?;
+        balances
+            .load_disk_snapshot()
+            .map_err(|_| String::from("Failed to load balances snapshot"))?;
+        let mut nonce = load_nonce_mirror()
+            .map_err(|_| String::from("Failed to load nonce mirror"))?
+            .lock()
+            .map_err(|_| String::from("Failed to lock mutex"))?;
+        nonce
+            .load_disk_snapshot()
+            .map_err(|_| String::from("Failed to load nonce snapshot"))?;
+        let mut orderbook = load_orderbook_mirror()
+            .map_err(|_| String::from("Failed to load orderbook mirror"))?
+            .lock()
+            .map_err(|_| String::from("Failed to lock mutex"))?;
+        orderbook
+            .load_disk_snapshot()
+            .map_err(|_| String::from("Failed to load orderbook snapshot"))?;
 
         log::debug!(
             "mirrors:\nbalances: {:#?}\nnonce: {:#?}\norderbook: {:#?}",
             *balances,
             *nonce,
             *orderbook
-        )
+        );
+
+        Ok(())
     }
 
     pub fn initialize(eid: sgx_enclave_id_t) {
@@ -62,26 +79,35 @@ impl DBHandler {
         });
     }
 
-    pub fn send_data_to_enclave(eid: sgx_enclave_id_t) {
-        let balances = load_balances_mirror().unwrap().lock().unwrap();
-        let nonce = load_nonce_mirror().unwrap().lock().unwrap();
-        let orderbook = load_orderbook_mirror().unwrap().lock().unwrap();
-        log::error!(
-            "sent disk data: {:#?}",
-            enclave_send_disk_data(
-                eid,
-                StorageData {
-                    balances: balances.prepare(),
-                    nonce: nonce.prepare(),
-                    orderbook: orderbook
-                        .read_all()
-                        .unwrap()
-                        .into_iter()
-                        .map(|signed_order| OrderbookData { signed_order })
-                        .collect()
-                }
-                .encode()
-            )
-        );
+    pub fn send_data_to_enclave(eid: sgx_enclave_id_t) -> Result<(), String> {
+        let balances = load_balances_mirror()
+            .map_err(|_| String::from("Failed to load balances mirror"))?
+            .lock()
+            .map_err(|_| String::from("Failed to lock mutex"))?;
+        let nonce = load_nonce_mirror()
+            .map_err(|_| String::from("Failed to load nonce mirror"))?
+            .lock()
+            .map_err(|_| String::from("Failed to lock mutex"))?;
+        let orderbook = load_orderbook_mirror()
+            .map_err(|_| String::from("Failed to load orderbook mirror"))?
+            .lock()
+            .map_err(|_| String::from("Failed to lock mutex"))?;
+        enclave_send_disk_data(
+            eid,
+            StorageData {
+                balances: balances.prepare(),
+                nonce: nonce.prepare(),
+                orderbook: orderbook
+                    .read_all()
+                    .unwrap()
+                    .into_iter()
+                    .map(|signed_order| OrderbookData { signed_order })
+                    .collect(),
+            }
+            .encode(),
+        )
+        .map_err(|_| String::from("Failed to send data to enclave"))?;
+
+        Ok(())
     }
 }

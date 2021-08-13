@@ -301,6 +301,18 @@ pub fn get_nonce(main_acc: AccountId) -> Result<u32, AccountRegistryError> {
     storage.get_nonce(main_acc)
 }
 
+pub fn lock_nonce_storage_extend_from_disk(
+    data: Vec<(EncodedKey, u32)>,
+) -> Result<(), AccountRegistryError> {
+    // Aquire lock on proxy_registry
+    let mutex = load_registry()?;
+    let mut storage: SgxMutexGuard<AccountsNonceStorage> = mutex
+        .lock()
+        .map_err(|_| AccountRegistryError::CouldNotGetMutex)?;
+    storage.nonce_storage.extend_from_disk_data(data);
+    Ok(())
+}
+
 pub fn auth_user_validate_increment_nonce(
     acc: AccountId,
     proxy_acc: Option<AccountId>,
