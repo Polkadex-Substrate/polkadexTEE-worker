@@ -250,7 +250,6 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
         } else {
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
-        //let mut guard = mutex.lock().unwrap();
         let mut guard = if let Ok(value) = mutex.lock() {
             value
         } else {
