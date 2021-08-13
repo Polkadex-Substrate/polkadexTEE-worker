@@ -31,9 +31,7 @@ use std::sync::{
     Arc, Mutex, MutexGuard,
 };
 use std::thread;
-use substratee_worker_primitives::{
-    DirectRequestStatus, RpcResponse, RpcReturnValue,
-};
+use substratee_worker_primitives::{DirectRequestStatus, RpcResponse, RpcReturnValue};
 use ws::{Builder, CloseCode, Handler, Message, Result, Sender, Settings};
 
 static WATCHED_LIST: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
