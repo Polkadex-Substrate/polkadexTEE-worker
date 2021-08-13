@@ -141,7 +141,7 @@ impl RpcGateway for RpcGatewayMock {
         _order: Order,
     ) -> Result<RequestId, GatewayError> {
         match &self.order_uuid {
-            Some(_) => Ok(0 as RequestId),
+            Some(_) => Ok(0u128),
             None => Err(GatewayError::OrderNotFound),
         }
     }
