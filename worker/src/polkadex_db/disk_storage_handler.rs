@@ -26,6 +26,7 @@ use super::Result;
 
 const DEFAULT_STORAGE_PATH: &str = "polkadex_storage";
 /// handles all disc permanent storage interactions of polkadex databases
+#[derive(Debug)]
 pub struct DiskStorageHandler {
     path: PathBuf,
     filename: PathBuf,

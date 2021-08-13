@@ -20,7 +20,7 @@ use std::collections::HashMap;
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
 use codec::{Decode, Encode};
-use polkadex_sgx_primitives::AccountId;
+use polkadex_sgx_primitives::{AccountId, NonceData};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
@@ -34,7 +34,7 @@ static NONCE_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct NonceMirror<D: PermanentStorageHandler> {
-    general_db: GeneralDB<D>,
+    pub general_db: GeneralDB<D>,
 }
 
 #[derive(Encode, Decode)]
@@ -67,6 +67,28 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
 
     pub fn take_disk_snapshot(&mut self) -> Result<()> {
         self.general_db.write_disk_from_memory()
+    }
+
+    pub fn load_disk_snapshot(&mut self) -> Result<()> {
+        if self.general_db.read_disk_into_memory().is_err() {
+            return Err(PolkadexDBError::_KeyNotFound);
+        }
+        Ok(())
+    }
+
+    pub fn prepare(&self) -> Vec<NonceData> {
+        self.general_db
+            .read_all()
+            .into_iter()
+            .map(|(left, right)| {
+                let account_id = AccountId::decode(&mut left.as_slice()).unwrap();
+                let nonce = Nonce::decode(&mut right.as_slice()).unwrap();
+                NonceData {
+                    account_id,
+                    nonce: nonce.nonce,
+                }
+            })
+            .collect()
     }
 }
 

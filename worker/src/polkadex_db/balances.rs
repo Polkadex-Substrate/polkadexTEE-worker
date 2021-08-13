@@ -30,12 +30,13 @@ use super::disk_storage_handler::DiskStorageHandler;
 use super::PermanentStorageHandler;
 use super::Result;
 use crate::constants::BALANCE_DISK_STORAGE_FILENAME;
+use polkadex_sgx_primitives::BalancesData;
 
 static BALANCES_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct BalancesMirror<D: PermanentStorageHandler> {
-    general_db: GeneralDB<D>,
+    pub general_db: GeneralDB<D>,
 }
 
 #[derive(Encode, Decode, PartialEq, Debug)]
@@ -84,6 +85,30 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
 
     pub fn take_disk_snapshot(&mut self) -> Result<()> {
         self.general_db.write_disk_from_memory()
+    }
+
+    pub fn load_disk_snapshot(&mut self) -> Result<()> {
+        if self.general_db.read_disk_into_memory().is_err() {
+            return Err(PolkadexDBError::_KeyNotFound);
+        }
+        Ok(())
+    }
+
+    pub fn prepare(&self) -> Vec<BalancesData> {
+        self.general_db
+            .read_all()
+            .into_iter()
+            .map(|(left, right)| {
+                let key = PolkadexBalanceKey::decode(&mut left.as_slice()).unwrap();
+                let balances = Balances::decode(&mut right.as_slice()).unwrap();
+                BalancesData {
+                    asset_id: key.asset_id,
+                    account_id: key.account_id,
+                    free: balances.free,
+                    reserved: balances.reserved,
+                }
+            })
+            .collect()
     }
 }
 

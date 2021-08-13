@@ -425,6 +425,55 @@ pub unsafe extern "C" fn accept_pdex_accounts(
     sgx_status_t::SGX_SUCCESS
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn send_disk_data(encoded_data: *const u8, data_size: usize) -> sgx_status_t {
+    error!("Received data from worker");
+
+    let mut data = slice::from_raw_parts(encoded_data, data_size);
+
+    let decoded: polkadex_sgx_primitives::StorageData =
+        polkadex_sgx_primitives::StorageData::decode(&mut data).unwrap();
+
+    error!("decoded: {:#?}", decoded);
+
+    let balances_data = decoded.balances;
+    let nonce_data = decoded.nonce;
+    let orderbook_data = decoded.orderbook;
+
+    if crate::polkadex_balance_storage::load_balance_storage().is_err() {
+        error!("balances storage doesnt exist");
+        polkadex_balance_storage::create_in_memory_balance_storage().unwrap()
+    }
+
+    if crate::accounts_nonce_storage::load_registry().is_err() {
+        error!("accounts_nonce storage doesnt exist");
+        accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]).unwrap()
+    }
+
+    let mut balances_storage = crate::polkadex_balance_storage::load_balance_storage()
+        .unwrap()
+        .lock()
+        .unwrap();
+    error!("balances_storage: {:#?}", balances_storage);
+
+    balances_storage.initialize_from_disk_data(balances_data);
+
+    error!("balances_storage: {:#?}", balances_storage);
+
+    let nonce_storage = &mut crate::accounts_nonce_storage::load_registry()
+        .unwrap()
+        .lock()
+        .unwrap()
+        .nonce_storage;
+    error!("balances_storage: {:#?}", nonce_storage);
+
+    nonce_storage.initialize_from_disk_data(nonce_data);
+
+    error!("balances_storage: {:#?}", nonce_storage);
+
+    sgx_status_t::SGX_SUCCESS
+}
+
 extern "C" {
     fn ocall_send_nonce(
         ret_val: *mut sgx_status_t,

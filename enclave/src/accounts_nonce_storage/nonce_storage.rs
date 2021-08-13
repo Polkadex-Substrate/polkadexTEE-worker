@@ -70,6 +70,13 @@ impl PolkadexNonceStorage {
         debug!("initializing nonce for acc: {:?}", acc);
         self.storage.remove(&acc.encode());
     }
+
+    pub fn initialize_from_disk_data(&mut self, data: Vec<polkadex_sgx_primitives::NonceData>) {
+        for item in data {
+            error!("inserting balances: {:#?}", item);
+            self.storage.insert(item.account_id.encode(), item.nonce);
+        }
+    }
 }
 
 #[derive(Eq, Debug, PartialEq, PartialOrd)]

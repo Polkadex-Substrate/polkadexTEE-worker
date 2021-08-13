@@ -361,12 +361,17 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
+    crate::db_handler::DBHandler::load_from_disk();
+
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
     crate::db_handler::DBHandler::initialize(eid);
 
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
+
+    crate::db_handler::DBHandler::send_data_to_enclave(eid);
+
     // start disk & ipfs snapshotting
     polkadex_db::start_disk_snapshot_loop();
     polkadex_db::start_ipfs_snapshot_loop();

@@ -27,6 +27,7 @@ pub mod types;
 pub extern crate alloc;
 use alloc::string::{String, ToString};
 
+use crate::types::SignedOrder;
 use alloc::vec;
 use codec::{Decode, Encode};
 use frame_support::{sp_runtime::traits::AccountIdConversion, PalletId};
@@ -119,6 +120,32 @@ impl OpenFinexUri {
     pub fn path(&self) -> String {
         String::from_utf8_lossy(&self.path).into_owned()
     }
+}
+
+#[derive(Debug, Encode, Decode)]
+pub struct BalancesData {
+    pub asset_id: AssetId,
+    pub account_id: AccountId,
+    pub free: u128,
+    pub reserved: u128,
+}
+
+#[derive(Debug, Encode, Decode)]
+pub struct NonceData {
+    pub account_id: AccountId,
+    pub nonce: u32,
+}
+
+#[derive(Debug, Encode, Decode)]
+pub struct OrderbookData {
+    pub signed_order: SignedOrder,
+}
+
+#[derive(Debug, Encode, Decode)]
+pub struct StorageData {
+    pub balances: Vec<BalancesData>,
+    pub nonce: Vec<NonceData>,
+    pub orderbook: Vec<OrderbookData>,
 }
 
 // TODO: Add unit tests

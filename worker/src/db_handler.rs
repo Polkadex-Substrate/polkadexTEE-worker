@@ -16,10 +16,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>
 
-use crate::enclave::api::enclave_run_db_thread;
+use crate::enclave::api::{enclave_run_db_thread, enclave_send_disk_data};
 use crate::polkadex_db::{
     initialize_balances_mirror, initialize_nonce_mirror, initialize_orderbook_mirror,
+    load_balances_mirror, load_nonce_mirror, load_orderbook_mirror,
 };
+use codec::Encode;
+use polkadex_sgx_primitives::{OrderbookData, StorageData};
 use sgx_types::sgx_enclave_id_t;
 use std::thread;
 
@@ -32,8 +35,24 @@ impl DBHandler {
         initialize_orderbook_mirror();
     }
 
-    pub fn initialize(eid: sgx_enclave_id_t) {
+    pub fn load_from_disk() {
         DBHandler::initialize_mirrors();
+        let mut balances = load_balances_mirror().unwrap().lock().unwrap();
+        balances.load_disk_snapshot().unwrap_or(());
+        let mut nonce = load_nonce_mirror().unwrap().lock().unwrap();
+        nonce.load_disk_snapshot().unwrap_or(());
+        let mut orderbook = load_orderbook_mirror().unwrap().lock().unwrap();
+        orderbook.load_disk_snapshot().unwrap_or(());
+
+        log::debug!(
+            "mirrors:\nbalances: {:#?}\nnonce: {:#?}\norderbook: {:#?}",
+            *balances,
+            *nonce,
+            *orderbook
+        )
+    }
+
+    pub fn initialize(eid: sgx_enclave_id_t) {
         thread::spawn(move || -> Result<(), String> {
             if enclave_run_db_thread(eid).is_err() {
                 Err(String::from("Failed to run DB Thread"))
@@ -41,5 +60,28 @@ impl DBHandler {
                 Ok(())
             }
         });
+    }
+
+    pub fn send_data_to_enclave(eid: sgx_enclave_id_t) {
+        let balances = load_balances_mirror().unwrap().lock().unwrap();
+        let nonce = load_nonce_mirror().unwrap().lock().unwrap();
+        let orderbook = load_orderbook_mirror().unwrap().lock().unwrap();
+        log::error!(
+            "sent disk data: {:#?}",
+            enclave_send_disk_data(
+                eid,
+                StorageData {
+                    balances: balances.prepare(),
+                    nonce: nonce.prepare(),
+                    orderbook: orderbook
+                        .read_all()
+                        .unwrap()
+                        .into_iter()
+                        .map(|signed_order| OrderbookData { signed_order })
+                        .collect()
+                }
+                .encode()
+            )
+        );
     }
 }

@@ -32,8 +32,9 @@ use super::PermanentStorageHandler;
 
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
+#[derive(Debug)]
 pub struct OrderbookMirror<D: PermanentStorageHandler> {
-    general_db: GeneralDB<D>,
+    pub general_db: GeneralDB<D>,
 }
 
 impl<D: PermanentStorageHandler> OrderbookMirror<D> {
@@ -82,6 +83,13 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
 
     pub fn take_disk_snapshot(&mut self) -> Result<()> {
         self.general_db.write_disk_from_memory()
+    }
+
+    pub fn load_disk_snapshot(&mut self) -> Result<()> {
+        if self.general_db.read_disk_into_memory().is_err() {
+            return Err(PolkadexDBError::_KeyNotFound);
+        }
+        Ok(())
     }
 }
 

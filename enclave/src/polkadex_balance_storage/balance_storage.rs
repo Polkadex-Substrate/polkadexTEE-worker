@@ -29,6 +29,7 @@ use crate::polkadex_balance_storage::polkadex_balance_key::*;
 
 pub type EncodedKey = Vec<u8>;
 
+#[derive(Debug)]
 pub struct PolkadexBalanceStorage {
     /// map (tokenID, AccountID) -> (balance free, balance reserved)
     pub storage: HashMap<EncodedKey, Balances>,
@@ -227,5 +228,15 @@ impl PolkadexBalanceStorage {
             }
         }
     }
+
+    pub fn initialize_from_disk_data(&mut self, data: Vec<polkadex_sgx_primitives::BalancesData>) {
+        for item in data {
+            error!("inserting balances: {:#?}", item);
+            let key = PolkadexBalanceKey::from(item.asset_id, item.account_id).encode();
+            self.storage
+                .insert(key, Balances::from(item.free, item.reserved));
+        }
+    }
+
     // We can write functions which settle balances for two trades but we need to know the trade structure for it
 }
