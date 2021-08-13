@@ -22,6 +22,7 @@ SGX_ARCH ?= x64
 SGX_DEBUG ?= 0
 SGX_PRERELEASE ?= 0
 SGX_PRODUCTION ?= 0
+BENCHMARK ?= 0
 
 SKIP_WASM_BUILD = 1
 # include the build settings from rust-sgx-sdk
