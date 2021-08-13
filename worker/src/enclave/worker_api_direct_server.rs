@@ -27,6 +27,7 @@ use std::sync::{
 use std::thread;
 use ws::{listen, CloseCode, Handler, Message, Result, Sender};
 
+use polkadex_sgx_primitives::RequestId;
 use substratee_worker_primitives::{DirectRequestStatus, RpcResponse, RpcReturnValue};
 
 static WATCHED_LIST: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
@@ -113,7 +114,7 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
     });
 
     // initialize static pointer to empty HashMap
-    let new_map: HashMap<u128, WatchingClient> = HashMap::new();
+    let new_map: HashMap<RequestId, WatchingClient> = HashMap::new();
     let pool_ptr = Arc::new(Mutex::new(new_map));
     let ptr = Arc::into_raw(pool_ptr);
     WATCHED_LIST.store(ptr as *mut (), Ordering::SeqCst);
@@ -125,11 +126,11 @@ pub fn start_worker_api_direct_server(addr: String, eid: sgx_enclave_id_t) {
 
 struct WatchingClient {
     client: Sender,
-    _response: RpcResponse,
+    response: RpcResponse,
 }
 
-fn load_watched_list() -> Option<&'static Mutex<HashMap<u128, WatchingClient>>> {
-    let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<u128, WatchingClient>>;
+fn load_watched_list() -> Option<&'static Mutex<HashMap<RequestId, WatchingClient>>> {
+    let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<RequestId, WatchingClient>>;
     if ptr.is_null() {
         None
     } else {
@@ -177,7 +178,8 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                 if result_of_rpc_response.do_watch {
                     // start watching the call with the specific hash
 
-                    if let Ok(request) = u128::decode(&mut result_of_rpc_response.value.as_slice())
+                    if let Ok(request) =
+                        RequestId::decode(&mut result_of_rpc_response.value.as_slice())
                     {
                         // Aquire lock on watched list
                         let mutex = load_watched_list().unwrap();
@@ -187,7 +189,7 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                         // create new key and value entries to store
                         let new_client = WatchingClient {
                             client: req.client.clone(),
-                            _response: RpcResponse {
+                            response: RpcResponse {
                                 result: result_of_rpc_response.encode(),
                                 jsonrpc: full_rpc_response.jsonrpc.clone(),
                                 id: full_rpc_response.id,
@@ -214,52 +216,6 @@ pub unsafe extern "C" fn ocall_update_status_event(
     _status_update_encoded: *const u8,
     _status_size: u32,
 ) -> sgx_status_t {
-    // Not removing this function, as we may need this function later. So commented it out
-    /*    let mut status_update_slice =
-            slice::from_raw_parts(status_update_encoded, status_size as usize);
-        let status_update = TrustedOperationStatus::decode(&mut status_update_slice).unwrap();
-        let mut hash_slice = slice::from_raw_parts(hash_encoded, hash_size as usize);
-        if let Ok(hash) = Hash::decode(&mut hash_slice) {
-            // Aquire watched list lock
-            let mutex = load_watched_list().unwrap();
-            let mut watch_list = mutex.lock().unwrap();
-            let mut continue_watching = true;
-            if let Some(client_event) = watch_list.get_mut(&hash) {
-                let mut event = &mut client_event.response;
-                // Aquire result of old RpcResponse
-                let old_result: Vec<u8> = event.result.clone();
-                let mut result = RpcReturnValue::decode(&mut old_result.as_slice()).unwrap();
-
-                match status_update {
-                    TrustedOperationStatus::Invalid
-                    | TrustedOperationStatus::InSidechainBlock(_)
-                    | TrustedOperationStatus::Finalized
-                    | TrustedOperationStatus::Usurped => {
-                        // Stop watching
-                        result.do_watch = false;
-                        continue_watching = false;
-                    }
-                    _ => {}
-                };
-                // update response
-                result.status = DirectRequestStatus::TrustedOperationStatus(status_update);
-                event.result = result.encode();
-                client_event
-                    .client
-                    .send(serde_json::to_string(&event).unwrap())
-                    .unwrap();
-
-                if !continue_watching {
-                    client_event.client.close(CloseCode::Normal).unwrap();
-                }
-            } else {
-                continue_watching = false;
-            }
-            if !continue_watching {
-                watch_list.remove(&hash);
-            }
-        }
-    */
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -279,8 +235,12 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
         let mut guard = mutex.lock().unwrap();
+        let submitted = DirectRequestStatus::Ok;
+        let result = RpcReturnValue::new(uuid_slice.to_vec(), false, submitted);
+
         if let Some(client_response) = guard.get_mut(&request_id) {
-            // TODO @Bigna do we need this?
+            let mut response = &mut client_response.response;
+            response.result = result.encode();
             client_response
                 .client
                 .send(serde_json::to_string(uuid_slice).unwrap())
@@ -302,35 +262,5 @@ pub unsafe extern "C" fn ocall_send_status(
     _status_encoded: *const u8,
     _status_size: u32,
 ) -> sgx_status_t {
-    // Not removing this function, as we may need this function later. So commented it out
-    /*
-    let status_slice = slice::from_raw_parts(status_encoded, status_size as usize);
-    let mut hash_slice = slice::from_raw_parts(hash_encoded, hash_size as usize);
-    if let Ok(hash) = Hash::decode(&mut hash_slice) {
-        // Aquire watched list lock
-        let mutex = load_watched_list().unwrap();
-        let mut guard = mutex.lock().unwrap();
-        if let Some(client_response) = guard.get_mut(&hash) {
-            let mut response = &mut client_response.response;
-
-            // create return value
-            // TODO: Signature?
-            let submitted =
-                DirectRequestStatus::TrustedOperationStatus(TrustedOperationStatus::Submitted);
-            let result = RpcReturnValue::new(status_slice.to_vec(), false, submitted);
-
-            // update response
-            response.result = result.encode();
-            client_response
-                .client
-                .send(serde_json::to_string(&response).unwrap())
-                .unwrap();
-
-            client_response.client.close(CloseCode::Normal).unwrap();
-        }
-        guard.remove(&hash);
-    }
-     */
-
     sgx_status_t::SGX_SUCCESS
 }

@@ -6,7 +6,6 @@ use crate::polkadex_balance_storage::{
 use crate::polkadex_gateway::{lock_storage_get_cache_nonce, GatewayError};
 use crate::polkadex_gateway::{process_create_order, settle_trade};
 use crate::test_polkadex_gateway::{check_balance, create_mock_gateway};
-use log::*;
 use polkadex_sgx_primitives::types::{
     MarketId, Order, OrderSide, OrderType, OrderUUID, TradeEvent,
 };
@@ -65,7 +64,6 @@ pub fn test_happy_path() {
         quantity: 50 * UNIT,
         price: Some(UNIT),
     };
-    error!(">6");
     // Place Ask limit Order
     assert!(gateway
         .place_order(alice.clone(), None, ask_limit_order)
@@ -84,12 +82,10 @@ pub fn test_happy_path() {
 
     let bid_limit_order_request_id = lock_storage_get_cache_nonce().unwrap() - 1;
     let buy_limit_order_uuid: OrderUUID = (202..204).collect();
-    error!(">8");
     assert_eq!(
         process_create_order(bid_limit_order_request_id, buy_limit_order_uuid.clone()),
         Err(GatewayError::NotAbleToSendUUID)
     );
-    error!(">9");
     //Order Event
     let trade_event = TradeEvent {
         market_id: MarketId {

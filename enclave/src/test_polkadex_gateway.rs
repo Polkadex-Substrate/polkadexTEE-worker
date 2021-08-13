@@ -54,8 +54,7 @@ impl OpenFinexApiMock {
 }
 
 impl OpenFinexApi for OpenFinexApiMock {
-    fn create_order(&self, _order: Order, _request_id: RequestId) -> OpenFinexApiResult<u128> {
-        // FIXME Verify
+    fn create_order(&self, _order: Order, _request_id: RequestId) -> OpenFinexApiResult<RequestId> {
         Ok(0u128)
     }
 
@@ -1947,6 +1946,7 @@ pub fn test_process_create_order() {
     setup_process_create_order();
     let request_id: u128 = 1;
     let order_uuid: OrderUUID = (200..201).collect();
+    // In test mode, process_create_order can't send order to Worker. Hence, it is expecyed to get this error
     assert_eq!(
         process_create_order(request_id, order_uuid.clone()),
         Err(GatewayError::NotAbleToSendUUID)

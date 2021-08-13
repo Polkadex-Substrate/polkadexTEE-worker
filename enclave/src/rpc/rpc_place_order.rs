@@ -71,7 +71,7 @@ impl RpcPlaceOrder {
             .rpc_gateway
             .place_order(main_account, proxy_account, order)
         {
-            Ok(request_id) => Ok(request_id), //FIXME: this is not ok!
+            Ok(request_id) => Ok(request_id),
             Err(e) => Err(e.to_string()),
         }?;
 

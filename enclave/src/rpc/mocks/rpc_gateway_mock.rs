@@ -19,6 +19,7 @@
 pub extern crate alloc;
 use alloc::string::String;
 
+use crate::openfinex::openfinex_types::RequestId;
 use crate::polkadex_balance_storage::Balances;
 use crate::polkadex_gateway::GatewayError;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
@@ -138,9 +139,9 @@ impl RpcGateway for RpcGatewayMock {
         _main_account: AccountId,
         _proxy_acc: Option<AccountId>,
         _order: Order,
-    ) -> Result<u128, GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         match &self.order_uuid {
-            Some(_) => Ok(0u128), //FIXME Verify again
+            Some(_) => Ok(0u128),
             None => Err(GatewayError::OrderNotFound),
         }
     }

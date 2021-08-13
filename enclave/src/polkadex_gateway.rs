@@ -319,7 +319,10 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
     Ok(())
 }
 
-pub fn process_create_order(request_id: u128, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+pub fn process_create_order(
+    request_id: RequestId,
+    order_uuid: OrderUUID,
+) -> Result<(), GatewayError> {
     // TODO check that this is correct @Bigna
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
     let mut create_cache = match mutex.lock() {
