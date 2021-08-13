@@ -199,7 +199,7 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                     {
                         // Aquire lock on watched list
                         let mutex = load_watched_list().unwrap();
-                        let mut watch_list: MutexGuard<HashMap<u128, WatchingClient>> =
+                        let mut watch_list: MutexGuard<HashMap<RequestId, WatchingClient>> =
                             mutex.lock().unwrap();
 
                         // create new key and value entries to store
