@@ -263,7 +263,7 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
             response.result = result.encode();
             client_response
                 .client
-                .send(serde_json::to_string(uuid_slice).unwrap())
+                .send(serde_json::to_string(response).unwrap())
                 .unwrap();
 
             client_response.client.close(CloseCode::Normal).unwrap();
