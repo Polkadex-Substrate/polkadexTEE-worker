@@ -121,80 +121,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be4dc07131ffa69b8072d35f5007352af944213cde02545e2103680baed38fcd"
 
 [[package]]
-name = "artemis-basic-channel"
-version = "0.1.1"
-source = "git+https://github.com/Polkadex-Substrate/polkadot-ethereum?rev=6ac2106a608bf11c53981b67a106c2afd43bbee6#6ac2106a608bf11c53981b67a106c2afd43bbee6"
-dependencies = [
- "artemis-core",
- "artemis-ethereum",
- "ethabi-decode",
- "frame-support",
- "frame-system",
- "parity-scale-codec 2.1.3",
- "serde",
- "sp-core",
- "sp-io 3.0.0",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "artemis-core"
-version = "0.1.1"
-source = "git+https://github.com/Polkadex-Substrate/polkadot-ethereum?rev=6ac2106a608bf11c53981b67a106c2afd43bbee6#6ac2106a608bf11c53981b67a106c2afd43bbee6"
-dependencies = [
- "artemis-ethereum",
- "enum-iterator",
- "frame-support",
- "frame-system",
- "parity-scale-codec 2.1.3",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "artemis-dispatch"
-version = "0.1.1"
-source = "git+https://github.com/Polkadex-Substrate/polkadot-ethereum?rev=6ac2106a608bf11c53981b67a106c2afd43bbee6#6ac2106a608bf11c53981b67a106c2afd43bbee6"
-dependencies = [
- "artemis-core",
- "frame-support",
- "frame-system",
- "parity-scale-codec 2.1.3",
- "serde",
- "sp-core",
- "sp-io 3.0.0",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "artemis-ethereum"
-version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/polkadot-ethereum?rev=6ac2106a608bf11c53981b67a106c2afd43bbee6#6ac2106a608bf11c53981b67a106c2afd43bbee6"
-dependencies = [
- "ethabi-decode",
- "ethash",
- "ethbloom",
- "ethereum-types",
- "getrandom 0.2.3",
- "hex-literal",
- "libsecp256k1",
- "parity-bytes",
- "parity-scale-codec 2.1.3",
- "rlp",
- "rustc-hex",
- "serde",
- "serde-big-array 0.2.0",
- "sp-core",
- "sp-io 3.0.0",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "asn1_der"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -994,26 +920,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
-name = "enum-iterator"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79a6321a1197d7730510c7e3f6cb80432dfefecb32426de8cea0aa19b4bb8d7"
-dependencies = [
- "enum-iterator-derive",
-]
-
-[[package]]
-name = "enum-iterator-derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e94aa31f7c0dc764f57896dc615ddd76fc13b0d5dca7eb6cc5e018a5a09ec06"
-dependencies = [
- "proc-macro2",
- "quote 1.0.9",
- "syn 1.0.73",
-]
-
-[[package]]
 name = "enumflags2"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1071,70 +977,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3de9ad4541d99dc22b59134e7ff8dc3d6c988c89ecd7324bf10a8362b07a2afa"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "erc20-pdex-migration-pallet"
-version = "1.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
-dependencies = [
- "frame-support",
- "frame-system",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec 2.1.3",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=main)",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
-name = "ethabi-decode"
-version = "1.3.2"
-source = "git+https://github.com/Snowfork/ethabi-decode.git?branch=master#ac7714d6d0f82e5413fffefad07b414fcc899336"
-dependencies = [
- "ethereum-types",
- "tiny-keccak 1.5.0",
-]
-
-[[package]]
-name = "ethash"
-version = "0.5.0"
-source = "git+https://github.com/snowfork/ethash.git?branch=master#742bfe9878e88b3dcd0e6ea89dce2c925ae4976e"
-dependencies = [
- "byteorder",
- "ethereum-types",
- "rlp",
- "sha3",
-]
-
-[[package]]
-name = "ethbloom"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "779864b9c7f7ead1f092972c3257496c6a84b46dba2ce131dd8a282cb2cc5972"
-dependencies = [
- "crunchy",
- "fixed-hash 0.7.0",
- "impl-codec 0.5.0",
- "impl-rlp",
- "impl-serde",
- "tiny-keccak 2.0.2",
-]
-
-[[package]]
-name = "ethereum-types"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64b5df66a228d85e4b17e5d6c6aa43b0310898ffe8a85988c4c032357aaabfd"
-dependencies = [
- "ethbloom",
- "fixed-hash 0.7.0",
- "impl-codec 0.5.0",
- "impl-rlp",
- "impl-serde",
- "primitive-types 0.9.0",
- "uint 0.9.1",
 ]
 
 [[package]]
@@ -1649,10 +1491,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
- "js-sys",
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -1787,12 +1627,6 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
-
-[[package]]
-name = "hex-literal"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5af1f635ef1bc545d78392b136bfe1c9809e029023c84a3638a864a10b8819c8"
 
 [[package]]
 name = "hmac"
@@ -1969,7 +1803,7 @@ dependencies = [
 [[package]]
 name = "ias-verify"
 version = "0.1.4"
-source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry.git#860097f21141fb6cd5eb455d8ca9e8adb7031c7d"
+source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry#87e4344317c88cdb07dd80cb43940f862c335f34"
 dependencies = [
  "base64 0.11.0",
  "chrono",
@@ -2020,15 +1854,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df170efa359aebdd5cb7fe78edcc67107748e4737bdca8a8fb40d15ea7a877ed"
 dependencies = [
  "parity-scale-codec 2.1.3",
-]
-
-[[package]]
-name = "impl-rlp"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f28220f89297a075ddc7245cd538076ee98b01f2a9c23a53a4f1105d5a322808"
-dependencies = [
- "rlp",
 ]
 
 [[package]]
@@ -2757,13 +2582,9 @@ dependencies = [
 [[package]]
 name = "node-polkadex-runtime"
 version = "3.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex#dbc98eca024ad401a993718919aabc323ee4edfe"
 dependencies = [
- "artemis-basic-channel",
- "artemis-core",
- "artemis-dispatch",
  "chainbridge",
- "erc20-pdex-migration-pallet",
  "example-erc721",
  "example-pallet",
  "frame-executive",
@@ -2804,15 +2625,14 @@ dependencies = [
  "pallet-society",
  "pallet-staking",
  "pallet-staking-reward-curve",
- "pallet-substratee-registry",
  "pallet-sudo",
+ "pallet-teerex",
  "pallet-timestamp",
  "pallet-tips",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
  "pallet-utility",
- "pallet-verifier-lightclient",
  "pallet-vesting",
  "parity-scale-codec 2.1.3",
  "polkadex-fungible-assets",
@@ -3572,9 +3392,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-substratee-registry"
-version = "0.8.0"
-source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry.git#860097f21141fb6cd5eb455d8ca9e8adb7031c7d"
+name = "pallet-sudo"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/substrate.git#e5437efefa82bd8eb567f1245f0a7443ac4e4fe7"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec 2.1.3",
+ "sp-io 3.0.0",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-teerex"
+version = "0.9.0"
+source = "git+https://github.com/Polkadex-Substrate/pallet-substratee-registry#87e4344317c88cdb07dd80cb43940f862c335f34"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3584,19 +3417,6 @@ dependencies = [
  "parity-scale-codec 2.1.3",
  "serde",
  "sp-core",
- "sp-io 3.0.0",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-sudo"
-version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate.git#e5437efefa82bd8eb567f1245f0a7443ac4e4fe7"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec 2.1.3",
  "sp-io 3.0.0",
  "sp-runtime",
  "sp-std",
@@ -3690,26 +3510,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-verifier-lightclient"
-version = "0.1.1"
-source = "git+https://github.com/Polkadex-Substrate/polkadot-ethereum?rev=6ac2106a608bf11c53981b67a106c2afd43bbee6#6ac2106a608bf11c53981b67a106c2afd43bbee6"
-dependencies = [
- "artemis-core",
- "artemis-ethereum",
- "ethash",
- "frame-support",
- "frame-system",
- "parity-scale-codec 2.1.3",
- "rlp",
- "rustc-hex",
- "serde",
- "sp-core",
- "sp-io 3.0.0",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-vesting"
 version = "3.0.0"
 source = "git+https://github.com/paritytech/substrate.git#e5437efefa82bd8eb567f1245f0a7443ac4e4fe7"
@@ -3721,12 +3521,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
 ]
-
-[[package]]
-name = "parity-bytes"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16b56e3a2420138bdb970f84dfb9c774aea80fa0e7371549eedec0d80c209c67"
 
 [[package]]
 name = "parity-multiaddr"
@@ -4029,7 +3823,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "polkadex-fungible-assets"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex#dbc98eca024ad401a993718919aabc323ee4edfe"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4050,7 +3844,7 @@ dependencies = [
 [[package]]
 name = "polkadex-ido"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex#dbc98eca024ad401a993718919aabc323ee4edfe"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4072,7 +3866,7 @@ dependencies = [
 [[package]]
 name = "polkadex-ocex"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex#dbc98eca024ad401a993718919aabc323ee4edfe"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4080,7 +3874,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-substratee-registry",
+ "pallet-teerex",
  "pallet-timestamp",
  "parity-scale-codec 2.1.3",
  "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=main)",
@@ -4168,7 +3962,6 @@ checksum = "2415937401cb030a2a0a4d922483f945fa068f52a7dbb22ce0fe5f2b6f6adace"
 dependencies = [
  "fixed-hash 0.7.0",
  "impl-codec 0.5.0",
- "impl-rlp",
  "impl-serde",
  "uint 0.9.1",
 ]
@@ -4739,16 +4532,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rlp"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e54369147e3e7796c9b885c7304db87ca3d09a0a98f72843d532868675bbfba8"
-dependencies = [
- "bytes 1.0.1",
- "rustc-hex",
-]
-
-[[package]]
 name = "rust-argon2"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5032,16 +4815,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-big-array"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "883eee5198ea51720eab8be52a36cf6c0164ac90eea0ed95b649d5e35382404e"
-dependencies = [
- "serde",
- "serde_derive",
-]
-
-[[package]]
 name = "serde_derive"
 version = "1.0.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5147,7 +4920,7 @@ dependencies = [
  "itertools",
  "libc",
  "serde",
- "serde-big-array 0.1.5",
+ "serde-big-array",
  "serde_derive",
  "sgx_types",
  "sgx_ucrypto",
@@ -5318,19 +5091,6 @@ dependencies = [
  "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
-]
-
-[[package]]
-name = "sha3"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd26bc0e7a2e3a7c959bc494caf58b72ee0c71d67704e9520f736ca7e4853ecf"
-dependencies = [
- "block-buffer 0.7.3",
- "byte-tools 0.3.1",
- "digest 0.8.1",
- "keccak",
- "opaque-debug 0.2.3",
 ]
 
 [[package]]
@@ -6626,7 +6386,7 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 [[package]]
 name = "token-faucet-pallet"
 version = "1.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6496e6404e631fd0253306178c3cee2510bf800e"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex#dbc98eca024ad401a993718919aabc323ee4edfe"
 dependencies = [
  "frame-support",
  "frame-system",
