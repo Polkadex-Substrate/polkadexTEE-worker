@@ -52,7 +52,7 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
         println!("Searching for Key");
         match self.general_db._find(k.encode()) {
             Some(v) => Ok(Nonce::decode(&mut v.as_slice())
-                .map_err(|_| PolkadexDBError::_DecodeError)?
+                .map_err(PolkadexDBError::DecodeError)?
                 .nonce),
             None => {
                 println!("Key returns None");
@@ -65,7 +65,7 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
         self.general_db._delete(k.encode());
     }
 
-    pub fn take_disk_snapshot(&mut self) -> Result<()> {
+    pub fn take_disk_snapshot(&mut self) -> Result<Vec<u8>> {
         self.general_db.write_disk_from_memory()
     }
 

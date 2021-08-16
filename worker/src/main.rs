@@ -373,8 +373,7 @@ fn worker(
         .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    polkadex_db::start_disk_snapshot_loop();
-    polkadex_db::start_ipfs_snapshot_loop();
+    polkadex_db::start_snapshot_loop();
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
