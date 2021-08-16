@@ -19,10 +19,11 @@
 use crate::enclave::api::{enclave_run_db_thread, enclave_send_disk_data};
 use crate::polkadex_db::{
     initialize_balances_mirror, initialize_nonce_mirror, initialize_orderbook_mirror,
-    load_balances_mirror, load_nonce_mirror, load_orderbook_mirror,
+    load_balances_mirror, load_nonce_mirror, load_orderbook_mirror, PolkadexDBError,
 };
 use codec::Encode;
-use polkadex_sgx_primitives::{OrderbookData, StorageData};
+use log::debug;
+use polkadex_sgx_primitives::StorageData;
 use sgx_types::sgx_enclave_id_t;
 use std::thread;
 
@@ -35,35 +36,36 @@ impl DBHandler {
         initialize_orderbook_mirror();
     }
 
-    pub fn load_from_disk() -> Result<(), String> {
+    pub fn load_from_disk() -> Result<(), PolkadexDBError> {
         DBHandler::initialize_mirrors();
-        let mut balances = load_balances_mirror()
-            .map_err(|_| String::from("Failed to load balances mirror"))?
+        let mut balances = load_balances_mirror()?
             .lock()
-            .map_err(|_| String::from("Failed to lock mutex"))?;
-        balances
-            .load_disk_snapshot()
-            .map_err(|_| String::from("Failed to load balances snapshot"))?;
-        let mut nonce = load_nonce_mirror()
-            .map_err(|_| String::from("Failed to load nonce mirror"))?
+            .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+        if balances.load_disk_snapshot().is_err() {
+            debug!("Balances doesn't have a disk snapshot, proceeding anyway.");
+        } else {
+            debug!("Balances disk snapshot loaded.");
+        }
+        let mut nonce = load_nonce_mirror()?
             .lock()
-            .map_err(|_| String::from("Failed to lock mutex"))?;
-        nonce
-            .load_disk_snapshot()
-            .map_err(|_| String::from("Failed to load nonce snapshot"))?;
-        let mut orderbook = load_orderbook_mirror()
-            .map_err(|_| String::from("Failed to load orderbook mirror"))?
+            .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+        if nonce.load_disk_snapshot().is_err() {
+            debug!("Nonce doesn't have a disk snapshot, proceeding anyway.");
+        } else {
+            debug!("Nonce disk snapshot loaded.");
+        }
+        let mut orderbook = load_orderbook_mirror()?
             .lock()
-            .map_err(|_| String::from("Failed to lock mutex"))?;
-        orderbook
-            .load_disk_snapshot()
-            .map_err(|_| String::from("Failed to load orderbook snapshot"))?;
+            .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+        if orderbook.load_disk_snapshot().is_err() {
+            debug!("Orderbook doesn't have a disk snapshot, proceeding anyway.");
+        } else {
+            debug!("Orderbook disk snapshot loaded.");
+        }
 
-        log::debug!(
+        debug!(
             "mirrors:\nbalances: {:#?}\nnonce: {:#?}\norderbook: {:#?}",
-            *balances,
-            *nonce,
-            *orderbook
+            *balances, *nonce, *orderbook
         );
 
         Ok(())
@@ -79,34 +81,26 @@ impl DBHandler {
         });
     }
 
-    pub fn send_data_to_enclave(eid: sgx_enclave_id_t) -> Result<(), String> {
-        let balances = load_balances_mirror()
-            .map_err(|_| String::from("Failed to load balances mirror"))?
+    pub fn send_data_to_enclave(eid: sgx_enclave_id_t) -> Result<(), PolkadexDBError> {
+        let balances = load_balances_mirror()?
             .lock()
-            .map_err(|_| String::from("Failed to lock mutex"))?;
-        let nonce = load_nonce_mirror()
-            .map_err(|_| String::from("Failed to load nonce mirror"))?
+            .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+        let nonce = load_nonce_mirror()?
             .lock()
-            .map_err(|_| String::from("Failed to lock mutex"))?;
-        let orderbook = load_orderbook_mirror()
-            .map_err(|_| String::from("Failed to load orderbook mirror"))?
+            .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+        let orderbook = load_orderbook_mirror()?
             .lock()
-            .map_err(|_| String::from("Failed to lock mutex"))?;
+            .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
         enclave_send_disk_data(
             eid,
             StorageData {
-                balances: balances.prepare(),
-                nonce: nonce.prepare(),
-                orderbook: orderbook
-                    .read_all()
-                    .unwrap()
-                    .into_iter()
-                    .map(|signed_order| OrderbookData { signed_order })
-                    .collect(),
+                balances: balances.prepare_for_sending()?,
+                nonce: nonce.prepare_for_sending()?,
+                orderbook: orderbook.prepare_for_sending()?,
             }
             .encode(),
         )
-        .map_err(|_| String::from("Failed to send data to enclave"))?;
+        .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
 
         Ok(())
     }

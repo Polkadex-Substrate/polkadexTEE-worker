@@ -29,6 +29,7 @@ use polkadex_sgx_primitives::types::SignedOrder;
 
 use super::disk_storage_handler::DiskStorageHandler;
 use super::PermanentStorageHandler;
+use polkadex_sgx_primitives::OrderbookData;
 
 static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -79,6 +80,14 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
             }
         }
         Ok(orders)
+    }
+
+    pub fn prepare_for_sending(&self) -> Result<Vec<OrderbookData>> {
+        Ok(self
+            .read_all()?
+            .into_iter()
+            .map(|signed_order| OrderbookData { signed_order })
+            .collect())
     }
 
     pub fn take_disk_snapshot(&mut self) -> Result<()> {

@@ -94,19 +94,21 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
         Ok(())
     }
 
-    pub fn prepare(&self) -> Vec<BalancesData> {
+    pub fn prepare_for_sending(&self) -> Result<Vec<BalancesData>> {
         self.general_db
             .read_all()
             .into_iter()
-            .map(|(left, right)| {
-                let key = PolkadexBalanceKey::decode(&mut left.as_slice()).unwrap();
-                let balances = Balances::decode(&mut right.as_slice()).unwrap();
-                BalancesData {
+            .map(|(left, right)| -> Result<BalancesData> {
+                let key = PolkadexBalanceKey::decode(&mut left.as_slice())
+                    .map_err(PolkadexDBError::DecodeError)?;
+                let balances = Balances::decode(&mut right.as_slice())
+                    .map_err(PolkadexDBError::DecodeError)?;
+                Ok(BalancesData {
                     asset_id: key.asset_id,
                     account_id: key.account_id,
                     free: balances.free,
                     reserved: balances.reserved,
-                }
+                })
             })
             .collect()
     }

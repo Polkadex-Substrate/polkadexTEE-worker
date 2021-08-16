@@ -430,7 +430,11 @@ pub unsafe extern "C" fn send_disk_data(encoded_data: *const u8, data_size: usiz
     let mut data = slice::from_raw_parts(encoded_data, data_size);
 
     let decoded: polkadex_sgx_primitives::StorageData =
-        polkadex_sgx_primitives::StorageData::decode(&mut data).unwrap();
+        if let Ok(data) = polkadex_sgx_primitives::StorageData::decode(&mut data) {
+            data
+        } else {
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        };
 
     let balances_data: Vec<(Vec<u8>, polkadex_balance_storage::Balances)> = decoded
         .balances

@@ -76,17 +76,19 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
         Ok(())
     }
 
-    pub fn prepare(&self) -> Vec<NonceData> {
+    pub fn prepare_for_sending(&self) -> Result<Vec<NonceData>> {
         self.general_db
             .read_all()
             .into_iter()
-            .map(|(left, right)| {
-                let account_id = AccountId::decode(&mut left.as_slice()).unwrap();
-                let nonce = Nonce::decode(&mut right.as_slice()).unwrap();
-                NonceData {
+            .map(|(left, right)| -> Result<NonceData> {
+                let account_id = AccountId::decode(&mut left.as_slice())
+                    .map_err(PolkadexDBError::DecodeError)?;
+                let nonce =
+                    Nonce::decode(&mut right.as_slice()).map_err(PolkadexDBError::DecodeError)?;
+                Ok(NonceData {
                     account_id,
                     nonce: nonce.nonce,
-                }
+                })
             })
             .collect()
     }
