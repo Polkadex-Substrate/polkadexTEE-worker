@@ -105,11 +105,7 @@ fn take_orderbook_snapshot() -> Result<()> {
     let mut orderbook_mirror = mutex
         .lock()
         .map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
-    let data = orderbook_mirror.take_disk_snapshot()?;
-    let mut ipfs_handler = IpfsStorageHandler::default();
-    let cid = ipfs_handler.snapshot_to_ipfs(data)?;
-    debug!("Retrived cid {:?} for orderbook snapshot", cid);
-    // TODO: send cid to OCEX pallet (issue #241)
+    orderbook_mirror.take_disk_snapshot()?;
     Ok(())
 }
 
@@ -133,10 +129,6 @@ fn take_nonce_snapshot() -> Result<()> {
     let mut nonce_mirror = mutex
         .lock()
         .map_err(|_| PolkadexDBError::UnableToLoadPointer)?;
-    let data = nonce_mirror.take_disk_snapshot()?;
-    let mut ipfs_handler = IpfsStorageHandler::default();
-    let cid = ipfs_handler.snapshot_to_ipfs(data)?;
-    debug!("Retrived cid {:?} for nonce snapshot", cid);
-    // TODO: send cid to OCEX pallet (issue #241)
+    nonce_mirror.take_disk_snapshot()?;
     Ok(())
 }
