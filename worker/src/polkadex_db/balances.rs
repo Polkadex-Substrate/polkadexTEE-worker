@@ -72,7 +72,7 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
             Some(v) => Balances::decode(&mut v.as_slice()).map_err(PolkadexDBError::DecodeError),
             None => {
                 println!("Key returns None");
-                Err(PolkadexDBError::_KeyNotFound)
+                Err(PolkadexDBError::KeyNotFound)
             }
         }
     }
@@ -87,7 +87,7 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
 
     pub fn load_disk_snapshot(&mut self) -> Result<()> {
         if self.general_db.read_disk_into_memory().is_err() {
-            return Err(PolkadexDBError::_KeyNotFound);
+            return Err(PolkadexDBError::KeyNotFound);
         }
         Ok(())
     }
@@ -143,7 +143,7 @@ mod tests {
     use crate::polkadex_db::{Balances, BalancesMirror, PolkadexBalanceKey};
     use codec::Encode;
     use polkadex_primitives::AccountId;
-    use polkadex_sgx_primitives::AssetId;
+    use polkadex_sgx_primitives::{AssetId, BalancesData};
     use sp_core::{ed25519 as ed25519_core, Pair};
     use std::collections::HashMap;
 
@@ -157,7 +157,7 @@ mod tests {
     }
     fn create_secondary_dummy_key() -> PolkadexBalanceKey {
         PolkadexBalanceKey::from(
-            AssetId::POLKADEX,
+            AssetId::DOT,
             AccountId::from(
                 ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public(),
             ),
@@ -231,5 +231,55 @@ mod tests {
             .general_db
             .db
             .contains_key(&dummy_key.encode()));
+    }
+
+    #[test]
+    fn prepare_for_sending() {
+        let dummy_key = create_dummy_key();
+        let secondary_dummy_key = create_secondary_dummy_key();
+        let mut balances_mirror = BalancesMirror {
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+        };
+        balances_mirror.general_db.db.insert(
+            dummy_key.encode(),
+            Balances {
+                free: 42u128,
+                reserved: 0u128,
+            }
+            .encode(),
+        );
+        balances_mirror.general_db.db.insert(
+            secondary_dummy_key.encode(),
+            Balances {
+                free: 0u128,
+                reserved: 42u128,
+            }
+            .encode(),
+        );
+        assert_eq!(
+            {
+                let mut balances_mirror = balances_mirror.prepare_for_sending().unwrap();
+                balances_mirror.sort();
+                balances_mirror
+            },
+            vec![
+                BalancesData {
+                    asset_id: AssetId::POLKADEX,
+                    account_id: AccountId::from(
+                        ed25519_core::Pair::from_seed(b"12345678901234567890123456789012").public(),
+                    ),
+                    free: 42u128,
+                    reserved: 0u128
+                },
+                BalancesData {
+                    asset_id: AssetId::DOT,
+                    account_id: AccountId::from(
+                        ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public(),
+                    ),
+                    free: 0u128,
+                    reserved: 42u128
+                }
+            ]
+        )
     }
 }

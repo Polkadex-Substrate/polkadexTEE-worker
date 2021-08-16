@@ -20,6 +20,7 @@ use chain_relay::{storage_proof::StorageProofChecker, Header};
 use codec::Encode;
 use frame_support::{metadata::StorageHasher, PalletId};
 use log::*;
+use polkadex_sgx_primitives::NonceData;
 use polkadex_sgx_primitives::{AccountId, PolkadexAccount};
 use sgx_types::{sgx_status_t, SgxResult};
 use sp_runtime::traits::{AccountIdConversion, Header as HeaderT};
@@ -302,7 +303,7 @@ pub fn get_nonce(main_acc: AccountId) -> Result<u32, AccountRegistryError> {
 }
 
 pub fn lock_nonce_storage_extend_from_disk(
-    data: Vec<(EncodedKey, u32)>,
+    data: Vec<NonceData>,
 ) -> Result<(), AccountRegistryError> {
     // Aquire lock on proxy_registry
     let mutex = load_registry()?;

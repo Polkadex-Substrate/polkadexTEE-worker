@@ -34,7 +34,7 @@ static NONCE_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct NonceMirror<D: PermanentStorageHandler> {
-    pub general_db: GeneralDB<D>,
+    general_db: GeneralDB<D>,
 }
 
 #[derive(Encode, Decode)]
@@ -56,7 +56,7 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
                 .nonce),
             None => {
                 println!("Key returns None");
-                Err(PolkadexDBError::_KeyNotFound)
+                Err(PolkadexDBError::KeyNotFound)
             }
         }
     }
@@ -71,7 +71,7 @@ impl<D: PermanentStorageHandler> NonceMirror<D> {
 
     pub fn load_disk_snapshot(&mut self) -> Result<()> {
         if self.general_db.read_disk_into_memory().is_err() {
-            return Err(PolkadexDBError::_KeyNotFound);
+            return Err(PolkadexDBError::KeyNotFound);
         }
         Ok(())
     }
@@ -122,6 +122,7 @@ mod tests {
     use crate::polkadex_db::NonceMirror;
     use codec::Encode;
     use polkadex_primitives::AccountId;
+    use polkadex_sgx_primitives::NonceData;
     use sp_core::{ed25519 as ed25519_core, Pair};
     use std::collections::HashMap;
 
@@ -181,5 +182,39 @@ mod tests {
             .general_db
             .db
             .contains_key(&dummy_account.encode()));
+    }
+
+    #[test]
+    fn prepare_for_sending() {
+        let dummy_account = create_dummy_account();
+        let secondary_dummy_account = create_secondary_dummy_account();
+        let mut nonce_mirror = NonceMirror {
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+        };
+        nonce_mirror
+            .general_db
+            .db
+            .insert(dummy_account.encode(), 42u32.encode());
+        nonce_mirror
+            .general_db
+            .db
+            .insert(secondary_dummy_account.encode(), 0u32.encode());
+        assert_eq!(
+            {
+                let mut nonce_mirror = nonce_mirror.prepare_for_sending().unwrap();
+                nonce_mirror.sort();
+                nonce_mirror
+            },
+            vec![
+                NonceData {
+                    account_id: dummy_account,
+                    nonce: 42u32,
+                },
+                NonceData {
+                    account_id: secondary_dummy_account,
+                    nonce: 0u32,
+                }
+            ]
+        )
     }
 }

@@ -58,7 +58,7 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
             },
             None => {
                 println!("Key returns None");
-                Err(PolkadexDBError::_KeyNotFound)
+                Err(PolkadexDBError::KeyNotFound)
             }
         }
     }
@@ -96,7 +96,7 @@ impl<D: PermanentStorageHandler> OrderbookMirror<D> {
 
     pub fn load_disk_snapshot(&mut self) -> Result<()> {
         if self.general_db.read_disk_into_memory().is_err() {
-            return Err(PolkadexDBError::_KeyNotFound);
+            return Err(PolkadexDBError::KeyNotFound);
         }
         Ok(())
     }
@@ -132,7 +132,7 @@ mod tests {
     use crate::polkadex_db::mock::PermanentStorageMock;
     use codec::Encode;
     use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
-    use polkadex_sgx_primitives::AssetId;
+    use polkadex_sgx_primitives::{AssetId, OrderbookData};
     use sp_core::ed25519::Signature;
     use std::collections::HashMap;
     use substratee_worker_primitives::get_account;
@@ -253,5 +253,24 @@ mod tests {
             },
             vec![first_order(), second_order()]
         );
+    }
+
+    #[test]
+    fn prepare_for_sending() {
+        let first_order = first_order();
+        let mut orderbook_mirror = OrderbookMirror {
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+        };
+        orderbook_mirror
+            .general_db
+            .db
+            .insert("FIRST_ORDER".encode(), first_order.encode());
+
+        assert_eq!(
+            orderbook_mirror.prepare_for_sending().unwrap(),
+            vec![OrderbookData {
+                signed_order: first_order
+            }]
+        )
     }
 }

@@ -49,7 +49,6 @@ use constants::{
 };
 use core::ops::Deref;
 use log::*;
-use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::{AssetId, PolkadexAccount};
 use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
@@ -436,52 +435,37 @@ pub unsafe extern "C" fn send_disk_data(encoded_data: *const u8, data_size: usiz
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
 
-    let balances_data: Vec<(Vec<u8>, polkadex_balance_storage::Balances)> = decoded
-        .balances
-        .into_iter()
-        .map(|entry| {
-            (
-                polkadex_balance_storage::PolkadexBalanceKey::from(
-                    entry.asset_id,
-                    entry.account_id,
-                )
-                .encode(),
-                polkadex_balance_storage::Balances::from(entry.free, entry.reserved),
-            )
-        })
-        .collect();
-    let nonce_data: Vec<(Vec<u8>, u32)> = decoded
-        .nonce
-        .into_iter()
-        .map(|entry| (entry.account_id.encode(), entry.nonce))
-        .collect();
-    let orderbook_data: Vec<SignedOrder> = decoded
-        .orderbook
-        .into_iter()
-        .map(|entry| entry.signed_order)
-        .collect();
+    let balances_data = decoded.balances;
+    let nonce_data = decoded.nonce;
+    let orderbook_data = decoded.orderbook;
 
-    if crate::polkadex_balance_storage::load_balance_storage().is_err()
+    if polkadex_balance_storage::load_balance_storage().is_err()
         && polkadex_balance_storage::create_in_memory_balance_storage().is_err()
     {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    if crate::accounts_nonce_storage::load_registry().is_err()
+    if accounts_nonce_storage::load_registry().is_err()
         && accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]).is_err()
     {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    if polkadex_orderbook_storage::create_in_memory_orderbook_storage(orderbook_data).is_err() {
+    if polkadex_orderbook_storage::load_orderbook().is_err()
+        && polkadex_orderbook_storage::create_in_memory_orderbook_storage(vec![]).is_err()
+    {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    if crate::polkadex_balance_storage::lock_storage_extend_from_disk(balances_data).is_err() {
+    if polkadex_balance_storage::lock_storage_extend_from_disk(balances_data).is_err() {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 
-    if crate::accounts_nonce_storage::lock_nonce_storage_extend_from_disk(nonce_data).is_err() {
+    if accounts_nonce_storage::lock_nonce_storage_extend_from_disk(nonce_data).is_err() {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
+
+    if polkadex_orderbook_storage::lock_storage_extend_from_disk(orderbook_data).is_err() {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     }
 

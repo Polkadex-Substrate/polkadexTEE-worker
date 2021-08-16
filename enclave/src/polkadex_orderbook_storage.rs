@@ -23,6 +23,7 @@ use crate::polkadex_gateway::GatewayError;
 use log::error;
 use log::*;
 use polkadex_sgx_primitives::types::{Order, OrderUUID, SignedOrder};
+use polkadex_sgx_primitives::OrderbookData;
 use sgx_types::{sgx_status_t, SgxResult};
 use sp_core::ed25519::Signature;
 use std::collections::HashMap;
@@ -88,6 +89,13 @@ impl OrderbookStorage {
             .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)?;
         //_write_order_to_disk(signed_order)?;
         Ok(())
+    }
+
+    pub fn extend_from_disk_data(&mut self, data: Vec<OrderbookData>) {
+        self.storage.extend(
+            data.into_iter()
+                .map(|entry| (entry.signed_order.order_id, entry.signed_order.order)),
+        );
     }
 }
 
@@ -159,4 +167,15 @@ pub fn lock_storage_and_get_order(order_uuid: OrderUUID) -> Result<Order, Gatewa
     let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
     let order = orderbook.read_order(&order_uuid).unwrap().clone();
     Ok(order)
+}
+
+pub fn lock_storage_extend_from_disk(data: Vec<OrderbookData>) -> Result<(), GatewayError> {
+    // Acquire lock on balance_storage
+    let mutex = load_orderbook()?;
+    let mut orderbook_storage: SgxMutexGuard<OrderbookStorage> = mutex.lock().map_err(|_| {
+        error!("Could not lock mutex of balance storage");
+        GatewayError::UnableToLock
+    })?;
+    orderbook_storage.extend_from_disk_data(data);
+    Ok(())
 }

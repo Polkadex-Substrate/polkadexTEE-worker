@@ -19,6 +19,7 @@
 use crate::polkadex_gateway::GatewayError;
 use crate::Vec;
 use log::*;
+use polkadex_sgx_primitives::BalancesData;
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -235,9 +236,7 @@ pub fn lock_storage_increase_free_balance(
     Ok(())
 }
 
-pub fn lock_storage_extend_from_disk(
-    data: Vec<(EncodedKey, Balances)>,
-) -> Result<(), GatewayError> {
+pub fn lock_storage_extend_from_disk(data: Vec<BalancesData>) -> Result<(), GatewayError> {
     // Acquire lock on balance_storage
     let mutex = load_balance_storage()?;
     let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> =

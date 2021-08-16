@@ -122,7 +122,7 @@ impl OpenFinexUri {
     }
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, PartialEq, PartialOrd, Ord, Eq, Clone)]
 pub struct BalancesData {
     pub asset_id: AssetId,
     pub account_id: AccountId,
@@ -130,13 +130,13 @@ pub struct BalancesData {
     pub reserved: u128,
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, PartialEq, PartialOrd, Ord, Eq, Clone)]
 pub struct NonceData {
     pub account_id: AccountId,
     pub nonce: u32,
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, PartialEq, Clone)]
 pub struct OrderbookData {
     pub signed_order: SignedOrder,
 }

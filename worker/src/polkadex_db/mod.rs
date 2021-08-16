@@ -52,7 +52,7 @@ pub enum PolkadexDBError {
     /// Failed to deserialize value
     UnableToDeseralizeValue,
     /// Failed to find key in the DB
-    _KeyNotFound,
+    KeyNotFound,
     /// File system interaction error
     FsError(std::io::Error),
     /// Decode Error

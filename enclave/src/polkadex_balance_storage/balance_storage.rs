@@ -19,6 +19,7 @@
 use crate::polkadex_gateway::GatewayError;
 use codec::Encode;
 use log::*;
+use polkadex_sgx_primitives::BalancesData;
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::vec::Vec;
@@ -229,8 +230,13 @@ impl PolkadexBalanceStorage {
         }
     }
 
-    pub fn extend_from_disk_data(&mut self, data: Vec<(EncodedKey, Balances)>) {
-        self.storage.extend(data.into_iter());
+    pub fn extend_from_disk_data(&mut self, data: Vec<BalancesData>) {
+        self.storage.extend(data.into_iter().map(|entry| {
+            (
+                PolkadexBalanceKey::from(entry.asset_id, entry.account_id).encode(),
+                Balances::from(entry.free, entry.reserved),
+            )
+        }));
     }
 
     // We can write functions which settle balances for two trades but we need to know the trade structure for it

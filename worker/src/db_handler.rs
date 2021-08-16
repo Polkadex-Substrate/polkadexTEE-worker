@@ -91,16 +91,46 @@ impl DBHandler {
         let orderbook = load_orderbook_mirror()?
             .lock()
             .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
-        enclave_send_disk_data(
-            eid,
-            StorageData {
-                balances: balances.prepare_for_sending()?,
-                nonce: nonce.prepare_for_sending()?,
-                orderbook: orderbook.prepare_for_sending()?,
+
+        let balances_data = balances.prepare_for_sending()?;
+        let nonce_data = nonce.prepare_for_sending()?;
+        let orderbook_data = orderbook.prepare_for_sending()?;
+
+        let (mut balances_chunks, mut nonce_chunks, mut orderbook_chunks) = (
+            balances_data.chunks(1000),
+            nonce_data.chunks(1000),
+            orderbook_data.chunks(1000),
+        );
+        loop {
+            let balances = if let Some(chunk) = balances_chunks.next() {
+                chunk.to_vec()
+            } else {
+                vec![]
+            };
+            let nonce = if let Some(chunk) = nonce_chunks.next() {
+                chunk.to_vec()
+            } else {
+                vec![]
+            };
+            let orderbook = if let Some(chunk) = orderbook_chunks.next() {
+                chunk.to_vec()
+            } else {
+                vec![]
+            };
+            if (balances.clone(), nonce.clone(), orderbook.clone()) == (vec![], vec![], vec![]) {
+                break;
             }
-            .encode(),
-        )
-        .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
+            enclave_send_disk_data(
+                eid,
+                StorageData {
+                    balances,
+                    nonce,
+                    orderbook,
+                }
+                .encode(),
+            )
+            .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
+        }
 
         Ok(())
     }
