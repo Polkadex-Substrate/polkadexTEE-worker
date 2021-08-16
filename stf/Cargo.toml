@@ -107,7 +107,7 @@ optional = true
 
 [dependencies.my-node-runtime]
 git = "https://github.com/Polkadex-Substrate/Polkadex"
-branch = "develop"
+#branch = "develop"
 package = "node-polkadex-runtime"
 optional = true
 

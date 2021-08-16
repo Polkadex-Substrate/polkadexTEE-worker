@@ -51,7 +51,7 @@ path = "worker-api"
 [dependencies.my-node-runtime]
 git = "https://github.com/Polkadex-Substrate/Polkadex"
 package = "node-polkadex-runtime"
-branch = "develop"
+#branch = "develop" #temp
 
 [dependencies.sp-finality-grandpa]
 git = "https://github.com/paritytech/substrate.git"
