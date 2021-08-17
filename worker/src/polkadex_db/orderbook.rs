@@ -267,10 +267,12 @@ mod tests {
             .insert("FIRST_ORDER".encode(), first_order.encode());
 
         assert_eq!(
-            orderbook_mirror.prepare_for_sending().unwrap(),
-            vec![OrderbookData {
+            orderbook_mirror
+                .prepare_for_sending()
+                .map_err(|_| String::from("Failed to prepare for sending")),
+            Ok(vec![OrderbookData {
                 signed_order: first_order
-            }]
+            }])
         )
     }
 }
