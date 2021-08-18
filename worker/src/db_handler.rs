@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>
 
+use crate::constants::CHUNK_SIZE;
 use crate::enclave::api::{enclave_run_db_thread, enclave_send_disk_data};
 use crate::polkadex_db::{
     initialize_balances_mirror, initialize_nonce_mirror, initialize_orderbook_mirror,
@@ -97,9 +98,9 @@ impl DBHandler {
         let orderbook_data = orderbook.prepare_for_sending()?;
 
         let (mut balances_chunks, mut nonce_chunks, mut orderbook_chunks) = (
-            balances_data.chunks(1000),
-            nonce_data.chunks(1000),
-            orderbook_data.chunks(1000),
+            balances_data.chunks(CHUNK_SIZE),
+            nonce_data.chunks(CHUNK_SIZE),
+            orderbook_data.chunks(CHUNK_SIZE),
         );
         loop {
             let balances = if let Some(chunk) = balances_chunks.next() {

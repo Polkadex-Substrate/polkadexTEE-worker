@@ -297,11 +297,9 @@ pub fn enclave_send_disk_data(eid: sgx_enclave_id_t, data: Vec<u8>) -> SgxResult
     if status != sgx_status_t::SGX_SUCCESS {
         return Err(status);
     }
-
     if result != sgx_status_t::SGX_SUCCESS {
         return Err(result);
     }
-
     Ok(())
 }
 

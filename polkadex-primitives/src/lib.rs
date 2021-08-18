@@ -126,8 +126,8 @@ impl OpenFinexUri {
 pub struct BalancesData {
     pub asset_id: AssetId,
     pub account_id: AccountId,
-    pub free: u128,
-    pub reserved: u128,
+    pub free: Balance,
+    pub reserved: Balance,
 }
 
 #[derive(Debug, Encode, Decode, PartialEq, PartialOrd, Ord, Eq, Clone)]

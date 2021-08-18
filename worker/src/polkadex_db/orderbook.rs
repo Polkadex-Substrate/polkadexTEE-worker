@@ -35,7 +35,7 @@ static ORDERBOOK_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct OrderbookMirror<D: PermanentStorageHandler> {
-    pub general_db: GeneralDB<D>,
+    general_db: GeneralDB<D>,
 }
 
 impl<D: PermanentStorageHandler> OrderbookMirror<D> {

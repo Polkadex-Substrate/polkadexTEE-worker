@@ -36,7 +36,7 @@ static BALANCES_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct BalancesMirror<D: PermanentStorageHandler> {
-    pub general_db: GeneralDB<D>,
+    general_db: GeneralDB<D>,
 }
 
 #[derive(Encode, Decode, PartialEq, Debug)]
@@ -258,7 +258,9 @@ mod tests {
         );
         assert_eq!(
             {
-                let mut balances_mirror = balances_mirror.prepare_for_sending().unwrap();
+                let mut balances_mirror = balances_mirror
+                    .prepare_for_sending()
+                    .expect("Unexpected error while preparing to balances nonce data");
                 balances_mirror.sort();
                 balances_mirror
             },

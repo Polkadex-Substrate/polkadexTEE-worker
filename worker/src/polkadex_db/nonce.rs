@@ -201,7 +201,9 @@ mod tests {
             .insert(secondary_dummy_account.encode(), 0u32.encode());
         assert_eq!(
             {
-                let mut nonce_mirror = nonce_mirror.prepare_for_sending().unwrap();
+                let mut nonce_mirror = nonce_mirror
+                    .prepare_for_sending()
+                    .expect("Unexpected error while preparing to send nonce data");
                 nonce_mirror.sort();
                 nonce_mirror
             },
