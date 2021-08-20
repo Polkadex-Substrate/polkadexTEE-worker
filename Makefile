@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ######## Update SGX SDK ########
-# include UpdateRustSGXSDK.mk
+include UpdateRustSGXSDK.mk
 
 ######## SGX SDK Settings ########
 SGX_SDK ?= /opt/intel/sgxsdk
@@ -168,10 +168,9 @@ $(Worker_Enclave_u_Object): worker/Enclave_u.o
 $(Worker_Name): $(Worker_Enclave_u_Object) $(Worker_SRC_Files)
 	@echo
 	@echo "Building the substraTEE-worker"
-	@cd worker && SGX_SDK=$(SGX_SDK) cargo build $(Worker_Rust_Flags)
+	@cd worker && SGX_SDK=$(SGX_SDK) SGX_MODE=$(SGX_MODE) cargo build $(Worker_Rust_Flags)
 	@echo "Cargo  =>  $@"
 	cp $(Worker_Rust_Path)/substratee-worker ./bin
-	cp $(Worker_Rust_Path)/substratee-worker ./bin2
 
 ######## SubstraTEE-client objects ########
 $(Client_Name): $(Client_SRC_Files)
@@ -212,11 +211,25 @@ enclave:
 .PHONY: clean
 clean:
 	@echo "Removing the compiled files"
-	@rm -f $(Client_Name) $(Worker_Name) $(RustEnclave_Name) $(Signed_RustEnclave_Name) enclave/*_t.* worker/*_u.* lib/*.a bin/*.bin
+	@rm -f $(Client_Name) $(Worker_Name) $(RustEnclave_Name) $(Signed_RustEnclave_Name) \
+ 			enclave/*_t.* \
+ 			worker/*_u.* \
+ 			lib/*.a \
+ 			bin/*.bin
 	@echo "cargo clean in enclave directory"
 	@cd enclave && cargo clean
 	@echo "cargo clean in root directory"
 	@cargo clean
+
+.PHONY: update
+update:
+	@echo "Running cargo update.."
+	@cd enclave && cargo update
+	@cd enclave && cargo update -p sp-std --precise f651d45ce5742bc60fe8ae518c035d1638ae83d2
+	@cd enclave && cargo update -p sgx_tstd --precise 7c07ce0bfbacd3f4f2af53a2cdef9539018be73c
+	@cargo update
+	@cargo update -p sp-std --precise f651d45ce5742bc60fe8ae518c035d1638ae83d2
+	@cargo update -p sgx_tstd --precise 7c07ce0bfbacd3f4f2af53a2cdef9539018be73c
 
 mrenclave:
 	@$(SGX_ENCLAVE_SIGNER) dump -enclave ./bin/enclave.signed.so -dumpfile df.out && ./extract_identity < df.out && rm df.out

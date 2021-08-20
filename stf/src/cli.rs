@@ -1,28 +1,33 @@
 /*
-    Copyright 2019 Supercomputing Systems AG
+	Copyright 2019 Supercomputing Systems AG
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+		http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
 
 */
 
-use crate::{KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use crate::{
+	AccountId, Index, KeyPair, ShardIdentifier, TrustedCall, TrustedGetter, TrustedOperation,
+};
+use base58::{FromBase58, ToBase58};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander, MultiCommand};
-use codec::Decode;
+use codec::{Decode, Encode};
 use log::*;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
-use substrate_client_keystore::LocalKeystore;
+use sp_runtime::traits::IdentifyAccount;
+use std::path::PathBuf;
+use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 
 use crate::cli_utils::account_parsing::*;
 use crate::cli_utils::common_operations::get_trusted_nonce;
@@ -214,11 +219,7 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                     let direct: bool = matches.is_present("direct");
                     info!("account ss58 is {}", who.public().to_ss58check());
 
-                    println!(
-                        "send trusted call set-balance({}, {})",
-                        who.public(),
-                        amount
-                    );
+					println!("send trusted call set-balance({}, {})", who.public(), amount);
 
                     let (mrenclave, shard) = get_identifiers(matches);
                     let key_pair = sr25519_core::Pair::from(who.clone());
@@ -320,12 +321,12 @@ pub fn cmd(perform_operation: OperationRunner) -> MultiCommand<str, str> {
                     println!("from ss58 is {}", from.public().to_ss58check());
                     println!("to   ss58 is {}", to.to_ss58check());
 
-                    println!(
-                        "send trusted call unshield_funds from {} to {}: {}",
-                        from.public(),
-                        to,
-                        amount
-                    );
+					println!(
+						"send trusted call unshield_funds from {} to {}: {}",
+						from.public(),
+						to,
+						amount
+					);
 
                     let (mrenclave, shard) = get_identifiers(matches);
                     let key_pair = sr25519_core::Pair::from(from.clone());

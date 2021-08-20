@@ -24,34 +24,27 @@ extern crate sgx_tstd as std;
 pub mod error;
 pub mod justification;
 pub mod state;
-pub mod storage_proof;
-
-use crate::std::collections::BTreeMap;
-use crate::std::fmt;
-use crate::std::vec::Vec;
-use core::iter::Iterator;
-
-use error::Error;
-use justification::GrandpaJustification;
-use state::RelayState;
-use storage_proof::StorageProof;
-
-use crate::state::ScheduledChangeAtBlock;
-use crate::storage_proof::StorageProofChecker;
+use crate::{
+	state::ScheduledChangeAtBlock,
+	std::{collections::BTreeMap, fmt, vec::Vec},
+};
 use codec::{Decode, Encode};
+use core::iter::Iterator;
+use error::Error;
 use finality_grandpa::voter_set::VoterSet;
+use justification::GrandpaJustification;
 use log::*;
 use sp_finality_grandpa::{
-    AuthorityId, AuthorityList, AuthorityWeight, ConsensusLog, ScheduledChange, SetId,
-    GRANDPA_ENGINE_ID,
+	AuthorityId, AuthorityList, AuthorityWeight, ConsensusLog, ScheduledChange, SetId,
+	GRANDPA_ENGINE_ID,
 };
-use sp_runtime::generic::{
-    Block as BlockG, Digest as DigestG, Header as HeaderG, OpaqueDigestItemId,
+use sp_runtime::{
+	generic::{Block as BlockG, Digest as DigestG, Header as HeaderG, OpaqueDigestItemId},
+	traits::{BlakeTwo256, Block as BlockT, Hash as HashT, Header as HeaderT, NumberFor},
+	Justification, Justifications, OpaqueExtrinsic,
 };
-use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Hash as HashT, Header as HeaderT, NumberFor,
-};
-use sp_runtime::{Justification, Justifications, OpaqueExtrinsic};
+use state::RelayState;
+use substratee_storage::{Error as StorageError, StorageProof, StorageProofChecker};
 
 type RelayId = u64;
 pub type Blocknumber = u32;
@@ -61,332 +54,364 @@ pub type Digest = DigestG<<BlakeTwo256 as HashT>::Output>;
 
 pub type AuthorityListRef<'a> = &'a [(AuthorityId, AuthorityWeight)];
 
+pub trait Validator: Encode + Decode + Clone + Default {
+	fn initialize_relay(
+		&mut self,
+		block_header: Header,
+		validator_set: AuthorityList,
+		validator_set_proof: StorageProof,
+	) -> Result<RelayId, Error>;
+
+	fn submit_finalized_headers(
+		&mut self,
+		relay_id: RelayId,
+		header: Header,
+		ancestry_proof: Vec<Header>,
+		validator_set: AuthorityList,
+		validator_set_id: SetId,
+		justifications: Option<Justifications>,
+	) -> Result<(), Error>;
+
+	fn submit_simple_header(
+		&mut self,
+		relay_id: RelayId,
+		header: Header,
+		justifications: Option<Justifications>,
+	) -> Result<(), Error>;
+
+	fn submit_xt_to_be_included(
+		&mut self,
+		relay_id: RelayId,
+		extrinsic: OpaqueExtrinsic,
+	) -> Result<(), Error>;
+
+	fn check_xt_inclusion(&mut self, relay_id: RelayId, block: &Block) -> Result<(), Error>;
+
+	fn num_xt_to_be_included(&mut self, relay_id: RelayId) -> Result<usize, Error>;
+
+	fn genesis_hash(&self, relay_id: RelayId) -> Result<<Header as HeaderT>::Hash, Error>;
+
+	fn latest_finalized_header(&self, relay_id: RelayId) -> Result<Header, Error>;
+
+	fn num_relays(&self) -> RelayId;
+}
+
 #[derive(Encode, Decode, Clone, Default)]
 pub struct LightValidation {
-    pub num_relays: RelayId,
-    pub tracked_relays: BTreeMap<RelayId, RelayState<Block>>,
+	num_relays: RelayId,
+	tracked_relays: BTreeMap<RelayId, RelayState<Block>>,
 }
 
 impl LightValidation {
-    pub fn new() -> Self {
-        LightValidation::default()
-    }
+	pub fn new() -> Self {
+		LightValidation::default()
+	}
 
-    pub fn initialize_relay(
-        &mut self,
-        block_header: Header,
-        validator_set: AuthorityList,
-        validator_set_proof: StorageProof,
-    ) -> Result<RelayId, Error> {
-        let state_root = block_header.state_root();
-        Self::check_validator_set_proof::<<Header as HeaderT>::Hashing>(
-            state_root,
-            validator_set_proof,
-            &validator_set,
-        )?;
+	fn apply_validator_set_change<Block: BlockT>(
+		relay: &mut RelayState<Block>,
+		header: &Block::Header,
+	) {
+		if let Some(change) = relay.scheduled_change.take() {
+			if &change.at_block == header.number() {
+				relay.current_validator_set = change.next_authority_list;
+				relay.current_validator_set_id += 1;
+			}
+		}
+	}
 
-        let relay_info = RelayState::new(block_header, validator_set);
+	fn schedule_validator_set_change<Block: BlockT>(
+		relay: &mut RelayState<Block>,
+		header: &Block::Header,
+	) {
+		if let Some(log) = pending_change::<Block::Header>(&header.digest()) {
+			if relay.scheduled_change.is_some() {
+				error!(
+					"Tried to scheduled authorities change even though one is already scheduled!!"
+				); // should not happen if blockchain is configured properly
+			} else {
+				relay.scheduled_change = Some(ScheduledChangeAtBlock {
+					at_block: log.delay + *header.number(),
+					next_authority_list: log.next_authorities,
+				})
+			}
+		}
+	}
 
-        let new_relay_id = self.num_relays + 1;
-        self.tracked_relays.insert(new_relay_id, relay_info);
+	fn check_validator_set_proof<Hash: HashT>(
+		state_root: &Hash::Out,
+		proof: StorageProof,
+		validator_set: AuthorityListRef,
+	) -> Result<(), Error> {
+		let checker = StorageProofChecker::<Hash>::new(*state_root, proof)?;
 
-        self.num_relays = new_relay_id;
+		// By encoding the given set we should have an easy way to compare
+		// with the stuff we get out of storage via `read_value`
+		let mut encoded_validator_set = validator_set.encode();
+		encoded_validator_set.insert(0, 1); // Add AUTHORITIES_VERISON == 1
+		let actual_validator_set = checker
+			.read_value(b":grandpa_authorities")?
+			.ok_or(StorageError::StorageValueUnavailable)?;
 
-        Ok(new_relay_id)
-    }
+		if encoded_validator_set == actual_validator_set {
+			Ok(())
+		} else {
+			Err(Error::ValidatorSetMismatch)
+		}
+	}
 
-    pub fn submit_finalized_headers(
-        &mut self,
-        relay_id: RelayId,
-        header: Header,
-        ancestry_proof: Vec<Header>,
-        validator_set: AuthorityList,
-        validator_set_id: SetId,
-        grandpa_proofs: Option<Justifications>,
-    ) -> Result<(), Error> {
-        let mut relay = self
-            .tracked_relays
-            .get_mut(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
+	fn verify_grandpa_proof<Block>(
+		justification: Justification,
+		hash: Block::Hash,
+		number: NumberFor<Block>,
+		set_id: u64,
+		voters: &VoterSet<AuthorityId>,
+	) -> Result<(), Error>
+	where
+		Block: BlockT,
+		NumberFor<Block>: finality_grandpa::BlockNumberOps,
+	{
+		// We don't really care about the justification, as long as it's valid
+		let _ = GrandpaJustification::<Block>::decode_and_verify_finalizes(
+			&justification.1,
+			(hash, number),
+			set_id,
+			voters,
+		)?;
 
-        // Check that the new header is a decendent of the old header
-        let last_header = &relay.last_finalized_block_header;
-        Self::verify_ancestry(ancestry_proof, last_header.hash(), &header)?;
+		Ok(())
+	}
 
-        if grandpa_proofs.is_none() {
-            relay.last_finalized_block_header = header.clone();
-            relay.unjustified_headers.push(header.hash());
-            debug!(
-                "Syncing finalized block without grandpa proof. Amount of unjustified headers: {}",
-                relay.unjustified_headers.len()
-            );
-            return Ok(());
-        }
+	// A naive way to check whether a `child` header is a decendent
+	// of an `ancestor` header. For this it requires a proof which
+	// is a chain of headers between (but not including) the `child`
+	// and `ancestor`. This could be updated to use something like
+	// Log2 Ancestors (#2053) in the future.
+	fn verify_ancestry<Header>(
+		proof: Vec<Header>,
+		ancestor_hash: Header::Hash,
+		child: &Header,
+	) -> Result<(), Error>
+	where
+		Header: HeaderT,
+	{
+		let mut parent_hash = child.parent_hash();
+		if *parent_hash == ancestor_hash {
+			return Ok(())
+		}
 
-        let block_hash = header.hash();
-        let block_num = *header.number();
+		// If we find that the header's parent hash matches our ancestor's hash we're done
+		for header in proof.iter() {
+			// Need to check that blocks are actually related
+			if header.hash() != *parent_hash {
+				break
+			}
 
-        // Check that the header has been finalized
-        let voter_set =
-            VoterSet::new(validator_set.clone().into_iter()).expect("VoterSet may not be empty");
+			parent_hash = header.parent_hash();
+			if *parent_hash == ancestor_hash {
+				return Ok(())
+			}
+		}
 
-        // https://github.com/paritytech/substrate/pull/7640/files
-        // multiple proofs due to multiple consensus protococol possible..
-        for grandpa_proof in grandpa_proofs.unwrap().iter() {
-            Self::verify_grandpa_proof::<Block>(
-                // https://github.com/paritytech/substrate/pull/7640/files
-                // only works for one consenus protocol. In case of multiple
-                // use .into_justification(consensusprotocol) of substrate
-                grandpa_proof.clone(),
-                block_hash,
-                block_num,
-                validator_set_id,
-                &voter_set,
-            )?;
-        }
+		Err(Error::InvalidAncestryProof)
+	}
+}
 
-        relay.last_finalized_block_header = header.clone();
+impl Validator for LightValidation {
+	fn initialize_relay(
+		&mut self,
+		block_header: Header,
+		validator_set: AuthorityList,
+		validator_set_proof: StorageProof,
+	) -> Result<RelayId, Error> {
+		let state_root = block_header.state_root();
+		Self::check_validator_set_proof::<<Header as HeaderT>::Hashing>(
+			state_root,
+			validator_set_proof,
+			&validator_set,
+		)?;
 
-        Self::schedule_validator_set_change(&mut relay, &header);
+		let relay_info = RelayState::new(block_header, validator_set);
 
-        // a valid grandpa proof proofs finalization of all previous unjustified blocks
-        relay.header_hashes.append(&mut relay.unjustified_headers);
-        relay.header_hashes.push(header.hash());
+		let new_relay_id = self.num_relays + 1;
+		self.tracked_relays.insert(new_relay_id, relay_info);
 
-        if validator_set_id > relay.current_validator_set_id {
-            relay.current_validator_set = validator_set;
-            relay.current_validator_set_id = validator_set_id;
-        }
+		self.num_relays = new_relay_id;
 
-        Ok(())
-    }
+		Ok(new_relay_id)
+	}
 
-    pub fn submit_simple_header(
-        &mut self,
-        relay_id: RelayId,
-        header: Header,
-        grandpa_proof: Option<Justifications>,
-    ) -> Result<(), Error> {
-        let mut relay = self
-            .tracked_relays
-            .get_mut(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
+	fn submit_finalized_headers(
+		&mut self,
+		relay_id: RelayId,
+		header: Header,
+		ancestry_proof: Vec<Header>,
+		validator_set: AuthorityList,
+		validator_set_id: SetId,
+		justifications: Option<Justifications>,
+	) -> Result<(), Error> {
+		let mut relay = self.tracked_relays.get_mut(&relay_id).ok_or(Error::NoSuchRelayExists)?;
 
-        if relay.last_finalized_block_header.hash() != *header.parent_hash() {
-            return Err(Error::HeaderAncestryMismatch);
-        }
-        let ancestry_proof = vec![];
+		// Check that the new header is a decendent of the old header
+		let last_header = &relay.last_finalized_block_header;
+		Self::verify_ancestry(ancestry_proof, last_header.hash(), &header)?;
 
-        Self::apply_validator_set_change(&mut relay, &header);
+		// Check that the header has been finalized
+		let voter_set =
+			VoterSet::new(validator_set.clone().into_iter()).expect("VoterSet may not be empty");
 
-        let validator_set = relay.current_validator_set.clone();
-        let validator_set_id = relay.current_validator_set_id;
-        self.submit_finalized_headers(
-            relay_id,
-            header,
-            ancestry_proof,
-            validator_set,
-            validator_set_id,
-            grandpa_proof,
-        )
-    }
+		// ensure justifications is a grandpa justification
+		let grandpa_justification =
+			justifications.and_then(|just| just.into_justification(GRANDPA_ENGINE_ID));
 
-    pub fn submit_xt_to_be_included(
-        &mut self,
-        relay_id: RelayId,
-        extrinsic: OpaqueExtrinsic,
-    ) -> Result<(), Error> {
-        let relay = self
-            .tracked_relays
-            .get_mut(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
-        relay.verify_tx_inclusion.push(extrinsic);
-        Ok(())
-    }
+		let block_hash = header.hash();
+		let block_num = *header.number();
 
-    pub fn check_xt_inclusion(&mut self, relay_id: RelayId, block: &Block) -> Result<(), Error> {
-        let relay = self
-            .tracked_relays
-            .get_mut(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
+		match grandpa_justification {
+			Some(justification) => {
+				if let Err(err) = Self::verify_grandpa_proof::<Block>(
+					(GRANDPA_ENGINE_ID, justification),
+					block_hash,
+					block_num,
+					validator_set_id,
+					&voter_set,
+				) {
+					// FIXME: Printing error upon invalid justfication, but this will need a better fix
+					// see issue #353
+					error!("Block {} contained invalid justification: {:?}", block_num, err);
+					relay.unjustified_headers.push(header.hash());
+					relay.last_finalized_block_header = header;
+					return Ok(())
+				}
+			},
+			None => {
+				relay.last_finalized_block_header = header.clone();
+				relay.unjustified_headers.push(header.hash());
+				debug!(
+					"Syncing finalized block without grandpa proof. Amount of unjustified headers: {}",
+					relay.unjustified_headers.len()
+				);
+				return Ok(())
+			},
+		}
 
-        if relay.verify_tx_inclusion.is_empty() {
-            return Ok(());
-        }
+		relay.last_finalized_block_header = header.clone();
 
-        let mut found_xts = vec![];
-        block.extrinsics.iter().for_each(|xt| {
-            if let Some(index) = relay.verify_tx_inclusion.iter().position(|xt_opaque| {
-                <<Header as HeaderT>::Hashing>::hash_of(xt)
-                    == <<Header as HeaderT>::Hashing>::hash_of(xt_opaque)
-            }) {
-                found_xts.push(index);
-            }
-        });
+		Self::schedule_validator_set_change(&mut relay, &header);
 
-        // sort highest index first
-        found_xts.sort_by(|a, b| b.cmp(a));
+		// a valid grandpa proof proofs finalization of all previous unjustified blocks
+		relay.header_hashes.append(&mut relay.unjustified_headers);
+		relay.header_hashes.push(header.hash());
 
-        let rm: Vec<OpaqueExtrinsic> = found_xts
-            .into_iter()
-            .map(|i| relay.verify_tx_inclusion.remove(i))
-            .collect();
+		if validator_set_id > relay.current_validator_set_id {
+			relay.current_validator_set = validator_set;
+			relay.current_validator_set_id = validator_set_id;
+		}
 
-        if !rm.is_empty() {
-            info!("Verfified inclusion proof of {} extrinsics.", rm.len());
-        }
+		Ok(())
+	}
 
-        Ok(())
-    }
+	fn submit_simple_header(
+		&mut self,
+		relay_id: RelayId,
+		header: Header,
+		justifications: Option<Justifications>,
+	) -> Result<(), Error> {
+		let mut relay = self.tracked_relays.get_mut(&relay_id).ok_or(Error::NoSuchRelayExists)?;
 
-    pub fn num_xt_to_be_included(&mut self, relay_id: RelayId) -> Result<usize, Error> {
-        let relay = self
-            .tracked_relays
-            .get(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
-        Ok(relay.verify_tx_inclusion.len())
-    }
+		if relay.last_finalized_block_header.hash() != *header.parent_hash() {
+			return Err(Error::HeaderAncestryMismatch)
+		}
+		let ancestry_proof = vec![];
 
-    pub fn genesis_hash(&self, relay_id: RelayId) -> Result<<Header as HeaderT>::Hash, Error> {
-        let relay = self
-            .tracked_relays
-            .get(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
-        Ok(relay.header_hashes[0])
-    }
+		Self::apply_validator_set_change(&mut relay, &header);
 
-    pub fn latest_finalized_header(&self, relay_id: RelayId) -> Result<Header, Error> {
-        let relay = self
-            .tracked_relays
-            .get(&relay_id)
-            .ok_or(Error::NoSuchRelayExists)?;
-        Ok(relay.last_finalized_block_header.clone())
-    }
+		let validator_set = relay.current_validator_set.clone();
+		let validator_set_id = relay.current_validator_set_id;
+		self.submit_finalized_headers(
+			relay_id,
+			header,
+			ancestry_proof,
+			validator_set,
+			validator_set_id,
+			justifications,
+		)
+	}
 
-    fn apply_validator_set_change<Block: BlockT>(
-        relay: &mut RelayState<Block>,
-        header: &Block::Header,
-    ) {
-        if let Some(change) = relay.scheduled_change.take() {
-            if &change.at_block == header.number() {
-                relay.current_validator_set = change.next_authority_list;
-                relay.current_validator_set_id += 1;
-            }
-        }
-    }
+	fn submit_xt_to_be_included(
+		&mut self,
+		relay_id: RelayId,
+		extrinsic: OpaqueExtrinsic,
+	) -> Result<(), Error> {
+		let relay = self.tracked_relays.get_mut(&relay_id).ok_or(Error::NoSuchRelayExists)?;
+		relay.verify_tx_inclusion.push(extrinsic);
+		Ok(())
+	}
 
-    fn schedule_validator_set_change<Block: BlockT>(
-        relay: &mut RelayState<Block>,
-        header: &Block::Header,
-    ) {
-        if let Some(log) = pending_change::<Block::Header>(&header.digest()) {
-            if relay.scheduled_change.is_some() {
-                error!(
-                    "Tried to scheduled authorities change even though one is already scheduled!!"
-                ); // should not happen if blockchain is configured properly
-            } else {
-                relay.scheduled_change = Some(ScheduledChangeAtBlock {
-                    at_block: log.delay + *header.number(),
-                    next_authority_list: log.next_authorities,
-                })
-            }
-        }
-    }
+	fn check_xt_inclusion(&mut self, relay_id: RelayId, block: &Block) -> Result<(), Error> {
+		let relay = self.tracked_relays.get_mut(&relay_id).ok_or(Error::NoSuchRelayExists)?;
 
-    fn check_validator_set_proof<Hash: HashT>(
-        state_root: &Hash::Out,
-        proof: StorageProof,
-        validator_set: AuthorityListRef,
-    ) -> Result<(), Error> {
-        let checker = StorageProofChecker::<Hash>::new(*state_root, proof)?;
+		if relay.verify_tx_inclusion.is_empty() {
+			return Ok(())
+		}
 
-        // By encoding the given set we should have an easy way to compare
-        // with the stuff we get out of storage via `read_value`
-        let mut encoded_validator_set = validator_set.encode();
-        encoded_validator_set.insert(0, 1); // Add AUTHORITIES_VERISON == 1
-        let actual_validator_set = checker
-            .read_value(b":grandpa_authorities")?
-            .ok_or(Error::StorageValueUnavailable)?;
+		let mut found_xts = vec![];
+		block.extrinsics.iter().for_each(|xt| {
+			if let Some(index) = relay.verify_tx_inclusion.iter().position(|xt_opaque| {
+				<<Header as HeaderT>::Hashing>::hash_of(xt)
+					== <<Header as HeaderT>::Hashing>::hash_of(xt_opaque)
+			}) {
+				found_xts.push(index);
+			}
+		});
 
-        if encoded_validator_set == actual_validator_set {
-            Ok(())
-        } else {
-            Err(Error::ValidatorSetMismatch)
-        }
-    }
+		// sort highest index first
+		found_xts.sort_by(|a, b| b.cmp(a));
 
-    fn verify_grandpa_proof<Block>(
-        justification: Justification,
-        hash: Block::Hash,
-        number: NumberFor<Block>,
-        set_id: u64,
-        voters: &VoterSet<AuthorityId>,
-    ) -> Result<(), Error>
-    where
-        Block: BlockT,
-        NumberFor<Block>: finality_grandpa::BlockNumberOps,
-    {
-        // We don't really care about the justification, as long as it's valid
-        let _ = GrandpaJustification::<Block>::decode_and_verify_finalizes(
-            &justification.1,
-            (hash, number),
-            set_id,
-            voters,
-        )?;
+		let rm: Vec<OpaqueExtrinsic> =
+			found_xts.into_iter().map(|i| relay.verify_tx_inclusion.remove(i)).collect();
 
-        Ok(())
-    }
+		if !rm.is_empty() {
+			info!("Verified inclusion proof of {} extrinsics.", rm.len());
+		}
 
-    // A naive way to check whether a `child` header is a decendent
-    // of an `ancestor` header. For this it requires a proof which
-    // is a chain of headers between (but not including) the `child`
-    // and `ancestor`. This could be updated to use something like
-    // Log2 Ancestors (#2053) in the future.
-    fn verify_ancestry<Header>(
-        proof: Vec<Header>,
-        ancestor_hash: Header::Hash,
-        child: &Header,
-    ) -> Result<(), Error>
-    where
-        Header: HeaderT,
-    {
-        let mut parent_hash = child.parent_hash();
-        if *parent_hash == ancestor_hash {
-            return Ok(());
-        }
+		Ok(())
+	}
 
-        // If we find that the header's parent hash matches our ancestor's hash we're done
-        for header in proof.iter() {
-            // Need to check that blocks are actually related
-            if header.hash() != *parent_hash {
-                break;
-            }
+	fn num_xt_to_be_included(&mut self, relay_id: RelayId) -> Result<usize, Error> {
+		let relay = self.tracked_relays.get(&relay_id).ok_or(Error::NoSuchRelayExists)?;
+		Ok(relay.verify_tx_inclusion.len())
+	}
 
-            parent_hash = header.parent_hash();
-            if *parent_hash == ancestor_hash {
-                return Ok(());
-            }
-        }
+	fn genesis_hash(&self, relay_id: RelayId) -> Result<<Header as HeaderT>::Hash, Error> {
+		let relay = self.tracked_relays.get(&relay_id).ok_or(Error::NoSuchRelayExists)?;
+		Ok(relay.header_hashes[0])
+	}
 
-        Err(Error::InvalidAncestryProof)
-    }
+	fn latest_finalized_header(&self, relay_id: RelayId) -> Result<Header, Error> {
+		let relay = self.tracked_relays.get(&relay_id).ok_or(Error::NoSuchRelayExists)?;
+		Ok(relay.last_finalized_block_header.clone())
+	}
+
+	fn num_relays(&self) -> RelayId {
+		self.num_relays
+	}
 }
 
 pub fn grandpa_log<H: HeaderT>(digest: &DigestG<H::Hash>) -> Option<ConsensusLog<H::Number>> {
-    let id = OpaqueDigestItemId::Consensus(&GRANDPA_ENGINE_ID);
-    digest.convert_first(|l| l.try_to::<ConsensusLog<H::Number>>(id))
+	let id = OpaqueDigestItemId::Consensus(&GRANDPA_ENGINE_ID);
+	digest.convert_first(|l| l.try_to::<ConsensusLog<H::Number>>(id))
 }
 
 pub fn pending_change<H: HeaderT>(digest: &DigestG<H::Hash>) -> Option<ScheduledChange<H::Number>> {
-    grandpa_log::<H>(digest).and_then(|log| log.try_into_change())
+	grandpa_log::<H>(digest).and_then(|log| log.try_into_change())
 }
 
 impl fmt::Debug for LightValidation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "LightValidationTest {{ num_relays: {}, tracked_relays: {:?} }}",
-            self.num_relays, self.tracked_relays
-        )
-    }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(
+			f,
+			"LightValidationTest {{ num_relays: {}, tracked_relays: {:?} }}",
+			self.num_relays, self.tracked_relays
+		)
+	}
 }
