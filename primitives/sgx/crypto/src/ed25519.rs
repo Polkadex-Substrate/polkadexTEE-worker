@@ -16,7 +16,7 @@
 */
 use crate::error::{Error, Result};
 use codec::Encode;
-use derive_more::{Deref, From};
+use derive_more::Display;
 use log::*;
 use sgx_rand::{Rng, StdRng};
 use sp_core::{crypto::Pair, ed25519};
@@ -24,16 +24,15 @@ use std::{path::Path, sgxfs::SgxFile};
 use substratee_settings::files::SEALED_SIGNER_SEED_FILE;
 use substratee_sgx_io::{seal, unseal, SealedIO};
 
-/// Newtype pattern to be able to implement an external trait on an external type.
-/// This will hopefully not be needed anymore after a subsequent PR extracting the crypto stuff
-/// from the enclave.
-#[derive(Clone, From, Deref)]
-pub struct Ed25519(pub ed25519::Pair);
+#[derive(Copy, Clone, Debug, Display)]
+pub struct Ed25519Seal;
 
-impl SealedIO for Ed25519 {
-    type Error = Error;
-    fn unseal() -> Result<Self> {
-        let raw = unseal(SEALED_SIGNER_SEED_FILE)?;
+impl SealedIO for Ed25519Seal {
+	type Error = Error;
+	type Unsealed = ed25519::Pair;
+
+	fn unseal() -> Result<ed25519::Pair> {
+		let raw = unseal(SEALED_SIGNER_SEED_FILE)?;
 
         let key = ed25519::Pair::from_seed_slice(&raw)
             .map_err(|e| Error::Other(format!("{:?}", e).into()))?;
@@ -41,11 +40,9 @@ impl SealedIO for Ed25519 {
         Ok(key.into())
     }
 
-    fn seal(&self) -> Result<()> {
-        Ok(self
-            .seed()
-            .using_encoded(|bytes| seal(bytes, SEALED_SIGNER_SEED_FILE))?)
-    }
+	fn seal(unsealed: Self::Unsealed) -> Result<()> {
+		Ok(unsealed.seed().using_encoded(|bytes| seal(bytes, SEALED_SIGNER_SEED_FILE))?)
+	}
 }
 
 pub fn create_sealed_if_absent() -> Result<()> {

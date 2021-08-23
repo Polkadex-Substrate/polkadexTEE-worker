@@ -32,11 +32,10 @@ use sgx_types::size_t;
 use crate::ss58check;
 use crate::test_polkadex_balance_storage;
 use crate::{
-    ed25519::Ed25519,
-    ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
-    rpc, rsa3072, state,
-    test::{cert_tests::*, mocks::enclave_rpc_ocall_mock::EnclaveRpcOCallMock},
-    top_pool,
+	ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
+	rpc, rsa3072, state,
+	test::{cert_tests::*, mocks::enclave_rpc_ocall_mock::EnclaveRpcOCallMock},
+	top_pool, Timeout,
 };
 use chain_relay::{Block, Header};
 use codec::{Decode, Encode};
@@ -66,7 +65,7 @@ use substratee_settings::{
     enclave::GETTER_TIMEOUT,
     node::{BLOCK_CONFIRMED, SUBSTRATEE_REGISTRY_MODULE},
 };
-use substratee_sgx_crypto::{Aes, StateCrypto};
+use substratee_sgx_crypto::{Aes, Ed25519Seal, StateCrypto};
 use substratee_sgx_io::SealedIO;
 use substratee_sidechain_primitives::traits::{Block as BlockT, SignedBlock as SignedBlockT};
 use substratee_stf::{
@@ -372,168 +371,168 @@ fn test_compose_block_and_confirmation() {
 
 #[allow(unused)]
 fn test_submit_trusted_call_to_top_pool() {
-    // given
-    ensure_no_empty_shard_directory_exists();
+	// given
+	ensure_no_empty_shard_directory_exists();
 
-    // create top pool
-    let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
-    let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
-        BasicPool::create(Default::default(), api);
-    let author = Author::new(Arc::new(&tx_pool));
+	// create top pool
+	let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
+	let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
+		BasicPool::create(Default::default(), api);
+	let author = Author::new(Arc::new(&tx_pool));
 
-    // create trusted call signed
-    let nonce = 0;
-    let mrenclave = [0u8; 32];
-    let shard = ShardIdentifier::default();
-    // ensure state starts empty
-    state::init_shard(&shard).unwrap();
-    Stf::init_state();
-    let signer_pair = Ed25519::unseal().unwrap();
-    let call = TrustedCall::balance_set_balance(
-        signer_pair.public().into(),
-        signer_pair.public().into(),
-        42,
-        42,
-    );
-    let signed_call = call.sign(&signer_pair.0.into(), nonce, &mrenclave, &shard);
-    let trusted_operation: TrustedOperation = signed_call.clone().into_trusted_operation(true);
-    // encrypt call
-    let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-    let mut encrypted_top: Vec<u8> = Vec::new();
-    rsa_pubkey
-        .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
-        .unwrap();
+	// create trusted call signed
+	let nonce = 0;
+	let mrenclave = [0u8; 32];
+	let shard = ShardIdentifier::default();
+	// ensure state starts empty
+	state::init_shard(&shard).unwrap();
+	Stf::init_state();
+	let signer_pair = Ed25519Seal::unseal().unwrap();
+	let call = TrustedCall::balance_set_balance(
+		signer_pair.public().into(),
+		signer_pair.public().into(),
+		42,
+		42,
+	);
+	let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
+	let trusted_operation: TrustedOperation = signed_call.clone().into_trusted_operation(true);
+	// encrypt call
+	let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+	let mut encrypted_top: Vec<u8> = Vec::new();
+	rsa_pubkey
+		.encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+		.unwrap();
 
-    // when
+	// when
 
-    // submit trusted call to top pool
-    let result = async { author.submit_top(encrypted_top.clone(), shard).await };
-    executor::block_on(result).unwrap();
+	// submit trusted call to top pool
+	let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+	executor::block_on(result).unwrap();
 
-    // get pending extrinsics
-    let (calls, _) = author.get_pending_tops_separated(shard).unwrap();
+	// get pending extrinsics
+	let (calls, _) = author.get_pending_tops_separated(shard).unwrap();
 
-    // then
-    let call_one = format! {"{:?}", calls[0]};
-    let call_two = format! {"{:?}", signed_call};
-    assert_eq!(call_one, call_two);
+	// then
+	let call_one = format! {"{:?}", calls[0]};
+	let call_two = format! {"{:?}", signed_call};
+	assert_eq!(call_one, call_two);
 
-    // clean up
-    state::tests::remove_shard_dir(&shard);
+	// clean up
+	state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
 fn test_submit_trusted_getter_to_top_pool() {
-    // given
-    ensure_no_empty_shard_directory_exists();
+	// given
+	ensure_no_empty_shard_directory_exists();
 
-    // create top pool
-    let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
-    let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
-        BasicPool::create(Default::default(), api);
-    let author = Author::new(Arc::new(&tx_pool));
+	// create top pool
+	let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
+	let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
+		BasicPool::create(Default::default(), api);
+	let author = Author::new(Arc::new(&tx_pool));
 
-    // create trusted getter signed
-    let shard = ShardIdentifier::default();
-    // ensure state starts empty
-    state::init_shard(&shard).unwrap();
-    Stf::init_state();
-    let signer_pair = Ed25519::unseal().unwrap();
-    let getter = TrustedGetter::free_balance(signer_pair.public().into());
-    let signed_getter = getter.sign(&signer_pair.0.into());
-    let trusted_operation: TrustedOperation = signed_getter.clone().into();
-    // encrypt call
-    let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-    let mut encrypted_top: Vec<u8> = Vec::new();
-    rsa_pubkey
-        .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
-        .unwrap();
+	// create trusted getter signed
+	let shard = ShardIdentifier::default();
+	// ensure state starts empty
+	state::init_shard(&shard).unwrap();
+	Stf::init_state();
+	let signer_pair = Ed25519Seal::unseal().unwrap();
+	let getter = TrustedGetter::free_balance(signer_pair.public().into());
+	let signed_getter = getter.sign(&signer_pair.into());
+	let trusted_operation: TrustedOperation = signed_getter.clone().into();
+	// encrypt call
+	let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+	let mut encrypted_top: Vec<u8> = Vec::new();
+	rsa_pubkey
+		.encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+		.unwrap();
 
-    // when
+	// when
 
-    // submit top to pool
-    let result = async { author.submit_top(encrypted_top.clone(), shard).await };
-    executor::block_on(result).unwrap();
+	// submit top to pool
+	let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+	executor::block_on(result).unwrap();
 
-    // get pending extrinsics
-    let (_, getters) = author.get_pending_tops_separated(shard).unwrap();
+	// get pending extrinsics
+	let (_, getters) = author.get_pending_tops_separated(shard).unwrap();
 
-    // then
-    let getter_one = format! {"{:?}", getters[0]};
-    let getter_two = format! {"{:?}", signed_getter};
-    assert_eq!(getter_one, getter_two);
+	// then
+	let getter_one = format! {"{:?}", getters[0]};
+	let getter_two = format! {"{:?}", signed_getter};
+	assert_eq!(getter_one, getter_two);
 
-    // clean up
-    state::tests::remove_shard_dir(&shard);
+	// clean up
+	state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
 fn test_differentiate_getter_and_call_works() {
-    // given
-    ensure_no_empty_shard_directory_exists();
+	// given
+	ensure_no_empty_shard_directory_exists();
 
-    // create top pool
-    let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
-    let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
-        BasicPool::create(Default::default(), api);
-    let author = Author::new(Arc::new(&tx_pool));
-    // create trusted getter signed
-    let shard = ShardIdentifier::default();
-    // ensure state starts empty
-    state::init_shard(&shard).unwrap();
-    Stf::init_state();
+	// create top pool
+	let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
+	let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
+		BasicPool::create(Default::default(), api);
+	let author = Author::new(Arc::new(&tx_pool));
+	// create trusted getter signed
+	let shard = ShardIdentifier::default();
+	// ensure state starts empty
+	state::init_shard(&shard).unwrap();
+	Stf::init_state();
 
-    let signer_pair = Ed25519::unseal().unwrap();
-    let getter = TrustedGetter::free_balance(signer_pair.public().into());
-    let signed_getter = getter.sign(&signer_pair.0.clone().into());
-    let trusted_operation: TrustedOperation = signed_getter.clone().into();
-    // encrypt call
-    let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-    let mut encrypted_top: Vec<u8> = Vec::new();
-    rsa_pubkey
-        .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
-        .unwrap();
+	let signer_pair = Ed25519Seal::unseal().unwrap();
+	let getter = TrustedGetter::free_balance(signer_pair.public().into());
+	let signed_getter = getter.sign(&signer_pair.clone().into());
+	let trusted_operation: TrustedOperation = signed_getter.clone().into();
+	// encrypt call
+	let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+	let mut encrypted_top: Vec<u8> = Vec::new();
+	rsa_pubkey
+		.encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+		.unwrap();
 
-    // create trusted call signed
-    let nonce = 0;
-    let mrenclave = [0u8; 32];
-    let call = TrustedCall::balance_set_balance(
-        signer_pair.public().into(),
-        signer_pair.public().into(),
-        42,
-        42,
-    );
-    let signed_call = call.sign(&signer_pair.0.into(), nonce, &mrenclave, &shard);
-    let trusted_operation_call: TrustedOperation = signed_call.clone().into_trusted_operation(true);
-    // encrypt call
-    let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-    let mut encrypted_top_call: Vec<u8> = Vec::new();
-    rsa_pubkey
-        .encrypt_buffer(&trusted_operation_call.encode(), &mut encrypted_top_call)
-        .unwrap();
+	// create trusted call signed
+	let nonce = 0;
+	let mrenclave = [0u8; 32];
+	let call = TrustedCall::balance_set_balance(
+		signer_pair.public().into(),
+		signer_pair.public().into(),
+		42,
+		42,
+	);
+	let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
+	let trusted_operation_call: TrustedOperation = signed_call.clone().into_trusted_operation(true);
+	// encrypt call
+	let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+	let mut encrypted_top_call: Vec<u8> = Vec::new();
+	rsa_pubkey
+		.encrypt_buffer(&trusted_operation_call.encode(), &mut encrypted_top_call)
+		.unwrap();
 
-    // when
+	// when
 
-    // submit top to pool
-    let result = async { author.submit_top(encrypted_top.clone(), shard).await };
-    executor::block_on(result).unwrap();
+	// submit top to pool
+	let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+	executor::block_on(result).unwrap();
 
-    let result = async { author.submit_top(encrypted_top_call.clone(), shard).await };
-    executor::block_on(result).unwrap();
+	let result = async { author.submit_top(encrypted_top_call.clone(), shard).await };
+	executor::block_on(result).unwrap();
 
-    // get pending extrinsics
-    let (calls, getters) = author.get_pending_tops_separated(shard).unwrap();
+	// get pending extrinsics
+	let (calls, getters) = author.get_pending_tops_separated(shard).unwrap();
 
-    // then
-    let getter_one = format! {"{:?}", getters[0]};
-    let getter_two = format! {"{:?}", signed_getter};
-    let call_one = format! {"{:?}", calls[0]};
-    let call_two = format! {"{:?}", signed_call};
-    assert_eq!(call_one, call_two);
-    assert_eq!(getter_one, getter_two);
+	// then
+	let getter_one = format! {"{:?}", getters[0]};
+	let getter_two = format! {"{:?}", signed_getter};
+	let call_one = format! {"{:?}", calls[0]};
+	let call_two = format! {"{:?}", signed_call};
+	assert_eq!(call_one, call_two);
+	assert_eq!(getter_one, getter_two);
 
-    // clean up
-    state::tests::remove_shard_dir(&shard);
+	// clean up
+	state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -628,289 +627,262 @@ fn test_create_block_and_confirmation_works() {
 
 #[allow(unused)]
 fn test_create_state_diff() {
-    // given
-    ensure_no_empty_shard_directory_exists();
+	// given
+	ensure_no_empty_shard_directory_exists();
 
-    // create top pool
-    unsafe { rpc::worker_api_direct::initialize_pool() };
-    let shard = ShardIdentifier::default();
-    // Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
-    let latest_onchain_header = Header::new(
-        1,
-        Default::default(),
-        Default::default(),
-        [69; 32].into(),
-        Default::default(),
-    );
-    let _rsa_pair = rsa3072::unseal_pair().unwrap();
+	// create top pool
+	unsafe { rpc::worker_api_direct::initialize_pool() };
+	let shard = ShardIdentifier::default();
+	// Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
+	let latest_onchain_header =
+		Header::new(1, Default::default(), Default::default(), [69; 32].into(), Default::default());
+	let _rsa_pair = rsa3072::unseal_pair().unwrap();
 
-    // ensure that state starts empty
-    state::init_shard(&shard).unwrap();
-    let state = Stf::init_state();
+	// ensure that state starts empty
+	state::init_shard(&shard).unwrap();
+	let state = Stf::init_state();
 
-    // get index of current shard
-    let index = get_current_shard_index(&shard);
+	// get index of current shard
+	let index = get_current_shard_index(&shard);
 
-    // create accounts
-    let signer_without_money = Ed25519::unseal().unwrap();
-    let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
-    let account_with_money = pair_with_money.public();
-    let account_without_money = signer_without_money.public();
-    let account_with_money_key_hash =
-        substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
-    let account_without_money_key_hash =
-        substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
+	// create accounts
+	let signer_without_money = Ed25519Seal::unseal().unwrap();
+	let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
+	let account_with_money = pair_with_money.public();
+	let account_without_money = signer_without_money.public();
+	let account_with_money_key_hash =
+		substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
+	let account_without_money_key_hash =
+		substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
 
-    let _prev_state_hash = state::write(state, &shard).unwrap();
-    // load top pool
-    {
-        let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
-        let pool_guard = pool_mutex.lock().unwrap();
-        let pool = Arc::new(pool_guard.deref());
-        let author = Arc::new(Author::new(pool));
+	let _prev_state_hash = state::write(state, &shard).unwrap();
+	// load top pool
+	{
+		let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
+		let pool_guard = pool_mutex.lock().unwrap();
+		let pool = Arc::new(pool_guard.deref());
+		let author = Arc::new(Author::new(pool));
 
-        // create trusted call signed
-        let nonce = 0;
-        let ocall_api = OCallComponentFactory::attestation_api();
-        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
-        let call = TrustedCall::balance_transfer(
-            account_with_money.into(),
-            account_without_money.into(),
-            1000,
-        );
-        let signed_call = call.sign(&pair_with_money.into(), nonce, &mrenclave, &shard);
-        let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
-        // encrypt call
-        let mut encrypted_top: Vec<u8> = Vec::new();
-        let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-        rsa_pubkey
-            .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
-            .unwrap();
+		// create trusted call signed
+		let nonce = 0;
+		let ocall_api = OCallComponentFactory::attestation_api();
+		let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
+		let call = TrustedCall::balance_transfer(
+			account_with_money.into(),
+			account_without_money.into(),
+			1000,
+		);
+		let signed_call = call.sign(&pair_with_money.into(), nonce, &mrenclave, &shard);
+		let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
+		// encrypt call
+		let mut encrypted_top: Vec<u8> = Vec::new();
+		let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+		rsa_pubkey
+			.encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+			.unwrap();
 
-        // submit trusted call to top pool
-        let result = async { author.submit_top(encrypted_top.clone(), shard).await };
-        executor::block_on(result).unwrap();
-    }
+		// submit trusted call to top pool
+		let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+		executor::block_on(result).unwrap();
+	}
 
-    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
-    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+	let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+	let on_chain_ocall = OCallComponentFactory::on_chain_api();
 
-    // when
-    let (_, signed_blocks) = crate::execute_top_pool_calls(
-        rpc_ocall.as_ref(),
-        on_chain_ocall.as_ref(),
-        latest_onchain_header,
-    )
-    .unwrap();
-    let mut encrypted_payload: Vec<u8> = signed_blocks[index].block().state_payload().to_vec();
-    Aes::decrypt(&mut encrypted_payload).unwrap();
-    let state_payload = StatePayload::decode(&mut encrypted_payload.as_slice()).unwrap();
-    let state_diff = StfStateTypeDiff::decode(state_payload.state_update().to_vec());
+	// when
+	let (_, signed_blocks) = crate::execute_top_pool_calls(
+		rpc_ocall.as_ref(),
+		on_chain_ocall.as_ref(),
+		latest_onchain_header,
+	)
+	.unwrap();
+	let mut encrypted_payload: Vec<u8> = signed_blocks[index].block().state_payload().to_vec();
+	Aes::decrypt(&mut encrypted_payload).unwrap();
+	let state_payload = StatePayload::decode(&mut encrypted_payload.as_slice()).unwrap();
+	let state_diff = StfStateTypeDiff::decode(state_payload.state_update().to_vec());
 
-    // then
-    let acc_info_vec = state_diff
-        .get(&account_with_money_key_hash)
-        .unwrap()
-        .as_ref()
-        .unwrap();
-    let new_balance_acc_with_money = AccountInfo::decode(&mut acc_info_vec.as_slice())
-        .unwrap()
-        .data
-        .free;
-    let acc_info_vec = state_diff
-        .get(&account_without_money_key_hash)
-        .unwrap()
-        .as_ref()
-        .unwrap();
-    let new_balance_acc_wo_money = AccountInfo::decode(&mut acc_info_vec.as_slice())
-        .unwrap()
-        .data
-        .free;
-    // get block number
-    let block_number_key = storage_value_key("System", "Number");
-    let new_block_number_encoded = state_diff.get(&block_number_key).unwrap().as_ref().unwrap();
-    let new_block_number =
-        substratee_worker_primitives::BlockNumber::decode(&mut new_block_number_encoded.as_slice())
-            .unwrap();
-    assert_eq!(state_diff.len(), 3);
-    assert_eq!(new_balance_acc_wo_money, 1000);
-    assert_eq!(new_balance_acc_with_money, 1000);
-    assert_eq!(new_block_number, 1);
+	// then
+	let acc_info_vec = state_diff.get(&account_with_money_key_hash).unwrap().as_ref().unwrap();
+	let new_balance_acc_with_money =
+		AccountInfo::decode(&mut acc_info_vec.as_slice()).unwrap().data.free;
+	let acc_info_vec = state_diff.get(&account_without_money_key_hash).unwrap().as_ref().unwrap();
+	let new_balance_acc_wo_money =
+		AccountInfo::decode(&mut acc_info_vec.as_slice()).unwrap().data.free;
+	// get block number
+	let block_number_key = storage_value_key("System", "Number");
+	let new_block_number_encoded = state_diff.get(&block_number_key).unwrap().as_ref().unwrap();
+	let new_block_number =
+		substratee_worker_primitives::BlockNumber::decode(&mut new_block_number_encoded.as_slice())
+			.unwrap();
+	assert_eq!(state_diff.len(), 3);
+	assert_eq!(new_balance_acc_wo_money, 1000);
+	assert_eq!(new_balance_acc_with_money, 1000);
+	assert_eq!(new_block_number, 1);
 
-    // clean up
-    state::tests::remove_shard_dir(&shard);
+	// clean up
+	state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
 fn test_executing_call_updates_account_nonce() {
-    // given
+	// given
 
-    ensure_no_empty_shard_directory_exists();
+	ensure_no_empty_shard_directory_exists();
 
-    // create top pool
-    unsafe { rpc::worker_api_direct::initialize_pool() };
-    let shard = ShardIdentifier::default();
-    // Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
-    let latest_onchain_header = Header::new(
-        1,
-        Default::default(),
-        Default::default(),
-        [69; 32].into(),
-        Default::default(),
-    );
-    let _rsa_pair = rsa3072::unseal_pair().unwrap();
+	// create top pool
+	unsafe { rpc::worker_api_direct::initialize_pool() };
+	let shard = ShardIdentifier::default();
+	// Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
+	let latest_onchain_header =
+		Header::new(1, Default::default(), Default::default(), [69; 32].into(), Default::default());
+	let _rsa_pair = rsa3072::unseal_pair().unwrap();
 
-    // ensure that state starts empty
-    state::init_shard(&shard).unwrap();
-    let mut state = Stf::init_state();
+	// ensure that state starts empty
+	state::init_shard(&shard).unwrap();
+	let mut state = Stf::init_state();
 
-    // create accounts
-    let signer_without_money = Ed25519::unseal().unwrap();
-    let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
-    let account_with_money = pair_with_money.public();
-    let account_without_money = signer_without_money.public();
-    let account_with_money_key_hash =
-        substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
-    let account_without_money_key_hash =
-        substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
+	// create accounts
+	let signer_without_money = Ed25519Seal::unseal().unwrap();
+	let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
+	let account_with_money = pair_with_money.public();
+	let account_without_money = signer_without_money.public();
+	let account_with_money_key_hash =
+		substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
+	let account_without_money_key_hash =
+		substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
 
-    let _prev_state_hash = state::write(state, &shard).unwrap();
-    // load top pool
-    {
-        let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
-        let pool_guard = pool_mutex.lock().unwrap();
-        let pool = Arc::new(pool_guard.deref());
-        let author = Arc::new(Author::new(pool.clone()));
+	let _prev_state_hash = state::write(state, &shard).unwrap();
+	// load top pool
+	{
+		let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
+		let pool_guard = pool_mutex.lock().unwrap();
+		let pool = Arc::new(pool_guard.deref());
+		let author = Arc::new(Author::new(pool.clone()));
 
-        // create trusted call signed
-        let nonce = 0;
-        let ocall_api = OCallComponentFactory::attestation_api();
-        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
-        let call = TrustedCall::balance_transfer(
-            account_with_money.into(),
-            account_without_money.into(),
-            1000,
-        );
-        let signed_call = call.sign(&pair_with_money.into(), nonce, &mrenclave, &shard);
-        let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
-        // encrypt call
-        let mut encrypted_top: Vec<u8> = Vec::new();
-        let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-        rsa_pubkey
-            .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
-            .unwrap();
+		// create trusted call signed
+		let nonce = 0;
+		let ocall_api = OCallComponentFactory::attestation_api();
+		let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
+		let call = TrustedCall::balance_transfer(
+			account_with_money.into(),
+			account_without_money.into(),
+			1000,
+		);
+		let signed_call = call.sign(&pair_with_money.into(), nonce, &mrenclave, &shard);
+		let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
+		// encrypt call
+		let mut encrypted_top: Vec<u8> = Vec::new();
+		let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+		rsa_pubkey
+			.encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+			.unwrap();
 
-        // submit trusted call to top pool
-        let result = async { author.submit_top(encrypted_top.clone(), shard).await };
-        executor::block_on(result).unwrap();
-    }
+		// submit trusted call to top pool
+		let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+		executor::block_on(result).unwrap();
+	}
 
-    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
-    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+	let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+	let on_chain_ocall = OCallComponentFactory::on_chain_api();
 
-    // when
-    let (_, signed_blocks) = crate::execute_top_pool_calls(
-        rpc_ocall.as_ref(),
-        on_chain_ocall.as_ref(),
-        latest_onchain_header,
-    )
-    .unwrap();
+	// when
+	let (_, signed_blocks) = crate::execute_top_pool_calls(
+		rpc_ocall.as_ref(),
+		on_chain_ocall.as_ref(),
+		latest_onchain_header,
+	)
+	.unwrap();
 
-    // then
-    let mut state = state::load(&shard).unwrap();
-    let nonce = Stf::account_nonce(&mut state, &account_with_money.into());
-    assert_eq!(nonce, 1);
+	// then
+	let mut state = state::load(&shard).unwrap();
+	let nonce = Stf::account_nonce(&mut state, &account_with_money.into());
+	assert_eq!(nonce, 1);
 
-    // clean up
-    state::tests::remove_shard_dir(&shard);
+	// clean up
+	state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
 fn test_invalid_nonce_call_is_not_executed() {
-    // given
+	// given
 
-    ensure_no_empty_shard_directory_exists();
+	ensure_no_empty_shard_directory_exists();
 
-    // create top pool
-    unsafe { rpc::worker_api_direct::initialize_pool() };
-    let shard = ShardIdentifier::default();
-    // Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
-    let latest_onchain_header = Header::new(
-        1,
-        Default::default(),
-        Default::default(),
-        [69; 32].into(),
-        Default::default(),
-    );
-    let _rsa_pair = rsa3072::unseal_pair().unwrap();
+	// create top pool
+	unsafe { rpc::worker_api_direct::initialize_pool() };
+	let shard = ShardIdentifier::default();
+	// Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
+	let latest_onchain_header =
+		Header::new(1, Default::default(), Default::default(), [69; 32].into(), Default::default());
+	let _rsa_pair = rsa3072::unseal_pair().unwrap();
 
-    // ensure that state starts empty
-    state::init_shard(&shard).unwrap();
-    let mut state = Stf::init_state();
+	// ensure that state starts empty
+	state::init_shard(&shard).unwrap();
+	let mut state = Stf::init_state();
 
-    // create accounts
-    let signer_without_money = Ed25519::unseal().unwrap();
-    let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
-    let account_with_money = pair_with_money.public();
-    let account_without_money = signer_without_money.public();
-    let account_with_money_key_hash =
-        substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
-    let account_without_money_key_hash =
-        substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
+	// create accounts
+	let signer_without_money = Ed25519Seal::unseal().unwrap();
+	let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
+	let account_with_money = pair_with_money.public();
+	let account_without_money = signer_without_money.public();
+	let account_with_money_key_hash =
+		substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
+	let account_without_money_key_hash =
+		substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
 
-    let _prev_state_hash = state::write(state, &shard).unwrap();
-    // load top pool
-    {
-        let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
-        let pool_guard = pool_mutex.lock().unwrap();
-        let pool = Arc::new(pool_guard.deref());
-        let author = Arc::new(Author::new(pool.clone()));
+	let _prev_state_hash = state::write(state, &shard).unwrap();
+	// load top pool
+	{
+		let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
+		let pool_guard = pool_mutex.lock().unwrap();
+		let pool = Arc::new(pool_guard.deref());
+		let author = Arc::new(Author::new(pool.clone()));
 
-        // create trusted call signed
-        let nonce = 10;
-        let ocall_api = OCallComponentFactory::attestation_api();
-        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
-        let call = TrustedCall::balance_transfer(
-            account_with_money.into(),
-            account_without_money.into(),
-            1000,
-        );
-        let signed_call = call.sign(&pair_with_money.into(), nonce, &mrenclave, &shard);
-        let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
-        // encrypt call
-        let mut encrypted_top: Vec<u8> = Vec::new();
-        let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
-        rsa_pubkey
-            .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
-            .unwrap();
+		// create trusted call signed
+		let nonce = 10;
+		let ocall_api = OCallComponentFactory::attestation_api();
+		let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
+		let call = TrustedCall::balance_transfer(
+			account_with_money.into(),
+			account_without_money.into(),
+			1000,
+		);
+		let signed_call = call.sign(&pair_with_money.into(), nonce, &mrenclave, &shard);
+		let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
+		// encrypt call
+		let mut encrypted_top: Vec<u8> = Vec::new();
+		let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+		rsa_pubkey
+			.encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+			.unwrap();
 
-        // submit trusted call to top pool
-        let result = async { author.submit_top(encrypted_top.clone(), shard).await };
-        executor::block_on(result).unwrap();
-    }
+		// submit trusted call to top pool
+		let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+		executor::block_on(result).unwrap();
+	}
 
-    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
-    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+	let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+	let on_chain_ocall = OCallComponentFactory::on_chain_api();
 
-    // when
-    let (_, signed_blocks) = crate::execute_top_pool_calls(
-        rpc_ocall.as_ref(),
-        on_chain_ocall.as_ref(),
-        latest_onchain_header,
-    )
-    .unwrap();
+	// when
+	let (_, signed_blocks) = crate::execute_top_pool_calls(
+		rpc_ocall.as_ref(),
+		on_chain_ocall.as_ref(),
+		latest_onchain_header,
+	)
+	.unwrap();
 
-    // then
-    let mut updated_state = state::load(&shard).unwrap();
-    let nonce = Stf::account_nonce(&mut updated_state, &account_with_money.into());
-    assert_eq!(nonce, 0);
+	// then
+	let mut updated_state = state::load(&shard).unwrap();
+	let nonce = Stf::account_nonce(&mut updated_state, &account_with_money.into());
+	assert_eq!(nonce, 0);
 
-    let acc_data_with_money =
-        Stf::account_data(&mut updated_state, &account_with_money.into()).unwrap();
-    assert_eq!(acc_data_with_money.free, 2000);
+	let acc_data_with_money =
+		Stf::account_data(&mut updated_state, &account_with_money.into()).unwrap();
+	assert_eq!(acc_data_with_money.free, 2000);
 
-    // clean up
-    state::tests::remove_shard_dir(&shard);
+	// clean up
+	state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
