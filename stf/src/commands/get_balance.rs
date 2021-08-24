@@ -16,11 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::cli_utils::common_types::OperationRunner;
-use crate::commands::account_details::AccountDetails;
-use crate::commands::common_args::*;
-use crate::commands::common_args_processing::get_token_id_from_matches;
-use crate::{KeyPair, TrustedGetter, TrustedOperation};
+use crate::{
+	cli_utils::common_types::OperationRunner,
+	commands::{
+		account_details::AccountDetails, common_args::*,
+		common_args_processing::get_token_id_from_matches,
+	},
+	KeyPair, TrustedGetter, TrustedOperation,
+};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
 use codec::Decode;
@@ -29,55 +32,53 @@ use log::*;
 use polkadex_sgx_primitives::Balance;
 
 pub fn get_balance_cli_command<'a>(
-    perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
+	perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
 ) -> Command<'a, str> {
-    Command::new("get_balance")
-        .description("Get the balance")
-        .options(add_command_args)
-        .runner(move |_args: &str, matches: &ArgMatches<'_>| {
-            command_runner(matches, perform_operation)
-        })
+	Command::new("get_balance")
+		.description("Get the balance")
+		.options(add_command_args)
+		.runner(move |_args: &str, matches: &ArgMatches<'_>| {
+			command_runner(matches, perform_operation)
+		})
 }
 
 pub fn add_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-    let app_with_main_account = add_main_account_args(app);
-    let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
-    add_token_id_args(app_with_proxy_account)
+	let app_with_main_account = add_main_account_args(app);
+	let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+	add_token_id_args(app_with_proxy_account)
 }
 
 fn command_runner<'a>(
-    matches: &ArgMatches<'_>,
-    perform_operation: OperationRunner<'a>,
+	matches: &ArgMatches<'_>,
+	perform_operation: OperationRunner<'a>,
 ) -> Result<(), clap::Error> {
-    let account_details = AccountDetails::new(matches);
+	let account_details = AccountDetails::new(matches);
 
-    let signer_key_pair = account_details.signer_key_pair();
+	let signer_key_pair = account_details.signer_key_pair();
 
-    let token_id = get_token_id_from_matches(matches).unwrap();
+	let token_id = get_token_id_from_matches(matches).unwrap();
 
-    let get_balance_top: TrustedOperation = TrustedGetter::get_balance(
-        account_details.signer_public_key().into(),
-        token_id,
-        account_details
-            .main_account_public_key_if_not_signer()
-            .map(|pk| pk.into()),
-    )
-    .sign(&KeyPair::Sr25519(signer_key_pair))
-    .into();
+	let get_balance_top: TrustedOperation = TrustedGetter::get_balance(
+		account_details.signer_public_key().into(),
+		token_id,
+		account_details.main_account_public_key_if_not_signer().map(|pk| pk.into()),
+	)
+	.sign(&KeyPair::Sr25519(signer_key_pair))
+	.into();
 
-    debug!("Successfully built get_balance trusted operation, dispatching now to enclave");
+	debug!("Successfully built get_balance trusted operation, dispatching now to enclave");
 
-    let bal = if let Some(v) = perform_operation(matches, &get_balance_top) {
-        if let Ok(vd) = Balance::decode(&mut v.as_slice()) {
-            vd
-        } else {
-            info!("could not decode value. maybe hasn't been set? {:x?}", v);
-            0
-        }
-    } else {
-        0
-    };
-    println!("{}", bal);
+	let bal = if let Some(v) = perform_operation(matches, &get_balance_top) {
+		if let Ok(vd) = Balance::decode(&mut v.as_slice()) {
+			vd
+		} else {
+			info!("could not decode value. maybe hasn't been set? {:x?}", v);
+			0
+		}
+	} else {
+		0
+	};
+	println!("{}", bal);
 
-    Ok(())
+	Ok(())
 }

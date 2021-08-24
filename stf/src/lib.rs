@@ -175,159 +175,147 @@ pub enum PublicGetter {
 #[derive(Encode, Decode, Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub enum TrustedCall {
-    balance_set_balance(AccountId, AccountId, Balance, Balance),
-    balance_transfer(AccountId, AccountId, Balance),
-    balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
-    balance_shield(AccountId, AccountId, Balance),  // (Root, AccountIncognito, Amount)
+	balance_set_balance(AccountId, AccountId, Balance, Balance),
+	balance_transfer(AccountId, AccountId, Balance),
+	balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
+	balance_shield(AccountId, AccountId, Balance), // (Root, AccountIncognito, Amount)
 
-    place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
-    cancel_order(AccountId, CancelOrder, Option<AccountId>), // (SignerAccount, Order ID, MainAccount (if signer is proxy))
-    withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
+	place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
+	cancel_order(AccountId, CancelOrder, Option<AccountId>), // (SignerAccount, Order ID, MainAccount (if signer is proxy))
+	withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
 }
 
 impl TrustedCall {
-    /// Return the signer account (may be proxy or main account)
-    pub fn signer(&self) -> &AccountId {
-        match self {
-            TrustedCall::balance_set_balance(signer, _, _, _) => signer,
-            TrustedCall::balance_transfer(signer, _, _) => signer,
-            TrustedCall::balance_unshield(signer, _, _, _) => signer,
-            TrustedCall::balance_shield(signer, _, _) => signer,
+	/// Return the signer account (may be proxy or main account)
+	pub fn signer(&self) -> &AccountId {
+		match self {
+			TrustedCall::balance_set_balance(signer, _, _, _) => signer,
+			TrustedCall::balance_transfer(signer, _, _) => signer,
+			TrustedCall::balance_unshield(signer, _, _, _) => signer,
+			TrustedCall::balance_shield(signer, _, _) => signer,
 
-            TrustedCall::place_order(signer, _, _) => signer,
-            TrustedCall::cancel_order(signer, _, _) => signer,
-            TrustedCall::withdraw(signer, _, _, _) => signer,
-        }
-    }
+			TrustedCall::place_order(signer, _, _) => signer,
+			TrustedCall::cancel_order(signer, _, _) => signer,
+			TrustedCall::withdraw(signer, _, _, _) => signer,
+		}
+	}
 
-    /// Get the main account ID. For the polkadex orders, the first argument is always the signer.
-    /// A signer may either be a proxy account or a main account. If the signer is a proxy account,
-    /// the main account will be provided as Option
-    pub fn main_account(&self) -> &AccountId {
-        match self {
-            TrustedCall::balance_set_balance(main_account, _, _, _) => main_account,
-            TrustedCall::balance_transfer(main_account, _, _) => main_account,
-            TrustedCall::balance_unshield(main_account, _, _, _) => main_account,
-            TrustedCall::balance_shield(main_account, _) => main_account,
+	/// Get the main account ID. For the polkadex orders, the first argument is always the signer.
+	/// A signer may either be a proxy account or a main account. If the signer is a proxy account,
+	/// the main account will be provided as Option
+	pub fn main_account(&self) -> &AccountId {
+		match self {
+			TrustedCall::balance_set_balance(main_account, _, _, _) => main_account,
+			TrustedCall::balance_transfer(main_account, _, _) => main_account,
+			TrustedCall::balance_unshield(main_account, _, _, _) => main_account,
+			TrustedCall::balance_shield(main_account, _) => main_account,
 
-            TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
-                Some(main_account) => main_account,
-                None => signer,
-            },
+			TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
+				Some(main_account) => main_account,
+				None => signer,
+			},
 
-            TrustedCall::cancel_order(signer, _, main_account_option) => {
-                match main_account_option {
-                    Some(main_account) => main_account,
-                    None => signer,
-                }
-            }
+			TrustedCall::cancel_order(signer, _, main_account_option) =>
+				match main_account_option {
+					Some(main_account) => main_account,
+					None => signer,
+				},
 
-            TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
-                Some(main_account) => main_account,
-                None => signer,
-            },
-        }
-    }
+			TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
+				Some(main_account) => main_account,
+				None => signer,
+			},
+		}
+	}
 
-    /// Get the Proxy account, if available
-    /// If the main account is set, the signer is a proxy account. Otherwise there is no proxy account set
-    pub fn proxy_account(&self) -> Option<AccountId> {
-        match self {
-            TrustedCall::balance_set_balance(_, _, _, _) => None,
-            TrustedCall::balance_transfer(_, _, _) => None,
-            TrustedCall::balance_unshield(_, _, _, _) => None,
-            TrustedCall::balance_shield(_, _) => None,
+	/// Get the Proxy account, if available
+	/// If the main account is set, the signer is a proxy account. Otherwise there is no proxy account set
+	pub fn proxy_account(&self) -> Option<AccountId> {
+		match self {
+			TrustedCall::balance_set_balance(_, _, _, _) => None,
+			TrustedCall::balance_transfer(_, _, _) => None,
+			TrustedCall::balance_unshield(_, _, _, _) => None,
+			TrustedCall::balance_shield(_, _) => None,
 
-            TrustedCall::place_order(signer, _, main_account_option) => {
-                main_account_option.as_ref().map(|_| signer.clone())
-            }
+			TrustedCall::place_order(signer, _, main_account_option) =>
+				main_account_option.as_ref().map(|_| signer.clone()),
 
-            TrustedCall::cancel_order(signer, _, main_account_option) => {
-                main_account_option.as_ref().map(|_| signer.clone())
-            }
+			TrustedCall::cancel_order(signer, _, main_account_option) =>
+				main_account_option.as_ref().map(|_| signer.clone()),
 
-            TrustedCall::withdraw(signer, _, _, main_account_option) => {
-                main_account_option.as_ref().map(|_| signer.clone())
-            }
-        }
-    }
+			TrustedCall::withdraw(signer, _, _, main_account_option) =>
+				main_account_option.as_ref().map(|_| signer.clone()),
+		}
+	}
 
-    pub fn sign(
-        &self,
-        pair: &KeyPair,
-        nonce: Index,
-        mrenclave: &[u8; 32],
-        shard: &ShardIdentifier,
-    ) -> TrustedCallSigned {
-        let mut payload = self.encode();
-        payload.append(&mut nonce.encode());
-        payload.append(&mut mrenclave.encode());
-        payload.append(&mut shard.encode());
+	pub fn sign(
+		&self,
+		pair: &KeyPair,
+		nonce: Index,
+		mrenclave: &[u8; 32],
+		shard: &ShardIdentifier,
+	) -> TrustedCallSigned {
+		let mut payload = self.encode();
+		payload.append(&mut nonce.encode());
+		payload.append(&mut mrenclave.encode());
+		payload.append(&mut shard.encode());
 
-        TrustedCallSigned {
-            call: self.clone(),
-            nonce,
-            signature: pair.sign(payload.as_slice()),
-        }
-    }
+		TrustedCallSigned { call: self.clone(), nonce, signature: pair.sign(payload.as_slice()) }
+	}
 }
 
 #[derive(Encode, Decode, Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub enum TrustedGetter {
-    free_balance(AccountId),
-    reserved_balance(AccountId),
-    nonce(AccountId),
-    get_balance(AccountId, CurrencyId, Option<AccountId>), // (SignerAccount, tokenid, MainAccount (if signer is proxy))
+	free_balance(AccountId),
+	reserved_balance(AccountId),
+	nonce(AccountId),
+	get_balance(AccountId, CurrencyId, Option<AccountId>), // (SignerAccount, tokenid, MainAccount (if signer is proxy))
 }
 
 impl TrustedGetter {
-    pub fn signer(&self) -> &AccountId {
-        match self {
-            TrustedGetter::free_balance(signer) => signer,
-            TrustedGetter::reserved_balance(signer) => signer,
-            TrustedGetter::nonce(signer) => signer,
-            TrustedGetter::get_balance(signer, _, _) => signer,
-        }
-    }
+	pub fn signer(&self) -> &AccountId {
+		match self {
+			TrustedGetter::free_balance(signer) => signer,
+			TrustedGetter::reserved_balance(signer) => signer,
+			TrustedGetter::nonce(signer) => signer,
+			TrustedGetter::get_balance(signer, _, _) => signer,
+		}
+	}
 
-    /// Get the main account ID. For the polkadex orders, the first argument is always the signer.
-    /// A signer may either be a proxy account or a main account. If the signer is a proxy account,
-    /// the main account will be provided as Option
-    pub fn main_account(&self) -> &AccountId {
-        match self {
-            TrustedGetter::free_balance(main_account) => main_account,
-            TrustedGetter::reserved_balance(main_account) => main_account,
-            TrustedGetter::nonce(main_account) => main_account,
+	/// Get the main account ID. For the polkadex orders, the first argument is always the signer.
+	/// A signer may either be a proxy account or a main account. If the signer is a proxy account,
+	/// the main account will be provided as Option
+	pub fn main_account(&self) -> &AccountId {
+		match self {
+			TrustedGetter::free_balance(main_account) => main_account,
+			TrustedGetter::reserved_balance(main_account) => main_account,
+			TrustedGetter::nonce(main_account) => main_account,
 
-            TrustedGetter::get_balance(signer, _, main_account_option) => match main_account_option
-            {
-                Some(main_account) => main_account,
-                None => signer,
-            },
-        }
-    }
+			TrustedGetter::get_balance(signer, _, main_account_option) => match main_account_option
+			{
+				Some(main_account) => main_account,
+				None => signer,
+			},
+		}
+	}
 
-    /// Get the Proxy account, if available
-    /// If the main account is set, the signer is a proxy account. Otherwise there is no proxy account set
-    pub fn proxy_account(&self) -> Option<AccountId> {
-        match self {
-            TrustedGetter::free_balance(_) => None,
-            TrustedGetter::reserved_balance(_) => None,
-            TrustedGetter::nonce(_) => None,
-            TrustedGetter::get_balance(signer, _, main_account_option) => {
-                main_account_option.as_ref().map(|_| signer.clone())
-            }
-        }
-    }
+	/// Get the Proxy account, if available
+	/// If the main account is set, the signer is a proxy account. Otherwise there is no proxy account set
+	pub fn proxy_account(&self) -> Option<AccountId> {
+		match self {
+			TrustedGetter::free_balance(_) => None,
+			TrustedGetter::reserved_balance(_) => None,
+			TrustedGetter::nonce(_) => None,
+			TrustedGetter::get_balance(signer, _, main_account_option) =>
+				main_account_option.as_ref().map(|_| signer.clone()),
+		}
+	}
 
-    pub fn sign(&self, pair: &KeyPair) -> TrustedGetterSigned {
-        let signature = pair.sign(self.encode().as_slice());
-        TrustedGetterSigned {
-            getter: self.clone(),
-            signature,
-        }
-    }
+	pub fn sign(&self, pair: &KeyPair) -> TrustedGetterSigned {
+		let signature = pair.sign(self.encode().as_slice());
+		TrustedGetterSigned { getter: self.clone(), signature }
+	}
 }
 
 #[derive(Encode, Decode, Clone, Debug)]
@@ -337,14 +325,13 @@ pub struct TrustedGetterSigned {
 }
 
 impl TrustedGetterSigned {
-    pub fn new(getter: TrustedGetter, signature: Signature) -> Self {
-        TrustedGetterSigned { getter, signature }
-    }
+	pub fn new(getter: TrustedGetter, signature: Signature) -> Self {
+		TrustedGetterSigned { getter, signature }
+	}
 
-    pub fn verify_signature(&self) -> bool {
-        self.signature
-            .verify(self.getter.encode().as_slice(), self.getter.signer())
-    }
+	pub fn verify_signature(&self) -> bool {
+		self.signature.verify(self.getter.encode().as_slice(), self.getter.signer())
+	}
 }
 
 #[derive(Encode, Decode, Clone, Debug)]
@@ -355,29 +342,24 @@ pub struct TrustedCallSigned {
 }
 
 impl TrustedCallSigned {
-    pub fn new(call: TrustedCall, nonce: Index, signature: Signature) -> Self {
-        TrustedCallSigned {
-            call,
-            nonce,
-            signature,
-        }
-    }
+	pub fn new(call: TrustedCall, nonce: Index, signature: Signature) -> Self {
+		TrustedCallSigned { call, nonce, signature }
+	}
 
-    pub fn verify_signature(&self, mrenclave: &[u8; 32], shard: &ShardIdentifier) -> bool {
-        let mut payload = self.call.encode();
-        payload.append(&mut self.nonce.encode());
-        payload.append(&mut mrenclave.encode());
-        payload.append(&mut shard.encode());
-        self.signature
-            .verify(payload.as_slice(), self.call.signer())
-    }
+	pub fn verify_signature(&self, mrenclave: &[u8; 32], shard: &ShardIdentifier) -> bool {
+		let mut payload = self.call.encode();
+		payload.append(&mut self.nonce.encode());
+		payload.append(&mut mrenclave.encode());
+		payload.append(&mut shard.encode());
+		self.signature.verify(payload.as_slice(), self.call.signer())
+	}
 
-    pub fn into_trusted_operation(self, direct: bool) -> TrustedOperation {
-        match direct {
-            true => TrustedOperation::direct_call(self),
-            false => TrustedOperation::indirect_call(self),
-        }
-    }
+	pub fn into_trusted_operation(self, direct: bool) -> TrustedOperation {
+		match direct {
+			true => TrustedOperation::direct_call(self),
+			false => TrustedOperation::indirect_call(self),
+		}
+	}
 }
 
 // TODO: #91 signed return value
@@ -470,27 +452,27 @@ mod tests {
 		assert_eq!(state_update, *payload.state_update());
 	}
 
-	 #[test]
-    fn given_proxy_account_on_getter_then_return_some() {
-        let main_account = AccountKeyring::Alice;
-        let proxy_account = AccountKeyring::Bob;
+	#[test]
+	fn given_proxy_account_on_getter_then_return_some() {
+		let main_account = AccountKeyring::Alice;
+		let proxy_account = AccountKeyring::Bob;
 
-        let trusted_getter = TrustedGetter::get_balance(
-            main_account.public().into(),
-            CurrencyId::DOT,
-            Some(proxy_account.public().into()),
-        );
+		let trusted_getter = TrustedGetter::get_balance(
+			main_account.public().into(),
+			CurrencyId::DOT,
+			Some(proxy_account.public().into()),
+		);
 
-        assert!(trusted_getter.proxy_account().is_some());
-    }
+		assert!(trusted_getter.proxy_account().is_some());
+	}
 
-    #[test]
-    fn given_no_proxy_account_on_getter_then_return_none() {
-        let main_account = AccountKeyring::Alice;
+	#[test]
+	fn given_no_proxy_account_on_getter_then_return_none() {
+		let main_account = AccountKeyring::Alice;
 
-        let trusted_getter =
-            TrustedGetter::get_balance(main_account.public().into(), CurrencyId::DOT, None);
+		let trusted_getter =
+			TrustedGetter::get_balance(main_account.public().into(), CurrencyId::DOT, None);
 
-        assert!(trusted_getter.proxy_account().is_none());
-    }
+		assert!(trusted_getter.proxy_account().is_none());
+	}
 }

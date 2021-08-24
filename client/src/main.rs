@@ -34,22 +34,22 @@ use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
-    pallet_teerex::Request, AccountId, BalancesCall, Call, Event, Hash, Signature},
-    AccountId, BalancesCall, Call, Event, Hash,
+	pallet_teerex::Request, AccountId, BalancesCall, Call, Event, Hash, Signature,
 };
 use orml_tokens::AccountData;
-use polkadex_sgx_primitives::types::DirectRequest;
-use polkadex_sgx_primitives::{AssetId, Balance};
+use polkadex_sgx_primitives::{types::DirectRequest, AssetId, Balance};
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
 use sp_keyring::AccountKeyring;
 use sp_runtime::MultiSignature;
-use std::convert::TryFrom;
-use std::result::Result as StdResult;
-use std::sync::mpsc::channel;
-use std::thread;
-use std::time::{Duration, UNIX_EPOCH};
+use std::{
+	convert::TryFrom,
+	result::Result as StdResult,
+	sync::mpsc::channel,
+	thread,
+	time::{Duration, UNIX_EPOCH},
+};
 use substrate_api_client::{
 	compose_extrinsic, compose_extrinsic_offline,
 	extrinsic::xt_primitives::{GenericAddress, UncheckedExtrinsicV4},
@@ -414,10 +414,10 @@ fn main() {
 				}),
 		)
 		.add_cmd(ocex_commands::register_account_command())
-        .add_cmd(ocex_commands::register_proxy_command())
-        .add_cmd(ocex_commands::remove_proxy_command())
-        .add_cmd(ocex_commands::withdraw_command())
-        .add_cmd(ocex_commands::deposit_command())
+		.add_cmd(ocex_commands::register_proxy_command())
+		.add_cmd(ocex_commands::remove_proxy_command())
+		.add_cmd(ocex_commands::withdraw_command())
+		.add_cmd(ocex_commands::deposit_command())
 		.add_cmd(substratee_stf::cli::cmd(&perform_trusted_operation))
 		.no_cmd(|_args, _matches| {
 			println!("No subcommand matched");
@@ -440,20 +440,20 @@ fn get_chain_api(matches: &ArgMatches<'_>) -> Api<sr25519::Pair, WsRpcClient> {
 }
 
 fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -> Option<Vec<u8>> {
-    match top {
-        TrustedOperation::indirect_call(call) => {
-            debug!("performing trusted operation - indirect call");
-            send_request(matches, call.clone())
-        }
-        TrustedOperation::direct_call(call) => {
-            debug!("performing trusted operation - direct call");
-            send_direct_request_encoded(matches, TrustedOperation::direct_call(call.clone()))
-        }
-        TrustedOperation::get(getter) => {
-            debug!("performing trusted operation - getter");
-            send_direct_request_encoded(matches, TrustedOperation::get(getter.clone()))
-        }
-    }
+	match top {
+		TrustedOperation::indirect_call(call) => {
+			debug!("performing trusted operation - indirect call");
+			send_request(matches, call.clone())
+		},
+		TrustedOperation::direct_call(call) => {
+			debug!("performing trusted operation - direct call");
+			send_direct_request_encoded(matches, TrustedOperation::direct_call(call.clone()))
+		},
+		TrustedOperation::get(getter) => {
+			debug!("performing trusted operation - getter");
+			send_direct_request_encoded(matches, TrustedOperation::get(getter.clone()))
+		},
+	}
 }
 
 #[allow(unused)]
@@ -523,61 +523,54 @@ fn encode_encrypt<E: Encode>(
 }
 
 fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec<u8>> {
-    let chain_api = get_chain_api(matches);
-    let (_, call_encrypted) = match encode_encrypt(matches, call) {
-        Ok((encoded, encrypted)) => (encoded, encrypted),
-        Err(msg) => {
-            println!("[Error]: {}", msg);
-            return None;
-        }
-    };
+	let chain_api = get_chain_api(matches);
+	let (_, call_encrypted) = match encode_encrypt(matches, call) {
+		Ok((encoded, encrypted)) => (encoded, encrypted),
+		Err(msg) => {
+			println!("[Error]: {}", msg);
+			return None
+		},
+	};
 
-    let shard = read_shard(matches).unwrap();
+	let shard = read_shard(matches).unwrap();
 
-    let arg_signer = matches.value_of("xt-signer").unwrap();
+	let arg_signer = matches.value_of("xt-signer").unwrap();
 
-    // TODO: clarify: we're getting these account information from the untrusted key store, is that correct?
-    let signer = get_pair_from_str_untrusted(arg_signer);
-    let _chain_api = chain_api.set_signer(sr25519_core::Pair::from(signer));
+	// TODO: clarify: we're getting these account information from the untrusted key store, is that correct?
+	let signer = get_pair_from_str_untrusted(arg_signer);
+	let _chain_api = chain_api.set_signer(sr25519_core::Pair::from(signer));
 
-    let request = Request {
-        shard,
-        cyphertext: call_encrypted,
-    };
-    let xt = compose_extrinsic!(_chain_api, "SubstrateeRegistry", "call_worker", request);
+	let request = Request { shard, cyphertext: call_encrypted };
+	let xt = compose_extrinsic!(_chain_api, "SubstrateeRegistry", "call_worker", request);
 
-    // send and watch extrinsic until block is executed
-    let block_hash = _chain_api
-        .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
-        .unwrap()
-        .unwrap();
-    info!("stf call extrinsic sent. Block Hash: {:?}", block_hash);
-    info!("waiting for confirmation of stf call");
-    let (events_in, events_out) = channel();
-    _chain_api.subscribe_events(events_in).unwrap();
+	// send and watch extrinsic until block is executed
+	let block_hash =
+		_chain_api.send_extrinsic(xt.hex_encode(), XtStatus::InBlock).unwrap().unwrap();
+	info!("stf call extrinsic sent. Block Hash: {:?}", block_hash);
+	info!("waiting for confirmation of stf call");
+	let (events_in, events_out) = channel();
+	_chain_api.subscribe_events(events_in).unwrap();
 
-    let mut decoder = EventsDecoder::try_from(_chain_api.metadata.clone()).unwrap();
-    decoder
-        .register_type_size::<Hash>("ShardIdentifier")
-        .unwrap();
-    decoder.register_type_size::<Hash>("H256").unwrap();
+	let mut decoder = EventsDecoder::try_from(_chain_api.metadata.clone()).unwrap();
+	decoder.register_type_size::<Hash>("ShardIdentifier").unwrap();
+	decoder.register_type_size::<Hash>("H256").unwrap();
 
-    loop {
-        let ret: BlockConfirmedArgs = _chain_api
-            .wait_for_event::<BlockConfirmedArgs>(
-                "SubstrateeRegistry",
-                "BlockConfirmed",
-                Some(decoder.clone()),
-                &events_out,
-            )
-            .unwrap();
-        info!("BlockConfirmed event received");
-        debug!("Expected stf block Hash: {:?}", block_hash);
-        debug!("Confirmed stf block Hash: {:?}", ret.payload);
-        if ret.payload == block_hash {
-            return Some(ret.payload.encode());
-        }
-    }
+	loop {
+		let ret: BlockConfirmedArgs = _chain_api
+			.wait_for_event::<BlockConfirmedArgs>(
+				"SubstrateeRegistry",
+				"BlockConfirmed",
+				Some(decoder.clone()),
+				&events_out,
+			)
+			.unwrap();
+		info!("BlockConfirmed event received");
+		debug!("Expected stf block Hash: {:?}", block_hash);
+		debug!("Confirmed stf block Hash: {:?}", ret.payload);
+		if ret.payload == block_hash {
+			return Some(ret.payload.encode())
+		}
+	}
 }
 
 fn get_worker_api_direct(matches: &ArgMatches<'_>) -> DirectWorkerApi {
@@ -607,119 +600,111 @@ fn read_shard(matches: &ArgMatches<'_>) -> StdResult<ShardIdentifier, codec::Err
 }
 
 fn send_direct_request_encoded(
-    matches: &ArgMatches<'_>,
-    operation_call: TrustedOperation,
+	matches: &ArgMatches<'_>,
+	operation_call: TrustedOperation,
 ) -> Option<Vec<u8>> {
-    let operation_call_encoded = operation_call.encode();
+	let operation_call_encoded = operation_call.encode();
 
-    let shard = read_shard(matches).unwrap();
+	let shard = read_shard(matches).unwrap();
 
-    // compose jsonrpc call
-    let data = DirectRequest {
-        shard,
-        encoded_text: operation_call_encoded,
-    };
+	// compose jsonrpc call
+	let data = DirectRequest { shard, encoded_text: operation_call_encoded };
 
-    let rpc_method_str = match get_rpc_function_name_from_top(&operation_call) {
-        Some(str) => str,
-        None => {
-            println!("[Error]: This type of TrustedOperation is not supported");
-            return None;
-        }
-    };
+	let rpc_method_str = match get_rpc_function_name_from_top(&operation_call) {
+		Some(str) => str,
+		None => {
+			println!("[Error]: This type of TrustedOperation is not supported");
+			return None
+		},
+	};
 
-    debug!("Got trusted operation for RPC method {}", rpc_method_str);
+	debug!("Got trusted operation for RPC method {}", rpc_method_str);
 
-    let direct_invocation_call = RpcRequest {
-        jsonrpc: "2.0".to_owned(),
-        method: rpc_method_str,
-        params: data.encode(),
-        id: 1,
-    };
+	let direct_invocation_call = RpcRequest {
+		jsonrpc: "2.0".to_owned(),
+		method: rpc_method_str,
+		params: data.encode(),
+		id: 1,
+	};
 
-    let direct_api = get_worker_api_direct(matches);
+	let direct_api = get_worker_api_direct(matches);
 
-    send_direct_request(direct_invocation_call, direct_api)
+	send_direct_request(direct_invocation_call, direct_api)
 }
 
 /// sends a rpc watch request to the worker api server
 #[allow(unused)]
 fn send_direct_request_encrypted(
-    matches: &ArgMatches<'_>,
-    operation_call: TrustedOperation,
+	matches: &ArgMatches<'_>,
+	operation_call: TrustedOperation,
 ) -> Option<Vec<u8>> {
-    let (_operation_call_encoded, operation_call_encrypted) =
-        match encode_encrypt(matches, operation_call) {
-            Ok((encoded, encrypted)) => (encoded, encrypted),
-            Err(msg) => {
-                println!("[Error] {}", msg);
-                return None;
-            }
-        };
-    let shard = read_shard(matches).unwrap();
+	let (_operation_call_encoded, operation_call_encrypted) =
+		match encode_encrypt(matches, operation_call) {
+			Ok((encoded, encrypted)) => (encoded, encrypted),
+			Err(msg) => {
+				println!("[Error] {}", msg);
+				return None
+			},
+		};
+	let shard = read_shard(matches).unwrap();
 
-    // compose jsonrpc call
-    let data = Request {
-        shard,
-        cyphertext: operation_call_encrypted,
-    };
-    let direct_invocation_call = RpcRequest {
-        jsonrpc: "2.0".to_owned(),
-        method: "author_submitAndWatchExtrinsic".to_owned(),
-        params: data.encode(),
-        id: 1,
-    };
+	// compose jsonrpc call
+	let data = Request { shard, cyphertext: operation_call_encrypted };
+	let direct_invocation_call = RpcRequest {
+		jsonrpc: "2.0".to_owned(),
+		method: "author_submitAndWatchExtrinsic".to_owned(),
+		params: data.encode(),
+		id: 1,
+	};
 
-    let direct_api = get_worker_api_direct(matches);
+	let direct_api = get_worker_api_direct(matches);
 
-    send_direct_request(direct_invocation_call, direct_api)
+	send_direct_request(direct_invocation_call, direct_api)
 }
 
 fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> Option<Vec<u8>> {
-    let jsonrpc_call: String = serde_json::to_string(&rpc_request).unwrap();
+	let jsonrpc_call: String = serde_json::to_string(&rpc_request).unwrap();
 
-    let (sender, receiver) = channel();
-    match worker_api.watch(jsonrpc_call, sender) {
-        Ok(_) => {}
-        Err(_) => panic!("Error when sending direct invocation call"),
-    }
+	let (sender, receiver) = channel();
+	match worker_api.watch(jsonrpc_call, sender) {
+		Ok(_) => {},
+		Err(_) => panic!("Error when sending direct invocation call"),
+	}
 
-    loop {
-        match receiver.recv() {
-            Ok(response) => {
-                debug!("Recevied respsonse: {:?}", response);
-                let response: RpcResponse = serde_json::from_str(&response).unwrap();
-                if let Ok(return_value) = RpcReturnValue::decode(&mut response.result.as_slice()) {
-                    debug!("Return value: {:?}", return_value);
-                    match return_value.status {
-                        DirectRequestStatus::Error => {
-                            if let Ok(value) = String::decode(&mut return_value.value.as_slice()) {
-                                println!("[Error] {}", value);
-                            }
-                            return None;
-                        }
-                        DirectRequestStatus::TrustedOperationStatus(status) => {
-                            if let Ok(value) = Hash::decode(&mut return_value.value.as_slice()) {
-                                println!("Trusted call {:?} is {:?}", value, status);
-                            }
-                        }
-                        DirectRequestStatus::Ok => {
-                            if !return_value.do_watch {
-                                return Some(return_value.value);
-                            }
-                        }
-                    }
-                };
-            }
-            Err(_) => return None,
-        };
-    }
+	loop {
+		match receiver.recv() {
+			Ok(response) => {
+				debug!("Recevied respsonse: {:?}", response);
+				let response: RpcResponse = serde_json::from_str(&response).unwrap();
+				if let Ok(return_value) = RpcReturnValue::decode(&mut response.result.as_slice()) {
+					debug!("Return value: {:?}", return_value);
+					match return_value.status {
+						DirectRequestStatus::Error => {
+							if let Ok(value) = String::decode(&mut return_value.value.as_slice()) {
+								println!("[Error] {}", value);
+							}
+							return None
+						},
+						DirectRequestStatus::TrustedOperationStatus(status) => {
+							if let Ok(value) = Hash::decode(&mut return_value.value.as_slice()) {
+								println!("Trusted call {:?} is {:?}", value, status);
+							}
+						},
+						DirectRequestStatus::Ok =>
+							if !return_value.do_watch {
+								return Some(return_value.value)
+							},
+					}
+				};
+			},
+			Err(_) => return None,
+		};
+	}
 }
 
 #[allow(dead_code)]
 #[derive(Decode)]
-struct BlockConfirmedArgs {
-}
+struct BlockConfirmedArgs {}
 
 fn listen(matches: &ArgMatches<'_>) {
 	let api = get_chain_api(matches);

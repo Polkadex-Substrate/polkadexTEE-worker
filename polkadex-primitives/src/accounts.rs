@@ -24,5 +24,5 @@ use codec::Encode;
 use sp_core::blake2_256;
 
 pub fn get_account(seed: &str) -> AccountId {
-    AccountId::new(Vec::from(seed).using_encoded(blake2_256))
+	AccountId::new(Vec::from(seed).using_encoded(blake2_256))
 }

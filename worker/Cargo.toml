@@ -49,7 +49,7 @@ substratee-worker-api = { path = "rpc/client" }
 substratee-worker-rpc-server = { path = "rpc/server" }
 substratee-enclave-api = { path = "../primitives/enclave-api" }
 substratee-stf = { path = "../stf" }
-polkadex-primitives = { path = "../polkadex-primitives" }
+polkadex-sgx-primitives = { path = "../polkadex-primitives" }
 
 # scs / polkadex
 substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "master" }
