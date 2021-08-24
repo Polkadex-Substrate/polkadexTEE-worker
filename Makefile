@@ -66,6 +66,10 @@ else
 	CARGO_TARGET := --release
 endif
 
+# Keep in sync with /root/work/rust-toolchain
+RUSTVERSION_TOOLCHAIN=nightly-2021-05-11
+RUSTVERSION=+$(RUSTVERSION_TOOLCHAIN)
+
 ifeq ($(SGX_PRODUCTION), 1)
 	SGX_ENCLAVE_MODE = "Production Mode"
 	SGX_ENCLAVE_CONFIG = "enclave/Enclave.config.production.xml"
@@ -167,7 +171,7 @@ $(Worker_Enclave_u_Object): worker/Enclave_u.o
 $(Worker_Name): $(Worker_Enclave_u_Object) $(Worker_SRC_Files)
 	@echo
 	@echo "Building the substraTEE-worker"
-	@cd worker && SGX_SDK=$(SGX_SDK) cargo build $(Worker_Rust_Flags)
+	@cd worker && SGX_SDK=$(SGX_SDK) cargo $(RUSTVERSION) build $(Worker_Rust_Flags)
 	@echo "Cargo  =>  $@"
 	cp $(Worker_Rust_Path)/substratee-worker ./bin
 	cp $(Worker_Rust_Path)/substratee-worker ./bin2
@@ -176,7 +180,7 @@ $(Worker_Name): $(Worker_Enclave_u_Object) $(Worker_SRC_Files)
 $(Client_Name): $(Client_SRC_Files)
 	@echo
 	@echo "Building the substraTEE-client"
-	@cd $(Client_SRC_Path) && cargo build $(Client_Rust_Flags)
+	@cd $(Client_SRC_Path) && cargo $(RUSTVERSION) build $(Client_Rust_Flags)
 	@echo "Cargo  =>  $@"
 	cp $(Client_Rust_Path)/$(Client_Binary) ./bin
 
@@ -225,6 +229,13 @@ mrsigner:
 
 .PHONY: identity
 identity: mrenclave mrsigner
+
+
+.PHONY: init
+init:
+	rustup toolchain add  $(RUSTVERSION_TOOLCHAIN)
+	rustup target add wasm32-unknown-unknown --toolchain $(RUSTVERSION_TOOLCHAIN)
+	rustup target add x86_64-unknown-linux-gnu --toolchain $(RUSTVERSION_TOOLCHAIN)
 
 .PHONY: help
 help:
