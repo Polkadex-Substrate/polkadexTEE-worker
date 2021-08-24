@@ -1,3 +1,5 @@
+# This file is copy pasted from Integritee - needs to be adapted first to be usable for polkadex
+
 name: Build, Test, Clippy
 
 on:
