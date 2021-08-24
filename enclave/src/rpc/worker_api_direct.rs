@@ -1,17 +1,17 @@
 /*
-	Copyright 2019 Supercomputing Systems AG
+    Copyright 2019 Supercomputing Systems AG
 
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-		http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 
 */
 
@@ -45,8 +45,8 @@ use log::*;
 use serde_json::*;
 use sgx_types::*;
 use std::sync::{
-	atomic::{AtomicPtr, Ordering},
-	Arc, SgxMutex,
+    atomic::{AtomicPtr, Ordering},
+    Arc, SgxMutex,
 };
 
 use sp_core::H256 as Hash;
@@ -55,9 +55,9 @@ use codec::{Decode, Encode};
 use log::*;
 
 use crate::rpc::{
-	api::SideChainApi,
-	author::{Author, AuthorApi},
-	basic_pool::BasicPool,
+    api::SideChainApi,
+    author::{Author, AuthorApi},
+    basic_pool::BasicPool,
 };
 
 use crate::top_pool::pool::Options as PoolOptions;
@@ -72,7 +72,7 @@ use chain_relay::Block;
 
 use substratee_node_primitives::Request;
 use substratee_worker_primitives::{
-	block::SignedBlock, DirectRequestStatus, RpcReturnValue, TrustedOperationStatus,
+    block::SignedBlock, DirectRequestStatus, RpcReturnValue, TrustedOperationStatus,
 };
 
 use crate::{ocall::rpc_ocall::EnclaveRpcOCall, rsa3072, utils::write_slice_and_whitespace_pad};
@@ -82,51 +82,52 @@ static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 #[no_mangle]
 // initialise tx pool and store within static atomic pointer
 pub unsafe extern "C" fn initialize_pool() -> sgx_status_t {
-	let api = Arc::new(SideChainApi::new());
-	let tx_pool = BasicPool::create(PoolOptions::default(), api);
-	let pool_ptr =
-		Arc::new(SgxMutex::<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>::new(tx_pool));
-	let ptr = Arc::into_raw(pool_ptr);
-	GLOBAL_TX_POOL.store(ptr as *mut (), Ordering::SeqCst);
+    let api = Arc::new(SideChainApi::new());
+    let tx_pool = BasicPool::create(PoolOptions::default(), api);
+    let pool_ptr = Arc::new(SgxMutex::<
+        BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>,
+    >::new(tx_pool));
+    let ptr = Arc::into_raw(pool_ptr);
+    GLOBAL_TX_POOL.store(ptr as *mut (), Ordering::SeqCst);
 
-	sgx_status_t::SGX_SUCCESS
+    sgx_status_t::SGX_SUCCESS
 }
 
 pub fn load_top_pool(
 ) -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>> {
-	let ptr = GLOBAL_TX_POOL.load(Ordering::SeqCst)
-		as *mut SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>;
-	if ptr.is_null() {
-		None
-	} else {
-		Some(unsafe { &*ptr })
-	}
+    let ptr = GLOBAL_TX_POOL.load(Ordering::SeqCst)
+        as *mut SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>;
+    if ptr.is_null() {
+        None
+    } else {
+        Some(unsafe { &*ptr })
+    }
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
 fn convert_vec_to_string(vec_methods: Vec<&str>) -> String {
-	let mut method_string = String::new();
-	for i in 0..vec_methods.len() {
-		method_string.push_str(vec_methods[i]);
-		if vec_methods.len() > (i + 1) {
-			method_string.push_str(", ");
-		}
-	}
-	format!("methods: [{}]", method_string)
+    let mut method_string = String::new();
+    for i in 0..vec_methods.len() {
+        method_string.push_str(vec_methods[i]);
+        if vec_methods.len() > (i + 1) {
+            method_string.push_str(", ");
+        }
+    }
+    format!("methods: [{}]", method_string)
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
 #[allow(unused)]
 fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, String> {
-	let shard_vec = match shard_base58.from_base58() {
-		Ok(vec) => vec,
-		Err(_) => return Err("Invalid base58 format of shard id".to_owned()),
-	};
-	let shard = match ShardIdentifier::decode(&mut shard_vec.as_slice()) {
-		Ok(hash) => hash,
-		Err(_) => return Err("Shard ID is not of type H256".to_owned()),
-	};
-	Ok(shard)
+    let shard_vec = match shard_base58.from_base58() {
+        Ok(vec) => vec,
+        Err(_) => return Err("Invalid base58 format of shard id".to_owned()),
+    };
+    let shard = match ShardIdentifier::decode(&mut shard_vec.as_slice()) {
+        Ok(hash) => hash,
+        Err(_) => return Err("Shard ID is not of type H256".to_owned()),
+    };
+    Ok(shard)
 }
 
 fn init_io_handler() -> IoHandler {
@@ -214,66 +215,69 @@ fn init_io_handler() -> IoHandler {
 
 #[no_mangle]
 pub unsafe extern "C" fn call_rpc_methods(
-	request: *const u8,
-	request_len: u32,
-	response: *mut u8,
-	response_len: u32,
+    request: *const u8,
+    request_len: u32,
+    response: *mut u8,
+    response_len: u32,
 ) -> sgx_status_t {
-	// init
-	let io = init_io_handler();
-	// get request string
-	let req: Vec<u8> = from_raw_parts(request, request_len as usize).to_vec();
-	let request_string = match str::from_utf8(&req) {
-		Ok(req) => req,
-		Err(e) => {
-			error!("Decoding Header failed. Error: {:?}", e);
-			return sgx_status_t::SGX_ERROR_UNEXPECTED
-		},
-	};
-	// Rpc Response String
-	let response_string = io.handle_request_sync(request_string).unwrap();
-	debug!("Response String: {:?}", response_string);
-	// update response outside of enclave
-	let response_slice = from_raw_parts_mut(response, response_len as usize);
-	write_slice_and_whitespace_pad(response_slice, response_string.as_bytes().to_vec());
-	sgx_status_t::SGX_SUCCESS
+    // init
+    let io = init_io_handler();
+    // get request string
+    let req: Vec<u8> = from_raw_parts(request, request_len as usize).to_vec();
+    let request_string = match str::from_utf8(&req) {
+        Ok(req) => req,
+        Err(e) => {
+            error!("Decoding Header failed. Error: {:?}", e);
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    };
+    // Rpc Response String
+    let response_string = io.handle_request_sync(request_string).unwrap();
+    debug!("Response String: {:?}", response_string);
+    // update response outside of enclave
+    let response_slice = from_raw_parts_mut(response, response_len as usize);
+    write_slice_and_whitespace_pad(response_slice, response_string.as_bytes().to_vec());
+    sgx_status_t::SGX_SUCCESS
 }
 
 pub mod tests {
-	use super::{alloc::string::ToString, init_io_handler};
-	use std::string::String;
+    use super::{alloc::string::ToString, init_io_handler};
+    use std::string::String;
 
-	fn rpc_response<T: ToString>(result: T) -> String {
-		format!(r#"{{"jsonrpc":"2.0","result":{},"id":1}}"#, result.to_string())
-	}
+    fn rpc_response<T: ToString>(result: T) -> String {
+        format!(
+            r#"{{"jsonrpc":"2.0","result":{},"id":1}}"#,
+            result.to_string()
+        )
+    }
 
-	pub fn sidechain_import_block_is_ok() {
-		let io = init_io_handler();
-		let enclave_req = r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":[4,0,0,0,0,0,0,0,0,228,0,145,188,97,251,138,131,108,29,6,107,10,152,67,29,148,190,114,167,223,169,197,163,93,228,76,169,171,80,15,209,101,11,211,96,0,0,0,0,83,52,167,255,37,229,185,231,38,66,122,3,55,139,5,190,125,85,94,177,190,99,22,149,92,97,154,30,142,89,24,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,136,220,52,23,213,5,142,196,180,80,62,12,18,234,26,10,137,190,32,15,233,137,34,66,61,67,52,1,79,166,176,238,0,0,0,175,124,84,84,32,238,162,224,130,203,26,66,7,121,44,59,196,200,100,31,173,226,165,106,187,135,223,149,30,46,191,95,116,203,205,102,100,85,82,74,158,197,166,218,181,130,119,127,162,134,227,129,118,85,123,76,21,113,90,1,160,77,110,15],"id":1}"#;
+    pub fn sidechain_import_block_is_ok() {
+        let io = init_io_handler();
+        let enclave_req = r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":[4,0,0,0,0,0,0,0,0,228,0,145,188,97,251,138,131,108,29,6,107,10,152,67,29,148,190,114,167,223,169,197,163,93,228,76,169,171,80,15,209,101,11,211,96,0,0,0,0,83,52,167,255,37,229,185,231,38,66,122,3,55,139,5,190,125,85,94,177,190,99,22,149,92,97,154,30,142,89,24,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,136,220,52,23,213,5,142,196,180,80,62,12,18,234,26,10,137,190,32,15,233,137,34,66,61,67,52,1,79,166,176,238,0,0,0,175,124,84,84,32,238,162,224,130,203,26,66,7,121,44,59,196,200,100,31,173,226,165,106,187,135,223,149,30,46,191,95,116,203,205,102,100,85,82,74,158,197,166,218,181,130,119,127,162,134,227,129,118,85,123,76,21,113,90,1,160,77,110,15],"id":1}"#;
 
-		let response_string = io.handle_request_sync(enclave_req).unwrap();
+        let response_string = io.handle_request_sync(enclave_req).unwrap();
 
-		assert_eq!(response_string, rpc_response("\"ok\""));
-	}
+        assert_eq!(response_string, rpc_response("\"ok\""));
+    }
 
-	pub fn sidechain_import_block_returns_invalid_param_err() {
-		let io = init_io_handler();
-		let enclave_req = r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":["SophisticatedInvalidParam"],"id":1}"#;
+    pub fn sidechain_import_block_returns_invalid_param_err() {
+        let io = init_io_handler();
+        let enclave_req = r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":["SophisticatedInvalidParam"],"id":1}"#;
 
-		let response_string = io.handle_request_sync(enclave_req).unwrap();
+        let response_string = io.handle_request_sync(enclave_req).unwrap();
 
-		let err_msg = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid params: invalid type: string \"SophisticatedInvalidParam\", expected u8."},"id":1}"#;
-		assert_eq!(response_string, err_msg);
-	}
+        let err_msg = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid params: invalid type: string \"SophisticatedInvalidParam\", expected u8."},"id":1}"#;
+        assert_eq!(response_string, err_msg);
+    }
 
-	pub fn sidechain_import_block_returns_decode_err() {
-		let io = init_io_handler();
-		let enclave_req =
-			r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":[2],"id":1}"#;
+    pub fn sidechain_import_block_returns_decode_err() {
+        let io = init_io_handler();
+        let enclave_req =
+            r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":[2],"id":1}"#;
 
-		let response_string = io.handle_request_sync(enclave_req).unwrap();
+        let response_string = io.handle_request_sync(enclave_req).unwrap();
 
-		let err_msg = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid parameters: Could not decode Vec<SignedBlock>","data":"[2]"},"id":1}"#;
-		assert_eq!(response_string, err_msg);
-	}
+        let err_msg = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid parameters: Could not decode Vec<SignedBlock>","data":"[2]"},"id":1}"#;
+        assert_eq!(response_string, err_msg);
+    }
 }
