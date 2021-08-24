@@ -18,57 +18,57 @@ use substratee_worker_primitives::WorkerRequest;
 ///
 /// This is very generic and most-likely one of the innermost traits.
 pub trait GetStorageVerified {
-	fn get_storage_verified<H: Header<Hash = H256>, V: Decode>(
-		&self,
-		storage_hash: Vec<u8>,
-		header: &H,
-	) -> Result<StorageEntryVerified<V>>;
+    fn get_storage_verified<H: Header<Hash = H256>, V: Decode>(
+        &self,
+        storage_hash: Vec<u8>,
+        header: &H,
+    ) -> Result<StorageEntryVerified<V>>;
 
-	fn get_multiple_storages_verified<H: Header<Hash = H256>, V: Decode>(
-		&self,
-		storage_hashes: Vec<Vec<u8>>,
-		header: &H,
-	) -> Result<Vec<StorageEntryVerified<V>>>;
+    fn get_multiple_storages_verified<H: Header<Hash = H256>, V: Decode>(
+        &self,
+        storage_hashes: Vec<Vec<u8>>,
+        header: &H,
+    ) -> Result<Vec<StorageEntryVerified<V>>>;
 }
 
 impl<O: EnclaveOnChainOCallApi> GetStorageVerified for O {
-	fn get_storage_verified<H: Header<Hash = H256>, V: Decode>(
-		&self,
-		storage_hash: Vec<u8>,
-		header: &H,
-	) -> Result<StorageEntryVerified<V>> {
-		// the code below seems like an overkill, but it is surprisingly difficult to
-		// get an owned value from a `Vec` without cloning.
-		Ok(self
-			.get_multiple_storages_verified(vec![storage_hash], header)?
-			.into_iter()
-			.next()
-			.ok_or(StorageError::StorageValueUnavailable)?)
-	}
+    fn get_storage_verified<H: Header<Hash = H256>, V: Decode>(
+        &self,
+        storage_hash: Vec<u8>,
+        header: &H,
+    ) -> Result<StorageEntryVerified<V>> {
+        // the code below seems like an overkill, but it is surprisingly difficult to
+        // get an owned value from a `Vec` without cloning.
+        Ok(self
+            .get_multiple_storages_verified(vec![storage_hash], header)?
+            .into_iter()
+            .next()
+            .ok_or(StorageError::StorageValueUnavailable)?)
+    }
 
-	fn get_multiple_storages_verified<H: Header<Hash = H256>, V: Decode>(
-		&self,
-		storage_hashes: Vec<Vec<u8>>,
-		header: &H,
-	) -> Result<Vec<StorageEntryVerified<V>>> {
-		let requests = storage_hashes
-			.into_iter()
-			.map(|key| WorkerRequest::ChainStorage(key, Some(header.hash())))
-			.collect();
+    fn get_multiple_storages_verified<H: Header<Hash = H256>, V: Decode>(
+        &self,
+        storage_hashes: Vec<Vec<u8>>,
+        header: &H,
+    ) -> Result<Vec<StorageEntryVerified<V>>> {
+        let requests = storage_hashes
+            .into_iter()
+            .map(|key| WorkerRequest::ChainStorage(key, Some(header.hash())))
+            .collect();
 
-		let storage_entries = self
-			.worker_request::<Vec<u8>>(requests)
-			.map(|storages| verify_storage_entries(storages, header))??;
+        let storage_entries = self
+            .worker_request::<Vec<u8>>(requests)
+            .map(|storages| verify_storage_entries(storages, header))??;
 
-		Ok(storage_entries)
-	}
+        Ok(storage_entries)
+    }
 }
 
 #[derive(Debug, Display, From)]
 pub enum Error {
-	Storage(StorageError),
-	Codec(codec::Error),
-	Sgx(sgx_types::sgx_status_t),
+    Storage(StorageError),
+    Codec(codec::Error),
+    Sgx(sgx_types::sgx_status_t),
 }
 
 pub type Result<T> = StdResult<T, Error>;

@@ -10,26 +10,31 @@ pub struct TeeRexStorage;
 // define another struct `OtherStorage`, implement `StoragePrefix` for it, and get the
 // `TeerexStorageKeys` implementation for free.
 pub trait StoragePrefix {
-	fn prefix() -> &'static str;
+    fn prefix() -> &'static str;
 }
 
 impl StoragePrefix for TeeRexStorage {
-	fn prefix() -> &'static str {
-		"SubstrateeRegistry"
-	}
+    fn prefix() -> &'static str {
+        "SubstrateeRegistry"
+    }
 }
 
 pub trait TeerexStorageKeys {
-	fn enclave_count() -> Vec<u8>;
-	fn enclave(index: u64) -> Vec<u8>;
+    fn enclave_count() -> Vec<u8>;
+    fn enclave(index: u64) -> Vec<u8>;
 }
 
 impl<S: StoragePrefix> TeerexStorageKeys for S {
-	fn enclave_count() -> Vec<u8> {
-		storage_value_key(Self::prefix(), "EnclaveCount")
-	}
+    fn enclave_count() -> Vec<u8> {
+        storage_value_key(Self::prefix(), "EnclaveCount")
+    }
 
-	fn enclave(index: u64) -> Vec<u8> {
-		storage_map_key(Self::prefix(), "EnclaveRegistry", &index, &StorageHasher::Blake2_128Concat)
-	}
+    fn enclave(index: u64) -> Vec<u8> {
+        storage_map_key(
+            Self::prefix(),
+            "EnclaveRegistry",
+            &index,
+            &StorageHasher::Blake2_128Concat,
+        )
+    }
 }

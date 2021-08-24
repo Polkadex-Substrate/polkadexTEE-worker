@@ -33,140 +33,140 @@ pub const MRENCLAVE_ARG_NAME: &str = "mrenclave";
 pub const SHARD_ARG_NAME: &str = "shard";
 
 pub fn add_common_order_command_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	let app_with_main_account = add_main_account_args(app);
-	let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
-	add_order_args(app_with_proxy_account)
+    let app_with_main_account = add_main_account_args(app);
+    let app_with_proxy_account = add_proxy_account_args(app_with_main_account);
+    add_order_args(app_with_proxy_account)
 }
 
 pub fn add_token_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(TOKEN_ID_ARG_NAME)
-			.long(TOKEN_ID_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Token (i.e. currency) ID, e.g. "),
-	)
+    app.arg(
+        Arg::with_name(TOKEN_ID_ARG_NAME)
+            .long(TOKEN_ID_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Token (i.e. currency) ID, e.g. "),
+    )
 }
 
 pub fn add_quantity_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(QUANTITY_ARG_NAME)
-			.long(QUANTITY_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("u128")
-			.help("specifies the amount of funds/tokens"),
-	)
+    app.arg(
+        Arg::with_name(QUANTITY_ARG_NAME)
+            .long(QUANTITY_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("u128")
+            .help("specifies the amount of funds/tokens"),
+    )
 }
 
 pub fn add_main_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(ACCOUNT_ID_ARG_NAME)
-			.long(ACCOUNT_ID_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("SS58")
-			.help("Account/User ID"),
-	)
+    app.arg(
+        Arg::with_name(ACCOUNT_ID_ARG_NAME)
+            .long(ACCOUNT_ID_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("SS58")
+            .help("Account/User ID"),
+    )
 }
 
 pub fn add_proxy_account_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(PROXY_ACCOUNT_ID_ARG_NAME)
-			.long(PROXY_ACCOUNT_ID_ARG_NAME)
-			.takes_value(true)
-			.required(false) // proxy account is optional
-			.value_name("SS58")
-			.help("Proxy Account ID"),
-	)
+    app.arg(
+        Arg::with_name(PROXY_ACCOUNT_ID_ARG_NAME)
+            .long(PROXY_ACCOUNT_ID_ARG_NAME)
+            .takes_value(true)
+            .required(false) // proxy account is optional
+            .value_name("SS58")
+            .help("Proxy Account ID"),
+    )
 }
 
 pub fn add_order_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(ORDER_UUID_ARG_NAME)
-			.long(ORDER_UUID_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("UUID STRING")
-			.help("Order UUID"),
-	)
+    app.arg(
+        Arg::with_name(ORDER_UUID_ARG_NAME)
+            .long(ORDER_UUID_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("UUID STRING")
+            .help("Order UUID"),
+    )
 }
 
 pub fn add_market_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(MARKET_ID_BASE_ARG_NAME)
-			.long(MARKET_ID_BASE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
-	)
-	.arg(
-		Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
-			.long(MARKET_ID_QUOTE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
-	)
+    app.arg(
+        Arg::with_name(MARKET_ID_BASE_ARG_NAME)
+            .long(MARKET_ID_BASE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
+    )
+    .arg(
+        Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
+            .long(MARKET_ID_QUOTE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
+    )
 }
 
 pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
-	app.arg(
-		Arg::with_name(MARKET_ID_BASE_ARG_NAME)
-			.long(MARKET_ID_BASE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
-	)
-	.arg(
-		Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
-			.long(MARKET_ID_QUOTE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
-	)
-	.arg(
-		Arg::with_name(MARKET_TYPE_ARG_NAME)
-			.long(MARKET_TYPE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Market type, e.g. 'trusted'"),
-	)
-	.arg(
-		Arg::with_name(ORDER_TYPE_ARG_NAME)
-			.long(ORDER_TYPE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Order type: one of [market, limit, postonly, fillorkill]"),
-	)
-	.arg(
-		Arg::with_name(ORDER_SIDE_ARG_NAME)
-			.long(ORDER_SIDE_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("STRING")
-			.help("Order side: one of [bid, ask]"),
-	)
-	.arg(
-		Arg::with_name(QUANTITY_ARG_NAME)
-			.long(QUANTITY_ARG_NAME)
-			.takes_value(true)
-			.required(true)
-			.value_name("u128")
-			.help("An amount that placed within the order"),
-	)
-	.arg(
-		Arg::with_name(PRICE_ARG_NAME)
-			.long(PRICE_ARG_NAME)
-			.takes_value(true)
-			.required(false)
-			.value_name("u128")
-			.help("Main (limit) price of the order (optional)"),
-	)
+    app.arg(
+        Arg::with_name(MARKET_ID_BASE_ARG_NAME)
+            .long(MARKET_ID_BASE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
+    )
+    .arg(
+        Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
+            .long(MARKET_ID_QUOTE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
+    )
+    .arg(
+        Arg::with_name(MARKET_TYPE_ARG_NAME)
+            .long(MARKET_TYPE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Market type, e.g. 'trusted'"),
+    )
+    .arg(
+        Arg::with_name(ORDER_TYPE_ARG_NAME)
+            .long(ORDER_TYPE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Order type: one of [market, limit, postonly, fillorkill]"),
+    )
+    .arg(
+        Arg::with_name(ORDER_SIDE_ARG_NAME)
+            .long(ORDER_SIDE_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("STRING")
+            .help("Order side: one of [bid, ask]"),
+    )
+    .arg(
+        Arg::with_name(QUANTITY_ARG_NAME)
+            .long(QUANTITY_ARG_NAME)
+            .takes_value(true)
+            .required(true)
+            .value_name("u128")
+            .help("An amount that placed within the order"),
+    )
+    .arg(
+        Arg::with_name(PRICE_ARG_NAME)
+            .long(PRICE_ARG_NAME)
+            .takes_value(true)
+            .required(false)
+            .value_name("u128")
+            .help("Main (limit) price of the order (optional)"),
+    )
 }
