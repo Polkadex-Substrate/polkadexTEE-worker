@@ -444,15 +444,15 @@ fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -
         TrustedOperation::indirect_call(call) => {
             debug!("performing trusted operation - indirect call");
             send_request(matches, call.clone())
-        },
+        }
         TrustedOperation::direct_call(call) => {
             debug!("performing trusted operation - direct call");
             send_direct_request_encoded(matches, TrustedOperation::direct_call(call.clone()))
-        },
+        }
         TrustedOperation::get(getter) => {
             debug!("performing trusted operation - getter");
             send_direct_request_encoded(matches, TrustedOperation::get(getter.clone()))
-        },
+        }
     }
 }
 
@@ -464,20 +464,23 @@ fn get_state(matches: &ArgMatches<'_>, getter: TrustedOperation) -> Option<Vec<u
         Ok((encoded, encrypted)) => (encoded, encrypted),
         Err(msg) => {
             println!("[Error] {}", msg);
-            return None
-        },
+            return None;
+        }
     };
     let shard = read_shard(matches).unwrap();
 
     // compose jsonrpc call
-    let data = Request { shard, cyphertext: operation_call_encrypted };
+    let data = Request {
+        shard,
+        cyphertext: operation_call_encrypted,
+    };
     let rpc_method = "author_submitAndWatchExtrinsic".to_owned();
     let jsonrpc_call: String = RpcRequest::compose_jsonrpc_call(rpc_method, data.encode());
 
     let direct_api = get_worker_api_direct(matches);
     let (sender, receiver) = channel();
     match direct_api.watch(jsonrpc_call, sender) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => panic!("Error when sending direct invocation call"),
     }
 
@@ -491,16 +494,16 @@ fn get_state(matches: &ArgMatches<'_>, getter: TrustedOperation) -> Option<Vec<u
                             "[Error] {}",
                             String::decode(&mut return_value.value.as_slice()).unwrap()
                         );
-                        return None
+                        return None;
                     }
                     if !return_value.do_watch {
                         return match Option::decode(&mut return_value.value.as_slice()) {
                             Ok(value_opt) => value_opt,
                             Err(_) => panic!("Error when decoding response"),
-                        }
+                        };
                     }
                 };
-            },
+            }
             Err(_) => return None,
         };
     }
@@ -518,7 +521,9 @@ fn encode_encrypt<E: Encode>(
 
     let encoded = to_encrypt.encode();
     let mut encrypted: Vec<u8> = Vec::new();
-    shielding_pubkey.encrypt_buffer(&encoded, &mut encrypted).unwrap();
+    shielding_pubkey
+        .encrypt_buffer(&encoded, &mut encrypted)
+        .unwrap();
     Ok((encoded, encrypted))
 }
 
@@ -528,8 +533,8 @@ fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec
         Ok((encoded, encrypted)) => (encoded, encrypted),
         Err(msg) => {
             println!("[Error]: {}", msg);
-            return None
-        },
+            return None;
+        }
     };
 
     let shard = read_shard(matches).unwrap();
@@ -540,19 +545,26 @@ fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec
     let signer = get_pair_from_str_untrusted(arg_signer);
     let _chain_api = chain_api.set_signer(sr25519_core::Pair::from(signer));
 
-    let request = Request { shard, cyphertext: call_encrypted };
+    let request = Request {
+        shard,
+        cyphertext: call_encrypted,
+    };
     let xt = compose_extrinsic!(_chain_api, "SubstrateeRegistry", "call_worker", request);
 
     // send and watch extrinsic until block is executed
-    let block_hash =
-        _chain_api.send_extrinsic(xt.hex_encode(), XtStatus::InBlock).unwrap().unwrap();
+    let block_hash = _chain_api
+        .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
+        .unwrap()
+        .unwrap();
     info!("stf call extrinsic sent. Block Hash: {:?}", block_hash);
     info!("waiting for confirmation of stf call");
     let (events_in, events_out) = channel();
     _chain_api.subscribe_events(events_in).unwrap();
 
     let mut decoder = EventsDecoder::try_from(_chain_api.metadata.clone()).unwrap();
-    decoder.register_type_size::<Hash>("ShardIdentifier").unwrap();
+    decoder
+        .register_type_size::<Hash>("ShardIdentifier")
+        .unwrap();
     decoder.register_type_size::<Hash>("H256").unwrap();
 
     loop {
@@ -568,7 +580,7 @@ fn send_request(matches: &ArgMatches<'_>, call: TrustedCallSigned) -> Option<Vec
         debug!("Expected stf block Hash: {:?}", block_hash);
         debug!("Confirmed stf block Hash: {:?}", ret.payload);
         if ret.payload == block_hash {
-            return Some(ret.payload.encode())
+            return Some(ret.payload.encode());
         }
     }
 }
@@ -608,14 +620,17 @@ fn send_direct_request_encoded(
     let shard = read_shard(matches).unwrap();
 
     // compose jsonrpc call
-    let data = DirectRequest { shard, encoded_text: operation_call_encoded };
+    let data = DirectRequest {
+        shard,
+        encoded_text: operation_call_encoded,
+    };
 
     let rpc_method_str = match get_rpc_function_name_from_top(&operation_call) {
         Some(str) => str,
         None => {
             println!("[Error]: This type of TrustedOperation is not supported");
-            return None
-        },
+            return None;
+        }
     };
 
     debug!("Got trusted operation for RPC method {}", rpc_method_str);
@@ -643,13 +658,16 @@ fn send_direct_request_encrypted(
             Ok((encoded, encrypted)) => (encoded, encrypted),
             Err(msg) => {
                 println!("[Error] {}", msg);
-                return None
-            },
+                return None;
+            }
         };
     let shard = read_shard(matches).unwrap();
 
     // compose jsonrpc call
-    let data = Request { shard, cyphertext: operation_call_encrypted };
+    let data = Request {
+        shard,
+        cyphertext: operation_call_encrypted,
+    };
     let direct_invocation_call = RpcRequest {
         jsonrpc: "2.0".to_owned(),
         method: "author_submitAndWatchExtrinsic".to_owned(),
@@ -667,7 +685,7 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
 
     let (sender, receiver) = channel();
     match worker_api.watch(jsonrpc_call, sender) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(_) => panic!("Error when sending direct invocation call"),
     }
 
@@ -683,20 +701,21 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
                             if let Ok(value) = String::decode(&mut return_value.value.as_slice()) {
                                 println!("[Error] {}", value);
                             }
-                            return None
-                        },
+                            return None;
+                        }
                         DirectRequestStatus::TrustedOperationStatus(status) => {
                             if let Ok(value) = Hash::decode(&mut return_value.value.as_slice()) {
                                 println!("Trusted call {:?} is {:?}", value, status);
                             }
-                        },
-                        DirectRequestStatus::Ok =>
+                        }
+                        DirectRequestStatus::Ok => {
                             if !return_value.do_watch {
-                                return Some(return_value.value)
-                            },
+                                return Some(return_value.value);
+                            }
+                        }
                     }
                 };
-            },
+            }
             Err(_) => return None,
         };
     }
@@ -717,12 +736,12 @@ fn listen(matches: &ArgMatches<'_>) {
         if matches.is_present("events")
             && count >= value_t!(matches.value_of("events"), u32).unwrap()
         {
-            return
+            return;
         };
         if matches.is_present("blocks")
             && blocks > value_t!(matches.value_of("blocks"), u32).unwrap()
         {
-            return
+            return;
         };
         let event_str = events_out.recv().unwrap();
         let _unhex = Vec::from_hex(event_str).unwrap();
@@ -762,12 +781,12 @@ fn listen(matches: &ArgMatches<'_>) {
                                         String::from_utf8(url.to_vec())
                                             .unwrap_or_else(|_| "error".to_string())
                                     );
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::RemovedEnclave(
                                     accountid,
                                 ) => {
                                     println!("RemovedEnclave: {:?}", accountid);
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::UpdatedIpfsHash(
                                     shard,
                                     idx,
@@ -779,13 +798,13 @@ fn listen(matches: &ArgMatches<'_>) {
                                         idx,
                                         ipfs_hash
                                     );
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::Forwarded(shard) => {
                                     println!(
                                         "Forwarded request for shard {}",
                                         shard.encode().to_base58()
                                     );
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::CallConfirmed(
                                     accountid,
                                     call_hash,
@@ -794,7 +813,7 @@ fn listen(matches: &ArgMatches<'_>) {
                                         "CallConfirmed from {} with hash {:?}",
                                         accountid, call_hash
                                     );
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::BlockConfirmed(
                                     accountid,
                                     block_hash,
@@ -803,23 +822,23 @@ fn listen(matches: &ArgMatches<'_>) {
                                         "BlockConfirmed from {} with hash {:?}",
                                         accountid, block_hash
                                     );
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::ShieldFunds(
                                     incognito_account,
                                 ) => {
                                     println!("ShieldFunds for {:?}", incognito_account);
-                                },
+                                }
                                 my_node_runtime::pallet_teerex::RawEvent::UnshieldedFunds(
                                     public_account,
                                 ) => {
                                     println!("UnshieldFunds for {:?}", public_account);
-                                },
+                                }
                             }
-                        },
+                        }
                         _ => debug!("ignoring unsupported module event: {:?}", evr.event),
                     }
                 }
-            },
+            }
             Err(_) => error!("couldn't decode event record list"),
         }
     }
@@ -857,7 +876,7 @@ where
                     ) = &pe
                     {
                         println!("[+] Received confirm call from {}", sender);
-                        return payload.clone().to_owned()
+                        return payload.clone().to_owned();
                     } else {
                         debug!("received unknown event from Teerex: {:?}", evr.event)
                     }
@@ -894,6 +913,6 @@ fn get_pair_from_str(account: &str) -> sr25519::AppPair {
                 .unwrap();
             drop(store);
             _pair
-        },
+        }
     }
 }

@@ -54,8 +54,10 @@ pub fn register_account_command<'a>() -> Command<'a, str> {
                 account_id.public().into()
             );
 
-            let tx_hash =
-                chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap().unwrap();
+            let tx_hash = chain_api
+                .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+                .unwrap()
+                .unwrap();
             println!("[+] Transaction got finalized.. Hash: {:?}\n", tx_hash);
             Ok(())
         })
@@ -101,8 +103,10 @@ pub fn register_proxy_command<'a>() -> Command<'a, str> {
                 proxy
             );
 
-            let tx_hash =
-                chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap().unwrap();
+            let tx_hash = chain_api
+                .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+                .unwrap()
+                .unwrap();
             println!("[+] Transaction got finalized. Hash: {:?}\n", tx_hash);
             Ok(())
         })
@@ -148,8 +152,10 @@ pub fn remove_proxy_command<'a>() -> Command<'a, str> {
                 proxy
             );
 
-            let tx_hash =
-                chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap().unwrap();
+            let tx_hash = chain_api
+                .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+                .unwrap()
+                .unwrap();
             println!("[+] Transaction got finalized. Hash: {:?}\n", tx_hash);
             Ok(())
         })
