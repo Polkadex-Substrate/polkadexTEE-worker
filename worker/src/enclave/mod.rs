@@ -17,6 +17,5 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod api;
-pub mod attestation_ocalls;
 pub mod openfinex_tcp_client;
 pub mod tls_ra;

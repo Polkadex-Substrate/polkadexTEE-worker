@@ -1,17 +1,17 @@
 /*
-	Copyright 2019 Supercomputing Systems AG
+    Copyright 2019 Supercomputing Systems AG
 
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-		http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 
 */
 
@@ -26,32 +26,32 @@ use substratee_settings::worker::MR_ENCLAVE_SIZE;
 pub struct EnclaveBaseMock;
 
 impl EnclaveBase for EnclaveBaseMock {
-	fn init(&self) -> EnclaveResult<()> {
-		Ok(())
-	}
+    fn init(&self) -> EnclaveResult<()> {
+        Ok(())
+    }
 
-	fn init_chain_relay<SpHeader: Header>(
-		&self,
-		genesis_header: SpHeader,
-		_authority_list: VersionedAuthorityList,
-		_authority_proof: Vec<Vec<u8>>,
-	) -> EnclaveResult<SpHeader> {
-		Ok(genesis_header)
-	}
+    fn init_chain_relay<SpHeader: Header>(
+        &self,
+        genesis_header: SpHeader,
+        _authority_list: VersionedAuthorityList,
+        _authority_proof: Vec<Vec<u8>>,
+    ) -> EnclaveResult<SpHeader> {
+        Ok(genesis_header)
+    }
 
-	fn get_state(&self, _cyphertext: Vec<u8>, _shard: Vec<u8>) -> EnclaveResult<Vec<u8>> {
-		Ok(Vec::<u8>::new())
-	}
+    fn get_state(&self, _cyphertext: Vec<u8>, _shard: Vec<u8>) -> EnclaveResult<Vec<u8>> {
+        Ok(Vec::<u8>::new())
+    }
 
-	fn get_rsa_shielding_pubkey(&self) -> EnclaveResult<Rsa3072PubKey> {
-		unreachable!()
-	}
+    fn get_rsa_shielding_pubkey(&self) -> EnclaveResult<Rsa3072PubKey> {
+        unreachable!()
+    }
 
-	fn get_ecc_signing_pubkey(&self) -> EnclaveResult<ed25519::Public> {
-		unreachable!()
-	}
+    fn get_ecc_signing_pubkey(&self) -> EnclaveResult<ed25519::Public> {
+        unreachable!()
+    }
 
-	fn get_mrenclave(&self) -> EnclaveResult<[u8; MR_ENCLAVE_SIZE]> {
-		Ok([1u8; MR_ENCLAVE_SIZE])
-	}
+    fn get_mrenclave(&self) -> EnclaveResult<[u8; MR_ENCLAVE_SIZE]> {
+        Ok([1u8; MR_ENCLAVE_SIZE])
+    }
 }
