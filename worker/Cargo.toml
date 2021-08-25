@@ -52,18 +52,18 @@ substratee-stf = { path = "../stf" }
 polkadex-sgx-primitives = { path = "../polkadex-primitives" }
 
 # scs / polkadex
-substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "master" }
+substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-08" }
 my-node-runtime = { package = "node-polkadex-runtime", git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop" }
 polkadex-primitives = { git = "https://github.com/Polkadex-Substrate/polkadex-primitives" }
 
 # Substrate dependencies
-sp-runtime = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
-pallet-balances = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
-sp-core = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
-sp-keyring = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
-frame-system = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
-sp-finality-grandpa = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
-frame-support = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master" }
+sp-runtime = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+pallet-balances = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-core = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-keyring = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+frame-system = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-finality-grandpa = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+frame-support = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
 
 
 [features]
