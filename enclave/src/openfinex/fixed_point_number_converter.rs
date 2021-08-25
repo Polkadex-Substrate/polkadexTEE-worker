@@ -29,7 +29,7 @@ use core::iter::Peekable;
 pub struct FixedPointNumberConverter {}
 
 impl FixedPointNumberConverter {
-    const PRECISION: usize = 18;
+    const PRECISION: usize = 4;
 
     /// parses a fixed point number (base10) from a string and converts it to
     /// an integer value, shifted by UNIT orders of magnitude. Any digits that are beyond this
@@ -91,7 +91,7 @@ impl FixedPointNumberConverter {
             return format!("{}.0", integer_part);
         }
 
-        format!("{}.{:0>18}", integer_part, fraction)
+        format!("{}.{:0>4}", integer_part, fraction)
     }
 }
 

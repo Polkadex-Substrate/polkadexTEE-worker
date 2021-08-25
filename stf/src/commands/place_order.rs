@@ -76,8 +76,14 @@ fn command_runner<'a>(
 
     debug!("Successfully built place_order trusted operation, dispatching now to enclave");
 
-    let _ = perform_operation(matches, &place_order_top);
+    //let _ = perform_operation(matches, &place_order_top);
 
+    // let bal = if let Some(v) = perform_operation(matches, &place_order_top) {
+    //         v
+    //     } ;
+    let bal = perform_operation(matches, &place_order_top).unwrap();
+
+    println!("{:?}", bal);
     debug!("place_order trusted operation was executed");
 
     Ok(())

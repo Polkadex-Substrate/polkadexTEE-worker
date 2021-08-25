@@ -344,6 +344,8 @@ pub fn process_create_order(
     } else {
         return Err(GatewayError::NonceNotPresent);
     }
+    error!(">1 {:?}", order_uuid.clone()); //TODO remove it
+    error!(">1 Request Id {:?}", request_id); //TODO remove it
     if send_uuid(request_id, order_uuid).is_err() {
         return Err(GatewayError::NotAbleToSendUUID);
     }
