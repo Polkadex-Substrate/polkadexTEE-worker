@@ -47,15 +47,24 @@ pub struct LinkedAccount {
     pub current: AccountId,
     pub next: Option<AccountId>,
     pub proxies: Vec<AccountId>,
+    pub own_referral_id: Option<Vec<u8>>,
+    pub referral_account_id: Option<Vec<u8>>,
 }
 
 impl LinkedAccount {
-    pub fn from(prev: AccountId, current: AccountId) -> Self {
+    pub fn from(
+        prev: AccountId,
+        current: AccountId,
+        own_referral_id: Option<Vec<u8>>,
+        referral_account_id: Option<Vec<u8>>,
+    ) -> Self {
         LinkedAccount {
             prev,
             next: None,
             current,
             proxies: vec![],
+            own_referral_id,
+            referral_account_id,
         }
     }
 }
@@ -67,6 +76,8 @@ impl Default for LinkedAccount {
             current: GENESIS_ACCOUNT.into_account(),
             next: None,
             proxies: vec![],
+            own_referral_id: None,
+            referral_account_id: None,
         }
     }
 }
