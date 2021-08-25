@@ -27,6 +27,26 @@ use substratee_enclave_api::{
 };
 use substratee_settings::files::{ENCLAVE_FILE, ENCLAVE_TOKEN};
 
+// FIXME: These extern c functions should be moved to the other ffis
+extern "C" {
+    fn accept_pdex_accounts(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        pdex_accounts: *const u8,
+        pdex_accounts_size: usize,
+    ) -> sgx_status_t;
+
+    fn run_db_thread(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
+
+    fn load_orders_to_memory(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        orders: *const u8,
+        orders_size: usize,
+    ) -> sgx_status_t;
+
+}
+
 pub fn enclave_init() -> EnclaveResult<Enclave> {
     const LEN: usize = 1024;
     let mut launch_token = [0; LEN];
@@ -270,31 +290,6 @@ pub fn enclave_load_orders_to_memory(
             &mut status,
             orders.encode().as_ptr(),
             orders.encode().len(),
-        )
-    };
-
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-    Ok(())
-}
-
-pub fn accept_pdex_accounts(
-    eid: sgx_enclave_id_t,
-    pdex_accounts: Vec<PolkadexAccount>,
-) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe {
-        accept_pdex_accounts(
-            eid,
-            &mut status,
-            pdex_accounts.encode().as_ptr(),
-            pdex_accounts.encode().len(),
         )
     };
 
