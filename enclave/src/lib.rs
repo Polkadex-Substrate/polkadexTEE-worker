@@ -1077,6 +1077,18 @@ where
     debug!("Scanning block {} for relevant xt", block.header.number());
     let mut opaque_calls = Vec::<OpaqueCall>::new();
     for xt_opaque in block.extrinsics.iter() {
+        // shield funds XT
+        if let Ok(xt) =
+            UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
+        {
+            // confirm call decodes successfully as well
+            if xt.function.0 == [SUBSTRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
+                if let Err(e) = handle_shield_funds_xt(&mut opaque_calls, xt) {
+                    error!("Error performing shieldfunds. Error: {:?}", e);
+                }
+            }
+        };
+
         // Polkadex OCEX Register
         if let Ok(xt) =
             UncheckedExtrinsicV4::<OCEXRegisterFn>::decode(&mut xt_opaque.encode().as_slice())
@@ -1134,19 +1146,6 @@ where
                 }
             }
         }
-
-        // shield funds XT
-        if let Ok(xt) =
-            UncheckedExtrinsicV4::<ShieldFundsFn>::decode(&mut xt_opaque.encode().as_slice())
-        {
-            // confirm call decodes successfully as well
-            if xt.function.0 == [SUBSTRATEE_REGISTRY_MODULE, SHIELD_FUNDS] {
-                if let Err(e) = handle_shield_funds_xt(&mut opaque_calls, xt) {
-                    error!("Error performing shieldfunds. Error: {:?}", e);
-                }
-            }
-        };
-
         // call worker XT
         if let Ok(xt) =
             UncheckedExtrinsicV4::<CallWorkerFn>::decode(&mut xt_opaque.encode().as_slice())
@@ -1423,6 +1422,22 @@ where
     debug!("Call hash 0x{}", hex::encode_hex(&call_hash));
 
     Ok(Some((H256::from(call_hash), H256::from(operation_hash))))
+}
+
+// FIXME: these ocalls should probably be moved to the ocall folder
+extern "C" {
+    pub fn ocall_write_order_to_db(
+        ret_val: *mut sgx_status_t,
+        order: *const u8,
+        order_size: u32,
+    ) -> sgx_status_t;
+
+    pub fn ocall_send_release_extrinsic(
+        ret_val: *mut sgx_status_t,
+        xt: *const u8,
+        size_xt: u32,
+    ) -> sgx_status_t;
+
 }
 
 pub fn into_map(
