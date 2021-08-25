@@ -146,19 +146,15 @@ struct WatchingClient {
 }
 
 fn load_watched_list() -> Option<&'static Mutex<HashMap<RequestId, WatchingClient>>> {
-    error!(">10"); //TODO remove it
     let ptr = WATCHED_LIST.load(Ordering::SeqCst) as *mut Mutex<HashMap<RequestId, WatchingClient>>;
     if ptr.is_null() {
-        error!(">11"); //TODO remove it
         None
     } else {
-        error!(">12"); //TODO remove it
         Some(unsafe { &*ptr })
     }
 }
 
 pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()> {
-    error!("Got message '{:?}'. ", req.request);
     let eid = unsafe { *EID.load(Ordering::SeqCst) };
     // forwarding rpc string directly to enclave
     let mut retval = sgx_status_t::SGX_SUCCESS;
@@ -180,30 +176,22 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
 
     match result {
         sgx_status_t::SGX_SUCCESS => {
-            error!("41");
             debug!("[RPC-Call] ECALL success!");
         }
         _ => {
             error!("[RPC-call] ECALL Enclave Failed {}!", result.as_str());
         }
     }
-    error!("42");
     let decoded_response = String::from_utf8_lossy(&response).to_string();
     if let Ok(full_rpc_response) =
         serde_json::from_str(&decoded_response) as serde_json::Result<RpcResponse>
     {
-        error!("44");
         if let Ok(result_of_rpc_response) =
             RpcReturnValue::decode(&mut full_rpc_response.result.as_slice())
-        { error!("N1");
-            error!(">>> resilt {:?}", result_of_rpc_response);
+        {
             if let DirectRequestStatus::Ok = result_of_rpc_response.status {
-                error!("43");
-                error!(">>> resilt {:?}", result_of_rpc_response);
-                error!(">>> resilt 2 {:?}", result_of_rpc_response.do_watch);
                 if result_of_rpc_response.do_watch {
                     // start watching the call with the specific hash
-                    error!("45");
 
                     if let Ok(request) =
                         RequestId::decode(&mut result_of_rpc_response.value.as_slice())
@@ -212,7 +200,7 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                         let mutex = load_watched_list().unwrap();
                         let mut watch_list: MutexGuard<HashMap<RequestId, WatchingClient>> =
                             mutex.lock().unwrap();
-                        error!("47");
+
 
                         // create new key and value entries to store
                         let new_client = WatchingClient {
@@ -223,16 +211,13 @@ pub fn handle_direct_invocation_request(req: DirectWsServerRequest) -> Result<()
                                 id: full_rpc_response.id,
                             },
                         };
-                        error!("watch list {:?}", request.clone());
                         // save in watch list
                         watch_list.insert(request, new_client);
                     }
                 }
             }
         } else {
-            error!("NOOOOO");
         }
-        error!("48");
         return req
             .client
             .send(serde_json::to_string(&full_rpc_response).unwrap());
@@ -260,31 +245,20 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
 ) -> sgx_status_t {
     let mut request_id_slice = slice::from_raw_parts(request_id_encoded, request_id_size as usize);
     let uuid_slice = slice::from_raw_parts(uuid_encoded, uuid_size as usize);
-    error!(">uuid{:?}",uuid_slice.clone());
-    error!(">2"); //TODO remove it
     if let Ok(request_id) = RequestId::decode(&mut request_id_slice) {
-        error!(">7"); //TODO remove it
         let mutex = if let Some(mutex) = load_watched_list() {
-            error!(">8"); //TODO remove it
             mutex
         } else {
-            error!(">3"); //TODO remove it
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
         let mut guard = if let Ok(value) = mutex.lock() {
-            error!(">9;"); //TODO remove it
             value
         } else {
-            error!(">4"); //TODO remove it
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
-        error!(">31;"); //TODO remove it
         let submitted = DirectRequestStatus::Ok;
         let result = RpcReturnValue::new(uuid_slice.to_vec(), false, submitted);
-        error!(">32;"); //TODO remove it
-        error!("request id {:?}", request_id.clone());
         if let Some(client_response) = guard.get_mut(&request_id) {
-            error!(">33"); //TODO remove it
             let mut response = &mut client_response.response;
             response.result = result.encode();
             client_response
@@ -294,15 +268,10 @@ pub unsafe extern "C" fn ocall_send_response_with_uuid(
 
             client_response.client.close(CloseCode::Normal).unwrap();
         } else {
-            error!(">34"); //TODO remove it
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         }
-        error!(">5"); //TODO remove it
         guard.remove(&request_id);
-    } else {
-        error!(">6");
     }
-    error!(">21");
     sgx_status_t::SGX_SUCCESS
 }
 

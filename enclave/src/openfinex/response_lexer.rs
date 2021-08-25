@@ -41,7 +41,6 @@ pub struct ResponseLexer {}
 impl ResponseLexer {
     pub fn lex(&self, input: &str) -> Result<Vec<LexItem>, String> {
         let mut result = Vec::new();
-        error!("print response: {:?}",input);
         let mut it = input.chars().peekable();
         while let Some(&c) = it.peek() {
             match c {
