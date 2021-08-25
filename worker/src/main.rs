@@ -117,6 +117,7 @@ fn main() {
     let matches = App::from_yaml(yml).get_matches();
 
     let mut config = Config::from(&matches);
+    // FIXME: Should probably be moved to config as well
     let finex_ip = matches.value_of("openfinex-server").unwrap_or("127.0.0.1");
     let finex_port_path = matches
         .value_of("openfinex-port")
@@ -305,7 +306,7 @@ fn start_worker<E, T, W>(
         finex_uri.port(),
         finex_uri.path()
     );
-    thread::spawn(move || enclave_run_openfinex_client(eid, finex_uri));
+    thread::spawn(move || enclave_run_openfinex_client(enclave.as_ref(), finex_uri));
 
     // ------------------------------------------------------------------------
     // start worker api direct invocation server
@@ -369,15 +370,13 @@ fn start_worker<E, T, W>(
     let tx_hash = node_api.send_extrinsic(xthex, XtStatus::Finalized).unwrap();
     println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
 
-    let latest_head = init_chain_relay(&node_api, enclave.as_ref());
+    let latest_head = init_chain_relay(enclave.as_ref(), &node_api, enclave.as_ref());
     println!("*** [+] Finished syncing chain relay\n");
 
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
-    crate::db_handler::DBHandler::initialize(eid);
+    crate::db_handler::DBHandler::initialize(enclave.as_ref());
 
-    let mut latest_head = init_chain_relay(eid, &api);
-    println!("*** [+] Finished syncing chain relay\n");
     // start disk & ipfs snapshotting
     polkadex_db::start_snapshot_loop();
 
@@ -408,7 +407,7 @@ fn start_worker<E, T, W>(
             if let Ok(events) = parse_events(msg.clone()) {
                 print_events(events, sender.clone())
             } else if let Ok(_header) = parse_header(msg.clone()) {
-                latest_head = sync_chain(eid, &api, latest_head);
+                latest_head = sync_chain(enclave.as_ref(), &api, latest_head);
             }
         }
     }
@@ -523,6 +522,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
 }
 
 pub fn init_chain_relay<E: EnclaveBase + SideChain>(
+    eid: sgx_enclave_id_t, // FIXME: this should be replaced with enclave_api entirely.
     api: &Api<sr25519::Pair, WsRpcClient>,
     enclave_api: &E,
 ) -> Header {
@@ -645,52 +645,6 @@ pub fn sync_chain(
     curr_head.block.header
 }
 
-/// gets a list of blocks that need to be synced, ordered from oldest to most recent header
-/// blocks that need to be synced are all blocks from the current header to the last synced header, iterating over parent
-fn get_blocks_to_sync(
-    api: &Api<sr25519::Pair, WsRpcClient>,
-    last_synced_head: &Header,
-    curr_head: &SignedBlock,
-) -> Vec<SignedBlock> {
-    let mut blocks_to_sync = Vec::<SignedBlock>::new();
-
-    // add blocks to sync if not already up to date
-    if curr_head.block.header.hash() != last_synced_head.hash() {
-        blocks_to_sync.push((*curr_head).clone());
-
-        // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
-        let mut head = (*curr_head).clone();
-        let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
-        if no_blocks_to_sync > 1 {
-            println!(
-                "Chain Relay is synced until block: {:?}",
-                last_synced_head.number
-            );
-            println!(
-                "Last finalized block number: {:?}\n",
-                head.block.header.number
-            );
-        }
-        while head.block.header.parent_hash != last_synced_head.hash() {
-            debug!("Getting head of hash: {:?}", head.block.header.parent_hash);
-            head = api
-                .signed_block(Some(head.block.header.parent_hash))
-                .unwrap()
-                .unwrap();
-            blocks_to_sync.push(head.clone());
-
-            if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
-                println!(
-                    "Remaining blocks to fetch until last synced header: {:?}",
-                    head.block.header.number - last_synced_head.number
-                )
-            }
-        }
-        blocks_to_sync.reverse();
-    }
-    blocks_to_sync
-}
-
 fn init_shard(shard: &ShardIdentifier) {
     let path = format!("{}/{}", SHARDS_PATH, shard.encode().to_base58());
     println!("initializing shard at {}", path);
@@ -736,12 +690,12 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair, WsRpcClient>, accountid
     let free = api.get_free_balance(&accountid).unwrap();
     info!("TEE's free balance = {:?}", free);
 
-    if free < 1_000_000_000_000 {
+    if free < 1_000_000_000_000_000_000 {
         let signer_orig = api.signer.clone();
         api.signer = Some(alice);
 
         println!("[+] bootstrap funding Enclave form Alice's funds");
-        let xt = api.balance_transfer(GenericAddress::Id(accountid.clone()), 1_000_000_000_000);
+        let xt = api.balance_transfer(GenericAddress::Id(accountid.clone()), 1_000_000_000_000_000_000);
         let xt_hash = api
             .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
             .unwrap();
