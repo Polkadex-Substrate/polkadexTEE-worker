@@ -179,15 +179,15 @@ pub mod tests {
     pub fn successfully_parse_numbers() {
         assert_eq!(
             FixedPointNumberConverter::parse_from_string(&"42".to_string()).unwrap(),
-            42_000_000_000_000_000_000
+            42_000
         );
         assert_eq!(
             FixedPointNumberConverter::parse_from_string(&"0.1234".to_string()).unwrap(),
-            123_400_000_000_000_000
+            123_40
         );
         assert_eq!(
             FixedPointNumberConverter::parse_from_string(&".005".to_string()).unwrap(),
-            5_000_000_000_000_000
+            5_000_0
         );
         assert_eq!(
             FixedPointNumberConverter::parse_from_string(
@@ -223,7 +223,7 @@ pub mod tests {
 
         assert_eq!(
             FixedPointNumberConverter::_to_string(42u128),
-            "0.000000000000000042".to_string()
+            "0.0042".to_string()
         );
 
         assert_eq!(
