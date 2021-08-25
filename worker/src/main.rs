@@ -370,13 +370,12 @@ fn start_worker<E, T, W>(
     let tx_hash = node_api.send_extrinsic(xthex, XtStatus::Finalized).unwrap();
     println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
 
-    let latest_head = init_chain_relay(enclave.as_ref(), &node_api, enclave.as_ref());
-    println!("*** [+] Finished syncing chain relay\n");
-
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
     crate::db_handler::DBHandler::initialize(enclave.as_ref());
 
+    let latest_head = init_chain_relay(enclave.as_ref(), &node_api, enclave.as_ref());
+    println!("*** [+] Finished syncing chain relay\n");
     // start disk & ipfs snapshotting
     polkadex_db::start_snapshot_loop();
 
