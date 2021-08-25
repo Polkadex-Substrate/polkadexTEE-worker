@@ -64,10 +64,10 @@ sc-keystore = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features
 # scs / polkadex
 sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-08", optional = true }
 sgx-runtime = { default-features = false, git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-08", optional = true }
-sgx-externalities = { default-features = false, git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-0", optional = true }
+sgx-externalities = { default-features = false, git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-08", optional = true }
 my-node-runtime = { package = "node-polkadex-runtime", git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop", optional = true }
-substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-0", optional = true }
-substrate-client-keystore = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-0", optional = true }
+substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-08", optional = true }
+substrate-client-keystore = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-08", optional = true }
 
 [dev-dependencies]
 sp-keyring = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
