@@ -17,7 +17,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::polkadex_gateway::GatewayError;
+use crate::Vec;
 use log::*;
+use polkadex_sgx_primitives::BalancesData;
 use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
@@ -231,5 +233,17 @@ pub fn lock_storage_increase_free_balance(
             GatewayError::UnableToLock
         })?;
     balance_storage.increase_free_balance(token, account, amount)?;
+    Ok(())
+}
+
+pub fn lock_storage_extend_from_disk(data: Vec<BalancesData>) -> Result<(), GatewayError> {
+    // Acquire lock on balance_storage
+    let mutex = load_balance_storage()?;
+    let mut balance_storage: SgxMutexGuard<PolkadexBalanceStorage> =
+        mutex.lock().map_err(|_| {
+            error!("Could not lock mutex of balance storage");
+            GatewayError::UnableToLock
+        })?;
+    balance_storage.extend_from_disk_data(data);
     Ok(())
 }

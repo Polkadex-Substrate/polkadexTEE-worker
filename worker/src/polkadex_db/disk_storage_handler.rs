@@ -26,6 +26,7 @@ use crate::constants::DEFAULT_STORAGE_PATH;
 use super::PolkadexDBError as Error;
 use super::Result;
 /// handles all disc permanent storage interactions of polkadex databases
+#[derive(Debug)]
 pub struct DiskStorageHandler {
     path: PathBuf,
     filename: PathBuf,

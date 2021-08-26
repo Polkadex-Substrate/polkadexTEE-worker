@@ -18,6 +18,7 @@
 
 use codec::Encode;
 use log::*;
+use polkadex_sgx_primitives::NonceData;
 use polkadex_sgx_primitives::{AccountId, PolkadexAccount};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::vec::Vec;
@@ -69,6 +70,13 @@ impl PolkadexNonceStorage {
     pub fn remove_nonce(&mut self, acc: AccountId) {
         debug!("initializing nonce for acc: {:?}", acc);
         self.storage.remove(&acc.encode());
+    }
+
+    pub fn extend_from_disk_data(&mut self, data: Vec<NonceData>) {
+        self.storage.extend(
+            data.into_iter()
+                .map(|entry| (entry.account_id.encode(), entry.nonce)),
+        );
     }
 }
 

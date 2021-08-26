@@ -54,3 +54,6 @@ pub static IPFS_PORT: u16 = 5001;
 
 // Interval of disk snapshot
 pub static SNAPSHOT_INTERVAL: u64 = 1000; // ms
+
+// Chunk size for sending data to enclave
+pub static CHUNK_SIZE: usize = 1000;

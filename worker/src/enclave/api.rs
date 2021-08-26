@@ -24,7 +24,6 @@ use crate::constants::{ENCLAVE_FILE, ENCLAVE_TOKEN, EXTRINSIC_MAX_SIZE, STATE_VA
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{Header, SignedBlock};
-use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::PolkadexAccount;
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sgx_types::*;
@@ -68,11 +67,11 @@ extern "C" {
 
     fn run_db_thread(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
 
-    fn load_orders_to_memory(
+    fn send_disk_data(
         eid: sgx_enclave_id_t,
         retval: *mut sgx_status_t,
-        orders: *const u8,
-        orders_size: usize,
+        encoded_data: *const u8,
+        data_size: usize,
     ) -> sgx_status_t;
 
     fn sync_chain(
@@ -290,25 +289,14 @@ pub fn enclave_run_db_thread(eid: sgx_enclave_id_t) -> SgxResult<()> {
     Ok(())
 }
 
-pub fn enclave_load_orders_to_memory(
-    eid: sgx_enclave_id_t,
-    orders: Vec<SignedOrder>,
-) -> SgxResult<()> {
+pub fn enclave_send_disk_data(eid: sgx_enclave_id_t, data: Vec<u8>) -> SgxResult<()> {
     let mut status = sgx_status_t::SGX_SUCCESS;
 
-    let result = unsafe {
-        load_orders_to_memory(
-            eid,
-            &mut status,
-            orders.encode().as_ptr(),
-            orders.encode().len(),
-        )
-    };
+    let result = unsafe { send_disk_data(eid, &mut status, data.as_ptr(), data.len()) };
 
     if status != sgx_status_t::SGX_SUCCESS {
         return Err(status);
     }
-
     if result != sgx_status_t::SGX_SUCCESS {
         return Err(result);
     }
