@@ -159,7 +159,7 @@ def direct_cancel_order(acc, proxy, base, quote, orderid):
         accs = acc_arg(acc) + proxy_arg(proxy)
     else:
         accs = acc_arg(acc)
-    market_args = base_arg(base) + quote_arg(quote) + markettype
+    market_args = base_arg(base) + quote_arg(quote)
     order_args = orderid_arg(orderid)
 
     ret = subprocess.run(cli + ["trusted", "cancel_order"] + accs + market_args + order_args + direct_tail(), stdout=subprocess.PIPE)
