@@ -345,12 +345,8 @@ pub fn authenticate_user_and_validate_nonce(
     proxy_acc: Option<AccountId>,
     nonce: u32,
 ) -> Result<(), GatewayError> {
-    if accounts_nonce_storage::auth_user_validate_increment_nonce(main_acc, proxy_acc, nonce)
-        .is_err()
-    {
-        return Err(GatewayError::NonceInvalid);
-    }
-    Ok(())
+    accounts_nonce_storage::auth_user_validate_increment_nonce(main_acc, proxy_acc, nonce)
+        .map_err(GatewayError::AccountRegistryError)
 }
 
 pub fn authenticate_user(
