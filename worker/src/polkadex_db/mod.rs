@@ -47,15 +47,18 @@ use std::time::{Duration, SystemTime};
 pub enum PolkadexDBError {
     /// Failed to load pointer
     UnableToLoadPointer,
+    /// Failed to lock mutex
+    UnableToLockMutex,
     /// Failed to deserialize value
     UnableToDeseralizeValue,
     /// Failed to find key in the DB
-    _KeyNotFound,
+    KeyNotFound,
     /// File system interaction error
     FsError(std::io::Error),
     /// Decode Error
-    #[allow(dead_code)] //FIXME: remove as soon _read_disk is actually used
     DecodeError(codec::Error),
+    /// Failed to send data to enclave
+    SendToEnclaveError,
     // Could not send IPFS snapshot
     IpfsError(String),
 }

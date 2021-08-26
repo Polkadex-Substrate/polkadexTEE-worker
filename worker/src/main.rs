@@ -49,8 +49,7 @@ use sp_keyring::AccountKeyring;
 use substrate_api_client::{utils::FromHexString, Api, GenericAddress, XtStatus};
 
 use crate::enclave::api::{
-    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_load_orders_to_memory,
-    enclave_sync_chain,
+    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_sync_chain,
 };
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
 use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
@@ -361,12 +360,18 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
+    crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
+
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
     crate::db_handler::DBHandler::initialize(eid);
 
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
+
+    crate::db_handler::DBHandler::send_data_to_enclave(eid)
+        .expect("Failed to send data to enclave");
+
     // start disk & ipfs snapshotting
     polkadex_db::start_snapshot_loop();
 
@@ -561,20 +566,6 @@ pub fn init_chain_relay(eid: sgx_enclave_id_t, api: &Api<sr25519::Pair>) -> Head
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
-    info!("Initializing Polkadex Orderbook Mirror");
-
-    info!("Loading Orders from Orderbook Storage");
-    let signed_orders = polkadex_db::orderbook::load_orderbook_mirror()
-        .unwrap() // TODO: Replace unwrap
-        .lock()
-        .unwrap()
-        .read_all()
-        .ok()
-        .unwrap();
-
-    enclave_load_orders_to_memory(eid, signed_orders).unwrap();
-
-    info!("Finished loading Orderbook Storage ...");
     sync_chain(eid, api, latest)
 }
 
