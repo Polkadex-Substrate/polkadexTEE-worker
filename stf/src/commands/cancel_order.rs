@@ -83,7 +83,7 @@ fn command_runner<'a>(
 
     let _ = perform_operation(matches, &cancel_order_top);
 
-    debug!("cancel_order trusted operation was executed");
+    println!("Succesfully issues cancel order request");
 
     Ok(())
 }
