@@ -83,7 +83,7 @@ pub fn test_check_if_proxy_registered() {
     .unwrap(),);
     assert_eq!(
         accounts_nonce_storage::check_if_proxy_registered(main_account_false, dummy_account_false),
-        Err(Error::ProxyNotRegistered)
+        Err(Error::AccountNotRegistered)
     );
 }
 
