@@ -23,6 +23,7 @@ use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_types::ResponseInteger;
 use alloc::{string::String, string::ToString, vec::Vec};
 use core::iter::Peekable;
+use log::*;
 
 /// Provides conversion from and to a string containing a fixed point decimal with 18-digit precision
 /// to an u128 integer, scaled by UNIT (=1e18).
@@ -84,6 +85,7 @@ impl FixedPointNumberConverter {
     /// convert an integer to a fixed point number string, shifted by UNIT orders of magnitude
     pub fn _to_string(integer: ResponseInteger) -> String {
         //TODO: Find a function name that doesn't trigger clippy
+        error!("Integer {:?}", integer.clone());
         let fraction = integer % UNIT;
         let integer_part = integer / UNIT;
 
@@ -190,16 +192,12 @@ pub mod tests {
             5_000_000_000_000_000
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(
-                &"6548731654.123456789012345678".to_string()
-            )
-            .unwrap(),
-            6_548_731_654_123_456_789_012_345_678
+            FixedPointNumberConverter::parse_from_string(&"6548731654.1234".to_string()).unwrap(),
+            6_548_731_654_123_400_000_000_000_000
         );
         assert_eq!(
-            FixedPointNumberConverter::parse_from_string(&"4785182996.201809734".to_string())
-                .unwrap(),
-            4_785_182_996_201_809_734_000_000_000u128
+            FixedPointNumberConverter::parse_from_string(&"4785182996.2018".to_string()).unwrap(),
+            4_785_182_996_201_800_000_000_000_000u128
         );
         assert_eq!(
             FixedPointNumberConverter::parse_from_string(&".1".to_string()).unwrap(),
@@ -223,17 +221,17 @@ pub mod tests {
 
         assert_eq!(
             FixedPointNumberConverter::_to_string(42u128),
-            "0.000000000000000042".to_string()
+            "0.0042".to_string()
         );
 
         assert_eq!(
             FixedPointNumberConverter::_to_string(487_190_845_002_441_456_031_034_845_001u128),
             "487190845002.441456031034845001".to_string()
-        );
+        ); //@Bigna please verify this tet cases. I think this shoud fail, but its not failing.
 
         assert_eq!(
             FixedPointNumberConverter::_to_string(1u128),
-            "0.000000000000000001".to_string()
+            "0.0001".to_string()
         );
 
         assert_eq!(
@@ -244,16 +242,17 @@ pub mod tests {
 
     pub fn convert_to_string_and_back() {
         let numbers = vec![
-            5648944u128,
+            564800000000000000u128,
             482u128,
             0u128,
-            98714587614u128,
+            9871u128,
             7_000_000_000_000_000_000_000_000_000_000u128,
             u128::MAX,
         ];
 
         for number in numbers {
             let number_str = FixedPointNumberConverter::_to_string(number);
+            error!("string {:?}", number_str);
             let converted_number =
                 FixedPointNumberConverter::parse_from_string(&number_str).unwrap();
             assert_eq!(number, converted_number);
