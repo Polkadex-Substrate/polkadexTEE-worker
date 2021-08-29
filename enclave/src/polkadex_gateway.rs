@@ -344,8 +344,6 @@ pub fn process_create_order(
     } else {
         return Err(GatewayError::NonceNotPresent);
     }
-    error!(">1 {:?}", order_uuid.clone()); //TODO remove it
-    error!(">1 Request Id {:?}", request_id); //TODO remove it
     if send_uuid(request_id, order_uuid).is_err() {
         return Err(GatewayError::NotAbleToSendUUID);
     }
@@ -530,7 +528,7 @@ pub fn consume_order(
                 do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)
             {
                 error!("Doing asset exchange failed. Error: {:?}", e);
-                return Err(GatewayError::UnableToLock); // TODO: Use the correct error
+                return Err(GatewayError::UnableToLock);
             };
 
             if counter_order.quantity > 0 {
@@ -559,7 +557,7 @@ pub fn consume_order(
         (OrderType::MARKET, OrderSide::BID) => {
             if let Err(e) = do_asset_exchange_market(&mut current_order, &mut counter_order) {
                 error!("Doing asset exchange market failed. Error: {:?}", e);
-                return Err(GatewayError::UnableToLock); // TODO: Use the correct error
+                return Err(GatewayError::UnableToLock);
             };
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(

@@ -20,7 +20,6 @@ pub extern crate alloc;
 use crate::openfinex::openfinex_types::ResponseInteger;
 use alloc::{fmt::Result as FormatResult, string::String, string::ToString, vec::Vec};
 use core::iter::Peekable;
-use log::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexItem {

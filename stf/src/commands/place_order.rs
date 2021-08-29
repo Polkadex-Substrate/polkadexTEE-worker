@@ -76,14 +76,14 @@ fn command_runner<'a>(
 
     debug!("Successfully built place_order trusted operation, dispatching now to enclave");
 
-    //let _ = perform_operation(matches, &place_order_top);
+    let uuid = if let Some(uuid) = perform_operation(matches, &place_order_top) {
+        uuid
+    } else {
+        error!("UUID is not returned from Enclave");
+        vec![0u8]
+    };
 
-    // let bal = if let Some(v) = perform_operation(matches, &place_order_top) {
-    //         v
-    //     } ;
-    let bal = perform_operation(matches, &place_order_top).unwrap();
-
-    println!("{:?}", bal);
+    println!("{:?}", uuid);
     debug!("place_order trusted operation was executed");
 
     Ok(())
