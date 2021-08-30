@@ -28,7 +28,7 @@ pub enum OpenFinexApiError {
     SerializationError(String),
 
     /// Error communicating via web socket
-    WebSocketError(String),
+    OpenfinexWebSocketError(String),
 
     /// Error when parsing response
     ResponseParsingError(String),

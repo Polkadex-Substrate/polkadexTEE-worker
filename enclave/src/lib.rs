@@ -416,11 +416,7 @@ pub unsafe extern "C" fn accept_pdex_accounts(
         return status;
     }
 
-    if accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(polkadex_accounts)
-        .is_err()
-    {
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
+    accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(polkadex_accounts);
 
     sgx_status_t::SGX_SUCCESS
 }
@@ -435,8 +431,7 @@ fn initialize_and_extend_storages(
             .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)?;
     }
     if accounts_nonce_storage::load_registry().is_err() {
-        accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![])
-            .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)?;
+        accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]);
     }
     if polkadex_orderbook_storage::load_orderbook().is_err() {
         polkadex_orderbook_storage::create_in_memory_orderbook_storage(vec![])

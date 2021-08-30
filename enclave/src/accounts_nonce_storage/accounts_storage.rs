@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::error::{Error, Result};
 use codec::Encode;
 use log::*;
 use polkadex_sgx_primitives::{AccountId, PolkadexAccount};
@@ -48,47 +49,39 @@ impl PolkadexAccountsStorage {
         in_memory_map
     }
 
-    pub fn add_main_account(&mut self, acc: AccountId) -> Result<(), AccountsStorageError> {
+    pub fn add_main_account(&mut self, acc: AccountId) -> Result<()> {
         if self.accounts.contains_key(&acc.encode()) {
             warn!("Given account is registered");
-            return Err(AccountsStorageError::AccountAlreadyRegistered);
+            return Err(Error::AccountAlreadyRegistered);
         };
         let vec: Vec<AccountId> = Vec::new();
         self.accounts.insert(acc.encode(), vec);
         Ok(())
     }
 
-    pub fn remove_main_account(&mut self, acc: AccountId) -> Result<(), AccountsStorageError> {
+    pub fn remove_main_account(&mut self, acc: AccountId) -> Result<()> {
         if !self.accounts.contains_key(&acc.encode()) {
             warn!("Given account is not registered");
-            return Err(AccountsStorageError::AccountNotRegistered);
+            return Err(Error::AccountNotRegistered);
         };
         self.accounts.remove(&acc.encode());
         Ok(())
     }
 
-    pub fn add_proxy(
-        &mut self,
-        main: AccountId,
-        proxy: AccountId,
-    ) -> Result<(), AccountsStorageError> {
+    pub fn add_proxy(&mut self, main: AccountId, proxy: AccountId) -> Result<()> {
         if let Some(proxies) = self.accounts.get_mut(&main.encode()) {
             if !proxies.contains(&proxy) {
                 proxies.push(proxy);
                 return Ok(());
             }
             warn!("Given Proxy is already registered");
-            return Err(AccountsStorageError::ProxyAlreadyRegistered);
+            return Err(Error::ProxyAlreadyRegistered);
         };
         warn!("Given Account is not registered");
-        Err(AccountsStorageError::AccountNotRegistered)
+        Err(Error::AccountNotRegistered)
     }
 
-    pub fn remove_proxy(
-        &mut self,
-        main: AccountId,
-        proxy: AccountId,
-    ) -> Result<(), AccountsStorageError> {
+    pub fn remove_proxy(&mut self, main: AccountId, proxy: AccountId) -> Result<()> {
         if let Some(proxies) = self.accounts.get_mut(&main.encode()) {
             if proxies.contains(&proxy) {
                 let index = proxies.iter().position(|x| *x == proxy).unwrap();
@@ -96,28 +89,14 @@ impl PolkadexAccountsStorage {
                 return Ok(());
             }
             warn!("Given Proxy is not registered");
-            return Err(AccountsStorageError::ProxyNotRegistered);
+            return Err(Error::ProxyNotRegistered);
         };
         warn!("Given Account is not registered");
-        Err(AccountsStorageError::AccountNotRegistered)
+        Err(Error::AccountNotRegistered)
     }
 }
-
-#[derive(Eq, Debug, PartialEq, PartialOrd)]
-pub enum AccountsStorageError {
-    /// The account is already registered
-    AccountAlreadyRegistered,
-    /// The account is not registered
-    AccountNotRegistered,
-    /// The proxy is already registered
-    ProxyAlreadyRegistered,
-    /// The proxy is not registered
-    ProxyNotRegistered,
-}
-
 pub mod tests {
-    use super::{EncodedAccountId, PolkadexAccountsStorage};
-    use codec::Encode;
+    use super::*;
     use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
     use sgx_tstd::collections::HashMap;
     use sgx_tstd::vec::Vec;

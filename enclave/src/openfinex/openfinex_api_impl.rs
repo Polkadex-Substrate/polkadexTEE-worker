@@ -78,7 +78,7 @@ impl OpenFinexApi for OpenFinexApiImpl {
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-            .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)))
+            .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))
     }
 
     fn cancel_order(
@@ -100,7 +100,7 @@ impl OpenFinexApi for OpenFinexApiImpl {
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-            .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)))
+            .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))
     }
 
     fn withdraw_funds(&self, _request_id: RequestId) -> OpenFinexApiResult<()> {

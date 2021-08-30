@@ -16,15 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::error::Error;
+use crate::{accounts_nonce_storage, accounts_nonce_storage::AccountsNonceStorage};
 use codec::Encode;
 use polkadex_sgx_primitives::AccountId;
 use sgx_tstd::sync::SgxMutexGuard;
 use substratee_worker_primitives::get_account;
-
-use crate::{
-    accounts_nonce_storage, accounts_nonce_storage::AccountRegistryError,
-    accounts_nonce_storage::AccountsNonceStorage,
-};
 
 pub fn get_dummy_map(storage: &mut SgxMutexGuard<AccountsNonceStorage>) {
     let main_account_one: AccountId = get_account("first_account");
@@ -49,7 +46,7 @@ pub fn get_dummy_map(storage: &mut SgxMutexGuard<AccountsNonceStorage>) {
 }
 
 pub fn initialize_dummy() {
-    accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]).unwrap();
+    accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]);
     let mutex = accounts_nonce_storage::load_registry().unwrap();
     let mut storage = mutex.lock().unwrap();
     get_dummy_map(&mut storage);
@@ -86,7 +83,7 @@ pub fn test_check_if_proxy_registered() {
     .unwrap(),);
     assert_eq!(
         accounts_nonce_storage::check_if_proxy_registered(main_account_false, dummy_account_false),
-        Err(AccountRegistryError::MainAccountNoRegistedForGivenProxy)
+        Err(Error::AccountNotRegistered)
     );
 }
 

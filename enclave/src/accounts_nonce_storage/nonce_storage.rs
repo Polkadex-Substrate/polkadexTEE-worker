@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use super::error::{Error, Result};
 use codec::Encode;
 use log::*;
 use polkadex_sgx_primitives::NonceData;
@@ -46,17 +47,17 @@ impl PolkadexNonceStorage {
         in_memory_map
     }
 
-    pub fn read_nonce(&self, acc: AccountId) -> Result<u32, NonceStorageError> {
+    pub fn read_nonce(&self, acc: AccountId) -> Result<u32> {
         debug!("reading nonce from acc: {:?}", acc);
         if let Some(nonce) = self.storage.get(&acc.encode()) {
             Ok(*nonce)
         } else {
             error!("Nonce uninitialized");
-            Err(NonceStorageError::NonceUninitialized)
+            Err(Error::NonceUninitialized)
         }
     }
 
-    pub fn increment_nonce(&mut self, acc: AccountId) -> Result<(), NonceStorageError> {
+    pub fn increment_nonce(&mut self, acc: AccountId) -> Result<()> {
         let nonce = self.read_nonce(acc.clone())?;
         self.storage.insert(acc.encode(), nonce + 1u32);
         Ok(())
@@ -78,12 +79,6 @@ impl PolkadexNonceStorage {
                 .map(|entry| (entry.account_id.encode(), entry.nonce)),
         );
     }
-}
-
-#[derive(Eq, Debug, PartialEq, PartialOrd)]
-pub enum NonceStorageError {
-    /// Nonce is not initialized
-    NonceUninitialized,
 }
 
 pub mod tests {
