@@ -32,10 +32,11 @@ extern crate sgx_tstd as std;
 
 use crate::channel_storage::{create_channel_get_receiver, ChannelType};
 use crate::constants::{
-    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
+    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_UPLOAD_CID, OCEX_WITHDRAW,
+    SHIELD_FUNDS,
 };
 use crate::nonce_handler::NonceHandler;
-use crate::utils::UnwrapOrSgxErrorUnexpected;
+use crate::utils::{hash_from_slice, UnwrapOrSgxErrorUnexpected};
 use base58::ToBase58;
 use chain_relay::{
     storage_proof::{StorageProof, StorageProofChecker},
@@ -56,7 +57,9 @@ use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use sgx_externalities::SgxExternalitiesTypeTrait;
 use sgx_tstd::boxed::Box;
-use sgx_types::{sgx_epid_group_id_t, sgx_status_t, sgx_target_info_t, SgxResult};
+use sgx_types::{
+    sgx_epid_group_id_t, sgx_quote_sign_type_t, sgx_status_t, sgx_target_info_t, SgxResult,
+};
 use sp_core::{blake2_256, crypto::Pair, H256};
 use sp_finality_grandpa::VersionedAuthorityList;
 use sp_runtime::OpaqueExtrinsic;
@@ -534,6 +537,69 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
             }
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn send_cid(
+    genesis_hash: *const u8,
+    genesis_hash_size: u32,
+    nonce: u32,
+    cid: *const u8,
+    cid_size: u32,
+    w_url: *const u8,
+    w_url_size: u32,
+    unchecked_extrinsic: *mut u8,
+    unchecked_extrinsic_size: u32,
+    new_size: *mut u32,
+) -> sgx_status_t {
+    // our certificate is unlinkable
+    let sign_type = sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE;
+
+    info!("    [Enclave] Compose extrinsic");
+    let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
+    //let mut nonce_slice     = slice::from_raw_parts(nonce, nonce_size as usize);
+    let url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
+    let mut extrinsic_slice =
+        slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
+    let signer = match ed25519::unseal_pair() {
+        Ok(pair) => pair,
+        Err(status) => return status,
+    };
+    info!("[Enclave] Restored ECC pubkey: {:?}", signer.public());
+
+    let genesis_hash = hash_from_slice(genesis_hash_slice);
+    debug!("decoded genesis_hash: {:?}", genesis_hash_slice);
+    debug!("worker url: {}", std::str::from_utf8(url_slice).unwrap());
+
+    let data: Vec<u8> = Vec::from(slice::from_raw_parts(cid, cid_size as usize));
+    let call: OpaqueCall = OpaqueCall(([OCEX_MODULE, OCEX_UPLOAD_CID], data.clone()).encode());
+
+    let xt = compose_extrinsic_offline!(
+        signer,
+        call,
+        nonce,
+        Era::Immortal,
+        genesis_hash,
+        genesis_hash,
+        RUNTIME_SPEC_VERSION,
+        RUNTIME_TRANSACTION_VERSION
+    );
+
+    let mut encoded = xt.encode();
+    error!("encoded from enclave: {:?}", encoded);
+    //let encoded_slice: &mut [u8] = encoded.as_mut_slice();
+
+    //extrinsic_slice = encoded_slice;
+
+    //let mut size = *new_size;
+
+    //size = encoded.len() as u32;
+
+    std::ptr::replace(new_size, encoded.len() as u32);
+
+    write_slice_and_whitespace_pad(extrinsic_slice, encoded);
+
+    sgx_status_t::SGX_SUCCESS
 }
 
 #[no_mangle]

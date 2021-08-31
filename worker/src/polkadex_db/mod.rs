@@ -38,9 +38,15 @@ pub use orderbook::*;
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 use crate::constants::SNAPSHOT_INTERVAL;
+use crate::enclave::api::enclave_send_cid;
+use codec::{Decode, Encode};
 use log::*;
+use my_node_runtime::UncheckedExtrinsic;
+use sgx_types::sgx_enclave_id_t;
+use sp_core::{sr25519, Pair};
 use std::thread;
 use std::time::{Duration, SystemTime};
+use substrate_api_client::{Api, UncheckedExtrinsicV4, XtStatus};
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -72,7 +78,13 @@ pub trait PermanentStorageHandler {
 }
 
 // Disk snapshot loop
-pub fn start_snapshot_loop() {
+pub fn start_snapshot_loop(
+    api: Api<sr25519::Pair>,
+    eid: sgx_enclave_id_t,
+    genesis_hash: Vec<u8>,
+    w_url: Vec<u8>,
+    nonce: u32,
+) {
     thread::spawn(move || {
         println!("Successfully started snapshot loop");
         let snapshot_interval = Duration::from_millis(SNAPSHOT_INTERVAL);
@@ -87,7 +99,13 @@ pub fn start_snapshot_loop() {
                     if let Err(e) = take_orderbook_snapshot() {
                         error!("Could not take orderbook snapshot: {:?}", e);
                     }
-                    if let Err(e) = take_balance_snapshot() {
+                    if let Err(e) = take_balance_snapshot(
+                        api.clone(),
+                        eid,
+                        genesis_hash.clone(),
+                        w_url.clone(),
+                        nonce,
+                    ) {
                         error!("Could not take balance snapshot: {:?}", e);
                     };
                     if let Err(e) = take_nonce_snapshot() {
@@ -113,7 +131,13 @@ fn take_orderbook_snapshot() -> Result<()> {
 }
 
 // take a snapshot of balances mirror
-fn take_balance_snapshot() -> Result<()> {
+fn take_balance_snapshot(
+    api: Api<sr25519::Pair>,
+    eid: sgx_enclave_id_t,
+    genesis_hash: Vec<u8>,
+    w_url: Vec<u8>,
+    nonce: u32,
+) -> Result<()> {
     let mutex = crate::polkadex_db::balances::load_balances_mirror()?;
     let mut balance_mirror = mutex
         .lock()
@@ -121,8 +145,30 @@ fn take_balance_snapshot() -> Result<()> {
     let data = balance_mirror.take_disk_snapshot()?;
     let mut ipfs_handler = IpfsStorageHandler::default();
     let cid = ipfs_handler.snapshot_to_ipfs(data)?;
-    debug!("Retrived cid {:?} for balance snapshot", cid);
-    // TODO: send cid to OCEX pallet (issue #241)
+    error!("Retrived cid {:?} for balance snapshot", cid);
+
+    error!("cid encoded: {:?}", cid.to_bytes());
+
+    let (uxt, size) = enclave_send_cid(eid, genesis_hash, nonce, cid.to_bytes(), w_url).unwrap();
+
+    error!(
+        "data: {:?}, size: {}",
+        uxt.as_slice().split_at(size as usize).0,
+        size
+    );
+
+    let ue = UncheckedExtrinsic::decode(&mut uxt.as_slice().split_at(size as usize).0).unwrap();
+
+    let mut _xthex = hex::encode(ue.encode());
+    _xthex.insert_str(0, "0x");
+    error!("ext: {:?}", _xthex);
+
+    // send the extrinsic and wait for confirmation
+    error!(
+        "send extrinsic: {:?}",
+        api.send_extrinsic(_xthex, XtStatus::Finalized)
+    );
+
     Ok(())
 }
 

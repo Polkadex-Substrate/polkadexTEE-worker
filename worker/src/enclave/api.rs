@@ -115,6 +115,21 @@ extern "C" {
         unchecked_extrinsic_size: u32,
     ) -> sgx_status_t;
 
+    fn send_cid(
+        eid: sgx_enclave_id_t,
+        retval: *mut sgx_status_t,
+        genesis_hash: *const u8,
+        genesis_hash_size: u32,
+        nonce: *const u32,
+        cid: *const u8,
+        cid_size: u32,
+        w_url: *const u8,
+        w_url_size: u32,
+        unchecked_extrinsic: *mut u8,
+        unchecked_extrinsic_size: u32,
+        new_size: *mut u32,
+    ) -> sgx_status_t;
+
     fn dump_ra_to_disk(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
 
     fn test_main_entrance(eid: sgx_enclave_id_t, retval: *mut sgx_status_t) -> sgx_status_t;
@@ -450,6 +465,43 @@ pub fn enclave_perform_ra(
         return Err(result);
     }
     Ok(unchecked_extrinsic)
+}
+
+pub fn enclave_send_cid(
+    eid: sgx_enclave_id_t,
+    genesis_hash: Vec<u8>,
+    nonce: u32,
+    cid: Vec<u8>,
+    w_url: Vec<u8>,
+) -> SgxResult<(Vec<u8>, u32)> {
+    let unchecked_extrinsic_size = EXTRINSIC_MAX_SIZE;
+    let mut unchecked_extrinsic: Vec<u8> = vec![0u8; unchecked_extrinsic_size as usize];
+    let mut new_size: u32 = 0;
+    let new_size_ptr: *mut u32 = &mut new_size;
+    let mut status = sgx_status_t::SGX_SUCCESS;
+    let result = unsafe {
+        send_cid(
+            eid,
+            &mut status,
+            genesis_hash.as_ptr(),
+            genesis_hash.len() as u32,
+            &nonce,
+            cid.as_ptr(),
+            cid.len() as u32,
+            w_url.as_ptr(),
+            w_url.len() as u32,
+            unchecked_extrinsic.as_mut_ptr(),
+            unchecked_extrinsic_size as u32,
+            new_size_ptr,
+        )
+    };
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
+    Ok((unchecked_extrinsic, new_size))
 }
 
 pub fn enclave_test(eid: sgx_enclave_id_t) -> SgxResult<()> {

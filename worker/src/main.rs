@@ -344,8 +344,13 @@ fn worker(
         let nonce = get_nonce(&api, &tee_accountid);
         info!("Enclave nonce = {:?}", nonce);
 
-        let uxt =
-            enclave_perform_ra(eid, genesis_hash, nonce, ext_api_url.as_bytes().to_vec()).unwrap();
+        let uxt = enclave_perform_ra(
+            eid,
+            genesis_hash.clone(),
+            nonce,
+            ext_api_url.as_bytes().to_vec(),
+        )
+        .unwrap();
 
         let ue = UncheckedExtrinsic::decode(&mut uxt.as_slice()).unwrap();
 
@@ -373,7 +378,13 @@ fn worker(
         .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    polkadex_db::start_snapshot_loop();
+    polkadex_db::start_snapshot_loop(
+        api.clone(),
+        eid,
+        genesis_hash.clone(),
+        ext_api_url.as_bytes().to_vec(),
+        get_nonce(&api, &tee_accountid),
+    );
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
