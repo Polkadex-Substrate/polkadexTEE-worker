@@ -183,7 +183,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::tests::response_object_mapper_tests::test_given_parsed_error_then_map_to_error_object,
         openfinex::tests::response_object_mapper_tests::test_subscribe_response,
         openfinex::tests::response_object_mapper_tests::test_create_order_response,
-        openfinex::tests::response_object_mapper_tests::test_order_update_response,
+        openfinex::tests::response_object_mapper_tests::test_order_cancel_response,
         openfinex::tests::response_object_mapper_tests::test_trade_event_response,
         openfinex::tests::response_object_mapper_tests::test_get_markets_response,
         openfinex::tests::market_repo_tests::update_markets_from_json_strings,

@@ -128,7 +128,7 @@ pub fn test_create_order_response() {
     }
 }
 
-pub fn test_order_update_response() {
+pub fn test_order_cancel_response() {
     let order_uuid = "7acbbc84-939d-11eaa827-1831bf9834b0".to_string();
     let order_id = 2;
 
@@ -136,7 +136,7 @@ pub fn test_order_update_response() {
     let account_nickname = account_id_to_ss58check(&account);
 
     let order_update_response = ParsedResponse {
-        response_method: ResponseMethod::OrderUpdate,
+        response_method: ResponseMethod::OrderCanceled,
         response_preamble: 5,
         parameters: vec![
             ParameterNode::SingleParameter(ParameterItem::String("ABC000001".to_string())),
@@ -160,7 +160,7 @@ pub fn test_order_update_response() {
     let mapped_objects = map_to_objects(&order_update_response);
 
     match mapped_objects {
-        OpenFinexResponse::OrderUpdate(ou) => {
+        OpenFinexResponse::OrderCanceled(ou) => {
             assert_eq!(ou.order_id, order_id);
             assert_eq!(ou.unique_order_id, order_uuid.encode());
             assert_eq!(ou.user_id, account);

@@ -122,13 +122,16 @@ pub fn given_valid_subscription_response_then_succeed() {
 }
 
 pub fn given_valid_order_update_response_then_succeed() {
-    let response_string = "[5,\"ou\",[\"ABC000001\", \"0x1234567890123456789\", \"btcusd\", 2, \"7acbbc84-939d-11eaa827-
+    let response_string = "[5,\"oc\",[\"ABC000001\", \"0x1234567890123456789\", \"btcusd\", 2, \"7acbbc84-939d-11eaa827-
             1831bf9834b0\", \"buy\", \"d\", \"l\", \"1\", \"1\", \"0\", \"1\", \"1\", 1, 1589211516]]".to_string();
 
     let parser = TcpResponseParser {};
     let parsed_response = parser.parse_response_string(response_string).unwrap();
 
-    assert_eq!(parsed_response.response_method, ResponseMethod::OrderUpdate);
+    assert_eq!(
+        parsed_response.response_method,
+        ResponseMethod::OrderCanceled
+    );
 }
 
 pub fn given_valid_trade_events_response_then_succeed() {
