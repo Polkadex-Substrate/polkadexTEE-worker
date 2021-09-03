@@ -83,7 +83,7 @@ pub fn initialize_storage() {
     // Initialize Gateway
     initialize_polkadex_gateway();
     // Initialize Account Storage
-    assert!(create_in_memory_accounts_and_nonce_storage(vec![]).is_ok());
+    create_in_memory_accounts_and_nonce_storage(vec![]);
     // Initialize Balance storage
     assert!(create_in_memory_balance_storage().is_ok());
     // Initialize Order Mirror

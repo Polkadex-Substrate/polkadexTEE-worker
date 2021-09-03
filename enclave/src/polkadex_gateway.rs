@@ -17,7 +17,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use alloc::fmt::Result as FormatResult;
+use derive_more::{Display, From};
 use frame_support::ensure;
 use log::*;
 use polkadex_sgx_primitives::types::{
@@ -36,16 +36,9 @@ use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_gateway;
 use crate::polkadex_orderbook_storage;
-use crate::rpc::worker_api_direct::send_uuid;
-use accounts_nonce_storage::AccountRegistryError;
 
-impl alloc::fmt::Display for GatewayError {
-    fn fmt(&self, f: &mut alloc::fmt::Formatter) -> FormatResult {
-        write!(f, "{:?}", self)
-        // or, alternatively:
-        // fmt::Debug::fmt(self, f)
-    }
-}
+use crate::rpc::worker_api_direct::send_uuid;
+use accounts_nonce_storage::error::Error as AccountRegistryError;
 
 /// Trait for callbacks coming from the OpenFinex side
 pub trait PolkaDexGatewayCallback {
@@ -282,6 +275,7 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
     }
 
     let cancelled_order = polkadex_orderbook_storage::lock_storage_and_remove_order(&order_uuid)?;
+    error!("ORDER_CANCELED {:?}", order_uuid.clone());
     match (cancelled_order.order_type, cancelled_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let price = cancelled_order
@@ -355,12 +349,8 @@ pub fn authenticate_user_and_validate_nonce(
     proxy_acc: Option<AccountId>,
     nonce: u32,
 ) -> Result<(), GatewayError> {
-    if accounts_nonce_storage::auth_user_validate_increment_nonce(main_acc, proxy_acc, nonce)
-        .is_err()
-    {
-        return Err(GatewayError::NonceInvalid);
-    }
-    Ok(())
+    accounts_nonce_storage::auth_user_validate_increment_nonce(main_acc, proxy_acc, nonce)
+        .map_err(GatewayError::AccountRegistryError)
 }
 
 pub fn authenticate_user(
@@ -829,7 +819,7 @@ pub fn get_price(
     price.ok_or(GatewayError::PriceIsNull)
 }
 
-#[derive(Eq, Debug, PartialOrd, PartialEq)]
+#[derive(Debug, Display, From, PartialEq, Eq)]
 pub enum GatewayError {
     /// Price is Not Provided
     PriceIsNull,

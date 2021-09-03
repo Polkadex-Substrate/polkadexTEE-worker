@@ -21,11 +21,12 @@ use log::*;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::constants::DEFAULT_STORAGE_PATH;
+
 use super::PolkadexDBError as Error;
 use super::Result;
-
-const DEFAULT_STORAGE_PATH: &str = "polkadex_storage";
 /// handles all disc permanent storage interactions of polkadex databases
+#[derive(Debug)]
 pub struct DiskStorageHandler {
     path: PathBuf,
     filename: PathBuf,

@@ -78,7 +78,8 @@ impl OpenFinexApi for OpenFinexApiImpl {
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-            .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)))?;
+
+            .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))?;
         Ok(request_id)
     }
 
@@ -94,14 +95,14 @@ impl OpenFinexApi for OpenFinexApiImpl {
             .push_parameter(market_id_to_request_string(cancel_order.market_id))
             .push_list_parameter(vec![order_id])
             .build();
-        debug!(
+        error!(
             "Sending order to openfinex: {}",
             request.to_request_string()
         );
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-            .map_err(|e| OpenFinexApiError::WebSocketError(format!("{:?}", e)))
+            .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))
     }
 
     fn withdraw_funds(&self, _request_id: RequestId) -> OpenFinexApiResult<()> {

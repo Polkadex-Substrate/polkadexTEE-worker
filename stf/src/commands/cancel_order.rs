@@ -81,10 +81,10 @@ fn command_runner<'a>(
 
     debug!("Successfully built cancel_order trusted operation, dispatching now to enclave");
 
-    let _ = perform_operation(matches, &cancel_order_top);
-
-    debug!("cancel_order trusted operation was executed");
-
+    if let Some(_return_value) = perform_operation(matches, &cancel_order_top) {
+        // only print success if no error (= None returned) happened
+        println!("Succesfully issues cancel order request");
+    }
     Ok(())
 }
 

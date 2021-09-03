@@ -20,6 +20,7 @@ pub extern crate alloc;
 use crate::openfinex::openfinex_types::ResponseInteger;
 use alloc::{fmt::Result as FormatResult, string::String, string::ToString, vec::Vec};
 use core::iter::Peekable;
+use log::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexItem {
@@ -40,6 +41,7 @@ pub struct ResponseLexer {}
 impl ResponseLexer {
     pub fn lex(&self, input: &str) -> Result<Vec<LexItem>, String> {
         let mut result = Vec::new();
+        error!("Response from openfinex: {:?}", input);
         let mut it = input.chars().peekable();
         while let Some(&c) = it.peek() {
             match c {

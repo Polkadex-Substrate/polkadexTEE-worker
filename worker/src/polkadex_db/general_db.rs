@@ -52,9 +52,11 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
 
     /// writes from memory to permanent disc storage
     /// FIXME: Should be signed by enclave! (issue #15)
-    pub fn write_disk_from_memory(&mut self) -> Result<()> {
+    pub fn write_disk_from_memory(&mut self) -> Result<Vec<u8>> {
+        let encoded_data = self.read_all().encode();
         self.disk_storage
-            .write_to_storage(&self.read_all().encode().as_slice())
+            .write_to_storage(&encoded_data.as_slice())?;
+        Ok(encoded_data)
     }
 
     /// reads from permanent disc storage to memory

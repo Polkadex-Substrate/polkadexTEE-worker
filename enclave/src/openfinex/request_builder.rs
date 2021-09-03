@@ -81,7 +81,7 @@ impl OpenFinexRequestBuilder {
     pub fn push_list_parameter(&mut self, params: Vec<String>) -> &mut Self {
         (self)
             .parameters
-            .push(format!("[\"{}\"]", params.join("\",\"")));
+            .push(format!("[{}]", params.join("\",\"")));
         self
     }
 

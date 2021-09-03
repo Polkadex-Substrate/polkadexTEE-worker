@@ -30,6 +30,7 @@ use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::*;
 use crate::commands::common_args_processing::get_order_from_matches;
+use codec::{Encode, Decode};
 
 pub fn place_order_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,
@@ -77,14 +78,22 @@ fn command_runner<'a>(
     debug!("Successfully built place_order trusted operation, dispatching now to enclave");
 
     let uuid = if let Some(uuid) = perform_operation(matches, &place_order_top) {
-        uuid
+        String::decode(&mut uuid.as_slice()).unwrap()
     } else {
         error!("UUID is not returned from Enclave");
-        vec![0u8]
+        String::from("UUID")
     };
 
     println!("{:?}", uuid);
     debug!("place_order trusted operation was executed");
 
     Ok(())
+}
+
+pub fn order_uuid_to_request_string(order_uuid: Vec<u8>) -> Option<String> {
+    if let Ok(string) = String::from_utf8(order_uuid) {
+        Some(string)
+    } else {
+        None
+    }
 }
