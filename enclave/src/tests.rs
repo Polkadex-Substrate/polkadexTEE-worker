@@ -19,6 +19,7 @@
 use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage, test_proxy};
 use crate::aes;
 use crate::attestation;
+use crate::channel_storage;
 use crate::ed25519;
 use crate::happy_path;
 use crate::openfinex;
@@ -230,6 +231,11 @@ pub extern "C" fn test_main_entrance() -> size_t {
         accounts_nonce_storage::tests::check_if_main_account_registered,
         accounts_nonce_storage::tests::check_if_proxy_registered,
         accounts_nonce_storage::tests::validate_and_increment_nonce,
+
+        // Channel Storage
+        channel_storage::tests::test_create_channel_get_receiver,
+        channel_storage::tests::test_load_channel_storage,
+        channel_storage::tests::test_load_sender,
 
         // Utility
         ss58check::tests::convert_account_id_to_and_from_ss58check,

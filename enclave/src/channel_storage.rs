@@ -31,17 +31,41 @@ lazy_static! {
         Arc::new(SgxMutex::new(None));
 }
 
+lazy_static! {
+    static ref GLOBAL_CHANNEL_STORAGE_TEST: Arc<SgxMutex<Option<ChannelStorage>>> =
+        Arc::new(SgxMutex::new(None));
+}
+
 #[derive(Clone)]
 pub struct ChannelStorage {
     pub sender: Sender<ChannelType>,
 }
 
 pub fn create_channel_get_receiver() -> Result<Receiver<ChannelType>, ChannelStorageError> {
+    internal_create_channel_get_receiver(false)
+}
+
+pub fn mock_create_channel_get_receiver() -> Result<Receiver<ChannelType>, ChannelStorageError> {
+    internal_create_channel_get_receiver(true)
+}
+
+fn internal_create_channel_get_receiver(
+    mock: bool,
+) -> Result<Receiver<ChannelType>, ChannelStorageError> {
     let (sender, receiver) = channel();
-    let mut storage = GLOBAL_CHANNEL_STORAGE
-        .lock()
-        .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
-    *storage = Some(ChannelStorage { sender });
+
+    if mock {
+        let mut storage = GLOBAL_CHANNEL_STORAGE_TEST
+            .lock()
+            .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
+        *storage = Some(ChannelStorage { sender });
+    } else {
+        let mut storage = GLOBAL_CHANNEL_STORAGE
+            .lock()
+            .map_err(|_| ChannelStorageError::CouldNotGetMutex)?;
+        *storage = Some(ChannelStorage { sender });
+    }
+
     Ok(receiver)
 }
 
@@ -52,8 +76,24 @@ pub enum ChannelType {
 }
 
 pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
+    internal_load_sender(false)
+}
+
+pub fn mock_load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
+    internal_load_sender(true)
+}
+
+fn internal_load_sender(mock: bool) -> Result<Sender<ChannelType>, ChannelStorageError> {
     // Acquire lock on channel storage
-    Ok(if let Some(storage) = load_channel_storage()?.clone() {
+    Ok(if let Some(storage) = {
+        if mock {
+            mock_load_channel_storage()
+        } else {
+            load_channel_storage()
+        }
+    }?
+    .clone()
+    {
         storage
     } else {
         return Err(ChannelStorageError::ChannelNotInitialized);
@@ -63,9 +103,26 @@ pub fn load_sender() -> Result<Sender<ChannelType>, ChannelStorageError> {
 
 pub fn load_channel_storage(
 ) -> Result<SgxMutexGuard<'static, Option<ChannelStorage>>, ChannelStorageError> {
-    GLOBAL_CHANNEL_STORAGE
-        .lock()
-        .map_err(|_| ChannelStorageError::CouldNotGetMutex)
+    internal_load_channel_storage(false)
+}
+
+pub fn mock_load_channel_storage(
+) -> Result<SgxMutexGuard<'static, Option<ChannelStorage>>, ChannelStorageError> {
+    internal_load_channel_storage(true)
+}
+
+fn internal_load_channel_storage(
+    mock: bool,
+) -> Result<SgxMutexGuard<'static, Option<ChannelStorage>>, ChannelStorageError> {
+    if mock {
+        GLOBAL_CHANNEL_STORAGE_TEST
+            .lock()
+            .map_err(|_| ChannelStorageError::CouldNotGetMutex)
+    } else {
+        GLOBAL_CHANNEL_STORAGE
+            .lock()
+            .map_err(|_| ChannelStorageError::CouldNotGetMutex)
+    }
 }
 
 #[derive(Eq, Debug, PartialEq, PartialOrd)]
@@ -76,4 +133,22 @@ pub enum ChannelStorageError {
     CouldNotGetMutex,
     /// Channel Not Initialized
     ChannelNotInitialized,
+}
+
+pub mod tests {
+    use super::{mock_create_channel_get_receiver, mock_load_channel_storage, mock_load_sender};
+
+    pub fn test_create_channel_get_receiver() {
+        assert!(mock_create_channel_get_receiver().is_ok())
+    }
+
+    pub fn test_load_channel_storage() {
+        mock_create_channel_get_receiver().unwrap();
+        assert!(mock_load_channel_storage().unwrap().is_some())
+    }
+
+    pub fn test_load_sender() {
+        mock_create_channel_get_receiver().unwrap();
+        assert!(mock_load_sender().is_ok())
+    }
 }
