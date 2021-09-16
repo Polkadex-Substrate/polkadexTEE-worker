@@ -70,7 +70,7 @@ impl OpenFinexApi for OpenFinexApiImpl {
             .push_parameter(quantity_decimal)
             .push_optional_parameter(price_decimal)
             .build();
-        debug!(
+        error!(
             "Sending order to openfinex: {}",
             request.to_request_string()
         );
@@ -78,7 +78,6 @@ impl OpenFinexApi for OpenFinexApiImpl {
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-
             .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))?;
         Ok(request_id)
     }

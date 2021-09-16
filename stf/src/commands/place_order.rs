@@ -30,7 +30,7 @@ use crate::cli_utils::common_types::OperationRunner;
 use crate::commands::account_details::AccountDetails;
 use crate::commands::common_args::*;
 use crate::commands::common_args_processing::get_order_from_matches;
-use codec::{Encode, Decode};
+use codec::Decode;
 
 pub fn place_order_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,

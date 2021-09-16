@@ -218,7 +218,7 @@ pub struct Response {
 
 // Order Update Events
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
-pub struct OrderUpdate {
+pub struct OrderNotification {
     // User ID
     pub user_id: AccountId,
     // Market unique identifier

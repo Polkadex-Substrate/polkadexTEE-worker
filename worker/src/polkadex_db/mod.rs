@@ -85,13 +85,13 @@ pub fn start_snapshot_loop() {
 
                     // Take snapshots of all storages
                     if let Err(e) = take_orderbook_snapshot() {
-                        //error!("Could not take orderbook snapshot: {:?}", e); //FIXME Remove comment
+                        error!("Could not take orderbook snapshot: {:?}", e);
                     }
                     if let Err(e) = take_balance_snapshot() {
-                        //error!("Could not take balance snapshot: {:?}", e); //FIXME Remove comment
+                        error!("Could not take balance snapshot: {:?}", e);
                     };
                     if let Err(e) = take_nonce_snapshot() {
-                        //error!("Could not take nonce snapshot: {:?}", e); //FIXME Remove comment
+                        error!("Could not take nonce snapshot: {:?}", e);
                     };
                 } else {
                     // sleep for the rest of the interval

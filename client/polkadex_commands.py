@@ -135,7 +135,7 @@ def direct_get_balance(acc, token):
     --mrenclave $MRENCLAVE --direct
     """
     ret = subprocess.run(cli + ["trusted", "get_balance"] + acc_arg(acc) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
-    print("Offchain balance of " + acc + " " + str(int(ret.stdout)/PRECISION) + " " + token)
+    #print("Offchain balance of " + acc + " " + str(int(ret.stdout)/PRECISION) + " " + token)
     return ret.stdout.decode("utf-8").strip()
 
 def direct_place_order(acc, proxy, base, quote, side, quantity, ordertype, price):

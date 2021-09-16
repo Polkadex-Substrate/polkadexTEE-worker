@@ -23,7 +23,7 @@ use crate::commands::common_args_processing::get_token_id_from_matches;
 use crate::{KeyPair, TrustedGetter, TrustedOperation};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
-use codec::Decode;
+use codec::{Decode, Encode};
 use core::option::Option;
 use log::*;
 use polkadex_sgx_primitives::Balance;
@@ -67,17 +67,41 @@ fn command_runner<'a>(
 
     debug!("Successfully built get_balance trusted operation, dispatching now to enclave");
 
+    // let bal = if let Some(v) = perform_operation(matches, &get_balance_top) {
+    //     if let Ok(vd) = Balance::decode(&mut v.as_slice()) {
+    //         vd
+    //     } else {
+    //         info!("could not decode value. maybe hasn't been set? {:x?}", v);
+    //         0
+    //     }
+    // } else {
+    //     0
+    // };
+    // println!("{}", bal);
     let bal = if let Some(v) = perform_operation(matches, &get_balance_top) {
-        if let Ok(vd) = Balance::decode(&mut v.as_slice()) {
+        if let Ok(vd) = Balances::decode(&mut v.as_slice()) {
             vd
         } else {
             info!("could not decode value. maybe hasn't been set? {:x?}", v);
-            0
+            Balances::from(0, 0)
         }
     } else {
-        0
+        Balances::from(0, 0)
     };
-    println!("{}", bal);
+    error!("Res Bal {:?}", bal.reserved);
+    println!("{}", bal.free);
 
     Ok(())
+}
+
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub struct Balances {
+    pub free: Balance,
+    pub reserved: Balance,
+}
+
+impl Balances {
+    pub fn from(free: Balance, reserved: Balance) -> Self {
+        Self { free, reserved }
+    }
 }

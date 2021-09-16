@@ -20,7 +20,7 @@ use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage, test_
 use crate::aes;
 use crate::attestation;
 use crate::ed25519;
-use crate::happy_path;
+//use crate::happy_path;
 use crate::openfinex;
 use crate::polkadex_cache;
 use crate::rpc;
@@ -28,7 +28,7 @@ use crate::rsa3072;
 use crate::ss58check;
 use crate::state;
 use crate::test_orderbook_storage;
-use crate::test_polkadex_gateway;
+//use crate::test_polkadex_gateway;
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -96,30 +96,31 @@ pub extern "C" fn test_main_entrance() -> size_t {
         polkadex_cache::market_cache::tests::retrieve_previously_inserted_markets,
 
         // Polkadex Gateway
-        test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
-        test_polkadex_gateway::test_authenticate_user,
-        test_polkadex_gateway::test_place_limit_buy_order,
-        test_polkadex_gateway::test_place_limit_sell_order,
-        test_polkadex_gateway::test_place_market_buy_order,
-        test_polkadex_gateway::test_place_market_sell_order,
-        test_polkadex_gateway::test_cancel_limit_buy_order,
-        test_polkadex_gateway::test_cancel_limit_sell_order,
-        test_polkadex_gateway::test_settle_trade_full_ask_limit,
-        test_polkadex_gateway::test_settle_trade_partial_ask_limit,
-        test_polkadex_gateway::test_settle_trade_partial_two_ask_limit,
-        test_polkadex_gateway::test_settle_trade_full_buy_limit,
-        test_polkadex_gateway::test_settle_trade_partial_buy_limit,
-        test_polkadex_gateway::test_settle_trade_partial_two_buy_limit,
-        test_polkadex_gateway::test_settle_trade_full_ask_market,
-        test_polkadex_gateway::test_settle_trade_partial_ask_market,
-        test_polkadex_gateway::test_settle_trade_partial_two_ask_market,
-        test_polkadex_gateway::test_settle_trade_full_buy_market,
-        test_polkadex_gateway::test_settle_trade_partial_bid_market,
-        test_polkadex_gateway::test_settle_trade_partial_two_bid_market,
-        test_polkadex_gateway::test_cancel_limit_bid_order,
-        test_polkadex_gateway::test_cancel_ask_order,
-        test_polkadex_gateway::test_process_create_order,
-		test_polkadex_gateway::test_basic_order_checks,
+        // test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
+        // test_polkadex_gateway::test_authenticate_user,
+        // test_polkadex_gateway::test_place_limit_buy_order,
+        // test_polkadex_gateway::test_place_limit_sell_order,
+        // test_polkadex_gateway::test_place_market_buy_order,
+        // test_polkadex_gateway::test_place_market_sell_order,
+        // test_polkadex_gateway::test_cancel_limit_buy_order,
+        // test_polkadex_gateway::test_cancel_limit_sell_order,
+        // //test_polkadex_gateway::test_settle_trade_full_ask_limit,
+        // test_polkadex_gateway::test_orderbook_limit,
+        // test_polkadex_gateway::test_settle_trade_partial_ask_limit,
+        // test_polkadex_gateway::test_settle_trade_partial_two_ask_limit,
+        // test_polkadex_gateway::test_settle_trade_full_buy_limit,
+        // test_polkadex_gateway::test_settle_trade_partial_buy_limit,
+        // test_polkadex_gateway::test_settle_trade_partial_two_buy_limit,
+        // test_polkadex_gateway::test_settle_trade_full_ask_market,
+        // test_polkadex_gateway::test_settle_trade_partial_ask_market,
+        // test_polkadex_gateway::test_settle_trade_partial_two_ask_market,
+        // test_polkadex_gateway::test_settle_trade_full_buy_market,
+        // test_polkadex_gateway::test_settle_trade_partial_bid_market,
+        // test_polkadex_gateway::test_settle_trade_partial_two_bid_market,
+        // test_polkadex_gateway::test_cancel_limit_bid_order,
+        // test_polkadex_gateway::test_cancel_ask_order,
+        // test_polkadex_gateway::test_process_create_order,
+		// test_polkadex_gateway::test_basic_order_checks,
         // Polkadex Balance Storage
         test_polkadex_balance_storage::test_deposit,
         test_polkadex_balance_storage::test_withdraw,
@@ -139,7 +140,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         test_proxy::test_add_proxy_account,
         test_proxy::test_remove_proxy_account,
         test_proxy::test_remove_main_account,
-		happy_path::test_happy_path,
+		//happy_path::test_happy_path,
 
         // Polkadex Orderbook Storage Test Cases
         test_orderbook_storage::test_create_orderbook_storage,
@@ -183,7 +184,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         openfinex::tests::response_object_mapper_tests::test_given_parsed_error_then_map_to_error_object,
         openfinex::tests::response_object_mapper_tests::test_subscribe_response,
         openfinex::tests::response_object_mapper_tests::test_create_order_response,
-        openfinex::tests::response_object_mapper_tests::test_order_update_response,
+        openfinex::tests::response_object_mapper_tests::test_order_cancel_response,
         openfinex::tests::response_object_mapper_tests::test_trade_event_response,
         openfinex::tests::response_object_mapper_tests::test_get_markets_response,
         openfinex::tests::market_repo_tests::update_markets_from_json_strings,

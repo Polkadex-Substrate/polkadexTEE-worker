@@ -39,7 +39,10 @@ pub struct ParsedResponse {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ResponseMethod {
     FromRequestMethod(RequestType, RequestId),
-    OrderUpdate,
+    OrderNew,
+    OrderUpdated,
+    OrderCanceled,
+    OrderRejected,
     TradeEvent,
     Error(String),
 }
@@ -151,7 +154,10 @@ fn parse_response_method(
 
 fn map_response_method_update(input: &str) -> OpenFinexApiResult<ResponseMethod> {
     match input {
-        "ou" => Ok(ResponseMethod::OrderUpdate),
+        "on" => Ok(ResponseMethod::OrderNew),
+        "ou" => Ok(ResponseMethod::OrderUpdated),
+        "oc" => Ok(ResponseMethod::OrderCanceled),
+        "or" => Ok(ResponseMethod::OrderRejected),
         "tr" => Ok(ResponseMethod::TradeEvent),
         _ => Err(OpenFinexApiError::ResponseParsingError(format!(
             "Unknown response method {}",
