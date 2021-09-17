@@ -27,6 +27,7 @@ use crate::openfinex::openfinex_client::OpenFinexClientInterface;
 use crate::polkadex_balance_storage::{
     lock_storage_and_get_balances, lock_storage_and_withdraw, Balances,
 };
+use crate::polkadex_cache::cache_api::RequestId;
 use crate::polkadex_gateway::{
     authenticate_user, authenticate_user_and_validate_nonce, GatewayError, OpenfinexPolkaDexGateway,
 };
@@ -72,7 +73,7 @@ pub trait RpcGateway: Send + Sync {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<(), GatewayError>;
+    ) -> Result<RequestId, GatewayError>;
 
     /// cancel an order, identified by UUID
     fn cancel_order(
@@ -177,7 +178,7 @@ impl RpcGateway for PolkadexRpcGateway {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         let gateway = OpenfinexPolkaDexGateway::new(OpenFinexApiImpl::new(
             OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
         ));

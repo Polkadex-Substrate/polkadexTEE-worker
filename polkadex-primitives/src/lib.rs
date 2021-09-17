@@ -38,6 +38,7 @@ use sp_std::vec::Vec;
 
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
+pub type RequestId = u128;
 
 // Genesis Account constant should be kept up to date with OCEXGenesisAccount at https://github.com/Polkadex-Substrate/Polkadex/blob/main/runtime/src/lib.rs#L1536
 const GENESIS_ACCOUNT: PalletId = PalletId(*b"polka/ga");

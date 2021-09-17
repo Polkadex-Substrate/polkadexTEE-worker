@@ -69,6 +69,13 @@ extern "C" {
         status_update_encoded: *const u8,
         status_size: u32,
     ) -> sgx_status_t;
+    pub fn ocall_send_response_with_uuid(
+        ret_val: *mut sgx_status_t,
+        request_id_encoded: *const u8,
+        request_id_size: u32,
+        uuid_encoded: *const u8,
+        uuid_size: u32,
+    ) -> sgx_status_t;
 }
 
 #[no_mangle]
@@ -262,6 +269,32 @@ pub fn send_state<H: Encode>(hash: H, value_opt: Option<Vec<u8>>) -> Result<(), 
             hash_encoded.len() as u32,
             value_encoded.as_ptr(),
             value_encoded.len() as u32,
+        )
+    };
+
+    if rt != sgx_status_t::SGX_SUCCESS {
+        return Err(String::from("rt not successful"));
+    }
+
+    if res != sgx_status_t::SGX_SUCCESS {
+        return Err(String::from("res not successful"));
+    }
+
+    Ok(())
+}
+
+pub fn send_uuid(request_id: u128, uuid: Vec<u8>) -> Result<(), String> {
+    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+
+    let request_encoded = request_id.encode();
+
+    let res = unsafe {
+        ocall_send_response_with_uuid(
+            &mut rt as *mut sgx_status_t,
+            request_encoded.as_ptr(),
+            request_encoded.len() as u32,
+            uuid.as_ptr(),
+            uuid.len() as u32,
         )
     };
 

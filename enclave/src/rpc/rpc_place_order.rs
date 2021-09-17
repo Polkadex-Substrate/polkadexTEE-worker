@@ -19,13 +19,14 @@
 pub extern crate alloc;
 use alloc::{boxed::Box, string::String, string::ToString};
 
+use crate::polkadex_cache::cache_api::RequestId;
 use crate::rpc::polkadex_rpc_gateway::RpcGateway;
 use crate::rpc::rpc_call_encoder::{JsonRpcCallEncoder, RpcCall, RpcCallEncoder};
 use crate::rpc::rpc_info::RpcCallStatus;
 use crate::rpc::trusted_operation_verifier::TrustedOperationExtractor;
 use jsonrpc_core::{BoxFuture, Params, Result as RpcResult, RpcMethodSync, Value};
 use log::*;
-use polkadex_sgx_primitives::types::{DirectRequest, OrderUUID};
+use polkadex_sgx_primitives::types::DirectRequest;
 use substratee_stf::{TrustedCall, TrustedOperation};
 use substratee_worker_primitives::DirectRequestStatus;
 
@@ -48,7 +49,7 @@ impl RpcPlaceOrder {
     fn method_impl(
         &self,
         request: DirectRequest,
-    ) -> Result<(OrderUUID, bool, DirectRequestStatus), String> {
+    ) -> Result<(RequestId, bool, DirectRequestStatus), String> {
         debug!("entering place_order RPC");
 
         let verified_trusted_operation =
@@ -70,11 +71,11 @@ impl RpcPlaceOrder {
             .rpc_gateway
             .place_order(main_account, proxy_account, order)
         {
-            Ok(_) => Ok(OrderUUID::new()), //FIXME: this is not ok!
+            Ok(request_id) => Ok(request_id),
             Err(e) => Err(e.to_string()),
         }?;
 
-        Ok((result, false, DirectRequestStatus::Ok))
+        Ok((result, true, DirectRequestStatus::Ok))
     }
 }
 

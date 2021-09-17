@@ -29,15 +29,18 @@ use crate::std::string::ToString;
 use alloc::{string::String, sync::Arc, vec::Vec};
 use codec::Encode;
 use core::iter::Peekable;
-use polkadex_sgx_primitives::types::{OrderUUID, OrderUpdate, PriceAndQuantityType, TradeEvent};
+use polkadex_sgx_primitives::types::{
+    OrderNotification, OrderUUID, PriceAndQuantityType, TradeEvent,
+};
 
 /// OpenFinex Response Root Node
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpenFinexResponse {
     RequestResponse(RequestResponse, RequestId),
-    OrderUpdate(OrderUpdate),
+    OrderCanceled(OrderNotification),
     TradeEvent(TradeEvent),
     Error(String),
+    Unimplemented(ResponseMethod),
 }
 
 /// Response to a request
@@ -103,7 +106,16 @@ impl OpenFinexResponseObjectMapper for ResponseObjectMapper {
                 self.map_request_response(rt, ri, &parsed_response.parameters)
             }
             ResponseMethod::TradeEvent => self.map_trade_event(&parsed_response.parameters),
-            ResponseMethod::OrderUpdate => self.map_order_update(&parsed_response.parameters),
+            ResponseMethod::OrderCanceled => self.map_order_cancel(&parsed_response.parameters),
+            ResponseMethod::OrderUpdated => Ok(OpenFinexResponse::Unimplemented(
+                ResponseMethod::OrderUpdated,
+            )),
+            ResponseMethod::OrderRejected => Ok(OpenFinexResponse::Unimplemented(
+                ResponseMethod::OrderRejected,
+            )),
+            ResponseMethod::OrderNew => {
+                Ok(OpenFinexResponse::Unimplemented(ResponseMethod::OrderNew))
+            }
         }
     }
 }
@@ -238,7 +250,7 @@ impl ResponseObjectMapper {
         }))
     }
 
-    fn map_order_update(
+    fn map_order_cancel(
         &self,
         parameters: &[ParameterNode],
     ) -> OpenFinexApiResult<OpenFinexResponse> {
@@ -287,7 +299,7 @@ impl ResponseObjectMapper {
         let user_id = ss58check_to_account_id(user_nickname_str.as_str())
             .map_err(|e| OpenFinexApiError::ResponseParsingError(format!("{}", e)))?;
 
-        Ok(OpenFinexResponse::OrderUpdate(OrderUpdate {
+        Ok(OpenFinexResponse::OrderCanceled(OrderNotification {
             user_id,
             market_id,
             order_id,

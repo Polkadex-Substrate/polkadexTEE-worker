@@ -153,21 +153,21 @@ pub fn lock_storage_and_add_order(
     Ok(orderbook.add_order(order_uuid, order))
 }
 
-pub fn lock_storage_and_check_order_in_orderbook(
-    order_uuid: OrderUUID,
-) -> Result<bool, GatewayError> {
-    let mutex = load_orderbook().unwrap();
-    let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
-    Ok(orderbook.storage.contains_key(&order_uuid))
-}
+// pub fn lock_storage_and_check_order_in_orderbook(
+//     order_uuid: OrderUUID,
+// ) -> Result<bool, GatewayError> {
+//     let mutex = load_orderbook().unwrap();
+//     let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+//     Ok(orderbook.storage.contains_key(&order_uuid))
+// }
 
 // Only for test
-pub fn lock_storage_and_get_order(order_uuid: OrderUUID) -> Result<Order, GatewayError> {
-    let mutex = load_orderbook()?;
-    let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
-    let order = orderbook.read_order(&order_uuid).unwrap().clone();
-    Ok(order)
-}
+// pub fn lock_storage_and_get_order(order_uuid: OrderUUID) -> Result<Order, GatewayError> {
+//     let mutex = load_orderbook()?;
+//     let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+//     let order = orderbook.read_order(&order_uuid).unwrap().clone();
+//     Ok(order)
+// }
 
 pub fn lock_storage_extend_from_disk(data: Vec<OrderbookData>) -> Result<(), GatewayError> {
     // Acquire lock on balance_storage

@@ -50,7 +50,7 @@ impl OpenFinexApiImpl {
 
 /// implementation
 impl OpenFinexApi for OpenFinexApiImpl {
-    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<()> {
+    fn create_order(&self, order: Order, request_id: RequestId) -> OpenFinexApiResult<RequestId> {
         let user_id = user_id_to_request_string(&order.user_uid);
         let market_type = market_type_to_request_string(order.market_type)?;
         let order_type = order_type_to_request_string(order.order_type);
@@ -70,7 +70,7 @@ impl OpenFinexApi for OpenFinexApiImpl {
             .push_parameter(quantity_decimal)
             .push_optional_parameter(price_decimal)
             .build();
-        debug!(
+        error!(
             "Sending order to openfinex: {}",
             request.to_request_string()
         );
@@ -78,7 +78,8 @@ impl OpenFinexApi for OpenFinexApiImpl {
         self.websocket_client
             .clone()
             .send_request(&request.to_request_string().as_bytes())
-            .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))
+            .map_err(|e| OpenFinexApiError::OpenfinexWebSocketError(format!("{:?}", e)))?;
+        Ok(request_id)
     }
 
     fn cancel_order(
@@ -93,7 +94,7 @@ impl OpenFinexApi for OpenFinexApiImpl {
             .push_parameter(market_id_to_request_string(cancel_order.market_id))
             .push_list_parameter(vec![order_id])
             .build();
-        debug!(
+        error!(
             "Sending order to openfinex: {}",
             request.to_request_string()
         );

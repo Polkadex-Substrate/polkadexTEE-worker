@@ -36,7 +36,9 @@ use crate::polkadex_cache::cancel_order_cache::CancelOrderCache;
 use crate::polkadex_cache::create_order_cache::CreateOrderCache;
 use crate::polkadex_gateway;
 use crate::polkadex_orderbook_storage;
+use crate::rpc::worker_api_direct::send_uuid;
 use accounts_nonce_storage::error::Error as AccountRegistryError;
+
 /// Trait for callbacks coming from the OpenFinex side
 pub trait PolkaDexGatewayCallback {
     fn process_cancel_order(&self, order_uuid: OrderUUID) -> Result<(), GatewayError>;
@@ -98,7 +100,7 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
         main_account: AccountId,
         proxy_acc: Option<AccountId>,
         order: Order,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         debug!("Received Order: {:?}", order);
         authenticate_user(main_account.clone(), proxy_acc)?;
         basic_order_checks(&order)?;
@@ -155,16 +157,17 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             }
         };
 
-        self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
+        let request_id =
+            self.send_order_to_open_finex(order.clone(), cache.request_id() as RequestId)?;
         cache.insert_order(order);
-        Ok(())
+        Ok(request_id)
     }
 
     fn send_order_to_open_finex(
         &self,
         order: Order,
         request_id: RequestId,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<RequestId, GatewayError> {
         // TODO: Send order to Openfinex for inclusion ( this is a non-blocking call )
         /* let openfinex_api = OpenFinexApiImpl::new(
             OpenFinexClientInterface::new(0), // FIXME: for now hardcoded 0, but we should change that to..?
@@ -212,26 +215,27 @@ impl<B: OpenFinexApi> OpenfinexPolkaDexGateway<B> {
             cancel_order.clone(),
             cache.request_id() as RequestId,
         )?;
-        cache.insert_order(cancel_order.order_id);
+        cache.insert_order(cancel_order.order_id.clone());
+        error!(">> Cache Cancel Order 1st {:?}", cancel_order);
 
         Ok(())
     }
 }
 //Only for test
-pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
-    let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
-    let cache = match mutex.lock() {
-        Ok(guard) => guard,
-        Err(e) => {
-            error!(
-                "Could not acquire lock on create order cache pointer: {}",
-                e
-            );
-            return Err(GatewayError::UnableToLock);
-        }
-    };
-    Ok(cache.request_id())
-}
+// pub fn lock_storage_get_cache_nonce() -> Result<u128, GatewayError> {
+//     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
+//     let cache = match mutex.lock() {
+//         Ok(guard) => guard,
+//         Err(e) => {
+//             error!(
+//                 "Could not acquire lock on create order cache pointer: {}",
+//                 e
+//             );
+//             return Err(GatewayError::UnableToLock);
+//         }
+//     };
+//     Ok(cache.request_id())
+// }
 
 // Only for test
 pub fn _lock_storage_get_order(request_id: RequestId) -> Result<Order, GatewayError> {
@@ -308,7 +312,10 @@ pub fn process_cancel_order(order_uuid: OrderUUID) -> Result<(), GatewayError> {
     Ok(())
 }
 
-pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), GatewayError> {
+pub fn process_create_order(
+    request_id: RequestId,
+    order_uuid: OrderUUID,
+) -> Result<(), GatewayError> {
     // TODO check that this is correct @Bigna
     let mutex = CreateOrderCache::load().map_err(|_| GatewayError::NullPointer)?;
     let mut create_cache = match mutex.lock() {
@@ -319,14 +326,19 @@ pub fn process_create_order(nonce: u128, order_uuid: OrderUUID) -> Result<(), Ga
         }
     };
 
-    if let Some(order) = create_cache.remove_order(&nonce) {
+    if let Some(order) = create_cache.remove_order(&request_id) {
         // Insert order in order book
-        if let Err(e) = polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid) {
+        if let Err(e) =
+            polkadex_orderbook_storage::lock_storage_and_add_order(order, order_uuid.clone())
+        {
             error!("Locking storage and adding order failed. Error: {:?}", e);
-            return Err(GatewayError::UnableToLock); // TODO: Use the correct error / Handle in the function
+            return Err(GatewayError::UnableToLock);
         };
     } else {
         return Err(GatewayError::NonceNotPresent);
+    }
+    if send_uuid(request_id, order_uuid).is_err() {
+        return Err(GatewayError::NotAbleToSendUUID);
     }
     Ok(())
 }
@@ -500,12 +512,13 @@ pub fn consume_order(
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
+            error!("1>> reserved_amount{:?}", reserved_amount);
             let trade_amount = (current_order.quantity * trade_event.price) / UNIT;
-            if let Err(e) =
-                do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)
-            {
+            let anti_trade_amount = (counter_order.quantity * trade_event.price) / UNIT;
+            error!("2>> trade_amount{:?}", trade_amount);
+            if let Err(e) = do_asset_exchange(&mut current_order, &mut counter_order) {
                 error!("Doing asset exchange failed. Error: {:?}", e);
-                return Err(GatewayError::UnableToLock); // TODO: Use the correct error
+                return Err(GatewayError::UnableToLock);
             };
 
             if counter_order.quantity > 0 {
@@ -516,6 +529,14 @@ pub fn consume_order(
             }
 
             if current_order.quantity > 0 {
+                let temp = (current_order.quantity * current_order.price.unwrap()) / UNIT;
+                let amount_to_unreserve = reserved_amount - anti_trade_amount - temp;
+                error!(">>3 inreserve {:?}", amount_to_unreserve);
+                polkadex_balance_storage::lock_storage_unreserve_balance(
+                    &current_order.user_uid,
+                    current_order.market_id.quote,
+                    amount_to_unreserve,
+                )?;
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     current_order,
                     taker_order_uuid,
@@ -534,7 +555,7 @@ pub fn consume_order(
         (OrderType::MARKET, OrderSide::BID) => {
             if let Err(e) = do_asset_exchange_market(&mut current_order, &mut counter_order) {
                 error!("Doing asset exchange market failed. Error: {:?}", e);
-                return Err(GatewayError::UnableToLock); // TODO: Use the correct error
+                return Err(GatewayError::UnableToLock);
             };
             if counter_order.quantity > 0 {
                 polkadex_orderbook_storage::lock_storage_and_add_order(
@@ -555,14 +576,24 @@ pub fn consume_order(
         (OrderType::LIMIT, OrderSide::ASK) => {
             let reserved_amount = (get_price(counter_order.price)? * counter_order.quantity) / UNIT;
             let trade_amount = (trade_event.price * counter_order.quantity) / UNIT;
-            do_asset_exchange(&mut current_order, &mut counter_order, trade_event.amount)?;
+            do_asset_exchange(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
+                let amount_to_unreserve =
+                    reserved_amount - counter_order.quantity * get_price(counter_order.price)?;
+                polkadex_balance_storage::lock_storage_unreserve_balance(
+                    &counter_order.user_uid,
+                    counter_order.market_id.quote,
+                    amount_to_unreserve,
+                )?;
+
                 polkadex_orderbook_storage::lock_storage_and_add_order(
                     counter_order,
                     maker_order_uuid,
                 )?;
             } else {
                 let amount_to_unreserve = reserved_amount - trade_amount;
+                error!("AskLimit!");
+                error!("amount_to_unreserve {:?}", amount_to_unreserve);
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
@@ -612,7 +643,6 @@ pub fn consume_order(
 pub fn do_asset_exchange(
     current_order: &mut Order,
     counter_order: &mut Order,
-    _expected_trade_amount: u128,
 ) -> Result<(), GatewayError> {
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) if current_order.quantity <= counter_order.quantity => {
@@ -660,7 +690,7 @@ pub fn do_asset_exchange(
         }
 
         (OrderType::LIMIT, OrderSide::ASK) if current_order.quantity <= counter_order.quantity => {
-            let trade_amount = ((get_price(current_order.price)? as f64)
+            let trade_amount = ((get_price(counter_order.price)? as f64)
                 * ((current_order.quantity as f64) / (UNIT as f64)))
                 as u128;
 
@@ -682,7 +712,7 @@ pub fn do_asset_exchange(
         }
 
         (OrderType::LIMIT, OrderSide::ASK) if current_order.quantity > counter_order.quantity => {
-            let trade_amount = ((get_price(current_order.price)? as f64)
+            let trade_amount = ((get_price(counter_order.price)? as f64)
                 * ((counter_order.quantity as f64) / (UNIT as f64)))
                 as u128;
 
@@ -854,4 +884,6 @@ pub enum GatewayError {
     OpenFinexApiError(OpenFinexApiError),
     /// Error within polkadex account registry
     AccountRegistryError(AccountRegistryError),
+    /// Send UUID
+    NotAbleToSendUUID,
 }
