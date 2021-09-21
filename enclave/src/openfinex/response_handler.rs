@@ -27,7 +27,7 @@ use crate::openfinex::response_parser::{ParsedResponse, ResponseParser};
 use crate::polkadex_gateway::PolkaDexGatewayCallback;
 use alloc::sync::Arc;
 use log::*;
-use polkadex_sgx_primitives::types::{OrderState, OrderUpdate, TradeEvent};
+use polkadex_sgx_primitives::types::{OrderNotification, OrderState, TradeEvent};
 
 /// Trait for handling TCP responses, as they are received in the OpenFinex client
 pub trait TcpResponseHandler {
@@ -89,21 +89,27 @@ impl PolkadexResponseHandler {
             OpenFinexResponse::Error(description) => {
                 error!("OpenFinex reports an error: {}", description)
             }
-            OpenFinexResponse::OrderUpdate(order_update) => self.handle_order_update(order_update),
+            OpenFinexResponse::OrderCanceled(order_update) => {
+                self.handle_cancel_order(order_update)
+            }
             OpenFinexResponse::TradeEvent(trade_event) => self.handle_trade_event(trade_event),
+            OpenFinexResponse::Unimplemented(method) => {
+                warn!("unimplemented order notification: {:?}", method)
+            }
         }
     }
 
-    fn handle_order_update(&self, order_update: OrderUpdate) {
-        debug!("Received order update from OpenFinex");
+    fn handle_cancel_order(&self, cancel_order: OrderNotification) {
+        error!("Received cancel order update from OpenFinex");
+        error!(">> 2nd response from OF {:?}", cancel_order.unique_order_id);
 
-        if order_update.state == OrderState::CANCEL {
+        if cancel_order.state == OrderState::CANCEL {
             match self
                 .polkadex_gateway_callback
-                .process_cancel_order(order_update.unique_order_id)
+                .process_cancel_order(cancel_order.unique_order_id)
             {
                 Ok(_) => {
-                    debug!("Cancelling order succeeded")
+                    error!("Cancelling order succeeded")
                 }
                 Err(e) => {
                     error!("Cancelling order failed: {}", e)

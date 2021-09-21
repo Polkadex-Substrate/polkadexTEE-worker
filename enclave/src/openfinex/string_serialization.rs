@@ -22,6 +22,7 @@ use crate::polkadex_cache::cache_api::CacheProvider;
 use crate::polkadex_cache::market_cache::MarketCache;
 use crate::ss58check::account_id_to_ss58check;
 use alloc::{string::String, string::ToString, sync::Arc};
+use codec::Decode;
 use polkadex_sgx_primitives::types::{
     MarketId, MarketType, OrderSide, OrderState, OrderType, UserId,
 };
@@ -122,7 +123,9 @@ pub fn market_type_to_request_string(market_type: MarketType) -> Result<String, 
 }
 
 pub fn order_uuid_to_request_string(order_uuid: MarketType) -> Result<String, OpenFinexApiError> {
-    String::from_utf8(order_uuid).map_err(|e| OpenFinexApiError::SerializationError(e.to_string()))
+    //String::from_utf8(order_uuid).map_err(|e| OpenFinexApiError::SerializationError(e.to_string()))
+    String::decode(&mut order_uuid.as_slice())
+        .map_err(|e| OpenFinexApiError::SerializationError(e.to_string()))
 }
 
 const MARKET_ORDER_TYPE_STR: &str = "m";
@@ -152,8 +155,8 @@ fn string_to_order_type(order_type_str: &str) -> Result<OrderType, String> {
     }
 }
 
-const BID_ORDER_SIDE_STR: &str = "sell";
-const ASK_ORDER_SIDE_STR: &str = "buy";
+const BID_ORDER_SIDE_STR: &str = "buy";
+const ASK_ORDER_SIDE_STR: &str = "sell";
 
 pub fn order_side_to_request_string(order_side: OrderSide) -> String {
     match order_side {

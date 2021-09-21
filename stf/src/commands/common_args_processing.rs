@@ -20,9 +20,9 @@ use crate::commands::common_args::{
     ORDER_TYPE_ARG_NAME, ORDER_UUID_ARG_NAME, PRICE_ARG_NAME, QUANTITY_ARG_NAME, TOKEN_ID_ARG_NAME,
 };
 use clap::ArgMatches;
+use codec::Encode;
 use polkadex_sgx_primitives::types::{CancelOrder, MarketId, Order, OrderSide, OrderType};
 use polkadex_sgx_primitives::{AccountId, AssetId};
-
 pub fn get_order_from_matches(
     matches: &ArgMatches,
     main_account: AccountId,
@@ -67,9 +67,8 @@ pub fn get_cancel_order_from_matches(
 ) -> Result<CancelOrder, String> {
     let order_id = matches
         .value_of(ORDER_UUID_ARG_NAME)
-        .unwrap_or_else(|| panic!("missing {} argument", ORDER_UUID_ARG_NAME))
-        .as_bytes()
-        .to_vec();
+        .unwrap_or_else(|| panic!("missing {} argument", ORDER_UUID_ARG_NAME));
+    let order_id = order_id.encode();
 
     let market_id = get_market_id_from_matches(matches)?;
 
@@ -86,13 +85,11 @@ pub fn get_token_id_from_matches<'a>(matches: &'a ArgMatches<'a>) -> Result<Asse
     let token_id_str = matches
         .value_of(TOKEN_ID_ARG_NAME)
         .unwrap_or_else(|| panic!("missing {} argument", TOKEN_ID_ARG_NAME));
-
     get_asset_id_from_str(token_id_str)
 }
 
 pub fn get_quantity_from_matches(matches: &ArgMatches) -> Result<u128, String> {
     let quantity_option = matches.value_of(QUANTITY_ARG_NAME);
-
     match quantity_option {
         Some(quantity_str) => Ok(get_amount_from_str(quantity_str)),
         None => Err(format!("missing {} argument", QUANTITY_ARG_NAME)),

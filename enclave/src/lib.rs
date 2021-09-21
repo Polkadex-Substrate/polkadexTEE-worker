@@ -386,6 +386,14 @@ pub unsafe extern "C" fn init_chain_relay(
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
+    if let Err(e) = polkadex_orderbook_storage::create_in_memory_orderbook_storage(vec![]) {
+        error!(
+            "Creating in memory orderbook storage failed. Error: {:?}",
+            e
+        );
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
+
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -436,6 +444,7 @@ fn initialize_and_extend_storages(
     if accounts_nonce_storage::load_registry().is_err() {
         accounts_nonce_storage::create_in_memory_accounts_and_nonce_storage(vec![]);
     }
+    error!(">> Orderbook intialized");
     if polkadex_orderbook_storage::load_orderbook().is_err() {
         polkadex_orderbook_storage::create_in_memory_orderbook_storage(vec![])
             .map_err(|_| sgx_status_t::SGX_ERROR_UNEXPECTED)?;

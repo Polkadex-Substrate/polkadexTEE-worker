@@ -55,7 +55,7 @@ fn command_runner<'a>(
     let signer_key_pair = account_details.signer_key_pair();
 
     let (mrenclave, shard) = get_identifiers(matches);
-
+    error!("Hello 1");
     let nonce = get_trusted_nonce(perform_operation, matches, &signer_pair, &signer_key_pair);
 
     let cancel_order =
