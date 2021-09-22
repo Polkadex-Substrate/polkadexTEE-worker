@@ -59,7 +59,7 @@ default-features=false
 
 [dependencies.my-node-runtime]
 git = "https://github.com/Polkadex-Substrate/Polkadex"
-branch = "develop"
+branch = "old-dev"
 package = "node-polkadex-runtime"
 
 [dependencies.substratee-worker-primitives]
