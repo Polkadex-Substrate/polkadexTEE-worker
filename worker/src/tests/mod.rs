@@ -15,15 +15,10 @@
 
 */
 
-use clap::ArgMatches;
-
-use crate::enclave::api::*;
-
 use self::ecalls::*;
 use self::integration_tests::*;
-use crate::{enclave_account, get_nonce};
-use sp_keyring::AccountKeyring;
-use substrate_api_client::Api;
+use crate::enclave::api::*;
+use clap::ArgMatches;
 
 pub mod commons;
 pub mod ecalls;
@@ -34,6 +29,8 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
     let enclave = enclave_init().unwrap();
     let eid = enclave.geteid();
 
+    crate::db_handler::DBHandler::initialize_mirrors();
+
     crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
@@ -41,22 +38,6 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
 
     crate::db_handler::DBHandler::send_data_to_enclave(eid)
         .expect("Failed to send data to enclave");
-
-    let mut api = Api::new(String::from("ws://127.0.0.1:9994"))
-        .unwrap()
-        .set_signer(AccountKeyring::Alice.pair());
-    let genesis_hash = api.genesis_hash.as_bytes().to_vec();
-
-    let tee_accountid = enclave_account(eid);
-
-    // start disk & ipfs snapshotting
-    crate::polkadex_db::start_snapshot_loop(
-        api.clone(),
-        eid,
-        genesis_hash.clone(),
-        "ws://127.0.0.1:2000".as_bytes().to_vec(),
-        get_nonce(&api, &tee_accountid),
-    );
 
     if matches.is_present("all") || matches.is_present("unit") {
         println!("Running unit Tests");

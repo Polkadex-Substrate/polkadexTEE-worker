@@ -43,10 +43,10 @@ use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::UncheckedExtrinsic;
 use sgx_types::sgx_enclave_id_t;
-use sp_core::{sr25519, Pair};
+use sp_core::sr25519;
 use std::thread;
 use std::time::{Duration, SystemTime};
-use substrate_api_client::{Api, UncheckedExtrinsicV4, XtStatus};
+use substrate_api_client::{Api, XtStatus};
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -82,14 +82,15 @@ pub fn start_snapshot_loop(
     api: Api<sr25519::Pair>,
     eid: sgx_enclave_id_t,
     genesis_hash: Vec<u8>,
-    w_url: Vec<u8>,
     nonce: u32,
 ) {
     thread::spawn(move || {
         println!("Successfully started snapshot loop");
         let snapshot_interval = Duration::from_millis(SNAPSHOT_INTERVAL);
         let mut interval_start = SystemTime::now();
+        let mut cid: Vec<u8> = vec![];
         loop {
+            error!("nonce in snapshot loop: {}", nonce);
             if let Ok(elapsed) = interval_start.elapsed() {
                 if elapsed >= snapshot_interval {
                     // update interval time
@@ -99,15 +100,11 @@ pub fn start_snapshot_loop(
                     if let Err(e) = take_orderbook_snapshot() {
                         error!("Could not take orderbook snapshot: {:?}", e);
                     }
-                    if let Err(e) = take_balance_snapshot(
-                        api.clone(),
-                        eid,
-                        genesis_hash.clone(),
-                        w_url.clone(),
-                        nonce,
-                    ) {
-                        error!("Could not take balance snapshot: {:?}", e);
-                    };
+                    match take_balance_snapshot(api.clone(), eid, genesis_hash.clone(), nonce, &cid)
+                    {
+                        Ok(new_cid) => cid = new_cid.clone(),
+                        Err(e) => error!("Could not take balance snapshot: {:?}", e),
+                    }
                     if let Err(e) = take_nonce_snapshot() {
                         error!("Could not take nonce snapshot: {:?}", e);
                     };
@@ -135,9 +132,9 @@ fn take_balance_snapshot(
     api: Api<sr25519::Pair>,
     eid: sgx_enclave_id_t,
     genesis_hash: Vec<u8>,
-    w_url: Vec<u8>,
     nonce: u32,
-) -> Result<()> {
+    old_cid: &Vec<u8>,
+) -> Result<Vec<u8>> {
     let mutex = crate::polkadex_db::balances::load_balances_mirror()?;
     let mut balance_mirror = mutex
         .lock()
@@ -145,19 +142,17 @@ fn take_balance_snapshot(
     let data = balance_mirror.take_disk_snapshot()?;
     let mut ipfs_handler = IpfsStorageHandler::default();
     let cid = ipfs_handler.snapshot_to_ipfs(data)?;
-    error!("Retrived cid {:?} for balance snapshot", cid);
+    let cid_bytes = cid.to_bytes();
+    if &cid_bytes == old_cid {
+        return Ok(cid_bytes);
+    }
 
-    error!("cid encoded: {:?}", cid.to_bytes());
+    let uxt = enclave_send_cid(eid, genesis_hash, nonce, cid.to_bytes()).unwrap();
 
-    let (uxt, size) = enclave_send_cid(eid, genesis_hash, nonce, cid.to_bytes(), w_url).unwrap();
-
-    error!(
-        "data: {:?}, size: {}",
-        uxt.as_slice().split_at(size as usize).0,
-        size
-    );
-
-    let ue = UncheckedExtrinsic::decode(&mut uxt.as_slice().split_at(size as usize).0).unwrap();
+    let ue = UncheckedExtrinsic::decode(
+        &mut uxt.as_slice(), //.split_at(size as usize).0
+    )
+    .unwrap();
 
     let mut _xthex = hex::encode(ue.encode());
     _xthex.insert_str(0, "0x");
@@ -169,7 +164,7 @@ fn take_balance_snapshot(
         api.send_extrinsic(_xthex, XtStatus::Finalized)
     );
 
-    Ok(())
+    Ok(cid_bytes)
 }
 
 // take a snapshot of nonce mirror

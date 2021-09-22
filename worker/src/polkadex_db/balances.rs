@@ -92,6 +92,10 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
         Ok(())
     }
 
+    pub fn write_data_to_disk(&mut self, data: Vec<u8>) -> Result<()> {
+        self.general_db.write_data_to_disk(data)
+    }
+
     pub fn prepare_for_sending(&self) -> Result<Vec<BalancesData>> {
         self.general_db
             .read_all()

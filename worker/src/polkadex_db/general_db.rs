@@ -59,6 +59,11 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
         Ok(encoded_data)
     }
 
+    pub fn write_data_to_disk(&mut self, data: Vec<u8>) -> Result<()> {
+        self.disk_storage.write_to_storage(&data.as_slice())?;
+        Ok(())
+    }
+
     /// reads from permanent disc storage to memory
     /// FIXME: Should be signed by enclave! (issue #15)
     #[allow(unused)]

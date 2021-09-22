@@ -365,6 +365,11 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
+    crate::db_handler::DBHandler::initialize_mirrors();
+
+    crate::db_handler::DBHandler::load_balances_from_ipfs(&api, eid)
+        .expect("Failed to load balances from ipfs");
+
     crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
 
     // ------------------------------------------------------------------------
@@ -382,7 +387,6 @@ fn worker(
         api.clone(),
         eid,
         genesis_hash.clone(),
-        ext_api_url.as_bytes().to_vec(),
         get_nonce(&api, &tee_accountid),
     );
 
@@ -688,10 +692,11 @@ fn init_shard(shard: &ShardIdentifier) {
 // get the public signing key of the TEE
 fn enclave_account(eid: sgx_enclave_id_t) -> AccountId32 {
     let tee_public = enclave_signing_key(eid).unwrap();
-    debug!(
+    info!(
         "[+] Got ed25519 account of TEE = {}",
         tee_public.to_ss58check()
     );
+
     AccountId32::from(*tee_public.as_array_ref())
 }
 

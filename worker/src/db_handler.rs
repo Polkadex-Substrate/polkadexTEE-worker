@@ -18,30 +18,61 @@
 
 use crate::constants::CHUNK_SIZE;
 use crate::enclave::api::{enclave_run_db_thread, enclave_send_disk_data};
+use crate::enclave_account;
+use crate::ipfs::Cid;
 use crate::polkadex_db::{
     initialize_balances_mirror, initialize_nonce_mirror, initialize_orderbook_mirror,
     load_balances_mirror, load_nonce_mirror, load_orderbook_mirror, PolkadexDBError,
 };
 use codec::Encode;
+use frame_support::sp_runtime::app_crypto::sp_core::sr25519;
 use log::debug;
 use polkadex_sgx_primitives::StorageData;
 use sgx_types::sgx_enclave_id_t;
+use std::convert::TryFrom;
 use std::thread;
+use substrate_api_client::Api;
 
 pub struct DBHandler {}
 
 impl DBHandler {
-    fn initialize_mirrors() {
+    pub fn initialize_mirrors() {
         initialize_nonce_mirror();
         initialize_balances_mirror();
         initialize_orderbook_mirror();
     }
 
+    pub fn load_balances_from_ipfs(
+        api: &Api<sr25519::Pair>,
+        eid: sgx_enclave_id_t,
+    ) -> Result<(), PolkadexDBError> {
+        let get_cid: Option<Vec<u8>> = api
+            .get_storage_map("PolkadexOcex", "Snapshot", enclave_account(eid), None)
+            .map_err(|_| {
+                PolkadexDBError::IpfsError(String::from("Failed to get CID from the chain"))
+            })?;
+
+        if let Some(cid) = get_cid {
+            let mut balances = load_balances_mirror()?
+                .lock()
+                .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+            balances.write_data_to_disk(
+                crate::ipfs::read_from_ipfs(Cid::from(<[u8; 46]>::try_from(cid).map_err(
+                    |_| PolkadexDBError::IpfsError(String::from("Failed to build CID")),
+                )?))
+                .map_err(|_| {
+                    PolkadexDBError::IpfsError(String::from("Failed to read data from ipfs"))
+                })?,
+            )?
+        };
+        Ok(())
+    }
+
     pub fn load_from_disk() -> Result<(), PolkadexDBError> {
-        DBHandler::initialize_mirrors();
         let mut balances = load_balances_mirror()?
             .lock()
             .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
+
         if balances.load_disk_snapshot().is_err() {
             debug!("Balances doesn't have a disk snapshot, proceeding anyway.");
         } else {
