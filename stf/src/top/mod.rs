@@ -16,8 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Getter::*;
-use crate::{TrustedCall, TrustedGetter, TrustedOperation};
+use crate::{Getter::*, TrustedCall, TrustedGetter, TrustedOperation};
 
 pub fn get_rpc_function_name_from_top(trusted_operation: &TrustedOperation) -> Option<String> {
     match trusted_operation {

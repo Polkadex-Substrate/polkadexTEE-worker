@@ -17,14 +17,15 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 pub extern crate alloc;
 
-use alloc::vec;
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use codec::{Decode, Encode, Error};
 use frame_support::sp_runtime::traits::Verify;
 
 use crate::ShardIdentifier;
-use polkadex_primitives::assets::AssetId;
-use polkadex_primitives::common_types::{AccountId, Balance};
+use polkadex_primitives::{
+    assets::AssetId,
+    common_types::{AccountId, Balance},
+};
 use sp_core::ed25519::Signature;
 
 #[cfg(feature = "full_crypto")]

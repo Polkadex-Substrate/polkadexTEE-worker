@@ -16,16 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::cli_utils::common_types::OperationRunner;
-use crate::Index;
-use crate::{KeyPair, TrustedGetter, TrustedOperation};
+use crate::{
+    cli_utils::common_types::OperationRunner, Index, KeyPair, TrustedGetter, TrustedOperation,
+};
 
 use clap::ArgMatches;
 use codec::Decode;
 use log::*;
 use sp_application_crypto::sr25519;
-use sp_core::sr25519 as sr25519_core;
-use sp_core::Pair;
+use sp_core::{sr25519 as sr25519_core, Pair};
 
 pub fn get_trusted_nonce(
     perform_operation: OperationRunner<'_>,

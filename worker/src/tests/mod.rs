@@ -19,17 +19,26 @@ use clap::ArgMatches;
 
 use crate::enclave::api::*;
 
-use self::ecalls::*;
-use self::integration_tests::*;
+use self::{ecalls::*, integration_tests::*};
+use substratee_enclave_api::enclave_test::EnclaveTest;
 
 pub mod commons;
 pub mod ecalls;
 pub mod integration_tests;
+pub mod mock;
+
+#[cfg(test)]
+pub mod worker;
+
+#[cfg(test)]
+pub mod enclave_api_mock;
+
+#[cfg(test)]
+pub mod direct_request_mock;
 
 pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
     println!("*** Starting Test enclave");
     let enclave = enclave_init().unwrap();
-    let eid = enclave.geteid();
 
     crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
     // ------------------------------------------------------------------------
@@ -41,14 +50,14 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
 
     if matches.is_present("all") || matches.is_present("unit") {
         println!("Running unit Tests");
-        enclave_test(eid).unwrap();
+        enclave.test_main_entrance().unwrap();
         println!("[+] unit_test ended!");
     }
 
     if matches.is_present("all") || matches.is_present("ecall") {
         println!("Running ecall Tests");
         println!("  testing get_state()");
-        get_state_works(eid);
+        get_state_works(&enclave).unwrap();
         println!("[+] Ecall tests ended!");
     }
 
@@ -57,15 +66,15 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
         // running the tests.
         println!("Running integration Tests");
         println!("  testing perform_ra()");
-        perform_ra_works(eid, port);
+        perform_ra_works(&enclave, port);
         println!("  init chain_relay");
-        let mut head = init_chain_relay(eid, port);
+        let mut head = init_chain_relay(port, &enclave);
         println!("  testing process_forwarded_payload()");
-        head = call_worker_encrypted_set_balance_works(eid, port, head);
+        head = call_worker_encrypted_set_balance_works(&enclave, port, head);
         println!("  testing execute_stf_unshield_balance()");
-        head = forward_encrypted_unshield_works(eid, port, head);
+        head = forward_encrypted_unshield_works(&enclave, port, head);
         println!("  testing shield_funds");
-        let _head = shield_funds_workds(eid, port, head);
+        let _head = shield_funds_workds(&enclave, port, head);
     }
     println!("[+] All tests ended!");
 }

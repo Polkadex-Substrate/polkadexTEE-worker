@@ -44,15 +44,35 @@ use jsonrpc_core::*;
 use log::*;
 use serde_json::*;
 use sgx_types::*;
-use std::{
-    sync::atomic::{AtomicPtr, Ordering},
-    sync::{Arc, SgxMutex},
+use std::sync::{
+    atomic::{AtomicPtr, Ordering},
+    Arc, SgxMutex,
 };
-use substratee_stf::ShardIdentifier;
-use substratee_worker_primitives::RpcReturnValue;
-use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
 
-static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+use sp_core::H256 as Hash;
+
+use codec::{Decode, Encode};
+use log::*;
+
+use crate::rpc::{
+    api::SideChainApi,
+    author::{Author, AuthorApi},
+    basic_pool::BasicPool,
+};
+
+use crate::top_pool::pool::Options as PoolOptions;
+
+use self::serde_json::*;
+use jsonrpc_core::{futures::executor, Error as RpcError, *};
+
+use substratee_stf::ShardIdentifier;
+
+use base58::FromBase58;
+use chain_relay::Block;
+use substratee_node_primitives::Request;
+use substratee_worker_primitives::{
+    block::SignedBlock, DirectRequestStatus, RpcReturnValue, TrustedOperationStatus,
+};
 
 extern "C" {
     pub fn ocall_update_status_event(
@@ -77,29 +97,45 @@ extern "C" {
         uuid_size: u32,
     ) -> sgx_status_t;
 }
+use crate::{ocall::rpc_ocall::EnclaveRpcOCall, rsa3072, utils::write_slice_and_whitespace_pad};
+
+static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[no_mangle]
 // initialise tx pool and store within static atomic pointer
 pub unsafe extern "C" fn initialize_pool() -> sgx_status_t {
     let api = Arc::new(SideChainApi::new());
     let tx_pool = BasicPool::create(PoolOptions::default(), api);
-    let pool_ptr = Arc::new(SgxMutex::<BasicPool<SideChainApi<Block>, Block>>::new(
-        tx_pool,
-    ));
+    let pool_ptr = Arc::new(SgxMutex::<
+        BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>,
+    >::new(tx_pool));
     let ptr = Arc::into_raw(pool_ptr);
     GLOBAL_TX_POOL.store(ptr as *mut (), Ordering::SeqCst);
 
     sgx_status_t::SGX_SUCCESS
 }
 
-pub fn load_top_pool() -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>, Block>>> {
+pub fn load_top_pool(
+) -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>> {
     let ptr = GLOBAL_TX_POOL.load(Ordering::SeqCst)
-        as *mut SgxMutex<BasicPool<SideChainApi<Block>, Block>>;
+        as *mut SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>;
     if ptr.is_null() {
         None
     } else {
         Some(unsafe { &*ptr })
     }
+}
+
+// converts the rpc methods vector to a string and adds commas and brackets for readability
+fn convert_vec_to_string(vec_methods: Vec<&str>) -> String {
+    let mut method_string = String::new();
+    for i in 0..vec_methods.len() {
+        method_string.push_str(vec_methods[i]);
+        if vec_methods.len() > (i + 1) {
+            method_string.push_str(", ");
+        }
+    }
+    format!("methods: [{}]", method_string)
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
@@ -226,61 +262,46 @@ pub unsafe extern "C" fn call_rpc_methods(
     sgx_status_t::SGX_SUCCESS
 }
 
-pub fn update_status_event<H: Encode>(
-    hash: H,
-    status_update: TrustedOperationStatus,
-) -> Result<(), String> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+pub mod tests {
+    use super::{alloc::string::ToString, init_io_handler};
+    use std::string::String;
 
-    let hash_encoded = hash.encode();
-    let status_update_encoded = status_update.encode();
-
-    let res = unsafe {
-        ocall_update_status_event(
-            &mut rt as *mut sgx_status_t,
-            hash_encoded.as_ptr(),
-            hash_encoded.len() as u32,
-            status_update_encoded.as_ptr(),
-            status_update_encoded.len() as u32,
+    fn rpc_response<T: ToString>(result: T) -> String {
+        format!(
+            r#"{{"jsonrpc":"2.0","result":{},"id":1}}"#,
+            result.to_string()
         )
-    };
-
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("rt not successful"));
     }
 
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("res not successful"));
+    pub fn sidechain_import_block_is_ok() {
+        let io = init_io_handler();
+        let enclave_req = r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":[4,0,0,0,0,0,0,0,0,228,0,145,188,97,251,138,131,108,29,6,107,10,152,67,29,148,190,114,167,223,169,197,163,93,228,76,169,171,80,15,209,101,11,211,96,0,0,0,0,83,52,167,255,37,229,185,231,38,66,122,3,55,139,5,190,125,85,94,177,190,99,22,149,92,97,154,30,142,89,24,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,136,220,52,23,213,5,142,196,180,80,62,12,18,234,26,10,137,190,32,15,233,137,34,66,61,67,52,1,79,166,176,238,0,0,0,175,124,84,84,32,238,162,224,130,203,26,66,7,121,44,59,196,200,100,31,173,226,165,106,187,135,223,149,30,46,191,95,116,203,205,102,100,85,82,74,158,197,166,218,181,130,119,127,162,134,227,129,118,85,123,76,21,113,90,1,160,77,110,15],"id":1}"#;
+
+        let response_string = io.handle_request_sync(enclave_req).unwrap();
+
+        assert_eq!(response_string, rpc_response("\"ok\""));
     }
 
-    Ok(())
-}
+    pub fn sidechain_import_block_returns_invalid_param_err() {
+        let io = init_io_handler();
+        let enclave_req = r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":["SophisticatedInvalidParam"],"id":1}"#;
 
-pub fn send_state<H: Encode>(hash: H, value_opt: Option<Vec<u8>>) -> Result<(), String> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
+        let response_string = io.handle_request_sync(enclave_req).unwrap();
 
-    let hash_encoded = hash.encode();
-    let value_encoded = value_opt.encode();
-
-    let res = unsafe {
-        ocall_send_status(
-            &mut rt as *mut sgx_status_t,
-            hash_encoded.as_ptr(),
-            hash_encoded.len() as u32,
-            value_encoded.as_ptr(),
-            value_encoded.len() as u32,
-        )
-    };
-
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("rt not successful"));
+        let err_msg = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid params: invalid type: string \"SophisticatedInvalidParam\", expected u8."},"id":1}"#;
+        assert_eq!(response_string, err_msg);
     }
 
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("res not successful"));
-    }
+    pub fn sidechain_import_block_returns_decode_err() {
+        let io = init_io_handler();
+        let enclave_req =
+            r#"{"jsonrpc":"2.0","method":"sidechain_importBlock","params":[2],"id":1}"#;
 
-    Ok(())
+        let response_string = io.handle_request_sync(enclave_req).unwrap();
+
+        let err_msg = r#"{"jsonrpc":"2.0","error":{"code":-32602,"message":"Invalid parameters: Could not decode Vec<SignedBlock>","data":"[2]"},"id":1}"#;
+        assert_eq!(response_string, err_msg);
+    }
 }
 
 pub fn send_uuid(request_id: u128, uuid: Vec<u8>) -> Result<(), String> {

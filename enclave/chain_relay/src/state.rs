@@ -1,9 +1,10 @@
 use codec::{Decode, Encode};
 use sp_finality_grandpa::{AuthorityList, SetId};
-use sp_runtime::traits::{Block as BlockT, Header as HeaderT};
-use sp_runtime::OpaqueExtrinsic;
-use std::fmt;
-use std::vec::Vec;
+use sp_runtime::{
+    traits::{Block as BlockT, Header as HeaderT},
+    OpaqueExtrinsic,
+};
+use std::{fmt, vec::Vec};
 
 #[derive(Encode, Decode, Clone, PartialEq)]
 pub struct RelayState<Block: BlockT> {

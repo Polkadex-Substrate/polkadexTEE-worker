@@ -15,22 +15,29 @@
 
 */
 
-use crate::{KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use crate::{
+    AccountId, Index, KeyPair, ShardIdentifier, TrustedCall, TrustedGetter, TrustedOperation,
+};
+use base58::{FromBase58, ToBase58};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander, MultiCommand};
-use codec::Decode;
+use codec::{Decode, Encode};
 use log::*;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
-use substrate_client_keystore::LocalKeystore;
+use sp_runtime::traits::IdentifyAccount;
+use std::path::PathBuf;
+use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 
-use crate::cli_utils::account_parsing::*;
-use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::cli_utils::common_types::OperationRunner;
-use crate::commands::cancel_order::cancel_order_cli_command;
-use crate::commands::get_balance::get_balance_cli_command;
-use crate::commands::place_order::place_order_cli_command;
-use crate::commands::withdraw::withdraw_cli_command;
+use crate::{
+    cli_utils::{
+        account_parsing::*, common_operations::get_trusted_nonce, common_types::OperationRunner,
+    },
+    commands::{
+        cancel_order::cancel_order_cli_command, get_balance::get_balance_cli_command,
+        place_order::place_order_cli_command, withdraw::withdraw_cli_command,
+    },
+};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

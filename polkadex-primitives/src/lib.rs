@@ -31,8 +31,10 @@ use crate::types::SignedOrder;
 use alloc::vec;
 use codec::{Decode, Encode};
 use frame_support::{sp_runtime::traits::AccountIdConversion, PalletId};
-pub use polkadex_primitives::assets::AssetId;
-pub use polkadex_primitives::common_types::{AccountId, Balance, Signature};
+pub use polkadex_primitives::{
+    assets::AssetId,
+    common_types::{AccountId, Balance, Signature},
+};
 use sp_core::H256;
 use sp_std::vec::Vec;
 

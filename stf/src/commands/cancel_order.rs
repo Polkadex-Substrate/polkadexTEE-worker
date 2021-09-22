@@ -16,15 +16,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::cli_utils::account_parsing::get_identifiers;
-use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::cli_utils::common_types::OperationRunner;
-use crate::commands::account_details::AccountDetails;
-use crate::commands::common_args::{
-    add_main_account_args, add_market_id_args, add_order_id_args, add_proxy_account_args,
+use crate::{
+    cli_utils::{
+        account_parsing::get_identifiers, common_operations::get_trusted_nonce,
+        common_types::OperationRunner,
+    },
+    commands::{
+        account_details::AccountDetails,
+        common_args::{
+            add_main_account_args, add_market_id_args, add_order_id_args, add_proxy_account_args,
+        },
+        common_args_processing::get_cancel_order_from_matches,
+    },
+    KeyPair, TrustedCall, TrustedOperation,
 };
-use crate::commands::common_args_processing::get_cancel_order_from_matches;
-use crate::{KeyPair, TrustedCall, TrustedOperation};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
 use log::*;

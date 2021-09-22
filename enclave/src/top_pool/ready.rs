@@ -24,8 +24,7 @@ use std::collections::{HashMap, HashSet};
 use core::{cmp, cmp::Ord, default::Default, hash};
 
 use log::trace;
-use sp_runtime::traits::Member;
-use sp_runtime::transaction_validity::TransactionTag as Tag;
+use sp_runtime::{traits::Member, transaction_validity::TransactionTag as Tag};
 
 use crate::top_pool::{
     base_pool::TrustedOperation,
@@ -566,24 +565,18 @@ impl<Hash: hash::Hash + Member + Ord, Ex> ReadyOperations<Hash, Ex> {
     }
 
     /// Returns number of operations in this queue.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self, shard: ShardIdentifier) -> usize {
-        if let Some(ready_map) = self.ready.get(&shard) {
-            return ready_map.len();
-        }
-        0
-    }
-
-    pub fn is_empty(&self) -> bool {
-        //TODO: is_empty() method required to pass clippy
-        todo!()
+        self.ready
+            .get(&shard)
+            .map_or(0, |ready_map| ready_map.len())
     }
 
     /// Returns sum of encoding lengths of all operations in this queue.
     pub fn bytes(&self, shard: ShardIdentifier) -> usize {
-        if let Some(ready_map) = self.ready.get(&shard) {
-            return ready_map.bytes();
-        }
-        0
+        self.ready
+            .get(&shard)
+            .map_or(0, |ready_map| ready_map.bytes())
     }
 }
 
@@ -816,30 +809,30 @@ pub mod tests {
         assert!(
             OperationRef {
                 operation: Arc::new(with_priority(3, 3)),
-                insertion_id: 1,
+                insertion_id: 1
             } > OperationRef {
                 operation: Arc::new(with_priority(2, 3)),
-                insertion_id: 2,
+                insertion_id: 2
             }
         );
         // lower validity = better
         assert!(
             OperationRef {
                 operation: Arc::new(with_priority(3, 2)),
-                insertion_id: 1,
+                insertion_id: 1
             } > OperationRef {
                 operation: Arc::new(with_priority(3, 3)),
-                insertion_id: 2,
+                insertion_id: 2
             }
         );
         // lower insertion_id = better
         assert!(
             OperationRef {
                 operation: Arc::new(with_priority(3, 3)),
-                insertion_id: 1,
+                insertion_id: 1
             } > OperationRef {
                 operation: Arc::new(with_priority(3, 3)),
-                insertion_id: 2,
+                insertion_id: 2
             }
         );
     }

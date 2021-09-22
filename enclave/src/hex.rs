@@ -1,8 +1,7 @@
 // hex encoder and decoder used by rust-protobuf unittests
 
 use sgx_types::*;
-use std::char;
-use std::prelude::v1::*;
+use std::{char, prelude::v1::*};
 
 use log::error;
 
@@ -78,8 +77,7 @@ pub fn encode_hex(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod test {
-    use super::decode_hex;
-    use super::encode_hex;
+    use super::{decode_hex, encode_hex};
     use crate::std::string::ToString;
     #[test]
     fn test_decode_hex() {

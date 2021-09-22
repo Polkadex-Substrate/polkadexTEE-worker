@@ -33,13 +33,13 @@ use substratee_stf::{
     Getter, ShardIdentifier, TrustedCallSigned, TrustedGetterSigned, TrustedOperation,
 };
 
-use crate::rpc::error::Error as StateRpcError;
-use crate::rpc::error::{FutureResult, Result};
-use crate::top_pool::{
-    error::Error as PoolError,
-    error::IntoPoolError,
-    primitives::{
-        BlockHash, InPoolOperation, TrustedOperationPool, TrustedOperationSource, TxHash,
+use crate::{
+    rpc::error::{Error as StateRpcError, FutureResult, Result},
+    top_pool::{
+        error::{Error as PoolError, IntoPoolError},
+        primitives::{
+            BlockHash, InPoolOperation, TrustedOperationPool, TrustedOperationSource, TxHash,
+        },
     },
 };
 use jsonrpc_core::Error as RpcError;
@@ -47,8 +47,7 @@ pub mod client_error;
 use client_error::Error as ClientError;
 pub mod hash;
 
-use crate::rsa3072;
-use crate::state;
+use crate::{rsa3072, state};
 
 /// Substrate authoring RPC API
 pub trait AuthorApi<Hash, BlockHash> {
