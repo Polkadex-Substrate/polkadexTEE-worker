@@ -21,8 +21,11 @@ use crate::commands::common_args::{
 };
 use clap::ArgMatches;
 use codec::Encode;
-use polkadex_sgx_primitives::types::{CancelOrder, MarketId, Order, OrderSide, OrderType};
-use polkadex_sgx_primitives::{AccountId, AssetId};
+use polkadex_sgx_primitives::{
+    types::{CancelOrder, MarketId, Order, OrderSide, OrderType},
+    AccountId, AssetId,
+};
+
 pub fn get_order_from_matches(
     matches: &ArgMatches,
     main_account: AccountId,
@@ -157,8 +160,7 @@ fn get_order_side_from_str(arg: &str) -> Result<OrderSide, String> {
 mod tests {
 
     use super::*;
-    use crate::commands::common_args::add_order_args;
-    use crate::commands::test_utils::utils::create_order_args;
+    use crate::commands::{common_args::add_order_args, test_utils::utils::create_order_args};
     use clap::{App, AppSettings};
     use sp_application_crypto::sr25519;
     use sp_core::{sr25519 as sr25519_core, Pair};

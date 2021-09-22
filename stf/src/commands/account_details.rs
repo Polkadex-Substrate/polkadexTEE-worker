@@ -16,8 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::cli_utils::account_parsing::get_pair_from_str_trusted;
-use crate::commands::common_args::{ACCOUNT_ID_ARG_NAME, PROXY_ACCOUNT_ID_ARG_NAME};
+use crate::{
+    cli_utils::account_parsing::get_pair_from_str_trusted,
+    commands::common_args::{ACCOUNT_ID_ARG_NAME, PROXY_ACCOUNT_ID_ARG_NAME},
+};
 use clap::ArgMatches;
 use sp_application_crypto::sr25519;
 use sp_core::{sr25519 as sr25519_core, Pair};
@@ -84,12 +86,14 @@ impl AccountDetails {
 
 #[cfg(test)]
 mod tests {
-    use crate::commands::account_details::AccountDetails;
-    use crate::commands::common_args::{
-        add_main_account_args, add_proxy_account_args, ACCOUNT_ID_ARG_NAME,
-        PROXY_ACCOUNT_ID_ARG_NAME,
+    use crate::commands::{
+        account_details::AccountDetails,
+        common_args::{
+            add_main_account_args, add_proxy_account_args, ACCOUNT_ID_ARG_NAME,
+            PROXY_ACCOUNT_ID_ARG_NAME,
+        },
+        test_utils::utils::{add_identifiers_app_args, create_identifier_args},
     };
-    use crate::commands::test_utils::utils::{add_identifiers_app_args, create_identifier_args};
     use clap::{App, AppSettings};
 
     #[test]

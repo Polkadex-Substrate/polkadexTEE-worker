@@ -18,8 +18,7 @@ pub enum JustificationError {
 #[derive(Debug, From)]
 pub enum Error {
     // InvalidStorageProof,
-    StorageRootMismatch,
-    StorageValueUnavailable,
+    Storage(substratee_storage::Error),
     // InvalidValidatorSetProof,
     ValidatorSetMismatch,
     InvalidAncestryProof,

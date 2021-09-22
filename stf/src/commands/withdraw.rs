@@ -18,15 +18,17 @@
 
 use core::option::Option;
 
-use crate::cli_utils::account_parsing::*;
-use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::cli_utils::common_types::OperationRunner;
-use crate::commands::account_details::AccountDetails;
-use crate::commands::common_args::*;
-use crate::commands::common_args_processing::{
-    get_quantity_from_matches, get_token_id_from_matches,
+use crate::{
+    cli_utils::{
+        account_parsing::*, common_operations::get_trusted_nonce, common_types::OperationRunner,
+    },
+    commands::{
+        account_details::AccountDetails,
+        common_args::*,
+        common_args_processing::{get_quantity_from_matches, get_token_id_from_matches},
+    },
+    KeyPair, TrustedCall, TrustedOperation,
 };
-use crate::{KeyPair, TrustedCall, TrustedOperation};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
 use log::*;

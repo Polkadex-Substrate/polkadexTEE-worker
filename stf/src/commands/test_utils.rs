@@ -19,12 +19,14 @@
 #[cfg(test)]
 pub mod utils {
 
-    use crate::commands::common_args::{
-        ACCOUNT_ID_ARG_NAME, MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME,
-        MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
-        ORDER_UUID_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
+    use crate::{
+        commands::common_args::{
+            ACCOUNT_ID_ARG_NAME, MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME,
+            MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
+            ORDER_UUID_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
+        },
+        Getter, Index, TrustedGetter, TrustedOperation,
     };
-    use crate::{Getter, Index, TrustedGetter, TrustedOperation};
     use clap::{App, Arg, ArgMatches};
     use codec::Encode;
 
@@ -110,9 +112,7 @@ pub mod utils {
                 TrustedOperation::get(get) => match get {
                     Getter::public(_) => {}
                     Getter::trusted(tgs) => match &tgs.getter {
-                        TrustedGetter::nonce(_account_id) => {
-                            return Some(Index::encode(&145));
-                        }
+                        TrustedGetter::nonce(_account_id) => return Some(Index::encode(&145)),
                         TrustedGetter::free_balance(_) => {}
                         TrustedGetter::reserved_balance(_) => {}
                         TrustedGetter::get_balance(_, _, _) => {}

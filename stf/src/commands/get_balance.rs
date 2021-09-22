@@ -16,11 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::cli_utils::common_types::OperationRunner;
-use crate::commands::account_details::AccountDetails;
-use crate::commands::common_args::*;
-use crate::commands::common_args_processing::get_token_id_from_matches;
-use crate::{KeyPair, TrustedGetter, TrustedOperation};
+use crate::{
+    cli_utils::common_types::OperationRunner,
+    commands::{
+        account_details::AccountDetails, common_args::*,
+        common_args_processing::get_token_id_from_matches,
+    },
+    KeyPair, TrustedGetter, TrustedOperation,
+};
 use clap::{App, ArgMatches};
 use clap_nested::Command;
 use codec::{Decode, Encode};

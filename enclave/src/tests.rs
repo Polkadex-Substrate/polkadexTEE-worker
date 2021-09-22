@@ -19,14 +19,10 @@
 use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage, test_proxy};
 use crate::aes;
 use crate::attestation;
-use crate::ed25519;
 //use crate::happy_path;
 use crate::openfinex;
 use crate::polkadex_cache;
-use crate::rpc;
-use crate::rsa3072;
 use crate::ss58check;
-use crate::state;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
 use crate::top_pool;
@@ -41,36 +37,49 @@ use crate::test_polkadex_balance_storage;
 use substrate_api_client::utils::storage_key;
 use substratee_worker_primitives::block::StatePayload;
 
-use codec::{Decode, Encode};
-use sp_core::{crypto::Pair, hashing::blake2_256, H256};
-
-use crate::constants::{BLOCK_CONFIRMED, GETTERTIMEOUT, SUBSRATEE_REGISTRY_MODULE};
-
-use std::string::String;
-use std::vec::Vec;
-
-use crate::ipfs::IpfsContent;
-use core::ops::Deref;
-use std::fs::File;
-use std::io::Read;
-use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::untrusted::time::SystemTimeEx;
-
+use crate::{
+    ed25519::Ed25519,
+    ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
+    rpc, rsa3072, state,
+    test::{cert_tests::*, mocks::enclave_rpc_ocall_mock::EnclaveRpcOCallMock},
+    top_pool, Timeout,
+};
 use chain_relay::{Block, Header};
-use sp_runtime::traits::Header as HeaderT;
-
-use sgx_externalities::SgxExternalitiesTypeTrait;
-use substratee_stf::sgx::AccountInfo;
-use substratee_stf::StateTypeDiff as StfStateTypeDiff;
-use substratee_stf::{ShardIdentifier, Stf, TrustedCall};
-use substratee_stf::{TrustedGetter, TrustedOperation};
-
+use codec::{Decode, Encode};
+use core::ops::Deref;
 use jsonrpc_core::futures::executor;
-use sp_core::ed25519 as spEd25519;
+use log::*;
+use rpc::{
+    api::SideChainApi,
+    author::{Author, AuthorApi},
+    basic_pool::BasicPool,
+};
+use sgx_externalities::SgxExternalitiesTypeTrait;
+use sgx_tunittest::*;
+use sgx_types::size_t;
+use sp_core::{crypto::Pair, ed25519 as spEd25519, hashing::blake2_256, H256};
+use sp_runtime::traits::Header as HeaderT;
+use std::{
+    string::String,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+    untrusted::time::SystemTimeEx,
+    vec::Vec,
+};
+use substratee_ocall_api::EnclaveAttestationOCallApi;
+use substratee_settings::{
+    enclave::GETTER_TIMEOUT,
+    node::{BLOCK_CONFIRMED, SUBSTRATEE_REGISTRY_MODULE},
+};
+use substratee_sgx_crypto::{Aes, StateCrypto};
+use substratee_sgx_io::SealedIO;
+use substratee_sidechain_primitives::traits::{Block as BlockT, SignedBlock as SignedBlockT};
+use substratee_stf::{
+    AccountInfo, ShardIdentifier, StatePayload, StateTypeDiff as StfStateTypeDiff, Stf,
+    TrustedCall, TrustedGetter, TrustedOperation,
+};
+use substratee_storage::storage_value_key;
 
-use rpc::author::{Author, AuthorApi};
-use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use rpc::{
     io_handler_extensions, polkadex_rpc_gateway, rpc_call_encoder, rpc_cancel_order,
     rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
@@ -79,7 +88,7 @@ use rpc::{
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
     rsgx_unit_tests!(
-        // Polkadex cache
+	 // Polkadex cache
         polkadex_cache::create_order_cache::tests::test_initialize_and_lock_storage,
         polkadex_cache::create_order_cache::tests::test_insert_order_and_increment,
         polkadex_cache::create_order_cache::tests::test_remove_order,
@@ -218,61 +227,73 @@ pub extern "C" fn test_main_entrance() -> size_t {
         ss58check::tests::convert_account_id_to_and_from_ss58check,
 
         // Substratee Tests
-        top_pool::base_pool::test_should_import_transaction_to_ready,
-        top_pool::base_pool::test_should_not_import_same_transaction_twice,
-        top_pool::base_pool::test_should_import_transaction_to_future_and_promote_it_later,
-        top_pool::base_pool::test_should_promote_a_subgraph,
-        top_pool::base_pool::test_should_handle_a_cycle,
-        top_pool::base_pool::test_can_track_heap_size,
-        top_pool::base_pool::test_should_handle_a_cycle_with_low_priority,
-        top_pool::base_pool::test_should_remove_invalid_transactions,
-        top_pool::base_pool::test_should_prune_ready_transactions,
-        top_pool::base_pool::test_transaction_debug,
-        top_pool::base_pool::test_transaction_propagation,
-        top_pool::base_pool::test_should_reject_future_transactions,
-        top_pool::base_pool::test_should_clear_future_queue,
-        top_pool::base_pool::test_should_accept_future_transactions_when_explicitly_asked_to,
-        top_pool::primitives::test_h256,
-        top_pool::pool::test_should_validate_and_import_transaction,
-        top_pool::pool::test_should_reject_if_temporarily_banned,
-        top_pool::pool::test_should_notify_about_pool_events,
-        top_pool::pool::test_should_clear_stale_transactions,
-        top_pool::pool::test_should_ban_mined_transactions,
-        //FIXME: This test sometimes fails, sometimes succeeds..
-        //top_pool::pool::test_should_limit_futures,
-        top_pool::pool::test_should_error_if_reject_immediately,
-        top_pool::pool::test_should_reject_transactions_with_no_provides,
-        top_pool::ready::tests::test_should_replace_transaction_that_provides_the_same_tag,
-        top_pool::ready::tests::test_should_replace_multiple_transactions_correctly,
-        top_pool::ready::tests::test_should_return_best_transactions_in_correct_order,
-        top_pool::ready::tests::test_should_order_refs,
-        top_pool::rotator::tests::test_should_not_ban_if_not_stale,
-        top_pool::rotator::tests::test_should_ban_stale_extrinsic,
-        top_pool::rotator::tests::test_should_clear_banned,
-        top_pool::rotator::tests::test_should_garbage_collect,
-        top_pool::tracked_map::tests::test_basic,
-        state::test_write_and_load_state_works,
-        state::test_sgx_state_decode_encode_works,
-        state::test_encrypt_decrypt_state_type_works,
-        test_time_is_overdue,
-        test_time_is_not_overdue,
-        test_compose_block_and_confirmation,
-        test_submit_trusted_call_to_top_pool,
-        test_submit_trusted_getter_to_top_pool,
-        test_differentiate_getter_and_call_works,
-        // needs node to be running.. unit tests?
-        // test_create_block_and_confirmation_works,
-        // test_ocall_worker_request,
-        // test_create_state_diff,
-        // test_executing_call_updates_account_nonce,
-        // test_invalid_nonce_call_is_not_executed,
-
-        // these unit tests (?) need an ipfs node running..
-        //ipfs::test_creates_ipfs_content_struct_works,
-        //ipfs::test_verification_ok_for_correct_content,
-        //ipfs::test_verification_fails_for_incorrect_content,
-        //test_ocall_read_write_ipfs,
-    )
+		top_pool::base_pool::tests::test_should_import_transaction_to_ready,
+		top_pool::base_pool::tests::test_should_not_import_same_transaction_twice,
+		top_pool::base_pool::tests::test_should_import_transaction_to_future_and_promote_it_later,
+		top_pool::base_pool::tests::test_should_promote_a_subgraph,
+		top_pool::base_pool::tests::test_should_handle_a_cycle,
+		top_pool::base_pool::tests::test_can_track_heap_size,
+		top_pool::base_pool::tests::test_should_handle_a_cycle_with_low_priority,
+		top_pool::base_pool::tests::test_should_remove_invalid_transactions,
+		top_pool::base_pool::tests::test_should_prune_ready_transactions,
+		top_pool::base_pool::tests::test_transaction_debug,
+		top_pool::base_pool::tests::test_transaction_propagation,
+		top_pool::base_pool::tests::test_should_reject_future_transactions,
+		top_pool::base_pool::tests::test_should_clear_future_queue,
+		top_pool::base_pool::tests::test_should_accept_future_transactions_when_explicitly_asked_to,
+		top_pool::primitives::tests::test_h256,
+		top_pool::pool::tests::test_should_validate_and_import_transaction,
+		top_pool::pool::tests::test_should_reject_if_temporarily_banned,
+		top_pool::pool::tests::test_should_notify_about_pool_events,
+		top_pool::pool::tests::test_should_clear_stale_transactions,
+		top_pool::pool::tests::test_should_ban_mined_transactions,
+		//FIXME: This test sometimes fails, sometimes succeeds..
+		//top_pool::pool::test_should_limit_futures,
+		top_pool::pool::tests::test_should_error_if_reject_immediately,
+		top_pool::pool::tests::test_should_reject_transactions_with_no_provides,
+		top_pool::ready::tests::test_should_replace_transaction_that_provides_the_same_tag,
+		top_pool::ready::tests::test_should_replace_multiple_transactions_correctly,
+		top_pool::ready::tests::test_should_return_best_transactions_in_correct_order,
+		top_pool::ready::tests::test_should_order_refs,
+		top_pool::rotator::tests::test_should_not_ban_if_not_stale,
+		top_pool::rotator::tests::test_should_ban_stale_extrinsic,
+		top_pool::rotator::tests::test_should_clear_banned,
+		top_pool::rotator::tests::test_should_garbage_collect,
+		top_pool::tracked_map::tests::test_basic,
+		state::tests::test_write_and_load_state_works,
+		state::tests::test_sgx_state_decode_encode_works,
+		state::tests::test_encrypt_decrypt_state_type_works,
+		test_time_is_overdue,
+		test_time_is_not_overdue,
+		test_compose_block_and_confirmation,
+		test_submit_trusted_call_to_top_pool,
+		test_submit_trusted_getter_to_top_pool,
+		test_differentiate_getter_and_call_works,
+		test_create_block_and_confirmation_works,
+		// needs node to be running.. unit tests?
+		// test_ocall_worker_request,
+		test_create_state_diff,
+		test_executing_call_updates_account_nonce,
+		test_invalid_nonce_call_is_not_executed,
+		test_non_root_shielding_call_is_not_executed,
+		substratee_stf::stf_sgx::tests::apply_state_diff_works,
+		substratee_stf::stf_sgx::tests::apply_state_diff_returns_storage_hash_mismatch_err,
+		substratee_stf::stf_sgx::tests::apply_state_diff_returns_invalid_storage_diff_err,
+		rpc::worker_api_direct::tests::sidechain_import_block_is_ok,
+		rpc::worker_api_direct::tests::sidechain_import_block_returns_invalid_param_err,
+		rpc::worker_api_direct::tests::sidechain_import_block_returns_decode_err,
+		//
+		// mra cert tests
+		test_verify_mra_cert_should_work,
+		test_verify_wrong_cert_is_err,
+		test_given_wrong_platform_info_when_verifying_attestation_report_then_return_error,
+		//
+		// these unit test (?) need an ipfs node running..
+		//ipfs::test_creates_ipfs_content_struct_works,
+		//ipfs::test_verification_ok_for_correct_content,
+		//ipfs::test_verification_fails_for_incorrect_content,
+		//test_ocall_read_write_ipfs,
+	)
 }
 
 #[allow(unused)]
@@ -289,71 +310,6 @@ pub fn ensure_no_empty_shard_directory_exists() {
 }
 
 #[allow(unused)]
-fn test_ocall_read_write_ipfs() {
-    info!("testing IPFS read/write. Hopefully ipfs daemon is running...");
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-    let mut cid_buf: Vec<u8> = vec![0; 46];
-    let enc_state: Vec<u8> = vec![20; 4 * 512 * 1024];
-
-    let _res = unsafe {
-        crate::ocall_write_ipfs(
-            &mut rt as *mut sgx_status_t,
-            enc_state.as_ptr(),
-            enc_state.len() as u32,
-            cid_buf.as_mut_ptr(),
-            cid_buf.len() as u32,
-        )
-    };
-
-    let res = unsafe {
-        crate::ocall_read_ipfs(
-            &mut rt as *mut sgx_status_t,
-            cid_buf.as_ptr(),
-            cid_buf.len() as u32,
-        )
-    };
-
-    if res == sgx_status_t::SGX_SUCCESS {
-        let cid = std::str::from_utf8(&cid_buf).unwrap();
-        let mut f = File::open(&cid).unwrap();
-        let mut content_buf = Vec::new();
-        f.read_to_end(&mut content_buf).unwrap();
-        info!("reading file {:?} of size {} bytes", f, &content_buf.len());
-
-        let mut ipfs_content = IpfsContent::new(cid, content_buf);
-        let verification = ipfs_content.verify();
-        assert!(verification.is_ok());
-    } else {
-        error!("was not able to write to file");
-        panic!()
-    }
-}
-
-#[allow(unused)]
-fn test_ocall_worker_request() {
-    info!("testing ocall_worker_request. Hopefully substraTEE-node is running...");
-    let mut requests = vec![WorkerRequest::ChainStorage(
-        storage_key("Balances", "TotalIssuance").0,
-        None,
-    )];
-
-    let mut resp: Vec<WorkerResponse<Vec<u8>>> = match crate::worker_request(requests) {
-        Ok(response) => response,
-        Err(e) => panic!("Worker response decode failed. Error: {:?}", e),
-    };
-
-    let first = resp.pop().unwrap();
-    info!("Worker response: {:?}", first);
-
-    let (total_issuance, proof) = match first {
-        WorkerResponse::ChainStorage(_storage_key, value, proof) => (value, proof),
-    };
-
-    info!("Total Issuance is: {:?}", total_issuance);
-    info!("Proof: {:?}", proof)
-}
-
-#[allow(unused)]
 fn test_time_is_overdue() {
     // given
     let start_time = SystemTime::now()
@@ -361,7 +317,7 @@ fn test_time_is_overdue() {
         .unwrap()
         .as_secs() as i64;
     // when
-    let before_start_time = (start_time * 1000 - GETTERTIMEOUT) / 1000;
+    let before_start_time = (start_time * 1000 - GETTER_TIMEOUT) / 1000;
     let time_has_run_out = crate::time_is_overdue(Timeout::Getter, before_start_time);
     // then
     assert!(time_has_run_out)
@@ -410,7 +366,7 @@ fn test_compose_block_and_confirmation() {
         &mut state,
     )
     .unwrap();
-    let xt_block_encoded = [SUBSRATEE_REGISTRY_MODULE, BLOCK_CONFIRMED].encode();
+    let xt_block_encoded = [SUBSTRATEE_REGISTRY_MODULE, BLOCK_CONFIRMED].encode();
     let block_hash_encoded = blake2_256(&signed_block.block().encode()).encode();
     let mut opaque_call_vec = opaque_call.0;
 
@@ -424,7 +380,7 @@ fn test_compose_block_and_confirmation() {
     assert!(stripped_opaque_call.starts_with(&block_hash_encoded));
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -434,7 +390,8 @@ fn test_submit_trusted_call_to_top_pool() {
 
     // create top pool
     let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
-    let tx_pool = BasicPool::create(Default::default(), api);
+    let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
+        BasicPool::create(Default::default(), api);
     let author = Author::new(Arc::new(&tx_pool));
 
     // create trusted call signed
@@ -444,14 +401,14 @@ fn test_submit_trusted_call_to_top_pool() {
     // ensure state starts empty
     state::init_shard(&shard).unwrap();
     Stf::init_state();
-    let signer_pair = ed25519::unseal_pair().unwrap();
+    let signer_pair = Ed25519::unseal().unwrap();
     let call = TrustedCall::balance_set_balance(
         signer_pair.public().into(),
         signer_pair.public().into(),
         42,
         42,
     );
-    let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
+    let signed_call = call.sign(&signer_pair.0.into(), nonce, &mrenclave, &shard);
     let trusted_operation: TrustedOperation = signed_call.clone().into_trusted_operation(true);
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -475,7 +432,7 @@ fn test_submit_trusted_call_to_top_pool() {
     assert_eq!(call_one, call_two);
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -485,7 +442,8 @@ fn test_submit_trusted_getter_to_top_pool() {
 
     // create top pool
     let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
-    let tx_pool = BasicPool::create(Default::default(), api);
+    let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
+        BasicPool::create(Default::default(), api);
     let author = Author::new(Arc::new(&tx_pool));
 
     // create trusted getter signed
@@ -493,9 +451,9 @@ fn test_submit_trusted_getter_to_top_pool() {
     // ensure state starts empty
     state::init_shard(&shard).unwrap();
     Stf::init_state();
-    let signer_pair = ed25519::unseal_pair().unwrap();
+    let signer_pair = Ed25519::unseal().unwrap();
     let getter = TrustedGetter::free_balance(signer_pair.public().into());
-    let signed_getter = getter.sign(&signer_pair.into());
+    let signed_getter = getter.sign(&signer_pair.0.into());
     let trusted_operation: TrustedOperation = signed_getter.clone().into();
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -519,7 +477,7 @@ fn test_submit_trusted_getter_to_top_pool() {
     assert_eq!(getter_one, getter_two);
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -529,7 +487,8 @@ fn test_differentiate_getter_and_call_works() {
 
     // create top pool
     let api: Arc<SideChainApi<Block>> = Arc::new(SideChainApi::new());
-    let tx_pool = BasicPool::create(Default::default(), api);
+    let tx_pool: BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCallMock> =
+        BasicPool::create(Default::default(), api);
     let author = Author::new(Arc::new(&tx_pool));
     // create trusted getter signed
     let shard = ShardIdentifier::default();
@@ -537,9 +496,9 @@ fn test_differentiate_getter_and_call_works() {
     state::init_shard(&shard).unwrap();
     Stf::init_state();
 
-    let signer_pair = ed25519::unseal_pair().unwrap();
+    let signer_pair = Ed25519::unseal().unwrap();
     let getter = TrustedGetter::free_balance(signer_pair.public().into());
-    let signed_getter = getter.sign(&signer_pair.clone().into());
+    let signed_getter = getter.sign(&signer_pair.0.clone().into());
     let trusted_operation: TrustedOperation = signed_getter.clone().into();
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -557,7 +516,7 @@ fn test_differentiate_getter_and_call_works() {
         42,
         42,
     );
-    let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
+    let signed_call = call.sign(&signer_pair.0.into(), nonce, &mrenclave, &shard);
     let trusted_operation_call: TrustedOperation = signed_call.clone().into_trusted_operation(true);
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -587,7 +546,7 @@ fn test_differentiate_getter_and_call_works() {
     assert_eq!(getter_one, getter_two);
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -603,6 +562,10 @@ fn test_create_block_and_confirmation_works() {
     state::init_shard(&shard).unwrap();
     let mut state = Stf::init_state();
     assert_eq!(Stf::get_sidechain_block_number(&mut state).unwrap(), 0);
+
+    // get index of current shard
+    let index = get_current_shard_index(&shard);
+
     // Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
     let latest_onchain_header = Header::new(
         1,
@@ -622,8 +585,9 @@ fn test_create_block_and_confirmation_works() {
 
         // create trusted call signed
         let nonce = 0;
-        let mrenclave = attestation::get_mrenclave_of_self().unwrap().m;
-        let signer_pair = ed25519::unseal_pair().unwrap();
+        let ocall_api = OCallComponentFactory::attestation_api();
+        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
+        let signer_pair = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
         let call = TrustedCall::balance_transfer(
             signer_pair.public().into(),
             signer_pair.public().into(),
@@ -643,13 +607,22 @@ fn test_create_block_and_confirmation_works() {
         top_hash = executor::block_on(result).unwrap();
     }
 
-    // when
-    let (confirm_calls, signed_blocks) =
-        crate::execute_top_pool_calls(latest_onchain_header).unwrap();
+    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+    let on_chain_ocall = OCallComponentFactory::on_chain_api();
 
-    let signed_block = signed_blocks[0].clone();
-    let mut opaque_call_vec = confirm_calls[0].0.clone();
-    let xt_block_encoded = [SUBSRATEE_REGISTRY_MODULE, BLOCK_CONFIRMED].encode();
+    // when
+    let (confirm_calls, signed_blocks) = crate::execute_top_pool_calls(
+        rpc_ocall.as_ref(),
+        on_chain_ocall.as_ref(),
+        latest_onchain_header,
+    )
+    .unwrap();
+
+    debug!("got {} signed block(s)", signed_blocks.len());
+
+    let signed_block = signed_blocks[index].clone();
+    let mut opaque_call_vec = confirm_calls[index].0.clone();
+    let xt_block_encoded = [SUBSTRATEE_REGISTRY_MODULE, BLOCK_CONFIRMED].encode();
     let block_hash_encoded = blake2_256(&signed_block.block().encode()).encode();
 
     // then
@@ -663,13 +636,12 @@ fn test_create_block_and_confirmation_works() {
     assert!(stripped_opaque_call.starts_with(&block_hash_encoded));
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
 fn test_create_state_diff() {
     // given
-
     ensure_no_empty_shard_directory_exists();
 
     // create top pool
@@ -689,15 +661,18 @@ fn test_create_state_diff() {
     state::init_shard(&shard).unwrap();
     let state = Stf::init_state();
 
+    // get index of current shard
+    let index = get_current_shard_index(&shard);
+
     // create accounts
-    let signer_without_money = ed25519::unseal_pair().unwrap();
+    let signer_without_money = Ed25519::unseal().unwrap();
     let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
     let account_with_money = pair_with_money.public();
     let account_without_money = signer_without_money.public();
     let account_with_money_key_hash =
-        substratee_stf::sgx::account_key_hash(&account_with_money.into());
+        substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
     let account_without_money_key_hash =
-        substratee_stf::sgx::account_key_hash(&account_without_money.into());
+        substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
 
     let _prev_state_hash = state::write(state, &shard).unwrap();
     // load top pool
@@ -709,7 +684,8 @@ fn test_create_state_diff() {
 
         // create trusted call signed
         let nonce = 0;
-        let mrenclave = attestation::get_mrenclave_of_self().unwrap().m;
+        let ocall_api = OCallComponentFactory::attestation_api();
+        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
         let call = TrustedCall::balance_transfer(
             account_with_money.into(),
             account_without_money.into(),
@@ -729,10 +705,18 @@ fn test_create_state_diff() {
         executor::block_on(result).unwrap();
     }
 
+    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+
     // when
-    let (_, signed_blocks) = crate::execute_top_pool_calls(latest_onchain_header).unwrap();
-    let mut encrypted_payload: Vec<u8> = signed_blocks[0].block().state_payload().to_vec();
-    aes::de_or_encrypt(&mut encrypted_payload).unwrap();
+    let (_, signed_blocks) = crate::execute_top_pool_calls(
+        rpc_ocall.as_ref(),
+        on_chain_ocall.as_ref(),
+        latest_onchain_header,
+    )
+    .unwrap();
+    let mut encrypted_payload: Vec<u8> = signed_blocks[index].block().state_payload().to_vec();
+    Aes::decrypt(&mut encrypted_payload).unwrap();
     let state_payload = StatePayload::decode(&mut encrypted_payload.as_slice()).unwrap();
     let state_diff = StfStateTypeDiff::decode(state_payload.state_update().to_vec());
 
@@ -756,7 +740,7 @@ fn test_create_state_diff() {
         .data
         .free;
     // get block number
-    let block_number_key = substratee_stf::sgx::storage_value_key("System", "Number");
+    let block_number_key = storage_value_key("System", "Number");
     let new_block_number_encoded = state_diff.get(&block_number_key).unwrap().as_ref().unwrap();
     let new_block_number =
         substratee_worker_primitives::BlockNumber::decode(&mut new_block_number_encoded.as_slice())
@@ -767,7 +751,7 @@ fn test_create_state_diff() {
     assert_eq!(new_block_number, 1);
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -794,14 +778,14 @@ fn test_executing_call_updates_account_nonce() {
     let mut state = Stf::init_state();
 
     // create accounts
-    let signer_without_money = ed25519::unseal_pair().unwrap();
+    let signer_without_money = Ed25519::unseal().unwrap();
     let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
     let account_with_money = pair_with_money.public();
     let account_without_money = signer_without_money.public();
     let account_with_money_key_hash =
-        substratee_stf::sgx::account_key_hash(&account_with_money.into());
+        substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
     let account_without_money_key_hash =
-        substratee_stf::sgx::account_key_hash(&account_without_money.into());
+        substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
 
     let _prev_state_hash = state::write(state, &shard).unwrap();
     // load top pool
@@ -813,7 +797,8 @@ fn test_executing_call_updates_account_nonce() {
 
         // create trusted call signed
         let nonce = 0;
-        let mrenclave = attestation::get_mrenclave_of_self().unwrap().m;
+        let ocall_api = OCallComponentFactory::attestation_api();
+        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
         let call = TrustedCall::balance_transfer(
             account_with_money.into(),
             account_without_money.into(),
@@ -833,8 +818,16 @@ fn test_executing_call_updates_account_nonce() {
         executor::block_on(result).unwrap();
     }
 
+    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+
     // when
-    let (_, signed_blocks) = crate::execute_top_pool_calls(latest_onchain_header).unwrap();
+    let (_, signed_blocks) = crate::execute_top_pool_calls(
+        rpc_ocall.as_ref(),
+        on_chain_ocall.as_ref(),
+        latest_onchain_header,
+    )
+    .unwrap();
 
     // then
     let mut state = state::load(&shard).unwrap();
@@ -842,7 +835,7 @@ fn test_executing_call_updates_account_nonce() {
     assert_eq!(nonce, 1);
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
 }
 
 #[allow(unused)]
@@ -869,14 +862,14 @@ fn test_invalid_nonce_call_is_not_executed() {
     let mut state = Stf::init_state();
 
     // create accounts
-    let signer_without_money = ed25519::unseal_pair().unwrap();
+    let signer_without_money = Ed25519::unseal().unwrap();
     let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
     let account_with_money = pair_with_money.public();
     let account_without_money = signer_without_money.public();
     let account_with_money_key_hash =
-        substratee_stf::sgx::account_key_hash(&account_with_money.into());
+        substratee_stf::stf_sgx_primitives::account_key_hash(&account_with_money.into());
     let account_without_money_key_hash =
-        substratee_stf::sgx::account_key_hash(&account_without_money.into());
+        substratee_stf::stf_sgx_primitives::account_key_hash(&account_without_money.into());
 
     let _prev_state_hash = state::write(state, &shard).unwrap();
     // load top pool
@@ -888,7 +881,8 @@ fn test_invalid_nonce_call_is_not_executed() {
 
         // create trusted call signed
         let nonce = 10;
-        let mrenclave = attestation::get_mrenclave_of_self().unwrap().m;
+        let ocall_api = OCallComponentFactory::attestation_api();
+        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
         let call = TrustedCall::balance_transfer(
             account_with_money.into(),
             account_without_money.into(),
@@ -908,17 +902,117 @@ fn test_invalid_nonce_call_is_not_executed() {
         executor::block_on(result).unwrap();
     }
 
+    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+
     // when
-    let (_, signed_blocks) = crate::execute_top_pool_calls(latest_onchain_header).unwrap();
+    let (_, signed_blocks) = crate::execute_top_pool_calls(
+        rpc_ocall.as_ref(),
+        on_chain_ocall.as_ref(),
+        latest_onchain_header,
+    )
+    .unwrap();
 
     // then
-    let mut state = state::load(&shard).unwrap();
-    let nonce = Stf::account_nonce(&mut state, &account_with_money.into());
+    let mut updated_state = state::load(&shard).unwrap();
+    let nonce = Stf::account_nonce(&mut updated_state, &account_with_money.into());
     assert_eq!(nonce, 0);
 
-    let acc_data_with_money = Stf::account_data(&mut state, &account_with_money.into()).unwrap();
+    let acc_data_with_money =
+        Stf::account_data(&mut updated_state, &account_with_money.into()).unwrap();
     assert_eq!(acc_data_with_money.free, 2000);
 
     // clean up
-    state::remove_shard_dir(&shard);
+    state::tests::remove_shard_dir(&shard);
+}
+
+#[allow(unused)]
+fn test_non_root_shielding_call_is_not_executed() {
+    // given
+    ensure_no_empty_shard_directory_exists();
+
+    // create top pool
+    unsafe { rpc::worker_api_direct::initialize_pool() };
+    let shard = ShardIdentifier::default();
+    // Header::new(Number, extrinsicroot, stateroot, parenthash, digest)
+    let latest_onchain_header = Header::new(
+        1,
+        Default::default(),
+        Default::default(),
+        [69; 32].into(),
+        Default::default(),
+    );
+    let _rsa_pair = rsa3072::unseal_pair().unwrap();
+
+    // ensure that state starts empty
+    state::init_shard(&shard).unwrap();
+    let mut state = Stf::init_state();
+
+    // create account
+    let signer_pair = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
+    let account = signer_pair.public();
+    let prev_acc_money = Stf::account_data(&mut state, &account.into()).unwrap().free;
+    // load top pool
+    {
+        let pool_mutex = rpc::worker_api_direct::load_top_pool().unwrap();
+        let pool_guard = pool_mutex.lock().unwrap();
+        let pool = Arc::new(pool_guard.deref());
+        let author = Arc::new(Author::new(pool.clone()));
+
+        // create trusted call signed
+        let nonce = 0;
+        let ocall_api = OCallComponentFactory::attestation_api();
+        let mrenclave = ocall_api.get_mrenclave_of_self().unwrap().m;
+        let call = TrustedCall::balance_shield(account.into(), account.into(), 1000);
+        let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
+        let trusted_operation: TrustedOperation = signed_call.into_trusted_operation(true);
+        // encrypt call
+        let mut encrypted_top: Vec<u8> = Vec::new();
+        let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
+        rsa_pubkey
+            .encrypt_buffer(&trusted_operation.encode(), &mut encrypted_top)
+            .unwrap();
+
+        // submit trusted call to top pool
+        let result = async { author.submit_top(encrypted_top.clone(), shard).await };
+        executor::block_on(result).unwrap();
+    }
+
+    let rpc_ocall = Arc::new(EnclaveRpcOCallMock {});
+    let on_chain_ocall = OCallComponentFactory::on_chain_api();
+
+    // when
+    let (_, signed_blocks) = crate::execute_top_pool_calls(
+        rpc_ocall.as_ref(),
+        on_chain_ocall.as_ref(),
+        latest_onchain_header,
+    )
+    .unwrap();
+
+    // then
+    let mut updated_state = state::load(&shard).unwrap();
+    let nonce = Stf::account_nonce(&mut updated_state, &account.into());
+    let new_acc_money = Stf::account_data(&mut updated_state, &account.into())
+        .unwrap()
+        .free;
+    assert_eq!(nonce, 0);
+    assert_eq!(new_acc_money, prev_acc_money);
+
+    // clean up
+    state::tests::remove_shard_dir(&shard);
+}
+
+fn get_current_shard_index(shard: &ShardIdentifier) -> usize {
+    let shards = state::list_shards().unwrap();
+    let mut index = 0;
+    for s in shards.into_iter() {
+        if s == *shard {
+            break;
+        }
+        index += 1;
+    }
+
+    debug!("current shard index is {}", index);
+
+    index
 }

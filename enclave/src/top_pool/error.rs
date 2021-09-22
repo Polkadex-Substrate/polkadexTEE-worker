@@ -61,7 +61,7 @@ pub enum Error {
     ImmediatelyDropped,
 
     #[from(ignore)]
-    #[display(fmt = "InvalidBlockId")]
+    #[display(fmt = "Invalid Block")]
     InvalidBlockId(String),
 
     #[display(fmt = "The pool is not accepting future trusted operations")]
