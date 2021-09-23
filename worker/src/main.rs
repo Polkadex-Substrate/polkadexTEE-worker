@@ -383,12 +383,7 @@ fn worker(
         .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    polkadex_db::start_snapshot_loop(
-        api.clone(),
-        eid,
-        genesis_hash.clone(),
-        get_nonce(&api, &tee_accountid),
-    );
+    polkadex_db::start_snapshot_loop(api.clone(), eid, genesis_hash.clone());
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing

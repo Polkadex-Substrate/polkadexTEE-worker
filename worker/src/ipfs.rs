@@ -27,7 +27,9 @@ use futures::TryStreamExt;
 use ipfs_api::IpfsClient;
 use log::*;
 
-pub type Cid = [u8; 46];
+use cid::multibase::Base;
+pub use cid::Cid;
+use std::convert::TryFrom;
 
 #[tokio::main]
 async fn write_to_ipfs(data: &'static [u8]) -> Cid {
@@ -50,8 +52,9 @@ async fn write_to_ipfs(data: &'static [u8]) -> Cid {
         }
         Err(e) => eprintln!("error adding file: {}", e),
     }
-    let mut cid: Cid = [0; 46];
-    cid.clone_from_slice(&rx.recv().unwrap());
+
+    let cid: Cid = Cid::try_from(rx.recv().unwrap()).unwrap();
+
     cid
 }
 
@@ -60,12 +63,13 @@ pub async fn read_from_ipfs(cid: Cid) -> Result<Vec<u8>, String> {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
-    let h = str::from_utf8(&cid).unwrap();
+
+    let h = cid.to_string_of_base(Base::Base58Btc).unwrap();
 
     info!("Fetching content from: {}", h);
 
     client
-        .cat(h)
+        .cat(h.as_str())
         .map_ok(|chunk| chunk.to_vec())
         .map_err(|e| e.to_string())
         .try_concat()
@@ -84,8 +88,9 @@ pub unsafe extern "C" fn ocall_write_ipfs(
     let state = slice::from_raw_parts(enc_state, enc_state_size as usize);
     let cid = slice::from_raw_parts_mut(cid, cid_size as usize);
 
-    let _cid = write_to_ipfs(state);
-    cid.clone_from_slice(&_cid);
+    let mut _cid = write_to_ipfs(state);
+
+    cid.clone_from_slice(_cid.to_bytes().as_slice());
     sgx_status_t::SGX_SUCCESS
 }
 
@@ -98,7 +103,7 @@ pub unsafe extern "C" fn ocall_read_ipfs(cid: *const u8, cid_size: u32) -> sgx_s
     let mut cid = [0; 46];
     cid.clone_from_slice(_cid);
 
-    let result = read_from_ipfs(cid);
+    let result = read_from_ipfs(Cid::try_from(_cid).unwrap());
     match result {
         Ok(res) => {
             let filename = str::from_utf8(&cid).unwrap();

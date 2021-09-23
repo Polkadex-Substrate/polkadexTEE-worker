@@ -556,7 +556,6 @@ pub unsafe extern "C" fn send_cid(
     unchecked_extrinsic: *mut u8,
     unchecked_extrinsic_size: u32,
 ) -> sgx_status_t {
-    info!("    [Enclave] Compose extrinsic");
     let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
     let extrinsic_slice =
         slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
@@ -565,18 +564,21 @@ pub unsafe extern "C" fn send_cid(
         Err(status) => return status,
     };
 
+    let mutex = nonce_handler::load_nonce_storage().unwrap();
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let enclave_nonce = nonce_storage.nonce;
+
     let genesis_hash = hash_from_slice(genesis_hash_slice);
-    debug!("decoded genesis_hash: {:?}", genesis_hash_slice);
 
     let data = slice::from_raw_parts(cid, cid_size as usize);
 
     let xt_block = [OCEX_MODULE, OCEX_UPLOAD_CID];
-    let call: OpaqueCall = OpaqueCall((xt_block, data.clone()).encode());
 
     let xt = compose_extrinsic_offline!(
         signer,
-        call,
-        nonce,
+        (xt_block, data),
+        //    nonce,
+        enclave_nonce, // TODO: Fix nonce being out of sync
         Era::Immortal,
         genesis_hash,
         genesis_hash,
@@ -585,11 +587,6 @@ pub unsafe extern "C" fn send_cid(
     );
 
     let encoded = xt.encode();
-    error!(
-        "[Enclave] Encoded extrinsic ( len = {} B) = {}",
-        encoded.len(),
-        hex::encode_hex(&encoded)
-    );
 
     write_slice_and_whitespace_pad(extrinsic_slice, encoded);
 

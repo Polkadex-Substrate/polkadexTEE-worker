@@ -39,6 +39,7 @@ pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 use crate::constants::SNAPSHOT_INTERVAL;
 use crate::enclave::api::enclave_send_cid;
+use crate::{enclave_account, get_nonce};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::UncheckedExtrinsic;
@@ -78,19 +79,13 @@ pub trait PermanentStorageHandler {
 }
 
 // Disk snapshot loop
-pub fn start_snapshot_loop(
-    api: Api<sr25519::Pair>,
-    eid: sgx_enclave_id_t,
-    genesis_hash: Vec<u8>,
-    nonce: u32,
-) {
+pub fn start_snapshot_loop(api: Api<sr25519::Pair>, eid: sgx_enclave_id_t, genesis_hash: Vec<u8>) {
     thread::spawn(move || {
         println!("Successfully started snapshot loop");
         let snapshot_interval = Duration::from_millis(SNAPSHOT_INTERVAL);
         let mut interval_start = SystemTime::now();
         let mut cid: Vec<u8> = vec![];
         loop {
-            error!("nonce in snapshot loop: {}", nonce);
             if let Ok(elapsed) = interval_start.elapsed() {
                 if elapsed >= snapshot_interval {
                     // update interval time
@@ -100,8 +95,7 @@ pub fn start_snapshot_loop(
                     if let Err(e) = take_orderbook_snapshot() {
                         error!("Could not take orderbook snapshot: {:?}", e);
                     }
-                    match take_balance_snapshot(api.clone(), eid, genesis_hash.clone(), nonce, &cid)
-                    {
+                    match take_balance_snapshot(api.clone(), eid, genesis_hash.clone(), &cid) {
                         Ok(new_cid) => cid = new_cid.clone(),
                         Err(e) => error!("Could not take balance snapshot: {:?}", e),
                     }
@@ -132,7 +126,6 @@ fn take_balance_snapshot(
     api: Api<sr25519::Pair>,
     eid: sgx_enclave_id_t,
     genesis_hash: Vec<u8>,
-    nonce: u32,
     old_cid: &Vec<u8>,
 ) -> Result<Vec<u8>> {
     let mutex = crate::polkadex_db::balances::load_balances_mirror()?;
@@ -147,12 +140,15 @@ fn take_balance_snapshot(
         return Ok(cid_bytes);
     }
 
-    let uxt = enclave_send_cid(eid, genesis_hash, nonce, cid.to_bytes()).unwrap();
-
-    let ue = UncheckedExtrinsic::decode(
-        &mut uxt.as_slice(), //.split_at(size as usize).0
+    let uxt = enclave_send_cid(
+        eid,
+        genesis_hash,
+        get_nonce(&api, &enclave_account(eid)),
+        cid.to_bytes(),
     )
     .unwrap();
+
+    let ue = UncheckedExtrinsic::decode(&mut uxt.as_slice()).unwrap();
 
     let mut _xthex = hex::encode(ue.encode());
     _xthex.insert_str(0, "0x");
