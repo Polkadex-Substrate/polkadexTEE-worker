@@ -66,7 +66,9 @@ pub enum PolkadexDBError {
     DecodeError(codec::Error),
     /// Failed to send data to enclave
     SendToEnclaveError,
-    // Could not send IPFS snapshot
+    /// Failed to send extrinsic to node
+    SendToNodeError,
+    /// Could not send IPFS snapshot
     IpfsError(String),
 }
 
@@ -126,7 +128,7 @@ fn take_balance_snapshot(
     api: Api<sr25519::Pair>,
     eid: sgx_enclave_id_t,
     genesis_hash: Vec<u8>,
-    old_cid: &Vec<u8>,
+    old_cid: &[u8],
 ) -> Result<Vec<u8>> {
     let mutex = crate::polkadex_db::balances::load_balances_mirror()?;
     let mut balance_mirror = mutex
@@ -136,7 +138,7 @@ fn take_balance_snapshot(
     let mut ipfs_handler = IpfsStorageHandler::default();
     let cid = ipfs_handler.snapshot_to_ipfs(data)?;
     let cid_bytes = cid.to_bytes();
-    if &cid_bytes == old_cid {
+    if cid_bytes == old_cid {
         return Ok(cid_bytes);
     }
 
@@ -152,13 +154,11 @@ fn take_balance_snapshot(
 
     let mut _xthex = hex::encode(ue.encode());
     _xthex.insert_str(0, "0x");
-    error!("ext: {:?}", _xthex);
 
     // send the extrinsic and wait for confirmation
-    error!(
-        "send extrinsic: {:?}",
-        api.send_extrinsic(_xthex, XtStatus::Finalized)
-    );
+
+    api.send_extrinsic(_xthex, XtStatus::Finalized)
+        .map_err(|_| PolkadexDBError::SendToNodeError)?;
 
     Ok(cid_bytes)
 }
