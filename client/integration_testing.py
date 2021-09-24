@@ -73,85 +73,61 @@ if __name__ == '__main__':
     asset(int(token_balance(bob, btc)), 0)
     asset(int(token_balance(bob, usd)), 0)
 
+    # # Place Order BidLimit [A]
+    await_block()
+    uuid = direct_place_order(alice, None, btc, usd, 'bid', UNIT, 'limit', 2 * UNIT)
+    await_block()
+    alice_offchain_balance(98 * UNIT, 10 * UNIT)
+    bob_offchain_balance(100 * UNIT, 10 * UNIT)
+    uuid = direct_place_order(bob, None, btc, usd, 'ask', UNIT, 'limit', UNIT)
+    await_block()
+    await_block()
+    alice_offchain_balance(98 * UNIT, 11 * UNIT)
+    bob_offchain_balance(102 * UNIT, 9 * UNIT)
+
+    print("Bob places Ask Limit [5 * UNIT,3 * UNIT]")
     await_block()
     uuid = direct_place_order(alice, None, btc, usd, 'ask', 3 * UNIT, 'limit', 5 * UNIT)
     await_block()
-    alice_offchain_balance(100 * UNIT, 7 * UNIT)
-    bob_offchain_balance(100 * UNIT, 10 * UNIT)
-
+    alice_offchain_balance(98 * UNIT, 8 * UNIT)
+    bob_offchain_balance(102 * UNIT, 9 * UNIT)
     await_block()
-    uuid = direct_place_order(bob, None, btc, usd, 'bid', 4 * UNIT, 'limit', 8 * UNIT)
+
+    uuid = direct_place_order(bob, None, btc, usd, 'bid', 2 * UNIT, 'limit', 7 * UNIT)
     await_block()
-    alice_offchain_balance(110 * UNIT, 7 * UNIT)
-    bob_offchain_balance(82 * UNIT, 13 * UNIT)
-
+    alice_offchain_balance(108 * UNIT, 8 * UNIT)
+    bob_offchain_balance(92 * UNIT, 11 * UNIT)
     await_block()
-    uuid = direct_place_order(alice, None, btc, usd, 'ask', UNIT, 'limit', 4 * UNIT)
+
+    uuid = direct_place_order(bob, None, btc, usd, 'bid', 2 * UNIT, 'limit', 6 * UNIT)
     await_block()
-    alice_offchain_balance(118 * UNIT, 6 * UNIT)
-    bob_offchain_balance(82 * UNIT, 14 * UNIT)
+    alice_offchain_balance(113 * UNIT, 8 * UNIT)
+    bob_offchain_balance(81 * UNIT, 12 * UNIT)
+    await_block()
 
+    uuid = direct_place_order(alice, None, btc, usd, 'ask', 1 * UNIT, 'limit', 2 * UNIT)
+    await_block()
+    alice_offchain_balance(119 * UNIT, 7 * UNIT)
+    bob_offchain_balance(81 * UNIT, 13 * UNIT)
+    await_block()
 
+    uuid = direct_place_order(bob, None, btc, usd, 'bid', 4 * UNIT, 'limit', 5 * UNIT)
+    await_block()
+    alice_offchain_balance(119 * UNIT, 7 * UNIT)
+    bob_offchain_balance(61 * UNIT, 13 * UNIT)
+    await_block()
 
+    uuid = direct_place_order(alice, None, btc, usd, 'ask', 2 * UNIT, 'limit', 2 * UNIT)
+    await_block()
+    alice_offchain_balance(129 * UNIT, 5 * UNIT)
+    bob_offchain_balance(61 * UNIT, 15 * UNIT)
+    await_block()
 
-    # # Place Order BidLimit [A]
-    # await_block()
-    # uuid = direct_place_order(alice, None, btc, usd, 'bid', UNIT, 'limit', 2 * UNIT)
-    # await_block()
-    # alice_offchain_balance(98 * UNIT, 10 * UNIT)
-    # bob_offchain_balance(100 * UNIT, 10 * UNIT)
-    # uuid = direct_place_order(bob, None, btc, usd, 'ask', UNIT, 'limit', UNIT)
-    # await_block()
-    # await_block()
-    # alice_offchain_balance(98 * UNIT, 11 * UNIT)
-    # bob_offchain_balance(102 * UNIT, 9 * UNIT)
-    #
-    # print("Bob places Ask Limit [5 * UNIT,3 * UNIT]")
-    # await_block()
-    # uuid = direct_place_order(alice, None, btc, usd, 'ask', 3 * UNIT, 'limit', 5 * UNIT)
-    # await_block()
-    # alice_offchain_balance(98 * UNIT, 8 * UNIT)
-    # bob_offchain_balance(102 * UNIT, 9 * UNIT)
-    # await_block()
-    #
-    # uuid = direct_place_order(bob, None, btc, usd, 'bid', 2 * UNIT, 'limit', 7 * UNIT)
-    # await_block()
-    # alice_offchain_balance(108 * UNIT, 8 * UNIT)
-    # bob_offchain_balance(92 * UNIT, 11 * UNIT)
-    # await_block()
-    #
-    # uuid = direct_place_order(bob, None, btc, usd, 'bid', 2 * UNIT, 'limit', 6 * UNIT)
-    # await_block()
-    # alice_offchain_balance(113 * UNIT, 8 * UNIT)
-    # bob_offchain_balance(80 * UNIT, 12 * UNIT)
-    # await_block()
-    #
-    # uuid = direct_place_order(alice, None, btc, usd, 'ask', 1 * UNIT, 'limit', 2 * UNIT)
-    # await_block()
-    # alice_offchain_balance(119 * UNIT, 7 * UNIT)
-    # bob_offchain_balance(81 * UNIT, 13 * UNIT)
+    #Test Cancel Orders
 
-
-
-
-
-
-
-    #
-    # #4 Bob deposits 0.5 tokenB
-    # deposit(bob, 500_000_000_000_000_000, tokenB)
-    #
-    # print("Check new onchain balances:")
-    # token_balance(alice, tokenA)
-    # token_balance(bob, tokenB)
-    #
-    # print("Alice places a sell order 0.05 btc for 0.05 usd")
-    # uuid = direct_place_order(alice, None, tokenA, tokenB, 'bid', 50, 'limit', 10)
-    # print(uuid)
-    # #print(str(uuid))
-    # await_block()
-    #
-    # print("Cancel order")
-    # b = direct_cancel_order(alice, None, tokenA, tokenB, uuid.strip('"'))
-    # print(str(b))
-    # await_block()
+    uuid = direct_place_order(alice, None, btc, usd, 'bid', 2 * UNIT, 'limit', 2 * UNIT)
+    await_block()
+    print("Cancel order")
+    result = direct_cancel_order(alice, None, tokenA, tokenB, uuid.strip('"'))
+    print(str(result))
+    await_block()

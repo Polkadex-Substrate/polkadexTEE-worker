@@ -512,10 +512,8 @@ pub fn consume_order(
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
-            error!("1>> reserved_amount{:?}", reserved_amount);
-            let trade_amount = (current_order.quantity * trade_event.price) / UNIT;
-            let anti_trade_amount = (counter_order.quantity * trade_event.price) / UNIT;
-            error!("2>> trade_amount{:?}", trade_amount);
+            let current_trade_amount = (current_order.quantity * trade_event.price) / UNIT;
+            let counter_trade_amount = (counter_order.quantity * trade_event.price) / UNIT;
             if let Err(e) = do_asset_exchange(&mut current_order, &mut counter_order) {
                 error!("Doing asset exchange failed. Error: {:?}", e);
                 return Err(GatewayError::UnableToLock);
@@ -529,9 +527,8 @@ pub fn consume_order(
             }
 
             if current_order.quantity > 0 {
-                let temp = (current_order.quantity * current_order.price.unwrap()) / UNIT;
-                let amount_to_unreserve = reserved_amount - anti_trade_amount - temp;
-                error!(">>3 inreserve {:?}", amount_to_unreserve);
+                let expected_reserved_amount = (current_order.quantity * current_order.price.unwrap()) / UNIT;
+                let amount_to_unreserve = reserved_amount - counter_trade_amount - expected_reserved_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &current_order.user_uid,
                     current_order.market_id.quote,
@@ -542,7 +539,7 @@ pub fn consume_order(
                     taker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = reserved_amount - trade_amount;
+                let amount_to_unreserve = reserved_amount - current_trade_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &current_order.user_uid,
                     current_order.market_id.quote,
@@ -575,11 +572,13 @@ pub fn consume_order(
 
         (OrderType::LIMIT, OrderSide::ASK) => {
             let reserved_amount = (get_price(counter_order.price)? * counter_order.quantity) / UNIT;
-            let trade_amount = (trade_event.price * counter_order.quantity) / UNIT;
+            let counter_trade_amount = (trade_event.price * counter_order.quantity) / UNIT;
+            let current_trade_amount = (current_order.quantity * trade_event.price) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
-                let amount_to_unreserve =
-                    reserved_amount - counter_order.quantity * get_price(counter_order.price)?;
+                let required_reserved_amount = (counter_order.quantity * counter_order.price.unwrap()) / UNIT;
+                let amount_to_unreserve = reserved_amount - current_trade_amount - required_reserved_amount;
+                error!(">>3 inreserve {:?}", amount_to_unreserve);
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
@@ -591,7 +590,7 @@ pub fn consume_order(
                     maker_order_uuid,
                 )?;
             } else {
-                let amount_to_unreserve = reserved_amount - trade_amount;
+                let amount_to_unreserve = reserved_amount - counter_trade_amount;
                 error!("AskLimit!");
                 error!("amount_to_unreserve {:?}", amount_to_unreserve);
                 polkadex_balance_storage::lock_storage_unreserve_balance(
