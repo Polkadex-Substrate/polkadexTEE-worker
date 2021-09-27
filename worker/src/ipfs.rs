@@ -92,13 +92,12 @@ pub unsafe extern "C" fn ocall_write_ipfs(
     let state = slice::from_raw_parts(enc_state, enc_state_size as usize);
     let cid = slice::from_raw_parts_mut(cid, cid_size as usize);
 
-    let mut _cid = if let Ok(cid) = write_to_ipfs(state) {
-        cid
+    if let Ok(new_cid) = write_to_ipfs(state) {
+        cid.clone_from_slice(new_cid.to_bytes().as_slice());
     } else {
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
-    cid.clone_from_slice(_cid.to_bytes().as_slice());
     sgx_status_t::SGX_SUCCESS
 }
 
