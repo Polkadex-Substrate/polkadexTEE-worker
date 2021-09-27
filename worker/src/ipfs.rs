@@ -53,11 +53,11 @@ async fn write_to_ipfs(data: &'static [u8]) -> Result<Cid, String> {
         Err(e) => eprintln!("error adding file: {}", e),
     }
 
-    Ok(Cid::try_from(
+    Cid::try_from(
         rx.recv()
             .map_err(|_| String::from("Failed to receive CID"))?,
     )
-    .map_err(|_| String::from("Failed to build CID"))?)
+    .map_err(|_| String::from("Failed to build CID"))
 }
 
 #[tokio::main]
