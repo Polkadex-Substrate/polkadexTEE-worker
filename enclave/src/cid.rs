@@ -1,9 +1,10 @@
 use crate::{
-    ed25519, hash_from_slice, nonce_handler, write_slice_and_whitespace_pad, NonceHandler,
-    OCEX_MODULE, OCEX_UPLOAD_CID, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    constants::{OCEX_MODULE, OCEX_UPLOAD_CID, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION},
+    ed25519, nonce_handler,
+    utils::hash_from_slice,
+    write_slice_and_whitespace_pad,
 };
 use codec::Encode;
-use sgx_tstd::sync::SgxMutexGuard;
 use sgx_types::sgx_status_t;
 use sp_application_crypto::Pair;
 use std::slice;
@@ -27,10 +28,6 @@ pub unsafe extern "C" fn send_cid(
         Err(status) => return status,
     };
 
-    let mutex = nonce_handler::load_nonce_storage().unwrap();
-    let nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
-    let enclave_nonce = nonce_storage.nonce;
-
     let genesis_hash = hash_from_slice(genesis_hash_slice);
 
     let data = slice::from_raw_parts(cid, cid_size as usize);
@@ -41,7 +38,17 @@ pub unsafe extern "C" fn send_cid(
         signer,
         (xt_block, data),
         //    nonce,
-        enclave_nonce, // TODO: Fix nonce being out of sync
+        {
+            if let Ok(mutex) = nonce_handler::load_nonce_storage() {
+                if let Ok(locked) = mutex.lock() {
+                    locked.nonce
+                } else {
+                    return sgx_status_t::SGX_ERROR_UNEXPECTED;
+                }
+            } else {
+                return sgx_status_t::SGX_ERROR_UNEXPECTED;
+            }
+        }, // TODO: Fix nonce being out of sync
         Era::Immortal,
         genesis_hash,
         genesis_hash,
@@ -49,9 +56,7 @@ pub unsafe extern "C" fn send_cid(
         RUNTIME_TRANSACTION_VERSION
     );
 
-    let encoded = xt.encode();
-
-    write_slice_and_whitespace_pad(extrinsic_slice, encoded);
+    write_slice_and_whitespace_pad(extrinsic_slice, xt.encode());
 
     sgx_status_t::SGX_SUCCESS
 }

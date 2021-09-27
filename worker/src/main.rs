@@ -687,7 +687,7 @@ fn init_shard(shard: &ShardIdentifier) {
 // get the public signing key of the TEE
 fn enclave_account(eid: sgx_enclave_id_t) -> AccountId32 {
     let tee_public = enclave_signing_key(eid).unwrap();
-    info!(
+    debug!(
         "[+] Got ed25519 account of TEE = {}",
         tee_public.to_ss58check()
     );

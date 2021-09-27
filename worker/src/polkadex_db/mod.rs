@@ -146,11 +146,12 @@ fn take_balance_snapshot(
         eid,
         genesis_hash,
         get_nonce(&api, &enclave_account(eid)),
-        cid.to_bytes(),
+        cid_bytes.clone(),
     )
-    .unwrap();
+    .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
 
-    let ue = UncheckedExtrinsic::decode(&mut uxt.as_slice()).unwrap();
+    let ue =
+        UncheckedExtrinsic::decode(&mut uxt.as_slice()).map_err(PolkadexDBError::DecodeError)?;
 
     let mut _xthex = hex::encode(ue.encode());
     _xthex.insert_str(0, "0x");

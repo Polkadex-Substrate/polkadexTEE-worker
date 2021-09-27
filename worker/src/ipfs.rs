@@ -32,7 +32,7 @@ pub use cid::Cid;
 use std::convert::TryFrom;
 
 #[tokio::main]
-async fn write_to_ipfs(data: &'static [u8]) -> Cid {
+async fn write_to_ipfs(data: &'static [u8]) -> Result<Cid, String> {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
@@ -53,9 +53,11 @@ async fn write_to_ipfs(data: &'static [u8]) -> Cid {
         Err(e) => eprintln!("error adding file: {}", e),
     }
 
-    let cid: Cid = Cid::try_from(rx.recv().unwrap()).unwrap();
-
-    cid
+    Ok(Cid::try_from(
+        rx.recv()
+            .map_err(|_| String::from("Failed to receive CID"))?,
+    )
+    .map_err(|_| String::from("Failed to build CID"))?)
 }
 
 #[tokio::main]
@@ -64,7 +66,9 @@ pub async fn read_from_ipfs(cid: Cid) -> Result<Vec<u8>, String> {
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
 
-    let h = cid.to_string_of_base(Base::Base58Btc).unwrap();
+    let h = cid.to_string_of_base(Base::Base58Btc).map_err(|_| {
+        String::from("CID couldn't be converted to the correct base, check if the CID is correct")
+    })?;
 
     info!("Fetching content from: {}", h);
 
@@ -88,7 +92,11 @@ pub unsafe extern "C" fn ocall_write_ipfs(
     let state = slice::from_raw_parts(enc_state, enc_state_size as usize);
     let cid = slice::from_raw_parts_mut(cid, cid_size as usize);
 
-    let mut _cid = write_to_ipfs(state);
+    let mut _cid = if let Ok(cid) = write_to_ipfs(state) {
+        cid
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
 
     cid.clone_from_slice(_cid.to_bytes().as_slice());
     sgx_status_t::SGX_SUCCESS
@@ -103,7 +111,11 @@ pub unsafe extern "C" fn ocall_read_ipfs(cid: *const u8, cid_size: u32) -> sgx_s
     let mut cid = [0; 46];
     cid.clone_from_slice(_cid);
 
-    let result = read_from_ipfs(Cid::try_from(_cid).unwrap());
+    let result = read_from_ipfs(if let Ok(cid) = Cid::try_from(_cid) {
+        cid
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    });
     match result {
         Ok(res) => {
             let filename = str::from_utf8(&cid).unwrap();
