@@ -95,14 +95,14 @@ substratee-worker-primitives= {path = "../primitives/worker", default-features =
 test-utils = { path = "../primitives/test-utils", default-features = false, features = ["sgx"] }
 
 # substrate deps
-frame-support = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-core = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
-sp-finality-grandpa = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-std = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-utils = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-version = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-application-crypto = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+frame-support = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-core = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
+sp-finality-grandpa = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-std = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-utils = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-version = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-application-crypto = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
 
 
 [patch.crates-io]

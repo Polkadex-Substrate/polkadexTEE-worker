@@ -53,13 +53,13 @@ polkadex-sgx-primitives = { path = "../polkadex-primitives", default-features = 
 substratee-worker-primitives = { default-features = false, path = "../primitives/worker", optional = true }
 
 # Substrate dependencies
-sp-core = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", features = ["full_crypto"] }
-balances = { tag = "monthly-2021-08", version = "4.0.0-dev", package = 'pallet-balances', default-features = false, git = "https://github.com/paritytech/substrate.git" }
-system = { tag = "monthly-2021-08", version = "4.0.0-dev",  package = "frame-system", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-support = { tag = "monthly-2021-08", version = "4.0.0-dev",  package = "frame-support", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-application-crypto = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sc-keystore = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", optional = true }
+sp-core = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", features = ["full_crypto"] }
+balances = { branch = "master", version = "4.0.0-dev", package = 'pallet-balances', default-features = false, git = "https://github.com/paritytech/substrate.git" }
+system = { branch = "master", version = "4.0.0-dev",  package = "frame-system", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+support = { branch = "master", version = "4.0.0-dev",  package = "frame-support", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-application-crypto = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sc-keystore = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", optional = true }
 
 # scs / polkadex
 sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-08", optional = true }
@@ -70,4 +70,4 @@ substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-
 substrate-client-keystore = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-08", optional = true }
 
 [dev-dependencies]
-sp-keyring = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-keyring = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }

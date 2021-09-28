@@ -16,9 +16,9 @@ substratee-storage = { path = "../storage", default-features = false }
 substratee-sidechain-primitives = { path = "../sidechain/primitives", default-features = false }
 
 # substrate-deps
-sp-std = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-core = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-std = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-core = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
 
 [features]
 default = ["std"]
@@ -33,4 +33,4 @@ std = [ 'codec/std',
 ]
 
 [dev-dependencies]
-sp-keyring = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-keyring = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }

@@ -6,7 +6,7 @@ edition = "2018"
 resolver = "2"
 
 [dependencies]
-sp-std = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-std = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
 
 #local deps
 substratee-storage = { path = "../storage", default-features = false }

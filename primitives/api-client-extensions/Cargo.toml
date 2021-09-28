@@ -8,9 +8,9 @@ edition = "2018"
 codec = { package = "parity-scale-codec", version = "2.0.0", features = ["derive"] }
 
 # substrate
-sp-core = { tag = "monthly-2021-08", version = "4.0.0-dev",  git = "https://github.com/paritytech/substrate.git" }
-sp-finality-grandpa = { tag = "monthly-2021-08", version = "4.0.0-dev",  git = "https://github.com/paritytech/substrate.git" }
-sp-runtime = { tag = "monthly-2021-08", version = "4.0.0-dev",  git = "https://github.com/paritytech/substrate.git" }
+sp-core = { branch = "master", version = "4.0.0-dev",  git = "https://github.com/paritytech/substrate.git" }
+sp-finality-grandpa = { branch = "master", version = "4.0.0-dev",  git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { branch = "master", version = "4.0.0-dev",  git = "https://github.com/paritytech/substrate.git" }
 
 # polkadex
 substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-08" }

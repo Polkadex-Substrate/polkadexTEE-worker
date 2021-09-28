@@ -30,13 +30,13 @@ substrate-client-keystore = { git = "https://github.com/Polkadex-Substrate/subst
 my-node-runtime = { git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop", package = "node-polkadex-runtime" }
 
 # substrate dependencies
-sp-runtime = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
-sc-keystore = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
-pallet-balances = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-frame-system = { tag = "monthly-2021-08", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-keyring = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
-sp-application-crypto = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
-sp-core = { tag = "monthly-2021-08", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sc-keystore = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+pallet-balances = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+frame-system = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sp-keyring = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-application-crypto = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
+sp-core = { branch = "master", version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git" }
 
 #local dependencies
 polkadex-sgx-primitives = { path = "../polkadex-primitives" }
