@@ -1873,7 +1873,7 @@ dependencies = [
 [[package]]
 name = "sgx-externalities"
 version = "0.3.0"
-source = "git+https://github.com/Polkadex-Substrate/sgx-runtime#927ebb60fe7f54259ef5ea330b007d0ca116ad89"
+source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=monthly-2021-09+1#d856337ab08f3c0b8085509cd2ced7905abcb6c3"
 dependencies = [
  "environmental",
  "log",
@@ -1886,7 +1886,7 @@ dependencies = [
 [[package]]
 name = "sgx-runtime"
 version = "0.8.0"
-source = "git+https://github.com/Polkadex-Substrate/sgx-runtime#927ebb60fe7f54259ef5ea330b007d0ca116ad89"
+source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=monthly-2021-09+1#d856337ab08f3c0b8085509cd2ced7905abcb6c3"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -2348,7 +2348,7 @@ dependencies = [
 [[package]]
 name = "sp-io"
 version = "3.1.0"
-source = "git+https://github.com/Polkadex-Substrate/sgx-runtime#927ebb60fe7f54259ef5ea330b007d0ca116ad89"
+source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=monthly-2021-09+1#d856337ab08f3c0b8085509cd2ced7905abcb6c3"
 dependencies = [
  "environmental",
  "hash-db",
@@ -2563,7 +2563,7 @@ dependencies = [
 [[package]]
 name = "substrate-api-client"
 version = "0.5.0"
-source = "git+https://github.com/Polkadex-Substrate/substrate-api-client#65bae5c0674942488365983e454e7e4c4f839e70"
+source = "git+https://github.com/Polkadex-Substrate/substrate-api-client?branch=monthly-2021-09+1#23b22a335425fa427cfee3db72e4dc84dcb933b0"
 dependencies = [
  "frame-metadata",
  "frame-support",

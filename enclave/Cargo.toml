@@ -46,9 +46,9 @@ ipfs-unixfs = { default-features = false, git = "https://github.com/whalelephant
 blake2-rfc = { version = "0.2.18", default-features = false }
 
 # scs / polkadex
-sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/integritee-network/sgx-runtime", branch = "master", optional = true}
-substrate-api-client = { default-features = false, git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "master" }
-sgx-externalities = { default-features = false, git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "master" }
+sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/integritee-network/sgx-runtime", branch = "monthly-2021-09+1", optional = true}
+substrate-api-client = { default-features = false, git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-09+1" }
+sgx-externalities = { default-features = false, git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-09+1" }
 jsonrpc-core = { default-features = false, git = "https://github.com/scs/jsonrpc", branch = "no_std" }
 
 # mesalock
