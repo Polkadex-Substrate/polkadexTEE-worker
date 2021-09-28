@@ -52,7 +52,7 @@ substratee-stf = { path = "../stf" }
 polkadex-sgx-primitives = { path = "../polkadex-primitives" }
 
 # scs / polkadex
-substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-08" }
+substrate-api-client = { git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-09+1" }
 my-node-runtime = { package = "node-polkadex-runtime", git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop" }
 polkadex-primitives = { git = "https://github.com/Polkadex-Substrate/polkadex-primitives" }
 
