@@ -1155,8 +1155,8 @@ dependencies = [
 
 [[package]]
 name = "frame-metadata"
-version = "13.0.0"
-source = "git+https://github.com/paritytech/substrate.git#e5437efefa82bd8eb567f1245f0a7443ac4e4fe7"
+version = "14.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git#20a9bbb1fe47fcd62fcd64b2fa32456b4f434aaf"
 dependencies = [
  "parity-scale-codec 2.1.3",
  "serde",
