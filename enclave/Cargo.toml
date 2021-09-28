@@ -46,7 +46,7 @@ ipfs-unixfs = { default-features = false, git = "https://github.com/whalelephant
 blake2-rfc = { version = "0.2.18", default-features = false }
 
 # scs / polkadex
-sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/integritee-network/sgx-runtime", branch = "monthly-2021-09+1", optional = true}
+sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-09+1", optional = true}
 substrate-api-client = { default-features = false, git = "https://github.com/Polkadex-Substrate/substrate-api-client", branch = "monthly-2021-09+1" }
 sgx-externalities = { default-features = false, git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-09+1" }
 jsonrpc-core = { default-features = false, git = "https://github.com/scs/jsonrpc", branch = "no_std" }
@@ -113,4 +113,4 @@ getrandom = { git = "https://github.com/integritee-network/getrandom-sgx", branc
 [patch."https://github.com/paritytech/substrate"]
 log = { git = "https://github.com/mesalock-linux/log-sgx" }
 env_logger = { git = "https://github.com/mesalock-linux/env_logger-sgx", default-features = false, features = ["mesalock_sgx"] }
-sp-io = { git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-08", default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"]}
+sp-io = { git = "https://github.com/Polkadex-Substrate/sgx-runtime", branch = "monthly-2021-09+1", default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"]}
