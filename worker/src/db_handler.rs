@@ -60,7 +60,10 @@ impl DBHandler {
                 .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
 
             balances.write_data_to_disk(
-                crate::ipfs::read_from_ipfs(Cid::try_from(cid).unwrap()).map_err(|_| {
+                crate::ipfs::read_from_ipfs(Cid::try_from(cid).map_err(|_| {
+                    PolkadexDBError::IpfsError(String::from("Failed to build CID"))
+                })?)
+                .map_err(|_| {
                     PolkadexDBError::IpfsError(String::from("Failed to read data from ipfs"))
                 })?,
             )?
