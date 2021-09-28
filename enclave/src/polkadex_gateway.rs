@@ -512,6 +512,7 @@ pub fn consume_order(
     match (current_order.order_type, current_order.side) {
         (OrderType::LIMIT, OrderSide::BID) => {
             let reserved_amount = (current_order.price.unwrap() * current_order.quantity) / UNIT;
+
             let current_trade_amount = (current_order.quantity * trade_event.price) / UNIT;
             let counter_trade_amount = (counter_order.quantity * trade_event.price) / UNIT;
             if let Err(e) = do_asset_exchange(&mut current_order, &mut counter_order) {
@@ -578,7 +579,6 @@ pub fn consume_order(
             if counter_order.quantity > 0 {
                 let required_reserved_amount = (counter_order.quantity * counter_order.price.unwrap()) / UNIT;
                 let amount_to_unreserve = reserved_amount - current_trade_amount - required_reserved_amount;
-                error!(">>3 inreserve {:?}", amount_to_unreserve);
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,
