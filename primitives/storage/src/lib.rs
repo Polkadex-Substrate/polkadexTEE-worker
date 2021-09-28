@@ -18,7 +18,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use error::Error;
-pub use frame_metadata::StorageHasher;
+pub use frame_metadata::v13::StorageHasher;
 pub use keys::*;
 pub use proof::*;
 pub use storage_entry::*;
