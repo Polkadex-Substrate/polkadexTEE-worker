@@ -24,12 +24,13 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use log::*;
+use my_node_runtime::Hash;
 use sp_core::storage::StorageKey;
 use std::{
     sync::{mpsc::channel, Arc},
     vec::Vec,
 };
-use substrate_api_client::XtStatus;
+use substrate_api_client::{ApiResult, XtStatus};
 use substratee_worker_primitives::{
     block::SignedBlock as SignedSidechainBlock, WorkerRequest, WorkerResponse,
 };
@@ -146,6 +147,14 @@ where
         // TODO: M8.3: Store blocks
 
         status
+    }
+
+    // FIXME: should not return ApiResult but OcallResult?
+    fn send_extrinsic(&self, extrinsic: Vec<u8>, exit_on: XtStatus) -> ApiResult<Option<Hash>> {
+        debug!("    sending extrinsic");
+        let api = self.node_api_factory.create_api();
+
+        api.send_extrinsic(hex_encode(extrinsic), exit_on)
     }
 }
 
