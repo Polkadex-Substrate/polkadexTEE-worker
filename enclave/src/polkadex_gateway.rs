@@ -528,8 +528,10 @@ pub fn consume_order(
             }
 
             if current_order.quantity > 0 {
-                let expected_reserved_amount = (current_order.quantity * current_order.price.unwrap()) / UNIT;
-                let amount_to_unreserve = reserved_amount - counter_trade_amount - expected_reserved_amount;
+                let expected_reserved_amount =
+                    (current_order.quantity * current_order.price.unwrap()) / UNIT;
+                let amount_to_unreserve =
+                    reserved_amount - counter_trade_amount - expected_reserved_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &current_order.user_uid,
                     current_order.market_id.quote,
@@ -577,8 +579,10 @@ pub fn consume_order(
             let current_trade_amount = (current_order.quantity * trade_event.price) / UNIT;
             do_asset_exchange(&mut current_order, &mut counter_order)?;
             if counter_order.quantity > 0 {
-                let required_reserved_amount = (counter_order.quantity * counter_order.price.unwrap()) / UNIT;
-                let amount_to_unreserve = reserved_amount - current_trade_amount - required_reserved_amount;
+                let required_reserved_amount =
+                    (counter_order.quantity * counter_order.price.unwrap()) / UNIT;
+                let amount_to_unreserve =
+                    reserved_amount - current_trade_amount - required_reserved_amount;
                 polkadex_balance_storage::lock_storage_unreserve_balance(
                     &counter_order.user_uid,
                     counter_order.market_id.quote,

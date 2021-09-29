@@ -24,9 +24,9 @@ use polkadex_sgx_primitives::{accounts::get_account, AccountId, AssetId};
 use sgx_tstd::vec::Vec;
 
 // Polkadex represents 1 Token as 10^^18 minimum possible units
+use crate::accounts_nonce_storage::test_proxy::initialize_dummy;
 use crate::accounts_nonce_storage::{
-    add_main_account, check_if_main_account_registered,
-    create_in_memory_accounts_and_nonce_storage
+    add_main_account, check_if_main_account_registered, create_in_memory_accounts_and_nonce_storage,
 };
 use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
@@ -35,11 +35,13 @@ use crate::polkadex_balance_storage::{
     lock_storage_and_initialize_balance,
 };
 use crate::polkadex_cache::cache_api::RequestId;
-use crate::polkadex_gateway::{initialize_polkadex_gateway, settle_trade, GatewayError, OpenfinexPolkaDexGateway, authenticate_user};
+use crate::polkadex_gateway::{
+    authenticate_user, initialize_polkadex_gateway, settle_trade, GatewayError,
+    OpenfinexPolkaDexGateway,
+};
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
 };
-use crate::accounts_nonce_storage::test_proxy::initialize_dummy;
 
 pub struct OpenFinexApiMock {}
 
@@ -487,17 +489,11 @@ pub fn test_orderbook_limit() {
         check_balance(115 * UNIT, 0, alice.clone(), AssetId::USD),
         Ok(())
     );
-    assert_eq!(
-        check_balance(7 * UNIT, 0, alice, AssetId::BTC),
-        Ok(())
-    );
+    assert_eq!(check_balance(7 * UNIT, 0, alice, AssetId::BTC), Ok(()));
 
     assert_eq!(
         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::USD),
         Ok(())
     );
-    assert_eq!(
-        check_balance(13 * UNIT, 0, bob, AssetId::BTC),
-        Ok(())
-    );
+    assert_eq!(check_balance(13 * UNIT, 0, bob, AssetId::BTC), Ok(()));
 }
