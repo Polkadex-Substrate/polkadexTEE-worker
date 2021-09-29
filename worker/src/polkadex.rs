@@ -22,9 +22,12 @@ use my_node_runtime::Header;
 use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};
 use sp_core::sr25519;
 use sp_runtime::traits::AccountIdConversion;
-use substrate_api_client::Api;
+use substrate_api_client::{rpc::WsRpcClient, Api};
 
-pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<PolkadexAccount> {
+pub fn get_main_accounts(
+    header: Header,
+    api: &Api<sr25519::Pair, WsRpcClient>,
+) -> Vec<PolkadexAccount> {
     // Read the genesis account
     let genesis_account_id: AccountId = PalletId(*b"polka/ga").into_account();
 
@@ -44,7 +47,7 @@ pub fn get_main_accounts(header: Header, api: &Api<sr25519::Pair>) -> Vec<Polkad
 pub fn get_storage_and_proof(
     acc: AccountId,
     header: &Header,
-    api: &Api<sr25519::Pair>,
+    api: &Api<sr25519::Pair, WsRpcClient>,
 ) -> PolkadexAccount {
     let last_acc: LinkedAccount = api
         .get_storage_map(

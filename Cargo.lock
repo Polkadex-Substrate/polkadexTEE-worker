@@ -5853,6 +5853,7 @@ dependencies = [
  "jsonrpsee",
  "lazy_static",
  "log 0.4.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mio 0.6.23",
  "mockall",
  "multihash 0.14.0",
  "node-polkadex-runtime",

@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{Header, SignedBlock};
 use polkadex_sgx_primitives::PolkadexAccount;
@@ -133,47 +134,6 @@ pub fn enclave_init() -> EnclaveResult<Enclave> {
     Ok(enclave_api)
 }
 
-pub fn enclave_init_chain_relay(
-    eid: sgx_enclave_id_t,
-    genesis_header: Header,
-    authority_list: VersionedAuthorityList,
-    authority_proof: Vec<Vec<u8>>,
-) -> SgxResult<Header> {
-    let mut latest_header = vec![0u8; 200];
-
-    let mut status = sgx_status_t::SGX_SUCCESS;
-    let result = unsafe {
-        // Todo: this is a bit ugly but the common `encode()` is not implemented for authority list
-
-        // TODO: Fix the wrapper with linkedAccounts pointer and size
-        authority_list.using_encoded(|authorities| {
-            init_chain_relay(
-                eid,
-                &mut status,
-                genesis_header.encode().as_ptr(),
-                genesis_header.encode().len(),
-                authorities.as_ptr(),
-                authorities.len(),
-                authority_proof.encode().as_ptr(),
-                authority_proof.encode().len(),
-                latest_header.as_mut_ptr(),
-                latest_header.len(),
-            )
-        })
-    };
-
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-    let latest: Header = Decode::decode(&mut latest_header.as_slice()).unwrap();
-    info!("Latest Header {:?}", latest);
-
-    Ok(latest)
-}
-
 pub fn enclave_accept_pdex_accounts(
     eid: sgx_enclave_id_t,
     pdex_accounts: Vec<PolkadexAccount>,
@@ -223,72 +183,6 @@ pub fn enclave_send_disk_data(eid: sgx_enclave_id_t, data: Vec<u8>) -> SgxResult
     if status != sgx_status_t::SGX_SUCCESS {
         return Err(status);
     }
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-    Ok(())
-}
-
-pub fn enclave_accept_pdex_accounts(
-    eid: sgx_enclave_id_t,
-    pdex_accounts: Vec<PolkadexAccount>,
-) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe {
-        accept_pdex_accounts(
-            eid,
-            &mut status,
-            pdex_accounts.encode().as_ptr(),
-            pdex_accounts.encode().len(),
-        )
-    };
-
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-    Ok(())
-}
-
-pub fn enclave_run_db_thread(eid: sgx_enclave_id_t) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe { run_db_thread(eid, &mut status) };
-
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-
-    Ok(())
-}
-
-pub fn enclave_load_orders_to_memory(
-    eid: sgx_enclave_id_t,
-    orders: Vec<SignedOrder>,
-) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe {
-        load_orders_to_memory(
-            eid,
-            &mut status,
-            orders.encode().as_ptr(),
-            orders.encode().len(),
-        )
-    };
-
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-
     if result != sgx_status_t::SGX_SUCCESS {
         return Err(result);
     }
