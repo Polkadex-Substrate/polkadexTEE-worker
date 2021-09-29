@@ -16,6 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
+use crate::ocall_bridge::bridge_api::Bridge;
+use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
 use crate::{
     direct_invocation::{
         watch_list_service::{WatchList, WatchListService},
@@ -44,7 +47,9 @@ use enclave::{
     tls_ra::{enclave_request_key_provisioning, enclave_run_key_provisioning_server},
 };
 use log::*;
-use my_node_runtime::{pallet_teerex::ShardIdentifier, Event, Hash, Header};
+use my_node_runtime::{pallet_substratee_registry::ShardIdentifier, Event, Hash, Header};
+use polkadex_sgx_primitives::types::SignedOrder;
+use polkadex_sgx_primitives::{OpenFinexUri, PolkadexAccount};
 use sgx_types::*;
 use sp_core::{
     crypto::{AccountId32, Ss58Codec},
@@ -52,6 +57,7 @@ use sp_core::{
 };
 use sp_finality_grandpa::VersionedAuthorityList;
 use sp_keyring::AccountKeyring;
+use std::slice;
 use std::{
     fs::{self, File},
     io::{stdin, Write},
@@ -59,7 +65,7 @@ use std::{
     str,
     sync::{
         mpsc::{channel, Sender},
-        Arc,
+        Arc, Mutex, MutexGuard,
     },
     thread,
     time::{Duration, SystemTime},
@@ -79,15 +85,7 @@ use substratee_settings::files::{
 };
 use substratee_worker_api::direct_client::DirectClient;
 
-use polkadex_sgx_primitives::types::SignedOrder;
-use polkadex_sgx_primitives::{OpenFinexUri, PolkadexAccount};
-
-use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
-use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
-
-use crate::enclave::api::{
-    enclave_accept_pdex_accounts, enclave_init_chain_relay, enclave_sync_chain,
-};
+use crate::enclave::api::enclave_accept_pdex_accounts;
 
 mod config;
 mod db_handler;
@@ -305,7 +303,7 @@ fn start_worker<E, T, W>(
         finex_uri.port(),
         finex_uri.path()
     );
-    thread::spawn(move || enclave_run_openfinex_client(enclave.as_ref(), finex_uri));
+    thread::spawn(move || enclave_run_openfinex_client(enclave.get_eid(), finex_uri));
 
     // ------------------------------------------------------------------------
     // start worker api direct invocation server
@@ -380,7 +378,7 @@ fn start_worker<E, T, W>(
     // Start DB Handler Thread
     //crate::db_handler::DBHandler::initialize(eid);
 
-    let latest_head = init_chain_relay(enclave.as_ref(), &node_api, enclave.as_ref());
+    let latest_head = init_chain_relay(&node_api, enclave.as_ref());
     println!("*** [+] Finished syncing chain relay\n");
 
     //crate::db_handler::DBHandler::send_data_to_enclave(eid)
@@ -481,10 +479,13 @@ fn print_events(events: Events, _sender: Sender<String>) {
                     }
                 }
             }
-            Event::Teerex(re) => {
+            Event::SubstrateeRegistry(re) => {
                 debug!("{:?}", re);
                 match &re {
-                    my_node_runtime::pallet_teerex::RawEvent::AddedEnclave(sender, worker_url) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::AddedEnclave(
+                        sender,
+                        worker_url,
+                    ) => {
                         println!("[+] Received AddedEnclave event");
                         println!("    Sender (Worker):  {:?}", sender);
                         println!(
@@ -492,34 +493,42 @@ fn print_events(events: Events, _sender: Sender<String>) {
                             str::from_utf8(&worker_url).unwrap()
                         );
                     }
-                    my_node_runtime::pallet_teerex::RawEvent::Forwarded(shard) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::Forwarded(shard) => {
                         println!(
                             "[+] Received trusted call for shard {}",
                             shard.encode().to_base58()
                         );
                     }
-                    my_node_runtime::pallet_teerex::RawEvent::CallConfirmed(sender, payload) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::CallConfirmed(
+                        sender,
+                        payload,
+                    ) => {
                         info!("[+] Received CallConfirmed event");
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
-                    my_node_runtime::pallet_teerex::RawEvent::BlockConfirmed(sender, payload) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::BlockConfirmed(
+                        sender,
+                        payload,
+                    ) => {
                         info!("[+] Received BlockConfirmed event");
                         debug!("    From:    {:?}", sender);
                         debug!("    Payload: {:?}", hex::encode(payload));
                     }
-                    my_node_runtime::pallet_teerex::RawEvent::ShieldFunds(incognito_account) => {
+                    my_node_runtime::pallet_substratee_registry::RawEvent::ShieldFunds(
+                        incognito_account,
+                    ) => {
                         info!("[+] Received ShieldFunds event");
                         debug!("    For:    {:?}", incognito_account);
                     }
-                    my_node_runtime::pallet_teerex::RawEvent::UnshieldedFunds(
+                    my_node_runtime::pallet_substratee_registry::RawEvent::UnshieldedFunds(
                         incognito_account,
                     ) => {
                         info!("[+] Received UnshieldedFunds event");
                         debug!("    For:    {:?}", incognito_account);
                     }
                     _ => {
-                        trace!("Ignoring unsupported pallet_teerex event");
+                        trace!("Ignoring unsupported pallet_substratee_registry event");
                     }
                 }
             }
@@ -531,7 +540,6 @@ fn print_events(events: Events, _sender: Sender<String>) {
 }
 
 pub fn init_chain_relay<E: EnclaveBase + SideChain>(
-    eid: sgx_enclave_id_t, // FIXME: this should be replaced with enclave_api entirely.
     api: &Api<sr25519::Pair, WsRpcClient>,
     enclave_api: &E,
 ) -> Header {
@@ -553,78 +561,43 @@ pub fn init_chain_relay<E: EnclaveBase + SideChain>(
 
     let polkadex_accounts: Vec<PolkadexAccount> = polkadex::get_main_accounts(latest.clone(), api);
 
-    enclave_accept_pdex_accounts(eid, polkadex_accounts).unwrap();
+    enclave_accept_pdex_accounts(enclave_api.get_eid(), polkadex_accounts).unwrap();
 
     info!("Finishing retrieving Polkadex Accounts, ...");
 
-    sync_chain(eid, api, latest)
+    sync_chain(enclave_api, api, latest)
 }
 
-/// Starts block production
-///
-/// Returns the last synced header of layer one
+/// Syncs the enclave state with the parent chain
 pub fn sync_chain(
-    eid: sgx_enclave_id_t,
-    api: &Api<sr25519::Pair>,
+    enclave_api: &E,
+    api: &Api<sr25519::Pair, WsRpcClient>,
     last_synced_head: Header,
 ) -> Header {
     // obtain latest finalized block from layer one
     debug!("Getting current head");
-    let curr_head: SignedBlock = api
-        .get_finalized_head()
-        .unwrap()
-        .map(|hash| api.get_signed_block(Some(hash)).unwrap())
-        .unwrap()
-        .unwrap();
+    let curr_head: SignedBlock = api.last_finalized_block().unwrap().unwrap();
 
     if curr_head.block.header.hash() == last_synced_head.hash() {
         // we are already up to date, do nothing
         return curr_head.block.header;
     }
 
-    let mut blocks_to_sync = vec![curr_head.clone()];
+    let blocks_to_sync = get_blocks_to_sync(api, &last_synced_head, &curr_head);
 
-    // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
-    let mut head = curr_head.clone();
-
-    let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
-    if no_blocks_to_sync > 1 {
-        println!(
-            "Chain Relay is synced until block: {:?}",
-            last_synced_head.number
-        );
-        println!(
-            "Last finalized block number: {:?}\n",
-            head.block.header.number
-        );
-    }
-
-    while head.block.header.parent_hash != last_synced_head.hash() {
-        head = api
-            .get_signed_block(Some(head.block.header.parent_hash))
-            .unwrap()
-            .unwrap();
-        blocks_to_sync.push(head.clone());
-
-        if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
-            println!(
-                "Remaining blocks to fetch until last synced header: {:?}",
-                head.block.header.number - last_synced_head.number
-            )
-        }
-    }
-    blocks_to_sync.reverse();
-
-    let tee_accountid = enclave_account(eid);
+    let tee_accountid = enclave_account(enclave_api);
 
     // only feed BLOCK_SYNC_BATCH_SIZE blocks at a time into the enclave to save enclave state regularly
     let mut i = blocks_to_sync[0].block.header.number as usize;
     for chunk in blocks_to_sync.chunks(BLOCK_SYNC_BATCH_SIZE as usize) {
-        let tee_nonce = get_nonce(&api, &tee_accountid);
+        let tee_nonce = api.get_nonce_of(&tee_accountid).unwrap();
 
-        // sync enclave with chain
-        if let Err(e) = enclave_sync_chain(eid, chunk.to_vec(), tee_nonce) {
-            error!("{}", e);
+        // sync to parent chain
+        if let Err(e) = chunk
+            .to_vec()
+            .using_encoded(|b| enclave_api.sync_chain(b.to_vec(), tee_nonce))
+        {
+            error!("{:?}", e);
             // enclave might not have synced
             return last_synced_head;
         };
@@ -638,6 +611,12 @@ pub fn sync_chain(
     }
 
     curr_head.block.header
+}
+
+fn hex_encode(data: Vec<u8>) -> String {
+    let mut hex_str = hex::encode(data);
+    hex_str.insert_str(0, "0x");
+    hex_str
 }
 
 fn init_shard(shard: &ShardIdentifier) {
@@ -708,6 +687,7 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair, WsRpcClient>, accountid
     }
 }
 
+// FIXME: FFI should be moved to ocall_brigde
 /// # Safety
 ///
 /// FFI are always unsafe
@@ -743,6 +723,7 @@ pub unsafe extern "C" fn ocall_write_order_to_db(
     status
 }
 
+// FIXME: FFI should be moved to ocall_brigde
 /// # Safety
 ///
 /// FFI are always unsafe
@@ -754,7 +735,8 @@ pub unsafe extern "C" fn ocall_send_release_extrinsic(
     debug!("Entering ocall_send_release_extrinsic");
     let mut status = sgx_status_t::SGX_SUCCESS;
     let mut extrinsic_slice = slice::from_raw_parts(extrinsic, extrinsic_size as usize);
-    let api = Api::<sr25519::Pair>::new(NODE_URL.lock().unwrap().clone()).unwrap();
+    let api = Bridge::get_oc_api();
+    //let api = Api::<sr25519::Pair, WsRpcClient>::new(NODE_URL.lock().unwrap().clone()).unwrap();
     let release_extrinsic_calls: Vec<u8> = match Decode::decode(&mut extrinsic_slice) {
         Ok(calls) => calls,
         Err(_) => {
@@ -763,7 +745,53 @@ pub unsafe extern "C" fn ocall_send_release_extrinsic(
             vec![]
         }
     };
-    api.send_extrinsic(hex_encode(release_extrinsic_calls), XtStatus::Ready)
+    api.send_extrinsic(release_extrinsic_calls, XtStatus::Ready)
         .unwrap();
     status
+}
+
+/// gets a list of blocks that need to be synced, ordered from oldest to most recent header
+/// blocks that need to be synced are all blocks from the current header to the last synced header, iterating over parent
+fn get_blocks_to_sync(
+    api: &Api<sr25519::Pair, WsRpcClient>,
+    last_synced_head: &Header,
+    curr_head: &SignedBlock,
+) -> Vec<SignedBlock> {
+    let mut blocks_to_sync = Vec::<SignedBlock>::new();
+
+    // add blocks to sync if not already up to date
+    if curr_head.block.header.hash() != last_synced_head.hash() {
+        blocks_to_sync.push((*curr_head).clone());
+
+        // Todo: Check, is this dangerous such that it could be an eternal or too big loop?
+        let mut head = (*curr_head).clone();
+        let no_blocks_to_sync = head.block.header.number - last_synced_head.number;
+        if no_blocks_to_sync > 1 {
+            println!(
+                "Chain Relay is synced until block: {:?}",
+                last_synced_head.number
+            );
+            println!(
+                "Last finalized block number: {:?}\n",
+                head.block.header.number
+            );
+        }
+        while head.block.header.parent_hash != last_synced_head.hash() {
+            debug!("Getting head of hash: {:?}", head.block.header.parent_hash);
+            head = api
+                .signed_block(Some(head.block.header.parent_hash))
+                .unwrap()
+                .unwrap();
+            blocks_to_sync.push(head.clone());
+
+            if head.block.header.number % BLOCK_SYNC_BATCH_SIZE == 0 {
+                println!(
+                    "Remaining blocks to fetch until last synced header: {:?}",
+                    head.block.header.number - last_synced_head.number
+                )
+            }
+        }
+        blocks_to_sync.reverse();
+    }
+    blocks_to_sync
 }
