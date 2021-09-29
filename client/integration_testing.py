@@ -123,6 +123,18 @@ if __name__ == '__main__':
     bob_offchain_balance(61 * UNIT, 15 * UNIT)
     await_block()
 
+    uuid = direct_place_order(alice, None, btc, usd, 'ask', 1 * UNIT, 'market', 0)
+    await_block()
+    alice_offchain_balance(134 * UNIT, 4 * UNIT)
+    bob_offchain_balance(61 * UNIT, 16 * UNIT)
+    await_block()
+
+    uuid = direct_place_order(alice, None, btc, usd, 'ask', 1 * UNIT, 'market', 0)
+    await_block()
+    alice_offchain_balance(139 * UNIT, 3 * UNIT)
+    bob_offchain_balance(61 * UNIT, 17 * UNIT)
+    await_block()
+
     #Test Cancel Orders
 
     uuid = direct_place_order(alice, None, btc, usd, 'bid', 2 * UNIT, 'limit', 2 * UNIT)
@@ -131,3 +143,5 @@ if __name__ == '__main__':
     result = direct_cancel_order(alice, None, tokenA, tokenB, uuid.strip('"'))
     print(str(result))
     await_block()
+
+    # Withdraw

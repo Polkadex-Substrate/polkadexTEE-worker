@@ -28,7 +28,7 @@ use crate::rsa3072;
 use crate::ss58check;
 use crate::state;
 use crate::test_orderbook_storage;
-//use crate::test_polkadex_gateway;
+use crate::test_polkadex_gateway;
 use crate::top_pool;
 
 use crate::{Timeout, WorkerRequest, WorkerResponse};
@@ -96,31 +96,13 @@ pub extern "C" fn test_main_entrance() -> size_t {
         polkadex_cache::market_cache::tests::retrieve_previously_inserted_markets,
 
         // Polkadex Gateway
-        // test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
-        // test_polkadex_gateway::test_authenticate_user,
-        // test_polkadex_gateway::test_place_limit_buy_order,
-        // test_polkadex_gateway::test_place_limit_sell_order,
-        // test_polkadex_gateway::test_place_market_buy_order,
-        // test_polkadex_gateway::test_place_market_sell_order,
-        // test_polkadex_gateway::test_cancel_limit_buy_order,
-        // test_polkadex_gateway::test_cancel_limit_sell_order,
-        // //test_polkadex_gateway::test_settle_trade_full_ask_limit,
-        // test_polkadex_gateway::test_orderbook_limit,
-        // test_polkadex_gateway::test_settle_trade_partial_ask_limit,
-        // test_polkadex_gateway::test_settle_trade_partial_two_ask_limit,
-        // test_polkadex_gateway::test_settle_trade_full_buy_limit,
-        // test_polkadex_gateway::test_settle_trade_partial_buy_limit,
-        // test_polkadex_gateway::test_settle_trade_partial_two_buy_limit,
-        // test_polkadex_gateway::test_settle_trade_full_ask_market,
-        // test_polkadex_gateway::test_settle_trade_partial_ask_market,
-        // test_polkadex_gateway::test_settle_trade_partial_two_ask_market,
-        // test_polkadex_gateway::test_settle_trade_full_buy_market,
-        // test_polkadex_gateway::test_settle_trade_partial_bid_market,
-        // test_polkadex_gateway::test_settle_trade_partial_two_bid_market,
-        // test_polkadex_gateway::test_cancel_limit_bid_order,
-        // test_polkadex_gateway::test_cancel_ask_order,
-        // test_polkadex_gateway::test_process_create_order,
-		// test_polkadex_gateway::test_basic_order_checks,
+         test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
+        test_polkadex_gateway::test_authenticate_user,
+        test_polkadex_gateway::test_place_limit_buy_order,
+        test_polkadex_gateway::test_place_limit_sell_order,
+        test_polkadex_gateway::test_place_market_buy_order,
+        test_polkadex_gateway::test_place_market_sell_order,
+        test_polkadex_gateway::test_orderbook_limit,
         // Polkadex Balance Storage
         test_polkadex_balance_storage::test_deposit,
         test_polkadex_balance_storage::test_withdraw,
