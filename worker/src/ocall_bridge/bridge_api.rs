@@ -18,6 +18,7 @@
 
 use lazy_static::lazy_static;
 use log::*;
+use my_node_runtime::Hash;
 use parking_lot::RwLock;
 use sgx_types::{
     sgx_epid_group_id_t, sgx_platform_info_t, sgx_quote_nonce_t, sgx_quote_sign_type_t,
@@ -179,6 +180,8 @@ pub trait WorkerOnChainBridge {
         confirmations: Vec<u8>,
         signed_blocks: Vec<u8>,
     ) -> OCallBridgeResult<()>;
+
+    fn send_extrinsic(&self, extrinsic: Vec<u8>, exit_on: XtStatus) -> ApiResult<Option<Hash>>;
 }
 
 /// type for IPFS
