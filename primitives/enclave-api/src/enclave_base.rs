@@ -50,6 +50,8 @@ pub trait EnclaveBase: Send + Sync + 'static {
     fn get_ecc_signing_pubkey(&self) -> EnclaveResult<ed25519::Public>;
 
     fn get_mrenclave(&self) -> EnclaveResult<[u8; MR_ENCLAVE_SIZE]>;
+
+    fn get_eid(&self) -> u64;
 }
 
 /// EnclaveApi implementation for Enclave struct
@@ -174,6 +176,10 @@ impl EnclaveBase for Enclave {
         ensure!(retval == sgx_status_t::SGX_SUCCESS, Error::Sgx(retval));
 
         Ok(mr_enclave)
+    }
+
+    fn get_eid(&self) -> u64 {
+        self.eid
     }
 }
 
