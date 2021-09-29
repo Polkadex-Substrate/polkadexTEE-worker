@@ -49,27 +49,20 @@ use std::sync::{
     Arc, SgxMutex,
 };
 
-use sp_core::H256 as Hash;
-
-use codec::{Decode, Encode};
-use log::*;
-
+use self::serde_json::*;
 use crate::rpc::{
     api::SideChainApi,
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
 };
-
 use crate::top_pool::pool::Options as PoolOptions;
-
-use self::serde_json::*;
-use jsonrpc_core::{futures::executor, Error as RpcError, *};
-
-use substratee_stf::ShardIdentifier;
-
 use base58::FromBase58;
 use chain_relay::Block;
+use jsonrpc_core::{futures::executor, Error as RpcError, *};
+use log::*;
+use sp_core::H256 as Hash;
 use substratee_node_primitives::Request;
+use substratee_stf::ShardIdentifier;
 use substratee_worker_primitives::{
     block::SignedBlock, DirectRequestStatus, RpcReturnValue, TrustedOperationStatus,
 };

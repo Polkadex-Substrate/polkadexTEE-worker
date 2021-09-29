@@ -144,7 +144,7 @@ mod tests {
                 user_uid: get_account("FOO"),
                 market_id: MarketId {
                     base: AssetId::POLKADEX,
-                    quote: AssetId::DOT,
+                    quote: AssetId::Asset(0),
                 },
                 market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
                 order_type: OrderType::LIMIT,
@@ -162,7 +162,7 @@ mod tests {
             order: Order {
                 user_uid: get_account("BAR"),
                 market_id: MarketId {
-                    base: AssetId::DOT,
+                    base: AssetId::Asset(0),
                     quote: AssetId::POLKADEX,
                 },
                 market_type: "NONE_MARKET_TYPE".to_string().into_bytes(),

@@ -40,7 +40,7 @@ pub fn create_dummy_order(account: AccountId) -> Order {
     Order {
         user_uid: account,
         market_id: MarketId {
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
             base: AssetId::POLKADEX,
         },
         side: OrderSide::ASK,
@@ -55,7 +55,7 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
     CancelOrder {
         user_uid: account,
         market_id: MarketId {
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
             base: AssetId::POLKADEX,
         },
         order_id,

@@ -103,10 +103,10 @@
 //     }
 //     // Initialize Balance for main account
 //     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::POLKADEX).is_ok());
-//     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::DOT).is_ok());
+//     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::Asset(0)).is_ok());
 //     // Deposit some balance
 //     assert!(lock_storage_and_deposit(main.clone(), AssetId::POLKADEX, 100 * UNIT).is_ok());
-//     assert!(lock_storage_and_deposit(main, AssetId::DOT, 100 * UNIT).is_ok());
+//     assert!(lock_storage_and_deposit(main, AssetId::Asset(0), 100 * UNIT).is_ok());
 // }
 //
 // pub fn check_balance(
@@ -137,7 +137,7 @@
 //         user_uid: main.clone(),
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type: OrderType::LIMIT,
@@ -147,20 +147,20 @@
 //     };
 //
 //     setup(main.clone());
-//     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
+//     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::Asset(0)).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
 //     assert!(gateway
 //         .place_order(main.clone(), None, new_order.clone())
 //         .is_ok());
-//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 //     new_order.quantity = 100 * UNIT;
 //     assert!(gateway
 //         .place_order(main.clone(), None, new_order.clone())
 //         .is_err());
-//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 //     new_order.quantity = UNIT;
 //     new_order.price = Some(99 * UNIT);
 //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
-//     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
+//     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
 //     check_balance(100 * UNIT, 0u128, main, AssetId::POLKADEX).unwrap();
 // }
 //
@@ -171,7 +171,7 @@
 //         user_uid: main.clone(),
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type: OrderType::LIMIT,
@@ -195,7 +195,7 @@
 //     new_order.price = Some(99 * UNIT);
 //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
 //     check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
-//     check_balance(100 * UNIT, 0u128, main, AssetId::DOT).unwrap();
+//     check_balance(100 * UNIT, 0u128, main, AssetId::Asset(0)).unwrap();
 // }
 //
 // pub fn test_place_market_buy_order() {
@@ -205,7 +205,7 @@
 //         user_uid: main.clone(),
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type: OrderType::MARKET,
@@ -215,19 +215,19 @@
 //     };
 //
 //     setup(main.clone());
-//     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
+//     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::Asset(0)).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
 //     assert!(gateway
 //         .place_order(main.clone(), None, new_order.clone())
 //         .is_ok());
-//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 //     new_order.price = Some(100 * UNIT);
 //     assert!(gateway
 //         .place_order(main.clone(), None, new_order.clone())
 //         .is_err());
-//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+//     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 //     new_order.price = Some(99 * UNIT);
 //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
-//     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
+//     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
 //     check_balance(100 * UNIT, 0u128, main, AssetId::POLKADEX).unwrap();
 // }
 //
@@ -238,7 +238,7 @@
 //         user_uid: main.clone(),
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type: OrderType::MARKET,
@@ -261,7 +261,7 @@
 //     new_order.quantity = UNIT;
 //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
 //     check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
-//     check_balance(100 * UNIT, 0u128, main, AssetId::DOT).unwrap();
+//     check_balance(100 * UNIT, 0u128, main, AssetId::Asset(0)).unwrap();
 // }
 //
 // pub fn test_cancel_limit_buy_order() {}
@@ -297,7 +297,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -308,14 +308,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -327,7 +327,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -368,7 +368,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: UNIT,
@@ -389,7 +389,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -397,7 +397,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // // }
@@ -411,7 +411,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -422,14 +422,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -441,7 +441,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -481,7 +481,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: UNIT,
@@ -502,7 +502,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -510,7 +510,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -521,7 +521,7 @@
 // //         user_uid: buy_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -544,7 +544,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -555,14 +555,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -574,7 +574,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -616,7 +616,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: UNIT,
@@ -637,7 +637,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -645,7 +645,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -656,7 +656,7 @@
 // //         user_uid: sell_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -681,7 +681,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -692,14 +692,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -711,7 +711,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -751,7 +751,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: UNIT,
@@ -772,7 +772,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -780,7 +780,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // // }
@@ -794,7 +794,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -805,14 +805,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -824,7 +824,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -865,7 +865,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: UNIT,
@@ -886,7 +886,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); //101
 // //     assert_eq!(
@@ -894,7 +894,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -905,7 +905,7 @@
 // //         user_uid: buy_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -928,7 +928,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -940,7 +940,7 @@
 // //     setup(buy_order_user.clone());
 // //     error!("tesm1");
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
@@ -948,7 +948,7 @@
 // //         .is_ok());
 // //     error!("temp2");
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -960,7 +960,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1002,7 +1002,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: UNIT,
@@ -1023,7 +1023,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -1031,7 +1031,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -1042,7 +1042,7 @@
 // //         user_uid: sell_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1066,7 +1066,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1078,14 +1078,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1097,7 +1097,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1126,7 +1126,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 7,
 // //         price: 2 * UNIT,
@@ -1147,7 +1147,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -1155,7 +1155,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // // }
@@ -1169,7 +1169,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1180,14 +1180,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1199,7 +1199,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1228,7 +1228,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: 2 * UNIT,
@@ -1249,7 +1249,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -1257,7 +1257,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(96 * UNIT, 2 * UNIT, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(96 * UNIT, 2 * UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -1268,7 +1268,7 @@
 // //         user_uid: buy_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1291,7 +1291,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1302,14 +1302,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1321,7 +1321,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1350,7 +1350,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 12,
 // //         price: 2 * UNIT,
@@ -1371,7 +1371,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -1379,7 +1379,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -1390,7 +1390,7 @@
 // //         user_uid: sell_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1415,7 +1415,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1426,14 +1426,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1445,7 +1445,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1485,7 +1485,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 2345,
 // //         price: UNIT,
@@ -1506,7 +1506,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -1514,7 +1514,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // // }
@@ -1528,7 +1528,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1539,14 +1539,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1558,7 +1558,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1599,7 +1599,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 23,
 // //         price: UNIT,
@@ -1620,7 +1620,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); //101
 // //     assert_eq!(
@@ -1628,7 +1628,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, UNIT, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(98 * UNIT, UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -1639,7 +1639,7 @@
 // //         user_uid: buy_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1662,7 +1662,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -1673,14 +1673,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1692,7 +1692,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1733,7 +1733,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 3,
 // //         price: UNIT,
@@ -1754,7 +1754,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); //101
 // //     assert_eq!(
@@ -1762,7 +1762,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //
@@ -1773,7 +1773,7 @@
 // //         user_uid: sell_order_user,
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1794,7 +1794,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1805,14 +1805,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -1828,7 +1828,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         order_id: buy_order_uuid.clone(),
 // //     };
@@ -1838,7 +1838,7 @@
 // //     );
 // //     assert!(process_cancel_order(buy_order_uuid).is_ok());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // // }
@@ -1850,7 +1850,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -1890,7 +1890,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         order_id: sell_order_uuid.clone(),
 // //     };
@@ -1912,7 +1912,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -2003,7 +2003,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -2014,7 +2014,7 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert_eq!(
@@ -2028,7 +2028,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -2046,7 +2046,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -2064,7 +2064,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -2092,7 +2092,7 @@
 //         user_uid: buy_order_user.clone(),
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type: OrderType::LIMIT,
@@ -2103,14 +2103,14 @@
 //
 //     setup(buy_order_user.clone());
 //     assert_eq!(
-//         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+//         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 //         Ok(())
 //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 //     assert!(gateway
 //         .place_order(buy_order_user.clone(), None, new_order.clone())
 //         .is_ok());
 //     assert_eq!(
-//         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+//         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 //         Ok(())
 //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -2122,7 +2122,7 @@
 //         user_uid: sell_order_user.clone(),
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type: OrderType::LIMIT,
@@ -2163,7 +2163,7 @@
 //     let order_event = TradeEvent {
 //         market_id: MarketId {
 //             base: AssetId::POLKADEX,
-//             quote: AssetId::DOT,
+//             quote: AssetId::Asset(0),
 //         },
 //         trade_id: 1,
 //         price: 2 * UNIT,
@@ -2184,7 +2184,7 @@
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+//         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 //         Ok(())
 //     );
 //     assert_eq!(
@@ -2192,7 +2192,7 @@
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+//         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 //         Ok(())
 //     );
 // }
@@ -2204,11 +2204,11 @@
 //         assert!(add_main_account(account.clone()).is_ok());
 //     }
 //     // Initialize Balance for main account
-//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::BTC).is_ok());
-//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::USD).is_ok());
+//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(2)).is_ok());
+//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(3)).is_ok());
 //     // Deposit some balance
-//     assert!(lock_storage_and_deposit(account.clone(), AssetId::USD, 100 * UNIT).is_ok());
-//     assert!(lock_storage_and_deposit(account, AssetId::BTC, 10 * UNIT).is_ok());
+//     assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(3), 100 * UNIT).is_ok());
+//     assert!(lock_storage_and_deposit(account, AssetId::Asset(2), 10 * UNIT).is_ok());
 // }
 //
 // fn place_order(
@@ -2223,7 +2223,7 @@
 //     let new_order: Order = Order {
 //         user_uid: trader.clone(),
 //         market_id: MarketId {
-//             base: AssetId::BTC,// // This file is part of Polkadex.
+//             base: AssetId::Asset(2),// // This file is part of Polkadex.
 // //
 // // // Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
 // // // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
@@ -2328,10 +2328,10 @@
 // //     }
 // //     // Initialize Balance for main account
 // //     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::POLKADEX).is_ok());
-// //     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::DOT).is_ok());
+// //     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::Asset(0)).is_ok());
 // //     // Deposit some balance
 // //     assert!(lock_storage_and_deposit(main.clone(), AssetId::POLKADEX, 100 * UNIT).is_ok());
-// //     assert!(lock_storage_and_deposit(main, AssetId::DOT, 100 * UNIT).is_ok());
+// //     assert!(lock_storage_and_deposit(main, AssetId::Asset(0), 100 * UNIT).is_ok());
 // // }
 // //
 // // pub fn check_balance(
@@ -2362,7 +2362,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -2372,20 +2372,20 @@
 // //     };
 // //
 // //     setup(main.clone());
-// //     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
+// //     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::Asset(0)).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
 // //     assert!(gateway
 // //         .place_order(main.clone(), None, new_order.clone())
 // //         .is_ok());
-// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 // //     new_order.quantity = 100 * UNIT;
 // //     assert!(gateway
 // //         .place_order(main.clone(), None, new_order.clone())
 // //         .is_err());
-// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 // //     new_order.quantity = UNIT;
 // //     new_order.price = Some(99 * UNIT);
 // //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
-// //     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
+// //     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
 // //     check_balance(100 * UNIT, 0u128, main, AssetId::POLKADEX).unwrap();
 // // }
 // //
@@ -2396,7 +2396,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -2420,7 +2420,7 @@
 // //     new_order.price = Some(99 * UNIT);
 // //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
 // //     check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
-// //     check_balance(100 * UNIT, 0u128, main, AssetId::DOT).unwrap();
+// //     check_balance(100 * UNIT, 0u128, main, AssetId::Asset(0)).unwrap();
 // // }
 // //
 // // pub fn test_place_market_buy_order() {
@@ -2430,7 +2430,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -2440,19 +2440,19 @@
 // //     };
 // //
 // //     setup(main.clone());
-// //     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
+// //     check_balance(100 * UNIT, 0u128, main.clone(), AssetId::Asset(0)).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
 // //     assert!(gateway
 // //         .place_order(main.clone(), None, new_order.clone())
 // //         .is_ok());
-// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 // //     new_order.price = Some(100 * UNIT);
 // //     assert!(gateway
 // //         .place_order(main.clone(), None, new_order.clone())
 // //         .is_err());
-// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+// //     check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
 // //     new_order.price = Some(99 * UNIT);
 // //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
-// //     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
+// //     check_balance(0u128, 100 * UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
 // //     check_balance(100 * UNIT, 0u128, main, AssetId::POLKADEX).unwrap();
 // // }
 // //
@@ -2463,7 +2463,7 @@
 // //         user_uid: main.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::MARKET,
@@ -2486,7 +2486,7 @@
 // //     new_order.quantity = UNIT;
 // //     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
 // //     check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
-// //     check_balance(100 * UNIT, 0u128, main, AssetId::DOT).unwrap();
+// //     check_balance(100 * UNIT, 0u128, main, AssetId::Asset(0)).unwrap();
 // // }
 // //
 // // pub fn test_cancel_limit_buy_order() {}
@@ -2522,7 +2522,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2533,14 +2533,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -2552,7 +2552,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2593,7 +2593,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: UNIT,
@@ -2614,7 +2614,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -2622,7 +2622,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // // }
@@ -2636,7 +2636,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2647,14 +2647,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -2666,7 +2666,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2706,7 +2706,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: UNIT,
@@ -2727,7 +2727,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -2735,7 +2735,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -2746,7 +2746,7 @@
 // // //         user_uid: buy_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2769,7 +2769,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2780,14 +2780,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -2799,7 +2799,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2841,7 +2841,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: UNIT,
@@ -2862,7 +2862,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -2870,7 +2870,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -2881,7 +2881,7 @@
 // // //         user_uid: sell_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2906,7 +2906,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2917,14 +2917,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -2936,7 +2936,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -2976,7 +2976,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: UNIT,
@@ -2997,7 +2997,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -3005,7 +3005,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // // }
@@ -3019,7 +3019,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3030,14 +3030,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3049,7 +3049,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3090,7 +3090,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: UNIT,
@@ -3111,7 +3111,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); //101
 // // //     assert_eq!(
@@ -3119,7 +3119,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(96 * UNIT, 3 * UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -3130,7 +3130,7 @@
 // // //         user_uid: buy_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3153,7 +3153,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3165,7 +3165,7 @@
 // // //     setup(buy_order_user.clone());
 // // //     error!("tesm1");
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
@@ -3173,7 +3173,7 @@
 // // //         .is_ok());
 // // //     error!("temp2");
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3185,7 +3185,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3227,7 +3227,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: UNIT,
@@ -3248,7 +3248,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -3256,7 +3256,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(99 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -3267,7 +3267,7 @@
 // // //         user_uid: sell_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3291,7 +3291,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3303,14 +3303,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3322,7 +3322,7 @@
 // // //         user_uid: main.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3351,7 +3351,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 7,
 // // //         price: 2 * UNIT,
@@ -3372,7 +3372,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -3380,7 +3380,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // // }
@@ -3394,7 +3394,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3405,14 +3405,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(96 * UNIT, 4 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3424,7 +3424,7 @@
 // // //         user_uid: main.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3453,7 +3453,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 1,
 // // //         price: 2 * UNIT,
@@ -3474,7 +3474,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -3482,7 +3482,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(96 * UNIT, 2 * UNIT, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(96 * UNIT, 2 * UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -3493,7 +3493,7 @@
 // // //         user_uid: buy_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3516,7 +3516,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3527,14 +3527,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3546,7 +3546,7 @@
 // // //         user_uid: main.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3575,7 +3575,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 12,
 // // //         price: 2 * UNIT,
@@ -3596,7 +3596,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// // //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -3604,7 +3604,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -3615,7 +3615,7 @@
 // // //         user_uid: sell_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3640,7 +3640,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3651,14 +3651,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3670,7 +3670,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3710,7 +3710,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 2345,
 // // //         price: UNIT,
@@ -3731,7 +3731,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
@@ -3739,7 +3739,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // // }
@@ -3753,7 +3753,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3764,14 +3764,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3783,7 +3783,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3824,7 +3824,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 23,
 // // //         price: UNIT,
@@ -3845,7 +3845,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// // //         check_balance(101 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); //101
 // // //     assert_eq!(
@@ -3853,7 +3853,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, UNIT, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(98 * UNIT, UNIT, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -3864,7 +3864,7 @@
 // // //         user_uid: buy_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3887,7 +3887,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -3898,14 +3898,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -3917,7 +3917,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -3958,7 +3958,7 @@
 // // //     let order_event = TradeEvent {
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         trade_id: 3,
 // // //         price: UNIT,
@@ -3979,7 +3979,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::DOT),
+// // //         check_balance(102 * UNIT, 0u128, sell_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); //101
 // // //     assert_eq!(
@@ -3987,7 +3987,7 @@
 // // //         Ok(())
 // // //     );
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // //
@@ -3998,7 +3998,7 @@
 // // //         user_uid: sell_order_user,
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -4019,7 +4019,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -4030,14 +4030,14 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert!(gateway
 // // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // // //         .is_ok());
 // // //     assert_eq!(
-// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// // //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -4053,7 +4053,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         order_id: buy_order_uuid.clone(),
 // // //     };
@@ -4063,7 +4063,7 @@
 // // //     );
 // // //     assert!(process_cancel_order(buy_order_uuid).is_ok());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // // //         Ok(())
 // // //     );
 // // // }
@@ -4075,7 +4075,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -4115,7 +4115,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         order_id: sell_order_uuid.clone(),
 // // //     };
@@ -4137,7 +4137,7 @@
 // // //         user_uid: sell_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -4228,7 +4228,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::LIMIT,
@@ -4239,7 +4239,7 @@
 // // //
 // // //     setup(buy_order_user.clone());
 // // //     assert_eq!(
-// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// // //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // // //         Ok(())
 // // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // // //     assert_eq!(
@@ -4253,7 +4253,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -4271,7 +4271,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -4289,7 +4289,7 @@
 // // //         user_uid: buy_order_user.clone(),
 // // //         market_id: MarketId {
 // // //             base: AssetId::POLKADEX,
-// // //             quote: AssetId::DOT,
+// // //             quote: AssetId::Asset(0),
 // // //         },
 // // //         market_type: Vec::from("trusted"),
 // // //         order_type: OrderType::MARKET,
@@ -4317,7 +4317,7 @@
 // //         user_uid: buy_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -4328,14 +4328,14 @@
 // //
 // //     setup(buy_order_user.clone());
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+// //         check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     assert!(gateway
 // //         .place_order(buy_order_user.clone(), None, new_order.clone())
 // //         .is_ok());
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
 // //     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -4347,7 +4347,7 @@
 // //         user_uid: sell_order_user.clone(),
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type: OrderType::LIMIT,
@@ -4388,7 +4388,7 @@
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
 // //             base: AssetId::POLKADEX,
-// //             quote: AssetId::DOT,
+// //             quote: AssetId::Asset(0),
 // //         },
 // //         trade_id: 1,
 // //         price: 2 * UNIT,
@@ -4409,7 +4409,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+// //         check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
@@ -4417,7 +4417,7 @@
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+// //         check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
 // //         Ok(())
 // //     );
 // // }
@@ -4429,11 +4429,11 @@
 // //         assert!(add_main_account(account.clone()).is_ok());
 // //     }
 // //     // Initialize Balance for main account
-// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::BTC).is_ok());
-// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::USD).is_ok());
+// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(2)).is_ok());
+// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(3)).is_ok());
 // //     // Deposit some balance
-// //     assert!(lock_storage_and_deposit(account.clone(), AssetId::USD, 100 * UNIT).is_ok());
-// //     assert!(lock_storage_and_deposit(account, AssetId::BTC, 10 * UNIT).is_ok());
+// //     assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(3), 100 * UNIT).is_ok());
+// //     assert!(lock_storage_and_deposit(account, AssetId::Asset(2), 10 * UNIT).is_ok());
 // // }
 // //
 // // fn place_order(
@@ -4448,8 +4448,8 @@
 // //     let new_order: Order = Order {
 // //         user_uid: trader.clone(),
 // //         market_id: MarketId {
-// //             base: AssetId::BTC,
-// //             quote: AssetId::USD,
+// //             base: AssetId::Asset(2),
+// //             quote: AssetId::Asset(3),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type,
@@ -4480,11 +4480,11 @@
 // //         alice_sell_order_uuid.clone(),
 // //     );
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::USD),
+// //         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::BTC),
+// //         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::Asset(2)),
 // //         Ok(())
 // //     );
 // //     let bob_buy_order_uuid: OrderUUID = (10..59).collect();
@@ -4499,8 +4499,8 @@
 // //
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
-// //             base: AssetId::BTC,
-// //             quote: AssetId::USD,
+// //             base: AssetId::Asset(2),
+// //             quote: AssetId::Asset(3),
 // //         },
 // //         trade_id: 1,
 // //         price: 5 * UNIT,
@@ -4518,24 +4518,24 @@
 // //     assert_eq!(settle_trade(order_event), Ok(()));
 // //
 // //     assert_eq!(
-// //         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::USD),
+// //         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::BTC),
+// //         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(2)),
 // //         Ok(())
 // //     );
 // //
 // //     assert_eq!(
-// //         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::USD),
+// //         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(3)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::BTC),
+// //         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::Asset(2)),
 // //         Ok(())
 // //     );
 // // }
-//             quote: AssetId::USD,
+//             quote: AssetId::Asset(3),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type,
@@ -4566,11 +4566,11 @@
 //         alice_sell_order_uuid.clone(),
 //     );
 //     assert_eq!(
-//         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::USD),
+//         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::BTC),
+//         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::Asset(2)),
 //         Ok(())
 //     );
 //     let bob_buy_order_uuid: OrderUUID = (10..59).collect();
@@ -4585,8 +4585,8 @@
 //
 //     let order_event = TradeEvent {
 //         market_id: MarketId {
-//             base: AssetId::BTC,
-//             quote: AssetId::USD,
+//             base: AssetId::Asset(2),
+//             quote: AssetId::Asset(3),
 //         },
 //         trade_id: 1,
 //         price: 5 * UNIT,
@@ -4604,20 +4604,20 @@
 //     assert_eq!(settle_trade(order_event), Ok(()));
 //
 //     assert_eq!(
-//         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::USD),
+//         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::BTC),
+//         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(2)),
 //         Ok(())
 //     );
 //
 //     assert_eq!(
-//         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::USD),
+//         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(3)),
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::BTC),
+//         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::Asset(2)),
 //         Ok(())
 //     );
 // }
