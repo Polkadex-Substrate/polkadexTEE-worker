@@ -22,11 +22,8 @@ finality-grandpa = { version = "0.14.3", default-features = false, features = ["
 substratee-storage = { path = "../../primitives/storage", default-features = false }
 
 # substrate deps
-frame-system = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-io = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator", "sgx"], git = "https://github.com/paritytech/substrate.git" }
 sp-core = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
 sp-application-crypto = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git" }
 sp-finality-grandpa = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
 sp-runtime = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
-sp-runtime-interface = { branch = "master", version = "4.0.0-dev", default-features = false, features = ["disable_target_static_assertions"],  git = "https://github.com/paritytech/substrate.git" }
 sp-trie = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git" }
