@@ -38,7 +38,6 @@ use codec::{Compact, Decode, Encode};
 use my_node_runtime::Balance;
 #[cfg(feature = "std")]
 pub use my_node_runtime::Index;
-
 use sp_core::crypto::AccountId32;
 
 use polkadex_sgx_primitives::types::{CancelOrder, CurrencyId, Order};

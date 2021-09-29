@@ -5638,6 +5638,7 @@ dependencies = [
  "json",
  "log 0.4.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "node-polkadex-runtime",
+ "orml-tokens",
  "pallet-balances",
  "parity-scale-codec",
  "polkadex-sgx-primitives 0.1.0",
