@@ -23,15 +23,15 @@ use substratee_enclave_api_ffi as ffi;
 
 /// trait for handling blocks on the side chain
 pub trait SideChain: Send + Sync + 'static {
-    fn produce_blocks(&self, blocks: Vec<u8>, nonce: u32) -> EnclaveResult<()>;
+    fn sync_chain(&self, blocks: Vec<u8>, nonce: u32) -> EnclaveResult<()>;
 }
 
 impl SideChain for Enclave {
-    fn produce_blocks(&self, blocks: Vec<u8>, nonce: u32) -> EnclaveResult<()> {
+    fn sync_chain(&self, blocks: Vec<u8>, nonce: u32) -> EnclaveResult<()> {
         let mut retval = sgx_status_t::SGX_SUCCESS;
 
         let result = unsafe {
-            ffi::produce_blocks(self.eid, &mut retval, blocks.as_ptr(), blocks.len(), &nonce)
+            ffi::sync_chain(self.eid, &mut retval, blocks.as_ptr(), blocks.len(), &nonce)
         };
 
         ensure!(result == sgx_status_t::SGX_SUCCESS, Error::Sgx(result));
