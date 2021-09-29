@@ -26,15 +26,14 @@ extern crate log;
 mod ocex_commands;
 
 extern crate chrono;
-use chrono::{DateTime, Utc};
-
 use base58::{FromBase58, ToBase58};
+use chrono::{DateTime, Utc};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
-    pallet_teerex::Request, AccountId, BalancesCall, Call, Event, Hash, Signature,
+    pallet_substratee_registry::Request, AccountId, BalancesCall, Call, Event, Hash, Signature,
 };
 use orml_tokens::AccountData;
 use polkadex_sgx_primitives::{types::DirectRequest, AssetId, Balance};
@@ -43,6 +42,7 @@ use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
 use sp_keyring::AccountKeyring;
 use sp_runtime::MultiSignature;
+use std::path::PathBuf;
 use std::{
     convert::TryFrom,
     result::Result as StdResult,
@@ -60,15 +60,18 @@ use substrate_api_client::{
     utils::FromHexString,
     Api, Metadata, RpcClient, XtStatus,
 };
-
 use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 use substratee_api_client_extensions::{PalletTeerexApi, TEEREX};
+use substratee_stf::cli_utils::account_parsing::*;
+use substratee_stf::commands::{common_args, common_args_processing};
+use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
 use substratee_worker_api::direct_client::{DirectApi, DirectClient as DirectWorkerApi};
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const KEYSTORE_PATH: &str = "my_keystore";
 
 fn main() {
     env_logger::init();
@@ -186,7 +189,7 @@ fn main() {
                         let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
                             _api.clone().signer.unwrap(),
                             Call::Balances(BalancesCall::transfer(
-                                GenericAddress::Id(to.clone()),
+                                MultiAddress::Id(to.clone()),
                                 PREFUNDING_AMOUNT
                             )),
                             nonce,
@@ -231,6 +234,44 @@ fn main() {
                 }),
         )
         .add_cmd(
+            Command::new("token-balance")
+                .description("query on-chain token balance for AccountId of specific token")
+                .options(|app| {
+                    app.setting(AppSettings::ColoredHelp)
+                    .arg(
+                        Arg::with_name("AccountId")
+                            .takes_value(true)
+                            .required(true)
+                            .value_name("SS58")
+                            .help("AccountId in ss58check format"),
+                    )
+                    .arg(
+                        Arg::with_name(common_args::TOKEN_ID_ARG_NAME)
+                            .takes_value(true)
+                            .required(true)
+                            .value_name("STRING")
+                            .help("Token (i.e. currency)"),
+                    )
+                })
+                .runner(|_args: &str, matches: &ArgMatches<'_>| {
+                    let api = get_chain_api(matches);
+                    let account = matches.value_of("AccountId").unwrap();
+                    let accountid = get_accountid_from_str(account);
+                    let token_id = common_args_processing::get_token_id_from_matches(matches).unwrap();
+
+                    let balance = if let Some(data) = api
+                        .get_storage_double_map::<AccountId, AssetId, AccountData<Balance>>("Tokens", "Accounts", accountid, token_id, None)
+                        .unwrap() {
+                            data.free
+                        } else {
+                            error!("Account does not seem to be registered on this pallet");
+                            0
+                    };
+                    println!("{:?}", balance);
+                    Ok(())
+                }),
+        )
+        .add_cmd(
             Command::new("transfer")
                 .description("transfer funds from one on-chain account to another")
                 .options(|app| {
@@ -266,7 +307,7 @@ fn main() {
                         .unwrap()
                         .parse()
                         .expect("amount can be converted to u128");
-                    let from = get_pair_from_str(arg_from);
+                    let from = get_pair_from_str_untrusted(arg_from);
                     let to = get_accountid_from_str(arg_to);
                     info!("from ss58 is {}", from.public().to_ss58check());
                     info!("to ss58 is {}", to.to_ss58check());
@@ -387,7 +428,7 @@ fn main() {
 
                     // get the sender
                     let arg_from = matches.value_of("from").unwrap();
-                    let from = get_pair_from_str(arg_from);
+                    let from = get_pair_from_str_untrusted(arg_from);
                     let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
                     // get the recipient
@@ -723,7 +764,10 @@ fn send_direct_request(rpc_request: RpcRequest, worker_api: DirectWorkerApi) -> 
 
 #[allow(dead_code)]
 #[derive(Decode)]
-struct BlockConfirmedArgs {}
+struct BlockConfirmedArgs {
+    signer: AccountId,
+    payload: H256,
+}
 
 fn listen(matches: &ArgMatches<'_>) {
     let api = get_chain_api(matches);
@@ -767,11 +811,11 @@ fn listen(matches: &ArgMatches<'_>) {
                                 }
                             }
                         },*/
-                        Event::Teerex(ee) => {
+                        Event::SubstrateeRegistry(ee) => {
                             println!(">>>>>>>>>> substraTEE event: {:?}", ee);
                             count += 1;
                             match &ee {
-                                my_node_runtime::pallet_teerex::RawEvent::AddedEnclave(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::AddedEnclave(
                                     accountid,
                                     url,
                                 ) => {
@@ -782,12 +826,12 @@ fn listen(matches: &ArgMatches<'_>) {
                                             .unwrap_or_else(|_| "error".to_string())
                                     );
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::RemovedEnclave(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::RemovedEnclave(
                                     accountid,
                                 ) => {
                                     println!("RemovedEnclave: {:?}", accountid);
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::UpdatedIpfsHash(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::UpdatedIpfsHash(
                                     shard,
                                     idx,
                                     ipfs_hash,
@@ -799,13 +843,13 @@ fn listen(matches: &ArgMatches<'_>) {
                                         ipfs_hash
                                     );
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::Forwarded(shard) => {
+                                my_node_runtime::pallet_substratee_registry::RawEvent::Forwarded(shard) => {
                                     println!(
                                         "Forwarded request for shard {}",
                                         shard.encode().to_base58()
                                     );
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::CallConfirmed(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::CallConfirmed(
                                     accountid,
                                     call_hash,
                                 ) => {
@@ -814,7 +858,7 @@ fn listen(matches: &ArgMatches<'_>) {
                                         accountid, call_hash
                                     );
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::BlockConfirmed(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::BlockConfirmed(
                                     accountid,
                                     block_hash,
                                 ) => {
@@ -823,12 +867,12 @@ fn listen(matches: &ArgMatches<'_>) {
                                         accountid, block_hash
                                     );
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::ShieldFunds(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::ShieldFunds(
                                     incognito_account,
                                 ) => {
                                     println!("ShieldFunds for {:?}", incognito_account);
                                 }
-                                my_node_runtime::pallet_teerex::RawEvent::UnshieldedFunds(
+                                my_node_runtime::pallet_substratee_registry::RawEvent::UnshieldedFunds(
                                     public_account,
                                 ) => {
                                     println!("UnshieldFunds for {:?}", public_account);
@@ -869,8 +913,8 @@ where
         if let Ok(evts) = _events {
             for evr in &evts {
                 info!("received event {:?}", evr.event);
-                if let Event::Teerex(pe) = &evr.event {
-                    if let my_node_runtime::pallet_teerex::RawEvent::CallConfirmed(
+                if let Event::SubstrateeRegistry(pe) = &evr.event {
+                    if let my_node_runtime::pallet_substratee_registry::RawEvent::CallConfirmed(
                         sender,
                         payload,
                     ) = &pe
@@ -882,37 +926,6 @@ where
                     }
                 }
             }
-        }
-    }
-}
-
-fn get_accountid_from_str(account: &str) -> AccountId {
-    match &account[..2] {
-        "//" => AccountPublic::from(sr25519::Pair::from_string(account, None).unwrap().public())
-            .into_account(),
-        _ => AccountPublic::from(sr25519::Public::from_ss58check(account).unwrap()).into_account(),
-    }
-}
-
-// get a pair either form keyring (well known keys) or from the store
-fn get_pair_from_str(account: &str) -> sr25519::AppPair {
-    info!("getting pair for {}", account);
-    match &account[..2] {
-        "//" => sr25519::AppPair::from_string(account, None).unwrap(),
-        _ => {
-            info!("fetching from keystore at {}", &KEYSTORE_PATH);
-            // open store without password protection
-            let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None)
-                .expect("store should exist");
-            info!("store opened");
-            let _pair = store
-                .key_pair::<sr25519::AppPair>(
-                    &sr25519::Public::from_ss58check(account).unwrap().into(),
-                )
-                .unwrap()
-                .unwrap();
-            drop(store);
-            _pair
         }
     }
 }

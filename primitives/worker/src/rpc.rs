@@ -5,7 +5,7 @@ use alloc::{borrow::ToOwned, string::String, vec::Vec};
 use codec::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, Debug)]
 pub struct RpcReturnValue {
     pub value: Vec<u8>,
     pub do_watch: bool,
