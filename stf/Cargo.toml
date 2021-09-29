@@ -30,7 +30,7 @@ std = [
     "substrate-api-client",
     "substrate-client-keystore",
     "substratee-storage/std",
-    "my-node-runtime",
+    "my-node-runtime/std",
 ]
 test = []
 

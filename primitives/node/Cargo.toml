@@ -16,7 +16,7 @@ sp-runtime = { branch = "master", version = "4.0.0-dev", default-features = fals
 [features]
 default = ['std']
 std = [ 'codec/std',
-        'my-node-runtime',
+        'my-node-runtime/std',
         'sp-core/std',
         'sp-runtime/std'
 ]
