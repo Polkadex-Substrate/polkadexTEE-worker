@@ -30,6 +30,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
+use crate::nonce_handler::NonceHandler;
 use crate::{
     error::{Error, Result},
     ocall::{
@@ -107,7 +108,6 @@ mod ed25519;
 pub mod error;
 mod happy_path;
 pub mod hex;
-pub mod hex;
 mod io;
 mod ipfs;
 pub mod nonce_handler;
@@ -117,7 +117,6 @@ mod polkadex_balance_storage;
 pub mod polkadex_cache;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
-pub mod rpc;
 pub mod rpc;
 mod rsa3072;
 mod ss58check;
@@ -1320,7 +1319,7 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     };
     // Compose the release extrinsic
     let xt_block = [OCEX_MODULE, OCEX_RELEASE];
-    let genesis_hash = validator.genesis_hash(validator.num_relays).unwrap();
+    let genesis_hash = validator.genesis_hash(validator.num_relays()).unwrap();
     let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
 
     // Load the enclave's key pair

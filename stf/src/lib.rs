@@ -208,7 +208,7 @@ impl TrustedCall {
             TrustedCall::balance_set_balance(main_account, _, _, _) => main_account,
             TrustedCall::balance_transfer(main_account, _, _) => main_account,
             TrustedCall::balance_unshield(main_account, _, _, _) => main_account,
-            TrustedCall::balance_shield(main_account, _) => main_account,
+            TrustedCall::balance_shield(main_account, _, _) => main_account,
 
             TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
                 Some(main_account) => main_account,
@@ -236,7 +236,7 @@ impl TrustedCall {
             TrustedCall::balance_set_balance(_, _, _, _) => None,
             TrustedCall::balance_transfer(_, _, _) => None,
             TrustedCall::balance_unshield(_, _, _, _) => None,
-            TrustedCall::balance_shield(_, _) => None,
+            TrustedCall::balance_shield(_, _, _) => None,
 
             TrustedCall::place_order(signer, _, main_account_option) => {
                 main_account_option.as_ref().map(|_| signer.clone())
@@ -481,7 +481,7 @@ mod tests {
 
         let trusted_getter = TrustedGetter::get_balance(
             main_account.public().into(),
-            CurrencyId::DOT,
+            CurrencyId::Asset(0),
             Some(proxy_account.public().into()),
         );
 
@@ -493,7 +493,7 @@ mod tests {
         let main_account = AccountKeyring::Alice;
 
         let trusted_getter =
-            TrustedGetter::get_balance(main_account.public().into(), CurrencyId::DOT, None);
+            TrustedGetter::get_balance(main_account.public().into(), CurrencyId::Asset(0), None);
 
         assert!(trusted_getter.proxy_account().is_none());
     }

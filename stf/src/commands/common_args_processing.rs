@@ -131,9 +131,9 @@ fn get_asset_id_from_str(arg: &str) -> Result<AssetId, String> {
     // Only POLKADEX and DOT supported for now (TODO extend to other asset IDs, using hash arguments)
     match arg.to_ascii_lowercase().as_ref() {
         "polkadex" => Ok(AssetId::POLKADEX),
-        "dot" => Ok(AssetId::DOT),
-        "btc" => Ok(AssetId::BTC),
-        "usd" => Ok(AssetId::USD),
+        "dot" => Ok(AssetId::Asset(0)),
+        "btc" => Ok(AssetId::Asset(2)),
+        "usd" => Ok(AssetId::Asset(3)),
         _ => Err("invalid or unsupported asset ID".to_string()),
     }
 }
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(order.side, OrderSide::BID);
         assert_eq!(order.quantity, 198475);
         assert_eq!(order.market_id.base, AssetId::POLKADEX);
-        assert_eq!(order.market_id.quote, AssetId::DOT);
+        assert_eq!(order.market_id.quote, AssetId::Asset(0));
     }
 
     fn create_test_app<'a, 'b>() -> App<'a, 'b> {

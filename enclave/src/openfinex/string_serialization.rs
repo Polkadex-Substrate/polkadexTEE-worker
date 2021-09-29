@@ -216,12 +216,12 @@ pub mod asset_id_mapping {
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
             AssetId::POLKADEX => POLKADEX_ASSET_STR.to_string(),
-            AssetId::DOT => DOT_ASSET_STR.to_string(),
+            AssetId::Asset(0) => DOT_ASSET_STR.to_string(),
 
             // TODO: the string representation for these might have to include the hash?
-            AssetId::CHAINSAFE(_) => CHAIN_SAFE_ASSET_STR.to_string(),
-            AssetId::BTC => BTC_ASSET_STR.to_string(),
-            AssetId::USD => USD_ASSET_STR.to_string(),
+            AssetId::Asset(1)(_) => CHAIN_SAFE_ASSET_STR.to_string(),
+            AssetId::Asset(2) => BTC_ASSET_STR.to_string(),
+            AssetId::Asset(3) => USD_ASSET_STR.to_string(),
         }
     }
 
@@ -231,11 +231,11 @@ pub mod asset_id_mapping {
 
         match asset_id_str {
             POLKADEX_ASSET_STR => Ok(AssetId::POLKADEX),
-            DOT_ASSET_STR => Ok(AssetId::DOT),
+            DOT_ASSET_STR => Ok(AssetId::Asset(0)),
 
-            CHAIN_SAFE_ASSET_STR => Ok(AssetId::CHAINSAFE(dummy_token_hash)),
-            BTC_ASSET_STR => Ok(AssetId::BTC),
-            USD_ASSET_STR => Ok(AssetId::USD),
+            CHAIN_SAFE_ASSET_STR => Ok(AssetId::Asset(1)),
+            BTC_ASSET_STR => Ok(AssetId::Asset(2)),
+            USD_ASSET_STR => Ok(AssetId::Asset(3)),
             _ => Err(format!(
                 "unknown asset id string ({}), cannot map to AssetId",
                 asset_id_str
@@ -274,11 +274,11 @@ pub mod tests {
     pub fn test_map_asset_ids() {
         let dummy_hash = H160::from([2u8; 20]);
         let asset_ids = vec![
-            AssetId::DOT,
+            AssetId::Asset(0),
             AssetId::POLKADEX,
-            AssetId::USD,
-            AssetId::BTC,
-            AssetId::CHAINSAFE(dummy_hash),
+            AssetId::Asset(3),
+            AssetId::Asset(2),
+            AssetId::Asset(1),
         ];
 
         for asset_id in asset_ids {
@@ -344,27 +344,27 @@ pub mod tests {
 
         let market_ids = vec![
             MarketId {
-                base: AssetId::DOT,
-                quote: AssetId::DOT,
+                base: AssetId::Asset(0),
+                quote: AssetId::Asset(0),
             },
             MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT,
+                quote: AssetId::Asset(0),
             },
             MarketId {
-                base: AssetId::CHAINSAFE(asset_id_mapping::dummy_hash()),
+                base: AssetId::Asset(1),
                 quote: AssetId::POLKADEX,
             },
             MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::BTC,
+                quote: AssetId::Asset(2),
             },
             MarketId {
-                base: AssetId::BTC,
-                quote: AssetId::USD,
+                base: AssetId::Asset(2),
+                quote: AssetId::Asset(3),
             },
             MarketId {
-                base: AssetId::USD,
+                base: AssetId::Asset(3),
                 quote: AssetId::POLKADEX,
             },
         ];
