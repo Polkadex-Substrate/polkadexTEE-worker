@@ -20,12 +20,7 @@ use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
 use crate::ocall_bridge::bridge_api::Bridge;
 use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
 use crate::{
-    direct_invocation::{
-        watch_list_service::{WatchList, WatchListService},
-        watching_client::WsWatchingClient,
-        ws_direct_server_runner::{RunWsServer, WsDirectServerRunner},
-        ws_handler::WsHandlerFactory,
-    },
+    direct_invocation::polkadex_direct_server,
     globals::{
         tokio_handle::{GetTokioHandle, GlobalTokioHandle},
         worker::{GlobalWorker, Worker},
@@ -129,16 +124,16 @@ fn main() {
     let tokio_handle = Arc::new(GlobalTokioHandle {});
     let sync_block_gossiper = Arc::new(SyncBlockGossiper::new(tokio_handle.clone(), worker));
     let node_api_factory = Arc::new(GlobalUrlNodeApiFactory::new(config.node_url()));
-    let direct_invocation_watch_list = Arc::new(WatchListService::<WsWatchingClient>::new());
+    //let direct_invocation_watch_list = Arc::new(WatchListService::<WsWatchingClient>::new());
     let enclave = Arc::new(enclave_init().unwrap());
 
-    // initialize o-call bridge with a concrete factory implementation
-    OCallBridge::initialize(Arc::new(OCallBridgeComponentFactory::new(
-        node_api_factory.clone(),
-        sync_block_gossiper,
-        direct_invocation_watch_list.clone(),
-        enclave.clone(),
-    )));
+    // // initialize o-call bridge with a concrete factory implementation
+    // OCallBridge::initialize(Arc::new(OCallBridgeComponentFactory::new(
+    //     node_api_factory.clone(),
+    //     sync_block_gossiper,
+    //     direct_invocation_watch_list.clone(),
+    //     enclave.clone(),
+    // )));
 
     if let Some(smatches) = matches.subcommand_matches("run") {
         println!("*** Starting substraTEE-worker");
@@ -174,7 +169,7 @@ fn main() {
             skip_ra,
             node_api,
             tokio_handle,
-            direct_invocation_watch_list,
+            //direct_invocation_watch_list,
         );
     } else if let Some(smatches) = matches.subcommand_matches("request-keys") {
         let shard = extract_shard(&smatches, enclave.as_ref());
@@ -247,7 +242,7 @@ fn main() {
     }
 }
 
-fn start_worker<E, T, W>(
+fn start_worker<E, T>(
     config: Config,
     shard: &ShardIdentifier,
     finex_uri: OpenFinexUri,
@@ -255,10 +250,10 @@ fn start_worker<E, T, W>(
     skip_ra: bool,
     mut node_api: Api<sr25519::Pair, WsRpcClient>,
     tokio_handle: Arc<T>,
-    watch_list: Arc<W>,
+    //watch_list: Arc<W>,
 ) where
     T: GetTokioHandle,
-    W: WatchList<Client = WsWatchingClient>,
+    //W: WatchList<Client = WsWatchingClient>,
     E: EnclaveBase
         + DirectRequest
         + SideChain
@@ -313,22 +308,10 @@ fn start_worker<E, T, W>(
         "rpc worker server listening on ws://{}",
         config.worker_url()
     );
-
-    let ws_handler_factory = Arc::new(WsHandlerFactory::new(enclave.clone(), watch_list));
+    polkadex_direct_server::start_worker_api_direct_server(config.worker_url(), eid);
+    /* let ws_handler_factory = Arc::new(WsHandlerFactory::new(enclave.clone(), watch_list));
     let ws_direct_server = WsDirectServerRunner::new(ws_handler_factory, enclave.clone());
-    ws_direct_server.run(config.worker_url());
-
-    // listen for sidechain_block import request. Later the `start_worker_api_direct_server`
-    // should be merged into this one.
-    let url = worker_url_into_async_rpc_url(&config.worker_url()).unwrap();
-
-    let handle = tokio_handle.get_handle();
-    let enclave_rpc_server = enclave.clone();
-    handle.spawn(async move {
-        substratee_worker_rpc_server::run_server(&url, enclave_rpc_server)
-            .await
-            .unwrap()
-    });
+    ws_direct_server.run(config.worker_url()); */
 
     // ------------------------------------------------------------------------
     // start the substrate-api-client to communicate with the node
