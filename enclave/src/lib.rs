@@ -30,6 +30,14 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
+use crate::constants::{
+    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_REGISTER,
+    OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+    SUBSRATEE_REGISTRY_MODULE,
+};
+use crate::constants::{
+    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
+};
 use crate::nonce_handler::NonceHandler;
 use crate::{
     error::{Error, Result},
@@ -70,7 +78,10 @@ use substrate_api_client::{
     compose_extrinsic_offline, extrinsic::xt_primitives::UncheckedExtrinsicV4,
 };
 use substratee_get_storage_verified::GetStorageVerified;
-use substratee_node_primitives::{CallWorkerFn, ShieldFundsFn};
+use substratee_node_primitives::{
+    CallWorkerFn, OCEXAddProxyFn, OCEXDepositFn, OCEXRegisterFn, OCEXRemoveProxyFn, OCEXWithdrawFn,
+    ShieldFundsFn,
+};
 use substratee_ocall_api::{
     EnclaveAttestationOCallApi, EnclaveOnChainOCallApi, EnclaveRpcOCallApi,
 };
@@ -100,6 +111,7 @@ use substratee_worker_primitives::{
 use utils::write_slice_and_whitespace_pad;
 
 mod attestation;
+mod constants;
 mod ed25519;
 pub mod error;
 mod happy_path;
@@ -411,7 +423,7 @@ pub unsafe extern "C" fn init_chain_relay(
 
     match io::light_validation::read_or_init_validator(header, auth, proof) {
         Ok(header) => write_slice_and_whitespace_pad(latest_header_slice, header.encode()),
-        Err(e) => return e,
+        Err(e) => return e.into(),
     }
 
     // Initializes the Order Nonce
@@ -456,10 +468,10 @@ pub unsafe extern "C" fn accept_pdex_accounts(
 
     let validator = match io::light_validation::unseal() {
         Ok(v) => v,
-        Err(e) => return e,
+        Err(e) => return e.into(),
     };
     let latest_header = validator
-        .latest_finalized_header(validator.num_relays)
+        .latest_finalized_header(validator.num_relays())
         .unwrap();
 
     if let Err(status) = accounts_nonce_storage::verify_pdex_account_read_proofs(
@@ -616,7 +628,7 @@ pub unsafe extern "C" fn sync_chain(
 
     let mut validator = match io::light_validation::unseal() {
         Ok(v) => v,
-        Err(e) => return e,
+        Err(e) => return e.into(),
     };
 
     let on_chain_ocall_api = OCallComponentFactory::on_chain_api();
@@ -632,7 +644,7 @@ pub unsafe extern "C" fn sync_chain(
 
     // get header of last block
     let latest_onchain_header: Header = validator
-        .latest_finalized_header(validator.num_relays)
+        .latest_finalized_header(validator.num_relays())
         .unwrap();
 
     // execute pending calls from operation pool and create block
@@ -659,7 +671,7 @@ pub unsafe extern "C" fn sync_chain(
     for xt in extrinsics.iter() {
         validator
             .submit_xt_to_be_included(
-                validator.num_relays,
+                validator.num_relays(),
                 OpaqueExtrinsic::from_bytes(xt.as_slice()).unwrap(),
             )
             .unwrap();
@@ -1310,7 +1322,7 @@ fn handle_ocex_withdraw(
 fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) -> SgxResult<()> {
     let validator = match io::light_validation::unseal() {
         Ok(v) => v,
-        Err(e) => return Err(e),
+        Err(e) => return Err(e.into()),
     };
     // Compose the release extrinsic
     let xt_block = [OCEX_MODULE, OCEX_RELEASE];

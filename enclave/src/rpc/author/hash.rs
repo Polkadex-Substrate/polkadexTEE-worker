@@ -33,5 +33,5 @@ pub enum TrustedOperationOrHash<Hash> {
     /// Raw extrinsic bytes.
     OperationEncoded(Vec<u8>),
     /// Raw extrinsic
-    Operation(Box<TrustedOperation>),
+    Operation(TrustedOperation),
 }
