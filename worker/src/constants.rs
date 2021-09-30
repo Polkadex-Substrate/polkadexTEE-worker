@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+// FIXME: deprecated file location. Should probably be moved to polkadex_primitives or something like that
+
 // Iterator for orderbook mirror returns these many elements in a single yield
 pub static ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT: usize = 1000;
 

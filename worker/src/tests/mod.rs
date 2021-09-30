@@ -20,6 +20,7 @@ use clap::ArgMatches;
 use crate::enclave::api::*;
 
 use self::{ecalls::*, integration_tests::*};
+use substratee_enclave_api::enclave_base::EnclaveBase;
 use substratee_enclave_api::enclave_test::EnclaveTest;
 
 pub mod commons;
@@ -43,9 +44,9 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
     crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
-    crate::db_handler::DBHandler::initialize(eid);
+    crate::db_handler::DBHandler::initialize(enclave.get_eid());
 
-    crate::db_handler::DBHandler::send_data_to_enclave(eid)
+    crate::db_handler::DBHandler::send_data_to_enclave(enclave.get_eid())
         .expect("Failed to send data to enclave");
 
     if matches.is_present("all") || matches.is_present("unit") {

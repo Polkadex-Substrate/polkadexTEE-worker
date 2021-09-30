@@ -5849,6 +5849,7 @@ dependencies = [
  "frame-system",
  "futures",
  "hex",
+ "http",
  "ipfs-api",
  "jsonrpsee",
  "lazy_static",

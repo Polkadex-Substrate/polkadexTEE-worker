@@ -25,6 +25,7 @@ use sgx_types::{
     sgx_report_t, sgx_spid_t, sgx_status_t, sgx_target_info_t, sgx_update_info_bit_t,
 };
 use std::{sync::Arc, vec::Vec};
+use substrate_api_client::{ApiResult, XtStatus};
 
 #[cfg(test)]
 use mockall::predicate::*;
