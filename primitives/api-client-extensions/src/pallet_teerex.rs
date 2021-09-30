@@ -5,7 +5,7 @@ use substratee_node_primitives::{Enclave, IpfsHash, ShardIdentifier};
 
 use crate::ApiResult;
 
-pub const TEEREX: &str = "Teerex";
+pub const TEEREX: &str = "SubstrateeRegistry";
 
 /// ApiClient extension that enables communication with the `substratee-registry` pallet.
 pub trait PalletTeerexApi {
