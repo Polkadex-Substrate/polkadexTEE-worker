@@ -19,9 +19,9 @@
 use super::error::Error;
 use crate::{accounts_nonce_storage, accounts_nonce_storage::AccountsNonceStorage};
 use codec::Encode;
+use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::AccountId;
 use sgx_tstd::sync::SgxMutexGuard;
-use substratee_worker_primitives::get_account;
 
 pub fn get_dummy_map(storage: &mut SgxMutexGuard<AccountsNonceStorage>) {
     let main_account_one: AccountId = get_account("first_account");

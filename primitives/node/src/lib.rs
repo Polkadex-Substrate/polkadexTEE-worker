@@ -2,6 +2,7 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
 use codec::{Decode, Encode};
+use polkadex_sgx_primitives::{AccountId, AssetId};
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
 use sp_core::H256;
@@ -19,8 +20,6 @@ pub type PalletString = String;
 #[cfg(feature = "std")]
 pub type SignedBlock = sp_runtime::generic::SignedBlock<my_node_runtime::Block>;
 
-pub use sp_core::crypto::AccountId32 as AccountId;
-
 pub type ShardIdentifier = H256;
 pub type BlockNumber = u32;
 
@@ -36,6 +35,13 @@ pub type IpfsHash = [u8; 46];
 pub type SubstrateeConfirmCallFn = ([u8; 2], ShardIdentifier, H256, Vec<u8>);
 pub type ShieldFundsFn = ([u8; 2], Vec<u8>, u128, ShardIdentifier);
 pub type CallWorkerFn = ([u8; 2], Request);
+
+// Polkadex Types
+pub type OCEXRegisterFn = ([u8; 2], AccountId);
+pub type OCEXAddProxyFn = ([u8; 2], AccountId, AccountId);
+pub type OCEXRemoveProxyFn = ([u8; 2], AccountId, AccountId);
+pub type OCEXDepositFn = ([u8; 2], AccountId, AssetId, u128);
+pub type OCEXWithdrawFn = ([u8; 2], AccountId, AssetId, u128);
 
 // Todo: move this improved enclave definition into a primitives crate in the substratee-registry repo.
 #[derive(Encode, Decode, Default, Clone, PartialEq, sp_core::RuntimeDebug)]

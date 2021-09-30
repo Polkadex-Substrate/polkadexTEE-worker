@@ -16,17 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::ed25519::Ed25519;
+use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
+use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
+use polkadex_sgx_primitives::{accounts::get_account, AssetId};
 use sgx_tstd::string::String;
 use sgx_tstd::sync::SgxMutexGuard;
 use sgx_tstd::vec::Vec;
 use sgx_tstd::{thread, time};
 use sp_core::ed25519::Signature;
-
-use crate::ed25519;
-use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
-use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
-use polkadex_sgx_primitives::{accounts::get_account, AssetId};
+use substratee_sgx_io::SealedIO;
 
 pub fn get_dummy_orders() -> Vec<Order> {
     let order: Order = Order {
@@ -59,7 +59,7 @@ pub fn get_dummy_orders() -> Vec<Order> {
 #[allow(unused)]
 pub fn test_create_orderbook_storage() {
     let mut signed_orders: Vec<SignedOrder> = vec![];
-    let signer_pair = ed25519::unseal_pair().unwrap();
+    let signer_pair = Ed25519::unseal().unwrap();
     for (counter, order) in get_dummy_orders().into_iter().enumerate() {
         let mut signed_order = SignedOrder {
             order_id: vec![counter as u8],

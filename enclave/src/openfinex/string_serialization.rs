@@ -213,15 +213,17 @@ pub mod asset_id_mapping {
     const BTC_ASSET_STR: &str = "btc";
     const USD_ASSET_STR: &str = "usd";
 
+    // FIXME: Which asset is which????
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
             AssetId::POLKADEX => POLKADEX_ASSET_STR.to_string(),
             AssetId::Asset(0) => DOT_ASSET_STR.to_string(),
 
             // TODO: the string representation for these might have to include the hash?
-            AssetId::Asset(1)(_) => CHAIN_SAFE_ASSET_STR.to_string(),
+            AssetId::Asset(1) => CHAIN_SAFE_ASSET_STR.to_string(),
             AssetId::Asset(2) => BTC_ASSET_STR.to_string(),
             AssetId::Asset(3) => USD_ASSET_STR.to_string(),
+            _ => unimplemented!(),
         }
     }
 

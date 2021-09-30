@@ -18,7 +18,7 @@
 
 //use crate::_write_order_to_disk;
 use crate::channel_storage::{load_sender, ChannelType};
-use crate::ed25519;
+use crate::ed25519::Ed25519;
 use crate::polkadex_gateway::GatewayError;
 use log::error;
 use log::*;
@@ -32,6 +32,7 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
+use substratee_sgx_io::SealedIO;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
@@ -75,7 +76,7 @@ impl OrderbookStorage {
     }
 
     pub fn _write_orderbook_to_db(order_id: OrderUUID, order: Order) -> SgxResult<()> {
-        let signer_pair = ed25519::unseal_pair()?;
+        let signer_pair = Ed25519::unseal()?;
         let mut signed_order = SignedOrder {
             order_id,
             order,
@@ -102,7 +103,7 @@ impl OrderbookStorage {
 /// Creates a Static Atomic Pointer for Orderbook Storage
 pub fn create_in_memory_orderbook_storage(signed_orders: Vec<SignedOrder>) -> SgxResult<()> {
     let mut verified_orders: Vec<SignedOrder> = vec![];
-    let signer_pair = ed25519::unseal_pair()?;
+    let signer_pair = Ed25519::unseal()?;
     for order in signed_orders {
         if !order.verify_signature(&signer_pair) {
             error!("Signature Verification Failed");

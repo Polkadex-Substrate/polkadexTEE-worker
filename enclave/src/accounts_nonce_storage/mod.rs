@@ -21,7 +21,7 @@ pub mod error;
 pub mod nonce_storage;
 pub mod test_proxy;
 
-use chain_relay::{storage_proof::StorageProofChecker, Header};
+use chain_relay::Header;
 use codec::Encode;
 use error::{Error, Result};
 use frame_support::{metadata::StorageHasher, PalletId};
@@ -35,6 +35,7 @@ use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
+use substratee_storage::{StorageProof, StorageProofChecker};
 
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 

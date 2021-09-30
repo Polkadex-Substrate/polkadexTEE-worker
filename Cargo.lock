@@ -5711,6 +5711,7 @@ version = "0.8.0"
 dependencies = [
  "node-polkadex-runtime",
  "parity-scale-codec",
+ "polkadex-sgx-primitives 0.1.0",
  "sgx_tstd",
  "sp-core",
  "sp-runtime",

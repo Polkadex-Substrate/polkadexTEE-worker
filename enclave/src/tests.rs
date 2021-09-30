@@ -22,26 +22,23 @@ use crate::attestation;
 //use crate::happy_path;
 use crate::openfinex;
 use crate::polkadex_cache;
-use crate::ss58check;
 use crate::test_orderbook_storage;
 //use crate::test_polkadex_gateway;
 
-use crate::{Timeout, WorkerRequest, WorkerResponse};
+use crate::{Timeout};
 use log::*;
 
 use sgx_tunittest::*;
 use sgx_types::{sgx_status_t, size_t};
 
+use crate::ss58check;
 use crate::test_polkadex_balance_storage;
-use substrate_api_client::utils::storage_key;
-use substratee_worker_primitives::block::StatePayload;
-
 use crate::{
     ed25519::Ed25519,
     ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
     rpc, rsa3072, state,
     test::{cert_tests::*, mocks::enclave_rpc_ocall_mock::EnclaveRpcOCallMock},
-    top_pool, Timeout,
+    top_pool,
 };
 use chain_relay::{Block, Header};
 use codec::{Decode, Encode};
@@ -53,9 +50,12 @@ use rpc::{
     author::{Author, AuthorApi},
     basic_pool::BasicPool,
 };
+use rpc::{
+    io_handler_extensions, polkadex_rpc_gateway, rpc_call_encoder, rpc_cancel_order,
+    rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
+};
 use sgx_externalities::SgxExternalitiesTypeTrait;
 use sgx_tunittest::*;
-use sgx_types::size_t;
 use sp_core::{crypto::Pair, ed25519 as spEd25519, hashing::blake2_256, H256};
 use sp_runtime::traits::Header as HeaderT;
 use std::{
@@ -65,6 +65,7 @@ use std::{
     untrusted::time::SystemTimeEx,
     vec::Vec,
 };
+use substrate_api_client::utils::storage_key;
 use substratee_ocall_api::EnclaveAttestationOCallApi;
 use substratee_settings::{
     enclave::GETTER_TIMEOUT,
@@ -78,11 +79,6 @@ use substratee_stf::{
     TrustedCall, TrustedGetter, TrustedOperation,
 };
 use substratee_storage::storage_value_key;
-
-use rpc::{
-    io_handler_extensions, polkadex_rpc_gateway, rpc_call_encoder, rpc_cancel_order,
-    rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
-};
 
 #[no_mangle]
 pub extern "C" fn test_main_entrance() -> size_t {
