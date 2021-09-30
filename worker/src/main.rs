@@ -16,11 +16,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::direct_invocation::watch_list_service::WatchList;
 use crate::enclave::openfinex_tcp_client::enclave_run_openfinex_client;
 use crate::ocall_bridge::bridge_api::Bridge;
 use crate::polkadex_db::{DiskStorageHandler, OrderbookMirror, PolkadexDBError};
 use crate::{
     direct_invocation::polkadex_direct_server,
+    direct_invocation::watch_list_service::WatchListService,
+    direct_invocation::watching_client::WsWatchingClient,
     globals::{
         tokio_handle::{GetTokioHandle, GlobalTokioHandle},
         worker::{GlobalWorker, Worker},
@@ -31,7 +34,6 @@ use crate::{
     },
     sync_block_gossiper::SyncBlockGossiper,
     utils::{check_files, extract_shard},
-    worker::worker_url_into_async_rpc_url,
 };
 use base58::ToBase58;
 use clap::{load_yaml, App};
@@ -60,10 +62,10 @@ use std::{
     str,
     sync::{
         mpsc::{channel, Sender},
-        Arc, Mutex, MutexGuard,
+        Arc, MutexGuard,
     },
     thread,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 use substrate_api_client::{rpc::WsRpcClient, utils::FromHexString, Api, GenericAddress, XtStatus};
 use substratee_api_client_extensions::{AccountApi, ChainApi};
@@ -123,16 +125,16 @@ fn main() {
     let tokio_handle = Arc::new(GlobalTokioHandle {});
     let sync_block_gossiper = Arc::new(SyncBlockGossiper::new(tokio_handle.clone(), worker));
     let node_api_factory = Arc::new(GlobalUrlNodeApiFactory::new(config.node_url()));
-    //let direct_invocation_watch_list = Arc::new(WatchListService::<WsWatchingClient>::new());
+    let direct_invocation_watch_list = Arc::new(WatchListService::<WsWatchingClient>::new());
     let enclave = Arc::new(enclave_init().unwrap());
 
-    // // initialize o-call bridge with a concrete factory implementation
-    // OCallBridge::initialize(Arc::new(OCallBridgeComponentFactory::new(
-    //     node_api_factory.clone(),
-    //     sync_block_gossiper,
-    //     direct_invocation_watch_list.clone(),
-    //     enclave.clone(),
-    // )));
+    // initialize o-call bridge with a concrete factory implementation
+    OCallBridge::initialize(Arc::new(OCallBridgeComponentFactory::new(
+        node_api_factory.clone(),
+        sync_block_gossiper,
+        direct_invocation_watch_list.clone(),
+        enclave.clone(),
+    )));
 
     if let Some(smatches) = matches.subcommand_matches("run") {
         println!("*** Starting substraTEE-worker");
@@ -168,7 +170,7 @@ fn main() {
             skip_ra,
             node_api,
             tokio_handle,
-            //direct_invocation_watch_list,
+            direct_invocation_watch_list,
         );
     } else if let Some(smatches) = matches.subcommand_matches("request-keys") {
         let shard = extract_shard(&smatches, enclave.as_ref());
@@ -241,18 +243,18 @@ fn main() {
     }
 }
 
-fn start_worker<E, T>(
+fn start_worker<E, T, W>(
     config: Config,
     shard: &ShardIdentifier,
     finex_uri: OpenFinexUri,
     enclave: Arc<E>,
     skip_ra: bool,
     mut node_api: Api<sr25519::Pair, WsRpcClient>,
-    tokio_handle: Arc<T>,
-    //watch_list: Arc<W>,
+    _tokio_handle: Arc<T>,
+    _watch_list: Arc<W>,
 ) where
     T: GetTokioHandle,
-    //W: WatchList<Client = WsWatchingClient>,
+    W: WatchList<Client = WsWatchingClient>,
     E: EnclaveBase
         + DirectRequest
         + SideChain
