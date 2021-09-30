@@ -54,4 +54,8 @@ impl EnclaveBase for EnclaveBaseMock {
     fn get_mrenclave(&self) -> EnclaveResult<[u8; MR_ENCLAVE_SIZE]> {
         Ok([1u8; MR_ENCLAVE_SIZE])
     }
+
+    fn get_eid(&self) -> u64 {
+        0
+    }
 }

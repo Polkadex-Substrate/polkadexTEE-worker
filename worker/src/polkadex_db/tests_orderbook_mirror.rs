@@ -22,11 +22,11 @@ use crate::polkadex_db::{
     orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, DiskStorageHandler,
     OrderbookMirror, PolkadexDBError,
 };
+use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
 use polkadex_sgx_primitives::AssetId;
 use sp_core::ed25519::Signature;
 use std::sync::MutexGuard;
-use substratee_worker_primitives::get_account;
 
 #[test]
 fn test_db_initialization() {
