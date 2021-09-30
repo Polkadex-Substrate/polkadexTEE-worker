@@ -30,13 +30,10 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
+use crate::channel_storage::{create_channel_get_receiver, ChannelType};
 use crate::constants::{
-    BLOCK_CONFIRMED, CALLTIMEOUT, CALL_CONFIRMED, GETTERTIMEOUT, OCEX_ADD_PROXY, OCEX_REGISTER,
-    OCEX_REMOVE_PROXY, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
-    SUBSRATEE_REGISTRY_MODULE,
-};
-use crate::constants::{
-    CALL_WORKER, OCEX_DEPOSIT, OCEX_MODULE, OCEX_RELEASE, OCEX_WITHDRAW, SHIELD_FUNDS,
+    OCEX_ADD_PROXY, OCEX_DEPOSIT, OCEX_MODULE, OCEX_REGISTER, OCEX_RELEASE, OCEX_REMOVE_PROXY,
+    OCEX_WITHDRAW,
 };
 use crate::nonce_handler::NonceHandler;
 use crate::{
@@ -116,22 +113,31 @@ pub mod channel_storage;
 mod cid;
 mod constants;
 mod ed25519;
-pub mod error;
-mod happy_path;
-pub mod hex;
 mod io;
 mod ipfs;
-pub mod nonce_handler;
 mod ocall;
+mod rsa3072;
+mod state;
+mod utils;
+
+pub mod cert;
+pub mod error;
+pub mod hex;
+pub mod rpc;
+pub mod tls_ra;
+pub mod top_pool;
+// added by polkadex
+mod accounts_nonce_storage;
+pub mod channel_storage;
+mod constants;
+mod happy_path;
+pub mod nonce_handler;
 pub mod openfinex;
 mod polkadex_balance_storage;
 pub mod polkadex_cache;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
-pub mod rpc;
-mod rsa3072;
-mod ss58check;
-mod state;
+pub mod ss58check;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
 mod test_polkadex_gateway;
@@ -143,7 +149,6 @@ pub use crate::cid::*;
 
 #[cfg(feature = "test")]
 pub mod test;
-
 #[cfg(feature = "test")]
 pub mod tests;
 
@@ -1334,7 +1339,7 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
 
     // Load the enclave's key pair
-    let signer = ed25519::unseal_pair()?;
+    let signer = Ed25519::unseal()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
     let mutex = nonce_handler::load_nonce_storage()?;

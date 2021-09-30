@@ -24,9 +24,7 @@ use crate::rpc::{
     rpc_cancel_order::RpcCancelOrder, rpc_get_balance::RpcGetBalance, rpc_nonce::RpcNonce,
     rpc_place_order::RpcPlaceOrder, rpc_withdraw::RpcWithdraw,
 };
-use crate::rsa3072;
 use crate::top_pool::pool::Options as PoolOptions;
-use crate::utils::write_slice_and_whitespace_pad;
 use alloc::{
     borrow::ToOwned,
     boxed::Box,
@@ -40,7 +38,6 @@ use base58::FromBase58;
 use chain_relay::Block;
 use codec::{Decode, Encode};
 use core::result::Result;
-use jsonrpc_core::*;
 use log::*;
 use serde_json::*;
 use sgx_types::*;
@@ -50,14 +47,8 @@ use std::sync::{
 };
 
 use self::serde_json::*;
-use crate::rpc::{
-    api::SideChainApi,
-    author::{Author, AuthorApi},
-    basic_pool::BasicPool,
-};
-use crate::top_pool::pool::Options as PoolOptions;
-use base58::FromBase58;
-use chain_relay::Block;
+use crate::rpc::author::{Author, AuthorApi};
+use crate::{ocall::rpc_ocall::EnclaveRpcOCall, rsa3072, utils::write_slice_and_whitespace_pad};
 use jsonrpc_core::{futures::executor, Error as RpcError, *};
 use log::*;
 use sp_core::H256 as Hash;
@@ -90,7 +81,6 @@ extern "C" {
         uuid_size: u32,
     ) -> sgx_status_t;
 }
-use crate::{ocall::rpc_ocall::EnclaveRpcOCall, rsa3072, utils::write_slice_and_whitespace_pad};
 
 static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 

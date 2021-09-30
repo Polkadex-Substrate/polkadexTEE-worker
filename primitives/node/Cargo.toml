@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
+polkadex-sgx-primitives = {path = "../../polkadex-primitives", default-features = false}
 
 sgx_tstd = { rev = "v1.1.3", features = ["untrusted_fs","net","backtrace"], git = "https://github.com/apache/teaclave-sgx-sdk.git", optional = true}
 my-node-runtime = { git = "https://github.com/Polkadex-Substrate/Polkadex", branch = "develop", package = "node-polkadex-runtime", optional = true}
