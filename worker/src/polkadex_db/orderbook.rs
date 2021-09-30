@@ -131,11 +131,11 @@ mod tests {
     use super::{GeneralDB, OrderbookMirror};
     use crate::polkadex_db::mock::PermanentStorageMock;
     use codec::Encode;
+    use polkadex_sgx_primitives::accounts::get_account;
     use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
     use polkadex_sgx_primitives::{AssetId, OrderbookData};
     use sp_core::ed25519::Signature;
     use std::collections::HashMap;
-    use substratee_worker_primitives::get_account;
 
     fn first_order() -> SignedOrder {
         SignedOrder {
