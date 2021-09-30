@@ -2,7 +2,7 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
 use codec::{Decode, Encode};
-use polkadex_sgx_primitives::{AccountId, AssetId};
+pub use polkadex_sgx_primitives::{AccountId, AssetId};
 #[cfg(feature = "sgx")]
 use sgx_tstd as std;
 use sp_core::H256;
