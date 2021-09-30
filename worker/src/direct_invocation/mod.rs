@@ -15,8 +15,10 @@
 
 */
 
-pub mod direct_invocation_ocall;
+/* pub mod direct_invocation_ocall;
 pub mod watch_list_service;
 pub mod watching_client;
 pub mod ws_direct_server_runner;
-pub mod ws_handler;
+pub mod ws_handler; */
+//FIXME: should be removed / integrated in other files
+pub mod polkadex_direct_server;
