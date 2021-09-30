@@ -977,9 +977,9 @@ source = "git+https://github.com/scs/jsonrpc?branch=no_std#e5ee60bc30dedf5137438
 dependencies = [
  "futures 0.3.8",
  "log",
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
+ "serde 1.0.118",
  "serde_derive 1.0.118",
- "serde_json 1.0.60 (git+https://github.com/mesalock-linux/serde-json-sgx)",
+ "serde_json 1.0.60",
  "sp-std 3.0.0",
 ]
 
@@ -991,8 +991,8 @@ dependencies = [
  "base64 0.13.0 (git+https://github.com/mesalock-linux/rust-base64-sgx)",
  "pem",
  "ring",
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
- "serde_json 1.0.60 (git+https://github.com/mesalock-linux/serde-json-sgx)",
+ "serde 1.0.118",
+ "serde_json 1.0.60",
  "sgx_tstd",
  "simple_asn1",
 ]
@@ -1906,14 +1906,6 @@ dependencies = [
 [[package]]
 name = "serde"
 version = "1.0.118"
-source = "git+https://github.com/mesalock-linux/serde-sgx?tag=sgx_1.1.3#db0226f1d5d70fca6b96af2c285851502204e21c"
-dependencies = [
- "sgx_tstd",
-]
-
-[[package]]
-name = "serde"
-version = "1.0.118"
 source = "git+https://github.com/mesalock-linux/serde-sgx#db0226f1d5d70fca6b96af2c285851502204e21c"
 dependencies = [
  "serde_derive 1.0.118",
@@ -1934,7 +1926,7 @@ name = "serde-big-array"
 version = "0.3.0"
 source = "git+https://github.com/mesalock-linux/serde-big-array-sgx#94122c5167aee38b39b09a620a60db2c28cf7428"
 dependencies = [
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
+ "serde 1.0.118",
  "serde_derive 1.0.118",
 ]
 
@@ -1962,22 +1954,11 @@ dependencies = [
 [[package]]
 name = "serde_json"
 version = "1.0.60"
-source = "git+https://github.com/mesalock-linux/serde-json-sgx?tag=sgx_1.1.3#380893814ad2a057758d825bab798aa117f7362a"
-dependencies = [
- "itoa 0.4.5",
- "ryu",
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
- "sgx_tstd",
-]
-
-[[package]]
-name = "serde_json"
-version = "1.0.60"
 source = "git+https://github.com/mesalock-linux/serde-json-sgx#380893814ad2a057758d825bab798aa117f7362a"
 dependencies = [
  "itoa 0.4.5",
  "ryu",
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
+ "serde 1.0.118",
  "sgx_tstd",
 ]
 
@@ -2062,7 +2043,7 @@ version = "1.1.3"
 source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.3#ed9e7cce4fd40efd7a256d5c4be1c5f00778a5bb"
 dependencies = [
  "itertools 0.8.2",
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
+ "serde 1.0.118",
  "serde-big-array",
  "serde_derive 1.0.118",
  "sgx_tcrypto",
@@ -2859,9 +2840,9 @@ dependencies = [
  "retain_mut",
  "rust-base58",
  "rustls",
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx?tag=sgx_1.1.3)",
+ "serde 1.0.118",
  "serde_derive 1.0.118",
- "serde_json 1.0.60 (git+https://github.com/mesalock-linux/serde-json-sgx?tag=sgx_1.1.3)",
+ "serde_json 1.0.60",
  "sgx-externalities",
  "sgx_rand",
  "sgx_serialize",
@@ -3146,7 +3127,7 @@ name = "uuid"
 version = "0.8.1"
 source = "git+https://github.com/mesalock-linux/uuid-sgx.git#9b425a8f07d5bb6e50b9a24414d11a59ec86617a"
 dependencies = [
- "serde 1.0.118 (git+https://github.com/mesalock-linux/serde-sgx)",
+ "serde 1.0.118",
  "sgx_tstd",
  "sha1",
 ]

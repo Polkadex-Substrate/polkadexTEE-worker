@@ -88,7 +88,6 @@ use substratee_worker_api::direct_client::DirectClient;
 use crate::enclave::api::enclave_accept_pdex_accounts;
 
 mod config;
-mod constants;
 mod db_handler;
 mod direct_invocation;
 mod enclave;
@@ -304,8 +303,7 @@ fn start_worker<E, T, W>(
         finex_uri.port(),
         finex_uri.path()
     );
-    let eid = enclave.get_eid();
-    thread::spawn(move || enclave_run_openfinex_client(eid, finex_uri));
+    thread::spawn(move || enclave_run_openfinex_client(enclave.get_eid(), finex_uri));
 
     // ------------------------------------------------------------------------
     // start worker api direct invocation server
@@ -378,9 +376,9 @@ fn start_worker<E, T, W>(
 
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
-    //crate::db_handler::DBHandler::initialize(eid);
+    //crate::db_handler::DBHandler::initialize(enclave.get_eid());
 
-    let mut latest_head = init_chain_relay(&node_api, enclave.as_ref());
+    let latest_head = init_chain_relay(&node_api, enclave.as_ref());
     println!("*** [+] Finished syncing chain relay\n");
 
     //crate::db_handler::DBHandler::send_data_to_enclave(eid)
@@ -394,7 +392,7 @@ fn start_worker<E, T, W>(
     println!("*** Subscribing to events");
     let (sender, receiver) = channel();
     let sender2 = sender.clone();
-    let api2 = node_api.clone();
+    let api2 = api.clone();
     let _eventsubscriber = thread::Builder::new()
         .name("eventsubscriber".to_owned())
         .spawn(move || {
@@ -402,7 +400,7 @@ fn start_worker<E, T, W>(
         })
         .unwrap();
 
-    let api3 = node_api.clone();
+    let api3 = api.clone();
     let sender3 = sender.clone();
     let _block_subscriber = thread::Builder::new()
         .name("block_subscriber".to_owned())
@@ -416,7 +414,7 @@ fn start_worker<E, T, W>(
             if let Ok(events) = parse_events(msg.clone()) {
                 print_events(events, sender.clone())
             } else if let Ok(_header) = parse_header(msg.clone()) {
-                latest_head = sync_chain(enclave.as_ref(), &node_api, latest_head);
+                latest_head = sync_chain(enclave.as_ref(), &api, latest_head);
             }
         }
     }
@@ -571,7 +569,7 @@ pub fn init_chain_relay<E: EnclaveBase + SideChain>(
 }
 
 /// Syncs the enclave state with the parent chain
-pub fn sync_chain<E: EnclaveBase + SideChain>(
+pub fn sync_chain(
     enclave_api: &E,
     api: &Api<sr25519::Pair, WsRpcClient>,
     last_synced_head: Header,
@@ -613,6 +611,12 @@ pub fn sync_chain<E: EnclaveBase + SideChain>(
     }
 
     curr_head.block.header
+}
+
+fn hex_encode(data: Vec<u8>) -> String {
+    let mut hex_str = hex::encode(data);
+    hex_str.insert_str(0, "0x");
+    hex_str
 }
 
 fn init_shard(shard: &ShardIdentifier) {
