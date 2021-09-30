@@ -59,20 +59,6 @@ use substratee_worker_primitives::{
 };
 
 extern "C" {
-    pub fn ocall_update_status_event(
-        ret_val: *mut sgx_status_t,
-        hash_encoded: *const u8,
-        hash_size: u32,
-        status_update_encoded: *const u8,
-        status_size: u32,
-    ) -> sgx_status_t;
-    pub fn ocall_send_status(
-        ret_val: *mut sgx_status_t,
-        hash_encoded: *const u8,
-        hash_size: u32,
-        status_update_encoded: *const u8,
-        status_size: u32,
-    ) -> sgx_status_t;
     pub fn ocall_send_response_with_uuid(
         ret_val: *mut sgx_status_t,
         request_id_encoded: *const u8,

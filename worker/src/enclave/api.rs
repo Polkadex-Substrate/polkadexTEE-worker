@@ -159,20 +159,6 @@ pub fn enclave_accept_pdex_accounts(
     Ok(())
 }
 
-pub fn enclave_send_disk_data(eid: sgx_enclave_id_t, data: Vec<u8>) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe { send_disk_data(eid, &mut status, data.as_ptr(), data.len()) };
-
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-    Ok(())
-}
-
 pub fn enclave_run_db_thread(eid: sgx_enclave_id_t) -> SgxResult<()> {
     let mut status = sgx_status_t::SGX_SUCCESS;
 
@@ -186,5 +172,19 @@ pub fn enclave_run_db_thread(eid: sgx_enclave_id_t) -> SgxResult<()> {
         return Err(result);
     }
 
+    Ok(())
+}
+
+pub fn enclave_send_disk_data(eid: sgx_enclave_id_t, data: Vec<u8>) -> SgxResult<()> {
+    let mut status = sgx_status_t::SGX_SUCCESS;
+
+    let result = unsafe { send_disk_data(eid, &mut status, data.as_ptr(), data.len()) };
+
+    if status != sgx_status_t::SGX_SUCCESS {
+        return Err(status);
+    }
+    if result != sgx_status_t::SGX_SUCCESS {
+        return Err(result);
+    }
     Ok(())
 }
