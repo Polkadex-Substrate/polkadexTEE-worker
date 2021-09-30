@@ -33,7 +33,7 @@ use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
-    pallet_substratee_registry::Request, AccountId, BalancesCall, Call, Event, Hash, Signature,
+    pallet_substratee_registry::Request, AccountId, BalancesCall, Call, Event, Hash,
 };
 use orml_tokens::AccountData;
 use polkadex_sgx_primitives::{types::DirectRequest, AssetId, Balance};

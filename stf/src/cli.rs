@@ -15,18 +15,13 @@
 
 */
 
-use crate::{
-    AccountId, Index, KeyPair, ShardIdentifier, TrustedCall, TrustedGetter, TrustedOperation,
-};
-use base58::{FromBase58, ToBase58};
+use crate::{KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander, MultiCommand};
-use codec::{Decode, Encode};
+use codec::Decode;
 use log::*;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
-use sp_runtime::traits::IdentifyAccount;
-use std::path::PathBuf;
 use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 
 use crate::{
