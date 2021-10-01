@@ -123,7 +123,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
 		// test_polkadex_gateway::test_basic_order_checks,
         // Polkadex Balance Storage
         test_polkadex_balance_storage::test_deposit,
-        test_polkadex_balance_storage::test_withdraw,
+        //test_polkadex_balance_storage::test_withdraw,
         test_polkadex_balance_storage::test_set_free_balance,
         test_polkadex_balance_storage::test_set_reserve_balance,
         test_polkadex_balance_storage::test_lock_storage_and_initialize_balance,
