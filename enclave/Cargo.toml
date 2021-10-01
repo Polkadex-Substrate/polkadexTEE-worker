@@ -113,7 +113,6 @@ default-features = false
 git = "https://github.com/paritytech/substrate.git"
 version = "3.0.0"
 default-features = false
-features = ["derive-codec"]
 
 [dependencies.sp-runtime]
 git = "https://github.com/paritytech/substrate.git"
