@@ -1,6 +1,5 @@
 use crate::std::string::String;
 use derive_more::{Display, From};
-use std::convert::From;
 
 /// Substrate Client error
 #[derive(Debug, Display, From)]
@@ -12,28 +11,19 @@ pub enum JustificationError {
     #[display(fmt = "bad justification for header: {}", _0)]
     #[from(ignore)]
     BadJustification(String),
+    /// Invalid authorities set received from the runtime.
+    InvalidAuthoritiesSet,
 }
 
-#[derive(Debug)]
+#[derive(Debug, From)]
 pub enum Error {
     // InvalidStorageProof,
-    StorageRootMismatch,
-    StorageValueUnavailable,
+    Storage(substratee_storage::Error),
     // InvalidValidatorSetProof,
     ValidatorSetMismatch,
     InvalidAncestryProof,
     NoSuchRelayExists,
-    InvalidFinalityProof,
+    InvalidFinalityProof(JustificationError),
     // UnknownClientError,
     HeaderAncestryMismatch,
-}
-
-impl From<JustificationError> for Error {
-    fn from(e: JustificationError) -> Self {
-        match e {
-            JustificationError::BadJustification(_) | JustificationError::JustificationDecode => {
-                Error::InvalidFinalityProof
-            }
-        }
-    }
 }
