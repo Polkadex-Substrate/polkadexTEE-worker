@@ -48,6 +48,7 @@ features = ["full_crypto"]
 [dependencies.finality-grandpa]
 version = "0.14.0"
 default-features = false
+features = ["derive-codec"]
 
 [dependencies.sp-finality-grandpa]
 git = "https://github.com/paritytech/substrate.git"
