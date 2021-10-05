@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import optparse
+import subprocess
+import time
+import os
 
 from polkadex_commands import *
 alice = '//Alice'
@@ -25,6 +28,12 @@ def bob_offchain_balance(expectedUSDBalance, expectedBTCBalance):
     asset(int(direct_get_balance(bob, usd)), expectedUSDBalance)
     asset(int(direct_get_balance(bob, btc)), expectedBTCBalance)
 
+def prRed(skk): print("\033[91m{}\033[00m" .format(skk))
+def prGreen(skk): print("\033[92m{}\033[00m" .format(skk))
+def prYellow(skk): print("\033[93m{}\033[00m" .format(skk))
+def prPurple(skk): print("\033[95m{}\033[00m" .format(skk))
+def prCyan(skk): print("\033[96m{}\033[00m" .format(skk))
+
 if __name__ == '__main__':
 
     parser = optparse.OptionParser()
@@ -33,6 +42,25 @@ if __name__ == '__main__':
     parser.add_option('-t', '--test-run', dest='test', help='indicates at which stage the test is currtly at', type=int)
     (options, args) = parser.parse_args()
     write_cli(options)
+
+    try:
+        os.remove("../bin/chain_relay_db.bin")
+        os.remove("../bin/polkadex_storage/balance.bin")
+        os.remove("../bin/polkadex_storage/nonce.bin")
+        os.remove("../bin/polkadex_storage/orderbook.bin")
+        os.remove("../bin/polkadex_storage/balance.bin.1")
+        os.remove("../bin/polkadex_storage/nonce.bin.1")
+        os.remove("../bin/polkadex_storage/orderbook.bin.1")
+    except OSError:
+        pass
+
+    prYellow("[i] Starting Node and Worker")
+    node = subprocess.Popen(["./polkadex-node", "--ws-port", str(options.node), "--dev", "--tmp"], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'),  cwd="../../Polkadex/target/release")
+    worker = subprocess.Popen(["./substratee-worker", "-P", str(options.worker), "-p", str(options.node), "-F", "8001/api/v2/ws", "-f", "127.0.0.1", "run"], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'), cwd="../bin")
+
+    prCyan("[-] Waiting 30 seconds to make sure everything is initialized")
+    time.sleep(30)
+
     read_mrenclave()
 
     #ACCOUNT REGISTER
@@ -40,7 +68,6 @@ if __name__ == '__main__':
     register_proxy(alice, aliceIco)
     register_account(bob)
     register_proxy(bob, bobIco)
-
 
 
     print("Checking balance of Alice onchain:")
@@ -72,6 +99,42 @@ if __name__ == '__main__':
     asset(int(token_balance(alice, usd)), 0)
     asset(int(token_balance(bob, btc)), 0)
     asset(int(token_balance(bob, usd)), 0)
+
+    prPurple("[T] Full State Recovery Test")
+
+    prYellow("[i] Off-chain USD Balance for Alice/Bob:")
+    alice_before_kill = direct_get_balance(alice, usd)
+    bob_before_kill = direct_get_balance(bob, usd)
+    print(alice_before_kill + "/" + bob_before_kill)
+
+    prYellow("[i] Killing worker")
+    worker.kill()
+
+    prYellow("[i] Deleting Balance Storage To Make Sure It Comes From IPFS")
+    try:
+        os.remove("../bin/chain_relay_db.bin")
+        os.remove("../bin/polkadex_storage/balance.bin")
+        os.remove("../bin/polkadex_storage/balance.bin.1")
+    except OSError:
+        pass
+
+
+    prYellow("[i] Starting worker back up")
+    worker = subprocess.Popen(["./substratee-worker", "-P", str(options.worker), "-p", str(options.node), "-F", "8001/api/v2/ws", "-f", "127.0.0.1", "run"], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'), cwd="../bin")
+    prCyan("[-] Waiting 30 seconds to make sure everything is initialized")
+    time.sleep(30)
+
+    prYellow("[i] Off-chain USD Balance for Alice/Bob:")
+    alice_after_kill = direct_get_balance(alice, usd)
+    bob_after_kill = direct_get_balance(bob, usd)
+    print(alice_after_kill + "/" + bob_after_kill)
+
+    if (alice_before_kill, bob_before_kill) == (alice_after_kill, bob_after_kill):
+        prGreen("[✓] Balances Recovered Successfully")
+    else:
+        prRed("[x] Balances Failed to Recover")
+
+    prPurple("[E] End of Full State Recovery Test")
 
     # # Place Order BidLimit [A]
     await_block()
@@ -144,4 +207,5 @@ if __name__ == '__main__':
     print(str(result))
     await_block()
 
-    # Withdraw
+    worker.kill()
+    node.kill()
