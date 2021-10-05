@@ -38,9 +38,16 @@ pub use orderbook::*;
 pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 use crate::constants::SNAPSHOT_INTERVAL;
+use crate::enclave::api::enclave_send_cid;
+use crate::{enclave_account, get_nonce};
+use codec::{Decode, Encode};
 use log::*;
+use my_node_runtime::UncheckedExtrinsic;
+use sgx_types::sgx_enclave_id_t;
+use sp_core::sr25519;
 use std::thread;
 use std::time::{Duration, SystemTime};
+use substrate_api_client::{Api, XtStatus};
 
 #[derive(Debug)]
 /// Polkadex DB Error
@@ -59,7 +66,9 @@ pub enum PolkadexDBError {
     DecodeError(codec::Error),
     /// Failed to send data to enclave
     SendToEnclaveError,
-    // Could not send IPFS snapshot
+    /// Failed to send extrinsic to node
+    SendToNodeError,
+    /// Could not send IPFS snapshot
     IpfsError(String),
 }
 
@@ -72,11 +81,12 @@ pub trait PermanentStorageHandler {
 }
 
 // Disk snapshot loop
-pub fn start_snapshot_loop() {
+pub fn start_snapshot_loop(api: Api<sr25519::Pair>, eid: sgx_enclave_id_t, genesis_hash: Vec<u8>) {
     thread::spawn(move || {
         println!("Successfully started snapshot loop");
         let snapshot_interval = Duration::from_millis(SNAPSHOT_INTERVAL);
         let mut interval_start = SystemTime::now();
+        let mut cid: Vec<u8> = vec![];
         loop {
             if let Ok(elapsed) = interval_start.elapsed() {
                 if elapsed >= snapshot_interval {
@@ -87,9 +97,10 @@ pub fn start_snapshot_loop() {
                     if let Err(e) = take_orderbook_snapshot() {
                         error!("Could not take orderbook snapshot: {:?}", e);
                     }
-                    if let Err(e) = take_balance_snapshot() {
-                        error!("Could not take balance snapshot: {:?}", e);
-                    };
+                    match take_balance_snapshot(api.clone(), eid, genesis_hash.clone(), &cid) {
+                        Ok(new_cid) => cid = new_cid.clone(),
+                        Err(e) => error!("Could not take balance snapshot: {:?}", e),
+                    }
                     if let Err(e) = take_nonce_snapshot() {
                         error!("Could not take nonce snapshot: {:?}", e);
                     };
@@ -113,7 +124,12 @@ fn take_orderbook_snapshot() -> Result<()> {
 }
 
 // take a snapshot of balances mirror
-fn take_balance_snapshot() -> Result<()> {
+fn take_balance_snapshot(
+    api: Api<sr25519::Pair>,
+    eid: sgx_enclave_id_t,
+    genesis_hash: Vec<u8>,
+    old_cid: &[u8],
+) -> Result<Vec<u8>> {
     let mutex = crate::polkadex_db::balances::load_balances_mirror()?;
     let mut balance_mirror = mutex
         .lock()
@@ -121,9 +137,31 @@ fn take_balance_snapshot() -> Result<()> {
     let data = balance_mirror.take_disk_snapshot()?;
     let mut ipfs_handler = IpfsStorageHandler::default();
     let cid = ipfs_handler.snapshot_to_ipfs(data)?;
-    debug!("Retrived cid {:?} for balance snapshot", cid);
-    // TODO: send cid to OCEX pallet (issue #241)
-    Ok(())
+    let cid_bytes = cid.to_bytes();
+    if cid_bytes == old_cid {
+        return Ok(cid_bytes);
+    }
+
+    let uxt = enclave_send_cid(
+        eid,
+        genesis_hash,
+        get_nonce(&api, &enclave_account(eid)),
+        cid_bytes.clone(),
+    )
+    .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
+
+    let ue =
+        UncheckedExtrinsic::decode(&mut uxt.as_slice()).map_err(PolkadexDBError::DecodeError)?;
+
+    let mut _xthex = hex::encode(ue.encode());
+    _xthex.insert_str(0, "0x");
+
+    // send the extrinsic and wait for confirmation
+
+    api.send_extrinsic(_xthex, XtStatus::Finalized)
+        .map_err(|_| PolkadexDBError::SendToNodeError)?;
+
+    Ok(cid_bytes)
 }
 
 // take a snapshot of nonce mirror

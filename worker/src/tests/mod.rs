@@ -15,12 +15,10 @@
 
 */
 
-use clap::ArgMatches;
-
-use crate::enclave::api::*;
-
 use self::ecalls::*;
 use self::integration_tests::*;
+use crate::enclave::api::*;
+use clap::ArgMatches;
 
 pub mod commons;
 pub mod ecalls;
@@ -30,6 +28,8 @@ pub fn run_enclave_tests(matches: &ArgMatches, port: &str) {
     println!("*** Starting Test enclave");
     let enclave = enclave_init().unwrap();
     let eid = enclave.geteid();
+
+    crate::db_handler::DBHandler::initialize_mirrors();
 
     crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
     // ------------------------------------------------------------------------

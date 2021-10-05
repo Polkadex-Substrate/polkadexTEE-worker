@@ -90,6 +90,7 @@ mod aes;
 mod attestation;
 pub mod cert;
 pub mod channel_storage;
+mod cid;
 mod constants;
 mod ed25519;
 mod happy_path;
@@ -113,6 +114,7 @@ pub mod tests;
 pub mod tls_ra;
 pub mod top_pool;
 mod utils;
+pub use crate::cid::*;
 
 pub const CERTEXPIRYDAYS: i64 = 90i64;
 

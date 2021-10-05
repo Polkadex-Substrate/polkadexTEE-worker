@@ -55,6 +55,7 @@ pub static OCEX_REMOVE_PROXY: u8 = 5u8;
 pub static OCEX_DEPOSIT: u8 = 0u8;
 pub static OCEX_RELEASE: u8 = 1u8;
 pub static OCEX_WITHDRAW: u8 = 2u8;
+pub static OCEX_UPLOAD_CID: u8 = 6u8;
 
 // bump this to be consistent with SubstraTEE-node runtime
 pub static RUNTIME_SPEC_VERSION: u32 = 265;

@@ -344,8 +344,13 @@ fn worker(
         let nonce = get_nonce(&api, &tee_accountid);
         info!("Enclave nonce = {:?}", nonce);
 
-        let uxt =
-            enclave_perform_ra(eid, genesis_hash, nonce, ext_api_url.as_bytes().to_vec()).unwrap();
+        let uxt = enclave_perform_ra(
+            eid,
+            genesis_hash.clone(),
+            nonce,
+            ext_api_url.as_bytes().to_vec(),
+        )
+        .unwrap();
 
         let ue = UncheckedExtrinsic::decode(&mut uxt.as_slice()).unwrap();
 
@@ -360,6 +365,11 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
+    crate::db_handler::DBHandler::initialize_mirrors();
+
+    crate::db_handler::DBHandler::load_balances_from_ipfs(&api, eid)
+        .expect("Failed to load balances from ipfs");
+
     crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
 
     // ------------------------------------------------------------------------
@@ -373,7 +383,7 @@ fn worker(
         .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    polkadex_db::start_snapshot_loop();
+    polkadex_db::start_snapshot_loop(api.clone(), eid, genesis_hash);
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
@@ -681,6 +691,7 @@ fn enclave_account(eid: sgx_enclave_id_t) -> AccountId32 {
         "[+] Got ed25519 account of TEE = {}",
         tee_public.to_ss58check()
     );
+
     AccountId32::from(*tee_public.as_array_ref())
 }
 
