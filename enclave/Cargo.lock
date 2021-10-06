@@ -328,15 +328,6 @@ checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 
 [[package]]
 name = "cpufeatures"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66c99696f6c9dd7f35d486b9d04d7e6e202aa3e8c40d553f2fdf5e7e0c6a71ef"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "cpufeatures"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95059428f66df56b63431fdb4e1947ed2190586af5c5a8a8b71122bdf5a7f469"
@@ -441,7 +432,7 @@ dependencies = [
  "curve25519-dalek 3.2.0",
  "ed25519",
  "rand",
- "sha2 0.9.4",
+ "sha2 0.9.6",
  "zeroize",
 ]
 
@@ -925,7 +916,7 @@ dependencies = [
  "either",
  "multihash",
  "quick-protobuf",
- "sha2 0.9.4",
+ "sha2 0.9.6",
 ]
 
 [[package]]
@@ -1090,7 +1081,7 @@ dependencies = [
  "blake2s_simd",
  "digest 0.9.0",
  "sha-1",
- "sha2 0.9.4",
+ "sha2 0.9.6",
  "sha3",
  "unsigned-varint",
 ]
@@ -2136,7 +2127,7 @@ checksum = "99cd6713db3cf16b6c84e06321e049a9b9f699826e16096d23bbcc44d15d51a6"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if",
- "cpufeatures 0.2.1",
+ "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
 ]
@@ -2163,13 +2154,13 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.4"
+version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8f6b75b17576b792bef0db1bcc4b8b8bcdf9506744cf34b974195487af6cff2"
+checksum = "9204c41a1597a8c5af23c82d1c921cb01ec0a4c59e07a9c7306062829a3903f3"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if",
- "cpufeatures 0.1.5",
+ "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
 ]
@@ -2335,7 +2326,7 @@ dependencies = [
  "primitive-types",
  "schnorrkel",
  "secrecy",
- "sha2 0.9.4",
+ "sha2 0.9.6",
  "sp-debug-derive",
  "sp-runtime-interface",
  "sp-std",
