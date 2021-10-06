@@ -365,16 +365,16 @@ fn worker(
         println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
     }
 
-    crate::db_handler::DBHandler::initialize_mirrors();
+    //crate::db_handler::DBHandler::initialize_mirrors();
 
-    crate::db_handler::DBHandler::load_balances_from_ipfs(&api, eid)
-        .expect("Failed to load balances from ipfs");
+    //crate::db_handler::DBHandler::load_balances_from_ipfs(&api, eid)
+    //    .expect("Failed to load balances from ipfs");
 
-    crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
+    //crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
 
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
-    crate::db_handler::DBHandler::initialize(eid);
+    //crate::db_handler::DBHandler::initialize(eid);
 
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");

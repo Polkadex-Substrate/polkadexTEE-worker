@@ -59,6 +59,7 @@ impl<D: PermanentStorageHandler> GeneralDB<D> {
         Ok(encoded_data)
     }
 
+    #[allow(dead_code)]
     pub fn write_data_to_disk(&mut self, data: Vec<u8>) -> Result<()> {
         self.disk_storage.write_to_storage(&data.as_slice())?;
         Ok(())

@@ -42,6 +42,7 @@ impl DBHandler {
         initialize_orderbook_mirror();
     }
 
+    #[allow(dead_code)]
     pub fn load_balances_from_ipfs(
         api: &Api<sr25519::Pair>,
         eid: sgx_enclave_id_t,
