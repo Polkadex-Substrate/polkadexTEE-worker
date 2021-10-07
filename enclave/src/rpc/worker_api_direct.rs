@@ -96,18 +96,6 @@ pub fn load_top_pool(
 }
 
 // converts the rpc methods vector to a string and adds commas and brackets for readability
-fn convert_vec_to_string(vec_methods: Vec<&str>) -> String {
-    let mut method_string = String::new();
-    for i in 0..vec_methods.len() {
-        method_string.push_str(vec_methods[i]);
-        if vec_methods.len() > (i + 1) {
-            method_string.push_str(", ");
-        }
-    }
-    format!("methods: [{}]", method_string)
-}
-
-// converts the rpc methods vector to a string and adds commas and brackets for readability
 #[allow(unused)]
 fn decode_shard_from_base58(shard_base58: String) -> Result<ShardIdentifier, String> {
     let shard_vec = match shard_base58.from_base58() {

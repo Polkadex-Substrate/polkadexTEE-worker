@@ -208,8 +208,6 @@ pub mod asset_id_mapping {
     use super::*;
 
     const POLKADEX_ASSET_STR: &str = "pdx";
-    const DOT_ASSET_STR: &str = "dot";
-    const CHAIN_SAFE_ASSET_STR: &str = "chs";
     const BTC_ASSET_STR: &str = "btc";
     const USD_ASSET_STR: &str = "usd";
 
@@ -271,7 +269,6 @@ pub mod tests {
     }
 
     pub fn test_map_asset_ids() {
-        let dummy_hash = H160::from([2u8; 20]);
         let asset_ids = vec![
             AssetId::Asset(0),
             AssetId::POLKADEX,
