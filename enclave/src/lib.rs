@@ -109,23 +109,19 @@ use utils::write_slice_and_whitespace_pad;
 
 mod attestation;
 pub mod cert;
-pub mod channel_storage;
 mod cid;
-mod constants;
 mod ed25519;
+pub mod error;
+pub mod hex;
 mod io;
 mod ipfs;
 mod ocall;
+pub mod rpc;
 mod rsa3072;
 mod state;
-mod utils;
-
-pub mod cert;
-pub mod error;
-pub mod hex;
-pub mod rpc;
 pub mod tls_ra;
 pub mod top_pool;
+mod utils;
 // added by polkadex
 mod accounts_nonce_storage;
 pub mod channel_storage;
@@ -141,10 +137,6 @@ pub mod ss58check;
 mod test_orderbook_storage;
 mod test_polkadex_balance_storage;
 mod test_polkadex_gateway;
-pub mod tests;
-pub mod tls_ra;
-pub mod top_pool;
-mod utils;
 pub use crate::cid::*;
 
 #[cfg(feature = "test")]

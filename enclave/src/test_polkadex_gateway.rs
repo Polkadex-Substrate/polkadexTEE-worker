@@ -97,10 +97,10 @@ fn setup(main: AccountId) {
     }
     // Initialize Balance for main account
     assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::POLKADEX).is_ok());
-    assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::DOT).is_ok());
+    assert!(lock_storage_and_initialize_balance(main.clone(), AssetId::Asset(0)).is_ok());
     // Deposit some balance
     assert!(lock_storage_and_deposit(main.clone(), AssetId::POLKADEX, 100 * UNIT).is_ok());
-    assert!(lock_storage_and_deposit(main, AssetId::DOT, 100 * UNIT).is_ok());
+    assert!(lock_storage_and_deposit(main, AssetId::Asset(0), 100 * UNIT).is_ok());
 }
 
 pub fn check_balance(
@@ -131,7 +131,7 @@ pub fn test_place_limit_buy_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -141,20 +141,20 @@ pub fn test_place_limit_buy_order() {
     };
 
     setup(main.clone());
-    check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
+    check_balance(100 * UNIT, 0u128, main.clone(), AssetId::Asset(0)).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
     assert!(gateway
         .place_order(main.clone(), None, new_order.clone())
         .is_ok());
-    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
     new_order.quantity = 100 * UNIT;
     assert!(gateway
         .place_order(main.clone(), None, new_order.clone())
         .is_err());
-    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
     new_order.quantity = UNIT;
     new_order.price = Some(99 * UNIT);
     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
-    check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
+    check_balance(0u128, 100 * UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
     check_balance(100 * UNIT, 0u128, main, AssetId::POLKADEX).unwrap();
 }
 
@@ -165,7 +165,7 @@ pub fn test_place_limit_sell_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -189,7 +189,7 @@ pub fn test_place_limit_sell_order() {
     new_order.price = Some(99 * UNIT);
     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
     check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
-    check_balance(100 * UNIT, 0u128, main, AssetId::DOT).unwrap();
+    check_balance(100 * UNIT, 0u128, main, AssetId::Asset(0)).unwrap();
 }
 
 pub fn test_place_market_buy_order() {
@@ -199,7 +199,7 @@ pub fn test_place_market_buy_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
@@ -209,19 +209,19 @@ pub fn test_place_market_buy_order() {
     };
 
     setup(main.clone());
-    check_balance(100 * UNIT, 0u128, main.clone(), AssetId::DOT).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
+    check_balance(100 * UNIT, 0u128, main.clone(), AssetId::Asset(0)).unwrap(); // Balance:  DOT = (100,0) where (free,reserved)
     assert!(gateway
         .place_order(main.clone(), None, new_order.clone())
         .is_ok());
-    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
     new_order.price = Some(100 * UNIT);
     assert!(gateway
         .place_order(main.clone(), None, new_order.clone())
         .is_err());
-    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
+    check_balance(99 * UNIT, UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (99,1) where (free,reserved)
     new_order.price = Some(99 * UNIT);
     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
-    check_balance(0u128, 100 * UNIT, main.clone(), AssetId::DOT).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
+    check_balance(0u128, 100 * UNIT, main.clone(), AssetId::Asset(0)).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
     check_balance(100 * UNIT, 0u128, main, AssetId::POLKADEX).unwrap();
 }
 
@@ -232,7 +232,7 @@ pub fn test_place_market_sell_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
@@ -255,7 +255,7 @@ pub fn test_place_market_sell_order() {
     new_order.quantity = UNIT;
     assert!(gateway.place_order(main.clone(), None, new_order).is_ok());
     check_balance(98 * UNIT, 2 * UNIT, main.clone(), AssetId::POLKADEX).unwrap(); // Balance: DOT = (0,100) where (free,reserved)
-    check_balance(100 * UNIT, 0u128, main, AssetId::DOT).unwrap();
+    check_balance(100 * UNIT, 0u128, main, AssetId::Asset(0)).unwrap();
 }
 
 pub fn test_authenticate_user() {
@@ -285,7 +285,7 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -296,14 +296,14 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
 
     setup(buy_order_user.clone());
     assert_eq!(
-        check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::DOT),
+        check_balance(100 * UNIT, 0u128, buy_order_user.clone(), AssetId::Asset(0)),
         Ok(())
     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
     assert!(gateway
         .place_order(buy_order_user.clone(), None, new_order.clone())
         .is_ok());
     assert_eq!(
-        check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::DOT),
+        check_balance(98 * UNIT, 2 * UNIT, buy_order_user, AssetId::Asset(0)),
         Ok(())
     ); // Balance:  DOT = (100,0) where (free,reserved, Ok(())))
     let buy_order_uuid: OrderUUID = (0..100).collect();
@@ -315,7 +315,7 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
         user_uid: sell_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -356,7 +356,7 @@ pub fn test_settle_trade_full_ask_limit() {
     let order_event = TradeEvent {
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(0),
         },
         trade_id: 1,
         price: 2 * UNIT,
@@ -377,7 +377,7 @@ pub fn test_settle_trade_full_ask_limit() {
         Ok(())
     );
     assert_eq!(
-        check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::DOT),
+        check_balance(102 * UNIT, 0u128, sell_order_user, AssetId::Asset(0)),
         Ok(())
     );
     assert_eq!(
@@ -385,7 +385,7 @@ pub fn test_settle_trade_full_ask_limit() {
         Ok(())
     );
     assert_eq!(
-        check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::DOT),
+        check_balance(98 * UNIT, 0u128, buy_order_user, AssetId::Asset(0)),
         Ok(())
     );
 }
@@ -397,11 +397,13 @@ fn setup_btc_usd(account: AccountId) {
         assert!(add_main_account(account.clone()).is_ok());
     }
     // Initialize Balance for main account
-    assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::BTC).is_ok());
-    assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::USD).is_ok());
+    assert!(
+        lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(4294967297)).is_ok()
+    );
+    assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(840)).is_ok());
     // Deposit some balance
-    assert!(lock_storage_and_deposit(account.clone(), AssetId::USD, 100 * UNIT).is_ok());
-    assert!(lock_storage_and_deposit(account, AssetId::BTC, 10 * UNIT).is_ok());
+    assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(840), 100 * UNIT).is_ok());
+    assert!(lock_storage_and_deposit(account, AssetId::Asset(4294967297), 10 * UNIT).is_ok());
 }
 
 fn place_order(
@@ -416,8 +418,8 @@ fn place_order(
     let new_order: Order = Order {
         user_uid: trader.clone(),
         market_id: MarketId {
-            base: AssetId::BTC,
-            quote: AssetId::USD,
+            base: AssetId::Asset(4294967297),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type,
@@ -448,11 +450,16 @@ pub fn test_orderbook_limit() {
         alice_sell_order_uuid.clone(),
     );
     assert_eq!(
-        check_balance(100 * UNIT, 0, alice.clone(), AssetId::USD),
+        check_balance(100 * UNIT, 0, alice.clone(), AssetId::Asset(840)),
         Ok(())
     );
     assert_eq!(
-        check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::BTC),
+        check_balance(
+            7 * UNIT,
+            3 * UNIT,
+            alice.clone(),
+            AssetId::Asset(4294967297)
+        ),
         Ok(())
     );
     let bob_buy_order_uuid: OrderUUID = (10..59).collect();
@@ -467,8 +474,8 @@ pub fn test_orderbook_limit() {
 
     let order_event = TradeEvent {
         market_id: MarketId {
-            base: AssetId::BTC,
-            quote: AssetId::USD,
+            base: AssetId::Asset(4294967297),
+            quote: AssetId::Asset(840),
         },
         trade_id: 1,
         price: 5 * UNIT,
@@ -486,14 +493,20 @@ pub fn test_orderbook_limit() {
     assert_eq!(settle_trade(order_event), Ok(()));
 
     assert_eq!(
-        check_balance(115 * UNIT, 0, alice.clone(), AssetId::USD),
+        check_balance(115 * UNIT, 0, alice.clone(), AssetId::Asset(840)),
         Ok(())
     );
-    assert_eq!(check_balance(7 * UNIT, 0, alice, AssetId::BTC), Ok(()));
+    assert_eq!(
+        check_balance(7 * UNIT, 0, alice, AssetId::Asset(4294967297)),
+        Ok(())
+    );
 
     assert_eq!(
-        check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::USD),
+        check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(840)),
         Ok(())
     );
-    assert_eq!(check_balance(13 * UNIT, 0, bob, AssetId::BTC), Ok(()));
+    assert_eq!(
+        check_balance(13 * UNIT, 0, bob, AssetId::Asset(4294967297)),
+        Ok(())
+    );
 }

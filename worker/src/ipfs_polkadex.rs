@@ -1,6 +1,5 @@
 /*
-    Copyright 2021 Integritee AG and Supercomputing Systems AG
-    Copyright (C) 2017-2019 Baidu, Inc. All Rights Reserved.
+    Copyright 2019 Supercomputing Systems AG
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
@@ -12,53 +11,24 @@
     limitations under the License.
 */
 
-use crate::ocall_bridge::bridge_api::{Cid, IpfsBridge, OCallBridgeError, OCallBridgeResult};
+use std::fs::File;
+use std::io::{Cursor, Write};
+use std::slice;
+use std::str;
+use std::sync::mpsc::channel;
+
+use sgx_types::*;
+
 use futures::TryStreamExt;
 use ipfs_api::IpfsClient;
 use log::*;
-use std::{
-    fs::File,
-    io::{Cursor, Write},
-    str,
-    sync::mpsc::channel,
-};
 
-pub struct IpfsOCall;
-
-impl IpfsBridge for IpfsOCall {
-    fn write_to_ipfs(&self, data: &'static [u8]) -> OCallBridgeResult<Cid> {
-        debug!("    Entering ocall_write_ipfs");
-        Ok(write_to_ipfs(data))
-    }
-
-    fn read_from_ipfs(&self, cid: Cid) -> OCallBridgeResult<()> {
-        debug!("Entering ocall_read_ipfs");
-
-        let result = read_from_ipfs(cid);
-        match result {
-            Ok(res) => {
-                let filename = str::from_utf8(&cid).unwrap();
-                create_file(filename, &res).map_err(OCallBridgeError::IpfsError)
-            }
-            Err(_) => Err(OCallBridgeError::IpfsError(
-                "failed to read from IPFS".to_string(),
-            )),
-        }
-    }
-}
-
-fn create_file(filename: &str, result: &[u8]) -> Result<(), String> {
-    match File::create(filename) {
-        Ok(mut f) => f.write_all(result).map_or_else(
-            |e| Err(format!("failed writing to file: {}", e)),
-            |_| Ok(()),
-        ),
-        Err(e) => Err(format!("failed to create file: {}", e)),
-    }
-}
+use cid::multibase::Base;
+pub use cid::Cid;
+use std::convert::TryFrom;
 
 #[tokio::main]
-async fn write_to_ipfs(data: &'static [u8]) -> Cid {
+async fn write_to_ipfs(data: &'static [u8]) -> Result<Cid, String> {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
@@ -78,9 +48,12 @@ async fn write_to_ipfs(data: &'static [u8]) -> Cid {
         }
         Err(e) => eprintln!("error adding file: {}", e),
     }
-    let mut cid: Cid = [0; 46];
-    cid.clone_from_slice(&rx.recv().unwrap());
-    cid
+
+    Cid::try_from(
+        rx.recv()
+            .map_err(|_| String::from("Failed to receive CID"))?,
+    )
+    .map_err(|_| String::from("Failed to build CID"))
 }
 
 #[tokio::main]
@@ -88,12 +61,15 @@ pub async fn read_from_ipfs(cid: Cid) -> Result<Vec<u8>, String> {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();
-    let h = str::from_utf8(&cid).unwrap();
+
+    let h = cid.to_string_of_base(Base::Base58Btc).map_err(|_| {
+        String::from("CID couldn't be converted to the correct base, check if the CID is correct")
+    })?;
 
     info!("Fetching content from: {}", h);
 
     client
-        .cat(h)
+        .cat(h.as_str())
         .map_ok(|chunk| chunk.to_vec())
         .map_err(|e| e.to_string())
         .try_concat()

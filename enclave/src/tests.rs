@@ -17,16 +17,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::accounts_nonce_storage::{self, accounts_storage, nonce_storage, test_proxy};
-use crate::aes;
-use crate::attestation;
 //use crate::happy_path;
 use crate::openfinex;
 use crate::polkadex_cache;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
-use crate::top_pool;
 
-use crate::{Timeout};
+use crate::Timeout;
 use log::*;
 
 use sgx_tunittest::*;

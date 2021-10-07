@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::SignedOrder;
+use crate::WsRpcClient;
 use codec::Encode;
 use log::*;
 use polkadex_sgx_primitives::PolkadexAccount;
@@ -28,6 +30,7 @@ use substratee_enclave_api::{
     enclave_base::EnclaveBase, error::Error as EnclaveApiError, Enclave, EnclaveResult,
 };
 use substratee_settings::files::{ENCLAVE_FILE, ENCLAVE_TOKEN};
+use substratee_settings::worker::EXTRINSIC_MAX_SIZE;
 
 // FIXME: These extern c functions should be moved to the other ffis
 extern "C" {
@@ -198,21 +201,6 @@ pub fn enclave_send_disk_data(eid: sgx_enclave_id_t, data: Vec<u8>) -> SgxResult
     Ok(())
 }
 
-pub fn enclave_load_orders_to_memory(
-    eid: sgx_enclave_id_t,
-    orders: Vec<SignedOrder>,
-) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe {
-        load_orders_to_memory(
-            eid,
-            &mut status,
-            orders.encode().as_ptr(),
-            orders.encode().len(),
-        )
-    };
-
 pub fn enclave_send_cid(
     eid: sgx_enclave_id_t,
     genesis_hash: Vec<u8>,
@@ -242,17 +230,4 @@ pub fn enclave_send_cid(
         return Err(result);
     }
     Ok(unchecked_extrinsic)
-}
-
-pub fn enclave_test(eid: sgx_enclave_id_t) -> SgxResult<()> {
-    let mut status = sgx_status_t::SGX_SUCCESS;
-    let result = unsafe { test_main_entrance(eid, &mut status) };
-    if status != sgx_status_t::SGX_SUCCESS {
-        return Err(status);
-    }
-
-    if result != sgx_status_t::SGX_SUCCESS {
-        return Err(result);
-    }
-    Ok(())
 }

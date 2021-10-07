@@ -85,11 +85,13 @@ use substratee_worker_api::direct_client::DirectClient;
 use crate::enclave::api::enclave_accept_pdex_accounts;
 
 mod config;
+mod constants;
 mod db_handler;
 mod direct_invocation;
 mod enclave;
 mod error;
 mod globals;
+mod ipfs_polkadex;
 mod node_api_factory;
 mod ocall_bridge;
 mod polkadex;
@@ -300,7 +302,8 @@ fn start_worker<E, T, W>(
         finex_uri.port(),
         finex_uri.path()
     );
-    thread::spawn(move || enclave_run_openfinex_client(enclave.get_eid(), finex_uri));
+    let eid = enclave.get_eid();
+    thread::spawn(move || enclave_run_openfinex_client(eid, finex_uri));
 
     // ------------------------------------------------------------------------
     // start worker api direct invocation server
@@ -337,7 +340,7 @@ fn start_worker<E, T, W>(
     } else {
         enclave
             .perform_ra(
-                genesis_hash,
+                genesis_hash.clone(),
                 nonce,
                 config.ext_api_url.unwrap().as_bytes().to_vec(),
             )
@@ -363,21 +366,21 @@ fn start_worker<E, T, W>(
     // Start DB Handler Thread
     //crate::db_handler::DBHandler::initialize(enclave.get_eid());
 
-    let latest_head = init_chain_relay(&node_api, enclave.as_ref());
+    let mut latest_head = init_chain_relay(&node_api, enclave.as_ref());
     println!("*** [+] Finished syncing chain relay\n");
 
     //crate::db_handler::DBHandler::send_data_to_enclave(eid)
     //    .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    //polkadex_db::start_snapshot_loop(api.clone(), eid, genesis_hash);
+    //polkadex_db::start_snapshot_loop(node_api.clone(), enclave.get_eid(), genesis_hash);
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
     println!("*** Subscribing to events");
     let (sender, receiver) = channel();
     let sender2 = sender.clone();
-    let api2 = api.clone();
+    let api2 = node_api.clone();
     let _eventsubscriber = thread::Builder::new()
         .name("eventsubscriber".to_owned())
         .spawn(move || {
@@ -385,7 +388,7 @@ fn start_worker<E, T, W>(
         })
         .unwrap();
 
-    let api3 = api.clone();
+    let api3 = node_api.clone();
     let sender3 = sender.clone();
     let _block_subscriber = thread::Builder::new()
         .name("block_subscriber".to_owned())
@@ -399,7 +402,7 @@ fn start_worker<E, T, W>(
             if let Ok(events) = parse_events(msg.clone()) {
                 print_events(events, sender.clone())
             } else if let Ok(_header) = parse_header(msg.clone()) {
-                latest_head = sync_chain(enclave.as_ref(), &api, latest_head);
+                latest_head = sync_chain(enclave.as_ref(), &node_api, latest_head);
             }
         }
     }
@@ -554,7 +557,7 @@ pub fn init_chain_relay<E: EnclaveBase + SideChain>(
 }
 
 /// Syncs the enclave state with the parent chain
-pub fn sync_chain(
+pub fn sync_chain<E: EnclaveBase + SideChain>(
     enclave_api: &E,
     api: &Api<sr25519::Pair, WsRpcClient>,
     last_synced_head: Header,
