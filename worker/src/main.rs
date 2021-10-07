@@ -380,7 +380,7 @@ fn worker(
     println!("*** [+] Finished syncing chain relay\n");
 
     //crate::db_handler::DBHandler::send_data_to_enclave(eid)
-        .expect("Failed to send data to enclave");
+    //    .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
     //polkadex_db::start_snapshot_loop(api.clone(), eid, genesis_hash);
