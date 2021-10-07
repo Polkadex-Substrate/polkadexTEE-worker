@@ -379,11 +379,11 @@ fn worker(
     let mut latest_head = init_chain_relay(eid, &api);
     println!("*** [+] Finished syncing chain relay\n");
 
-    crate::db_handler::DBHandler::send_data_to_enclave(eid)
-        .expect("Failed to send data to enclave");
+    //crate::db_handler::DBHandler::send_data_to_enclave(eid)
+    //    .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    polkadex_db::start_snapshot_loop(api.clone(), eid, genesis_hash);
+    //polkadex_db::start_snapshot_loop(api.clone(), eid, genesis_hash);
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing
