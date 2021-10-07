@@ -131,9 +131,9 @@ fn get_asset_id_from_str(arg: &str) -> Result<AssetId, String> {
     // Only POLKADEX and DOT supported for now (TODO extend to other asset IDs, using hash arguments)
     match arg.to_ascii_lowercase().as_ref() {
         "polkadex" => Ok(AssetId::POLKADEX),
-        "dot" => Ok(AssetId::Asset(0)),
-        "btc" => Ok(AssetId::Asset(2)),
-        "usd" => Ok(AssetId::Asset(3)),
+        //"dot" => Ok(AssetId::Asset(0)),
+        "btc" => Ok(AssetId::Asset(4294967297)),
+        "usd" => Ok(AssetId::Asset(840)),
         _ => Err("invalid or unsupported asset ID".to_string()),
     }
 }
