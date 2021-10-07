@@ -2204,11 +2204,11 @@
 //         assert!(add_main_account(account.clone()).is_ok());
 //     }
 //     // Initialize Balance for main account
-//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(2)).is_ok());
-//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(3)).is_ok());
+//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(4294967297)).is_ok());
+//     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(840)).is_ok());
 //     // Deposit some balance
-//     assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(3), 100 * UNIT).is_ok());
-//     assert!(lock_storage_and_deposit(account, AssetId::Asset(2), 10 * UNIT).is_ok());
+//     assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(840), 100 * UNIT).is_ok());
+//     assert!(lock_storage_and_deposit(account, AssetId::Asset(4294967297), 10 * UNIT).is_ok());
 // }
 //
 // fn place_order(
@@ -2223,7 +2223,7 @@
 //     let new_order: Order = Order {
 //         user_uid: trader.clone(),
 //         market_id: MarketId {
-//             base: AssetId::Asset(2),// // This file is part of Polkadex.
+//             base: AssetId::Asset(4294967297),// // This file is part of Polkadex.
 // //
 // // // Copyright (C) 2020-2021 Polkadex oü and Supercomputing Systems AG
 // // // SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
@@ -4429,11 +4429,11 @@
 // //         assert!(add_main_account(account.clone()).is_ok());
 // //     }
 // //     // Initialize Balance for main account
-// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(2)).is_ok());
-// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(3)).is_ok());
+// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(4294967297)).is_ok());
+// //     assert!(lock_storage_and_initialize_balance(account.clone(), AssetId::Asset(840)).is_ok());
 // //     // Deposit some balance
-// //     assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(3), 100 * UNIT).is_ok());
-// //     assert!(lock_storage_and_deposit(account, AssetId::Asset(2), 10 * UNIT).is_ok());
+// //     assert!(lock_storage_and_deposit(account.clone(), AssetId::Asset(840), 100 * UNIT).is_ok());
+// //     assert!(lock_storage_and_deposit(account, AssetId::Asset(4294967297), 10 * UNIT).is_ok());
 // // }
 // //
 // // fn place_order(
@@ -4448,8 +4448,8 @@
 // //     let new_order: Order = Order {
 // //         user_uid: trader.clone(),
 // //         market_id: MarketId {
-// //             base: AssetId::Asset(2),
-// //             quote: AssetId::Asset(3),
+// //             base: AssetId::Asset(4294967297),
+// //             quote: AssetId::Asset(840),
 // //         },
 // //         market_type: Vec::from("trusted"),
 // //         order_type,
@@ -4480,11 +4480,11 @@
 // //         alice_sell_order_uuid.clone(),
 // //     );
 // //     assert_eq!(
-// //         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
+// //         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(840)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::Asset(2)),
+// //         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::Asset(4294967297)),
 // //         Ok(())
 // //     );
 // //     let bob_buy_order_uuid: OrderUUID = (10..59).collect();
@@ -4499,8 +4499,8 @@
 // //
 // //     let order_event = TradeEvent {
 // //         market_id: MarketId {
-// //             base: AssetId::Asset(2),
-// //             quote: AssetId::Asset(3),
+// //             base: AssetId::Asset(4294967297),
+// //             quote: AssetId::Asset(840),
 // //         },
 // //         trade_id: 1,
 // //         price: 5 * UNIT,
@@ -4518,24 +4518,24 @@
 // //     assert_eq!(settle_trade(order_event), Ok(()));
 // //
 // //     assert_eq!(
-// //         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
+// //         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(840)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(2)),
+// //         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(4294967297)),
 // //         Ok(())
 // //     );
 // //
 // //     assert_eq!(
-// //         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(3)),
+// //         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(840)),
 // //         Ok(())
 // //     );
 // //     assert_eq!(
-// //         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::Asset(2)),
+// //         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::Asset(4294967297)),
 // //         Ok(())
 // //     );
 // // }
-//             quote: AssetId::Asset(3),
+//             quote: AssetId::Asset(840),
 //         },
 //         market_type: Vec::from("trusted"),
 //         order_type,
@@ -4566,11 +4566,11 @@
 //         alice_sell_order_uuid.clone(),
 //     );
 //     assert_eq!(
-//         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
+//         check_balance(100 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(840)),
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::Asset(2)),
+//         check_balance(7 * UNIT, 3 * UNIT, alice.clone(), AssetId::Asset(4294967297)),
 //         Ok(())
 //     );
 //     let bob_buy_order_uuid: OrderUUID = (10..59).collect();
@@ -4585,8 +4585,8 @@
 //
 //     let order_event = TradeEvent {
 //         market_id: MarketId {
-//             base: AssetId::Asset(2),
-//             quote: AssetId::Asset(3),
+//             base: AssetId::Asset(4294967297),
+//             quote: AssetId::Asset(840),
 //         },
 //         trade_id: 1,
 //         price: 5 * UNIT,
@@ -4604,20 +4604,20 @@
 //     assert_eq!(settle_trade(order_event), Ok(()));
 //
 //     assert_eq!(
-//         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(3)),
+//         check_balance(115 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(840)),
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(2)),
+//         check_balance(7 * UNIT, 0 * UNIT, alice.clone(), AssetId::Asset(4294967297)),
 //         Ok(())
 //     );
 //
 //     assert_eq!(
-//         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(3)),
+//         check_balance(77 * UNIT, 8 * UNIT, bob.clone(), AssetId::Asset(840)),
 //         Ok(())
 //     );
 //     assert_eq!(
-//         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::Asset(2)),
+//         check_balance(13 * UNIT, 0 * UNIT, bob.clone(), AssetId::Asset(4294967297)),
 //         Ok(())
 //     );
 // }

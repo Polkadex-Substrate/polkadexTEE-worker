@@ -217,12 +217,10 @@ pub mod asset_id_mapping {
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
             AssetId::POLKADEX => POLKADEX_ASSET_STR.to_string(),
-            AssetId::Asset(0) => DOT_ASSET_STR.to_string(),
-
-            // TODO: the string representation for these might have to include the hash?
-            AssetId::Asset(1) => CHAIN_SAFE_ASSET_STR.to_string(),
-            AssetId::Asset(2) => BTC_ASSET_STR.to_string(),
-            AssetId::Asset(3) => USD_ASSET_STR.to_string(),
+            //AssetId::Asset(0) => DOT_ASSET_STR.to_string(),
+            //AssetId::Asset(1) => CHAIN_SAFE_ASSET_STR.to_string(),
+            AssetId::Asset(4294967297) => BTC_ASSET_STR.to_string(),
+            AssetId::Asset(840) => USD_ASSET_STR.to_string(),
             _ => unimplemented!(),
         }
     }
@@ -233,11 +231,10 @@ pub mod asset_id_mapping {
 
         match asset_id_str {
             POLKADEX_ASSET_STR => Ok(AssetId::POLKADEX),
-            DOT_ASSET_STR => Ok(AssetId::Asset(0)),
-
-            CHAIN_SAFE_ASSET_STR => Ok(AssetId::Asset(1)),
-            BTC_ASSET_STR => Ok(AssetId::Asset(2)),
-            USD_ASSET_STR => Ok(AssetId::Asset(3)),
+            //DOT_ASSET_STR => Ok(AssetId::Asset(0)),
+            //CHAIN_SAFE_ASSET_STR => Ok(AssetId::Asset(1)),
+            BTC_ASSET_STR => Ok(AssetId::Asset(4294967297)),
+            USD_ASSET_STR => Ok(AssetId::Asset(840)),
             _ => Err(format!(
                 "unknown asset id string ({}), cannot map to AssetId",
                 asset_id_str
@@ -278,8 +275,8 @@ pub mod tests {
         let asset_ids = vec![
             AssetId::Asset(0),
             AssetId::POLKADEX,
-            AssetId::Asset(3),
-            AssetId::Asset(2),
+            AssetId::Asset(840),
+            AssetId::Asset(4294967297),
             AssetId::Asset(1),
         ];
 
@@ -359,14 +356,14 @@ pub mod tests {
             },
             MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(2),
+                quote: AssetId::Asset(4294967297),
             },
             MarketId {
-                base: AssetId::Asset(2),
-                quote: AssetId::Asset(3),
+                base: AssetId::Asset(4294967297),
+                quote: AssetId::Asset(840),
             },
             MarketId {
-                base: AssetId::Asset(3),
+                base: AssetId::Asset(840),
                 quote: AssetId::POLKADEX,
             },
         ];
