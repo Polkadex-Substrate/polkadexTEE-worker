@@ -29,6 +29,7 @@
 Rust_Enclave_Name := libenclave.a
 Rust_Enclave_Files := $(wildcard src/*.rs) $(wildcard ../stf/src/*.rs)
 Rust_Target_Path := $(CURDIR)/../../../xargo
+RUSTFLAGS :="-C target-feature=+avx2"
 
 ifeq ($(SGX_DEBUG), 1)
 	OUTPUT_PATH := debug
@@ -51,6 +52,6 @@ ifeq ($(XARGO_SGX), 1)
 	RUST_TARGET_PATH=$(Rust_Target_Path) xargo build --target x86_64-unknown-linux-sgx $(CARGO_TARGET)
 	cp ./target/x86_64-unknown-linux-sgx/$(OUTPUT_PATH)/libsubstratee_worker_enclave.a ../lib/libenclave.a
 else
-	cargo build $(CARGO_TARGET)
+	RUSTFLAGS=$(RUSTFLAGS) cargo build $(CARGO_TARGET)
 	cp ./target/$(OUTPUT_PATH)/libsubstratee_worker_enclave.a ../lib/libenclave.a
 endif

@@ -6109,6 +6109,7 @@ dependencies = [
 name = "substratee-worker-api"
 version = "0.8.0"
 dependencies = [
+ "cid",
  "log 0.4.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-scale-codec 2.1.3",
  "serde_derive",
