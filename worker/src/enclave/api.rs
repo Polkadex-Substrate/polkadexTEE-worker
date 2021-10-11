@@ -16,8 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::SignedOrder;
-use crate::WsRpcClient;
 use codec::Encode;
 use log::*;
 use polkadex_sgx_primitives::PolkadexAccount;

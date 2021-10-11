@@ -245,6 +245,7 @@ fn main() {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn start_worker<E, T, W>(
     config: Config,
     shard: &ShardIdentifier,
@@ -340,7 +341,7 @@ fn start_worker<E, T, W>(
     } else {
         enclave
             .perform_ra(
-                genesis_hash.clone(),
+                genesis_hash,
                 nonce,
                 config.ext_api_url.unwrap().as_bytes().to_vec(),
             )
@@ -599,12 +600,6 @@ pub fn sync_chain<E: EnclaveBase + SideChain>(
     }
 
     curr_head.block.header
-}
-
-fn hex_encode(data: Vec<u8>) -> String {
-    let mut hex_str = hex::encode(data);
-    hex_str.insert_str(0, "0x");
-    hex_str
 }
 
 fn init_shard(shard: &ShardIdentifier) {

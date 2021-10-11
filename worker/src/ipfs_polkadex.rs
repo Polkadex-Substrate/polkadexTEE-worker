@@ -11,13 +11,8 @@
     limitations under the License.
 */
 
-use std::fs::File;
-use std::io::{Cursor, Write};
-use std::slice;
-use std::str;
+use std::io::Cursor;
 use std::sync::mpsc::channel;
-
-use sgx_types::*;
 
 use futures::TryStreamExt;
 use ipfs_api::IpfsClient;

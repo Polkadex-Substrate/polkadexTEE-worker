@@ -39,7 +39,6 @@ pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 use crate::constants::SNAPSHOT_INTERVAL;
 use crate::enclave::api::enclave_send_cid;
-use crate::enclave_account;
 use crate::WsRpcClient;
 use codec::{Decode, Encode};
 use log::*;
