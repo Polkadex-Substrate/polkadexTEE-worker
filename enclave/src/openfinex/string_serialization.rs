@@ -204,19 +204,15 @@ fn string_to_order_state(order_state_str: &str) -> Result<OrderState, String> {
 }
 
 pub mod asset_id_mapping {
-
     use super::*;
 
     const POLKADEX_ASSET_STR: &str = "pdx";
     const BTC_ASSET_STR: &str = "btc";
     const USD_ASSET_STR: &str = "usd";
 
-    // FIXME: Which asset is which????
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
             AssetId::POLKADEX => POLKADEX_ASSET_STR.to_string(),
-            //AssetId::Asset(0) => DOT_ASSET_STR.to_string(),
-            //AssetId::Asset(1) => CHAIN_SAFE_ASSET_STR.to_string(),
             AssetId::Asset(4294967297) => BTC_ASSET_STR.to_string(),
             AssetId::Asset(840) => USD_ASSET_STR.to_string(),
             _ => unimplemented!(),
@@ -226,8 +222,6 @@ pub mod asset_id_mapping {
     pub fn string_to_asset_id(asset_id_str: &str) -> Result<AssetId, String> {
         match asset_id_str {
             POLKADEX_ASSET_STR => Ok(AssetId::POLKADEX),
-            //DOT_ASSET_STR => Ok(AssetId::Asset(0)),
-            //CHAIN_SAFE_ASSET_STR => Ok(AssetId::Asset(1)),
             BTC_ASSET_STR => Ok(AssetId::Asset(4294967297)),
             USD_ASSET_STR => Ok(AssetId::Asset(840)),
             _ => Err(format!(
@@ -267,11 +261,9 @@ pub mod tests {
 
     pub fn test_map_asset_ids() {
         let asset_ids = vec![
-            AssetId::Asset(0),
             AssetId::POLKADEX,
             AssetId::Asset(840),
             AssetId::Asset(4294967297),
-            AssetId::Asset(1),
         ];
 
         for asset_id in asset_ids {
@@ -326,27 +318,23 @@ pub mod tests {
         market_cache.set_markets(
             market_cache.request_id(),
             vec![
-                create_market("dotdot", "dot", "dot"),
-                create_market("pdxdot", "pdx", "dot"),
-                create_market("chspdx", "chs", "pdx"),
+                create_market("usdusd", "usd", "usd"),
+                create_market("pdxusd", "pdx", "usd"),
                 create_market("pdxbtc", "pdx", "btc"),
                 create_market("btcusd", "btc", "usd"),
                 create_market("usdpdx", "usd", "pdx"),
+                create_market("btcpdx", "btc", "pdx"),
             ],
         );
 
         let market_ids = vec![
             MarketId {
-                base: AssetId::Asset(0),
-                quote: AssetId::Asset(0),
+                base: AssetId::Asset(840),
+                quote: AssetId::Asset(840),
             },
             MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(0),
-            },
-            MarketId {
-                base: AssetId::Asset(1),
-                quote: AssetId::POLKADEX,
+                quote: AssetId::Asset(840),
             },
             MarketId {
                 base: AssetId::POLKADEX,
@@ -358,6 +346,10 @@ pub mod tests {
             },
             MarketId {
                 base: AssetId::Asset(840),
+                quote: AssetId::POLKADEX,
+            },
+            MarketId {
+                base: AssetId::Asset(4294967297),
                 quote: AssetId::POLKADEX,
             },
         ];

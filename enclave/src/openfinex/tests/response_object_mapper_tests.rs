@@ -284,7 +284,7 @@ fn map_to_objects(response: &ParsedResponse) -> OpenFinexResponse {
         }
 
         fn string_to_asset_id(&self, _asset_id_str: &str) -> Result<AssetId, String> {
-            Ok(AssetId::Asset(0))
+            Ok(AssetId::Asset(840))
         }
     }
 

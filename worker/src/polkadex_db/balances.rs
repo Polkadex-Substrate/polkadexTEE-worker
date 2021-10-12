@@ -162,7 +162,7 @@ mod tests {
     }
     fn create_secondary_dummy_key() -> PolkadexBalanceKey {
         PolkadexBalanceKey::from(
-            AssetId::Asset(0),
+            AssetId::Asset(840),
             AccountId::from(
                 ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public(),
             ),
@@ -279,7 +279,7 @@ mod tests {
                     reserved: 0u128
                 },
                 BalancesData {
-                    asset_id: AssetId::Asset(0),
+                    asset_id: AssetId::Asset(840),
                     account_id: AccountId::from(
                         ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public(),
                     ),

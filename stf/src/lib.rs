@@ -480,7 +480,7 @@ mod tests {
 
         let trusted_getter = TrustedGetter::get_balance(
             main_account.public().into(),
-            CurrencyId::Asset(0),
+            CurrencyId::Asset(840),
             Some(proxy_account.public().into()),
         );
 
@@ -492,7 +492,7 @@ mod tests {
         let main_account = AccountKeyring::Alice;
 
         let trusted_getter =
-            TrustedGetter::get_balance(main_account.public().into(), CurrencyId::Asset(0), None);
+            TrustedGetter::get_balance(main_account.public().into(), CurrencyId::Asset(840), None);
 
         assert!(trusted_getter.proxy_account().is_none());
     }

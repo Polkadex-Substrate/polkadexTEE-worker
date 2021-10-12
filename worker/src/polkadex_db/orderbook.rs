@@ -162,7 +162,7 @@ mod tests {
             order: Order {
                 user_uid: get_account("BAR"),
                 market_id: MarketId {
-                    base: AssetId::Asset(0),
+                    base: AssetId::Asset(840),
                     quote: AssetId::POLKADEX,
                 },
                 market_type: "NONE_MARKET_TYPE".to_string().into_bytes(),

@@ -141,7 +141,7 @@ pub mod tests {
         let key_pair = create_dummy_account();
 
         let trusted_getter =
-            TrustedGetter::get_balance(key_pair.public().into(), CurrencyId::Asset(0), None);
+            TrustedGetter::get_balance(key_pair.public().into(), CurrencyId::Asset(840), None);
         let trusted_getter_signed = trusted_getter.sign(&KeyPair::Ed25519(key_pair));
 
         TrustedOperation::get(Getter::trusted(trusted_getter_signed))
