@@ -131,7 +131,7 @@ pub fn test_place_limit_buy_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -165,7 +165,7 @@ pub fn test_place_limit_sell_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -199,7 +199,7 @@ pub fn test_place_market_buy_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
@@ -232,7 +232,7 @@ pub fn test_place_market_sell_order() {
         user_uid: main.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::MARKET,
@@ -285,7 +285,7 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
         user_uid: buy_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -315,7 +315,7 @@ pub fn setup_place_buy_and_sell_order_full_ask_limit() {
         user_uid: sell_order_user.clone(),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: Vec::from("trusted"),
         order_type: OrderType::LIMIT,
@@ -356,7 +356,7 @@ pub fn test_settle_trade_full_ask_limit() {
     let order_event = TradeEvent {
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         trade_id: 1,
         price: 2 * UNIT,

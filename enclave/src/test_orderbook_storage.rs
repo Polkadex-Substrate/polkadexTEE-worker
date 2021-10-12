@@ -33,7 +33,7 @@ pub fn get_dummy_orders() -> Vec<Order> {
         user_uid: get_account("test_account"),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: String::from("trusted").into_bytes(),
         order_type: OrderType::LIMIT,
@@ -45,7 +45,7 @@ pub fn get_dummy_orders() -> Vec<Order> {
         user_uid: get_account("test_account"),
         market_id: MarketId {
             base: AssetId::POLKADEX,
-            quote: AssetId::Asset(0),
+            quote: AssetId::Asset(840),
         },
         market_type: String::from("trusted").into_bytes(),
         order_type: OrderType::LIMIT,

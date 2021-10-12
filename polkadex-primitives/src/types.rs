@@ -142,7 +142,7 @@ impl Default for SignedOrder {
                 user_uid: AccountId::default(),
                 market_id: MarketId {
                     base: AssetId::POLKADEX,
-                    quote: AssetId::Asset(0),
+                    quote: AssetId::Asset(840),
                 },
                 market_type: vec![],
                 order_type: OrderType::LIMIT,

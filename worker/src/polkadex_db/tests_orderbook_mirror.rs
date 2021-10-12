@@ -44,7 +44,7 @@ fn test_write_and_delete() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(0),
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -125,7 +125,7 @@ fn test_read_all() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(0),
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -141,7 +141,7 @@ fn test_read_all() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(0),
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -157,7 +157,7 @@ fn test_read_all() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(0),
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,

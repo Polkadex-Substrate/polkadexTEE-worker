@@ -267,7 +267,7 @@ fn map_to_objects(response: &ParsedResponse) -> OpenFinexResponse {
         fn string_to_market_id(&self, _market_id_str: &str) -> Result<MarketId, String> {
             Ok(MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::Asset(0),
+                quote: AssetId::Asset(840),
             })
         }
 
