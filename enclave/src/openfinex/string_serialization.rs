@@ -224,9 +224,6 @@ pub mod asset_id_mapping {
     }
 
     pub fn string_to_asset_id(asset_id_str: &str) -> Result<AssetId, String> {
-        // TODO: we're using just dummy values here
-        let dummy_token_hash = dummy_hash();
-
         match asset_id_str {
             POLKADEX_ASSET_STR => Ok(AssetId::POLKADEX),
             //DOT_ASSET_STR => Ok(AssetId::Asset(0)),

@@ -221,6 +221,7 @@ pub fn lock_storage_transfer_balance(
     Ok(())
 }
 // Ony for testing
+#[cfg(feature = "test")]
 pub fn lock_storage_increase_free_balance(
     token: AssetId,
     account: AccountId,

@@ -300,7 +300,7 @@ pub unsafe extern "C" fn mock_register_enclave_xt(
 fn create_extrinsics<V>(
     validator: &V,
     calls_buffer: Vec<OpaqueCall>,
-    mut nonce: u32,
+    mut _nonce: u32,
 ) -> Result<Vec<Vec<u8>>>
 where
     V: Validator,

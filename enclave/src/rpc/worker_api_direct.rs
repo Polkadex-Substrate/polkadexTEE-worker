@@ -46,17 +46,10 @@ use std::sync::{
     Arc, SgxMutex,
 };
 
-use self::serde_json::*;
-use crate::rpc::author::{Author, AuthorApi};
 use crate::{ocall::rpc_ocall::EnclaveRpcOCall, rsa3072, utils::write_slice_and_whitespace_pad};
-use jsonrpc_core::{futures::executor, Error as RpcError, *};
-use log::*;
-use sp_core::H256 as Hash;
-use substratee_node_primitives::Request;
+use jsonrpc_core::*;
 use substratee_stf::ShardIdentifier;
-use substratee_worker_primitives::{
-    block::SignedBlock, DirectRequestStatus, RpcReturnValue, TrustedOperationStatus,
-};
+use substratee_worker_primitives::{DirectRequestStatus, RpcReturnValue};
 
 extern "C" {
     pub fn ocall_send_response_with_uuid(

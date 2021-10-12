@@ -27,7 +27,7 @@ use crate::Timeout;
 use log::*;
 
 use sgx_tunittest::*;
-use sgx_types::{sgx_status_t, size_t};
+use sgx_types::size_t;
 
 use crate::ss58check;
 use crate::test_polkadex_balance_storage;
@@ -42,7 +42,6 @@ use chain_relay::{Block, Header};
 use codec::{Decode, Encode};
 use core::ops::Deref;
 use jsonrpc_core::futures::executor;
-use log::*;
 use rpc::{
     api::SideChainApi,
     author::{Author, AuthorApi},
@@ -53,7 +52,6 @@ use rpc::{
     rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
 };
 use sgx_externalities::SgxExternalitiesTypeTrait;
-use sgx_tunittest::*;
 use sp_core::{crypto::Pair, ed25519 as spEd25519, hashing::blake2_256, H256};
 use sp_runtime::traits::Header as HeaderT;
 use std::{
@@ -63,7 +61,6 @@ use std::{
     untrusted::time::SystemTimeEx,
     vec::Vec,
 };
-use substrate_api_client::utils::storage_key;
 use substratee_ocall_api::EnclaveAttestationOCallApi;
 use substratee_settings::{
     enclave::GETTER_TIMEOUT,

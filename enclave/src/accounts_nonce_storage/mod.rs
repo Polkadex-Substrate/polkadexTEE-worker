@@ -35,7 +35,7 @@ use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
-use substratee_storage::{StorageProof, StorageProofChecker};
+use substratee_storage::StorageProofChecker;
 
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 
@@ -307,6 +307,7 @@ pub fn auth_user_validate_increment_nonce(
     Ok(())
 }
 
+#[cfg(feature = "test")]
 pub mod tests {
     use super::{create_in_memory_accounts_and_nonce_storage, load_registry, AccountsNonceStorage};
     use codec::Encode;
