@@ -76,7 +76,7 @@ pub mod enclave {
 pub mod node {
     // you may have to update these indices upon new builds of the runtime
     // you can get the index from metadata, counting modules starting with zero
-    pub static SUBSTRATEE_REGISTRY_MODULE: u8 = 8u8;
+    pub static SUBSTRATEE_REGISTRY_MODULE: u8 = 35u8;
     pub static REGISTER_ENCLAVE: u8 = 0u8;
     //pub static UNREGISTER_ENCLAVE: u8 = 1u8;
     pub static CALL_WORKER: u8 = 2u8;
@@ -85,7 +85,7 @@ pub mod node {
     pub static SHIELD_FUNDS: u8 = 5u8;
 
     // bump this to be consistent with SubstraTEE-node runtime
-    pub static RUNTIME_SPEC_VERSION: u32 = 265;
+    pub static RUNTIME_SPEC_VERSION: u32 = 268;
     pub static RUNTIME_TRANSACTION_VERSION: u32 = 2;
 
     // Polkadex Module Constants ( this should be updated if order of modules in the runtime is changed
