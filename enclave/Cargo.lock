@@ -1944,7 +1944,7 @@ dependencies = [
 [[package]]
 name = "sgx-externalities"
 version = "0.3.0"
-source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=monthly-2021-09+1#d856337ab08f3c0b8085509cd2ced7905abcb6c3"
+source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=master#78bdef97faab1dd78ccd22d703bc3b7598c23585"
 dependencies = [
  "environmental",
  "log",
@@ -1957,7 +1957,7 @@ dependencies = [
 [[package]]
 name = "sgx-runtime"
 version = "0.8.0"
-source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=monthly-2021-09+1#d856337ab08f3c0b8085509cd2ced7905abcb6c3"
+source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=master#78bdef97faab1dd78ccd22d703bc3b7598c23585"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -2413,7 +2413,7 @@ dependencies = [
 [[package]]
 name = "sp-io"
 version = "4.0.0-dev"
-source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=monthly-2021-09+1#d856337ab08f3c0b8085509cd2ced7905abcb6c3"
+source = "git+https://github.com/Polkadex-Substrate/sgx-runtime?branch=master#78bdef97faab1dd78ccd22d703bc3b7598c23585"
 dependencies = [
  "environmental",
  "hash-db",
