@@ -18,12 +18,12 @@
 
 pub extern crate alloc;
 
-use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApiError, OpenFinexApiResult};
 use crate::openfinex::openfinex_types::ResponseInteger;
 use alloc::{string::String, string::ToString, vec::Vec};
 use core::iter::Peekable;
 use log::*;
+use substratee_settings::node::UNIT;
 
 /// Provides conversion from and to a string containing a fixed point decimal with 18-digit precision
 /// to an u128 integer, scaled by UNIT (=1e18).

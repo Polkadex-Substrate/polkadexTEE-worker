@@ -1,15 +1,14 @@
 use crate::{
-    constants::{OCEX_MODULE, OCEX_UPLOAD_CID, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION},
-    ed25519::Ed25519,
-    nonce_handler,
-    utils::hash_from_slice,
-    write_slice_and_whitespace_pad,
+    ed25519::Ed25519, nonce_handler, utils::hash_from_slice, write_slice_and_whitespace_pad,
 };
 use codec::Encode;
 use sgx_types::sgx_status_t;
 use sp_application_crypto::Pair;
 use std::slice;
 use substrate_api_client::compose_extrinsic_offline;
+use substratee_settings::node::{
+    OCEX_MODULE, OCEX_UPLOAD_CID, RUNTIME_SPEC_VERSION, RUNTIME_TRANSACTION_VERSION,
+};
 use substratee_sgx_io::SealedIO;
 
 #[no_mangle]

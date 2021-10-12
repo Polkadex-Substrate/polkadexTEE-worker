@@ -28,7 +28,6 @@ use crate::accounts_nonce_storage::test_proxy::initialize_dummy;
 use crate::accounts_nonce_storage::{
     add_main_account, check_if_main_account_registered, create_in_memory_accounts_and_nonce_storage,
 };
-use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiResult};
 use crate::polkadex_balance_storage::{
     create_in_memory_balance_storage, lock_storage_and_deposit, lock_storage_and_get_balances,
@@ -42,6 +41,7 @@ use crate::polkadex_gateway::{
 use crate::polkadex_orderbook_storage::{
     create_in_memory_orderbook_storage, lock_storage_and_add_order,
 };
+use substratee_settings::node::UNIT;
 
 pub struct OpenFinexApiMock {}
 

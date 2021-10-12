@@ -31,10 +31,6 @@
 extern crate sgx_tstd as std;
 
 use crate::channel_storage::{create_channel_get_receiver, ChannelType};
-use crate::constants::{
-    OCEX_ADD_PROXY, OCEX_DEPOSIT, OCEX_MODULE, OCEX_REGISTER, OCEX_RELEASE, OCEX_REMOVE_PROXY,
-    OCEX_WITHDRAW,
-};
 use crate::nonce_handler::NonceHandler;
 use crate::{
     error::{Error, Result},
@@ -82,6 +78,10 @@ use substratee_node_primitives::{
 use substratee_ocall_api::{
     EnclaveAttestationOCallApi, EnclaveOnChainOCallApi, EnclaveRpcOCallApi,
 };
+use substratee_settings::node::{
+    OCEX_ADD_PROXY, OCEX_DEPOSIT, OCEX_MODULE, OCEX_REGISTER, OCEX_RELEASE, OCEX_REMOVE_PROXY,
+    OCEX_WITHDRAW,
+};
 use substratee_settings::{
     enclave::{CALL_TIMEOUT, GETTER_TIMEOUT},
     node::{
@@ -125,7 +125,6 @@ mod utils;
 // added by polkadex
 mod accounts_nonce_storage;
 pub mod channel_storage;
-mod constants;
 mod happy_path;
 pub mod nonce_handler;
 pub mod openfinex;

@@ -85,6 +85,19 @@ pub mod node {
     pub static SHIELD_FUNDS: u8 = 5u8;
 
     // bump this to be consistent with SubstraTEE-node runtime
-    pub static RUNTIME_SPEC_VERSION: u32 = 1;
-    pub static RUNTIME_TRANSACTION_VERSION: u32 = 1;
+    pub static RUNTIME_SPEC_VERSION: u32 = 265;
+    pub static RUNTIME_TRANSACTION_VERSION: u32 = 2;
+
+    // Polkadex Module Constants ( this should be updated if order of modules in the runtime is changed
+    pub static OCEX_MODULE: u8 = 36u8;
+    pub static OCEX_REGISTER: u8 = 3u8;
+    pub static OCEX_ADD_PROXY: u8 = 4u8;
+    pub static OCEX_REMOVE_PROXY: u8 = 5u8;
+    pub static OCEX_DEPOSIT: u8 = 0u8;
+    pub static OCEX_RELEASE: u8 = 1u8;
+    pub static OCEX_WITHDRAW: u8 = 2u8;
+    pub static OCEX_UPLOAD_CID: u8 = 6u8;
+
+    /// Polkadex Defines 1 token as 10^^18 fundamental units
+    pub const UNIT: u128 = 1000000000000000000;
 }
