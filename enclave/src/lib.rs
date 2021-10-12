@@ -133,13 +133,16 @@ pub mod polkadex_cache;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
 pub mod ss58check;
-mod test_orderbook_storage;
-mod test_polkadex_balance_storage;
-mod test_polkadex_gateway;
 pub use crate::cid::*;
-
+//FIXME: It would probably be alot nicer to move all these test files into the test folder
 #[cfg(feature = "test")]
 pub mod test;
+#[cfg(feature = "test")]
+mod test_orderbook_storage;
+#[cfg(feature = "test")]
+mod test_polkadex_balance_storage;
+#[cfg(feature = "test")]
+mod test_polkadex_gateway;
 #[cfg(feature = "test")]
 pub mod tests;
 

@@ -98,7 +98,7 @@ pub extern "C" fn test_main_entrance() -> size_t {
         polkadex_cache::market_cache::tests::retrieve_previously_inserted_markets,
 
         // Polkadex Gateway
-         test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
+        test_polkadex_gateway::initialize_storage, // This is not a test but initializes storage for the following tests
         test_polkadex_gateway::test_authenticate_user,
         test_polkadex_gateway::test_place_limit_buy_order,
         test_polkadex_gateway::test_place_limit_sell_order,
