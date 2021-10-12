@@ -2619,7 +2619,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "substrate-api-client"
 version = "0.6.0"
-source = "git+https://github.com/Polkadex-Substrate/substrate-api-client?branch=monthly-2021-09+1#5e9627b2f4f9790e4938d6b7f04fecbc436927a1"
+source = "git+https://github.com/Polkadex-Substrate/substrate-api-client?branch=master#9c9d0cd1945609c2e8676b57583a3f4912e82998"
 dependencies = [
  "frame-metadata 14.0.0",
  "frame-support",
