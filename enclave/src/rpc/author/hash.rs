@@ -33,7 +33,5 @@ pub enum TrustedOperationOrHash<Hash> {
     /// Raw extrinsic bytes.
     OperationEncoded(Vec<u8>),
     /// Raw extrinsic
-    /// FIXME: is that okay? Or should we use Box?
-    #[allow(clippy::large_enum_variant)]
-    Operation(TrustedOperation),
+    Operation(Box<TrustedOperation>),
 }

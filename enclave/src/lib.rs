@@ -47,7 +47,6 @@ use core::ops::Deref;
 use log::*;
 use polkadex_sgx_primitives::{AssetId, PolkadexAccount};
 use polkadex_sgx_primitives::{BalancesData, NonceData, OrderbookData};
-use rpc::worker_api_direct;
 use rpc::{
     api::SideChainApi,
     author::{hash::TrustedOperationOrHash, Author, AuthorApi},
@@ -58,6 +57,7 @@ use sgx_types::{sgx_status_t, SgxResult};
 use sp_core::{blake2_256, crypto::Pair, H256};
 use sp_finality_grandpa::VersionedAuthorityList;
 use sp_runtime::{generic::SignedBlock, traits::Header as HeaderT, OpaqueExtrinsic};
+use std::boxed::Box;
 use std::{
     borrow::ToOwned,
     collections::HashMap,
@@ -868,9 +868,9 @@ where
                     // remove calls from pool (either as valid or invalid)
                     author
                         .remove_top(
-                            vec![TrustedOperationOrHash::Operation(
+                            vec![TrustedOperationOrHash::Operation(Box::new(
                                 trusted_call_signed.into_trusted_operation(true),
-                            )],
+                            ))],
                             shard,
                             inblock,
                         )
