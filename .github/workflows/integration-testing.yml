@@ -33,6 +33,17 @@ jobs:
           path: Polkadex
       - name: Build Polkadex Node
         run: cd Polkadex && cargo build --release
+      - name: Run Polkadex Node as Nohup
+        run: cd Polkadex && target/release/polkadex-node --dev --tmp --ws-port 9994
+      - name: Check out openware-images repo
+        uses: actions/checkout@v2
+        with:
+          repository: Polkadex-Substrate/openware-images
+          path: openware-images
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reset openware-images
+        run: cd openware-images && make reset init
       - uses: actions/checkout@v2
         with:
           path: polkadexTEE-worker
+      - 
