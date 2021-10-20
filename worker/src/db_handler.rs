@@ -127,7 +127,7 @@ impl DBHandler {
             .lock()
             .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
 
-        let balances_data = balances.prepare_for_sending()?;
+        let (balances_data, balances_signature) = balances.prepare_for_sending()?;
         let nonce_data = nonce.prepare_for_sending()?;
         let orderbook_data = orderbook.prepare_for_sending()?;
 
@@ -161,6 +161,7 @@ impl DBHandler {
                     balances,
                     nonce,
                     orderbook,
+                    balances_signature: balances_signature.clone(),
                 }
                 .encode(),
             )

@@ -24,46 +24,31 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::polkadex_db::{GeneralDB, PolkadexDBError};
-use polkadex_sgx_primitives::{AccountId, AssetId};
+use polkadex_sgx_primitives::{Balances, BalancesData, PolkadexBalanceKey};
 
 use super::disk_storage_handler::DiskStorageHandler;
 use super::PermanentStorageHandler;
 use super::Result;
 use crate::constants::BALANCE_DISK_STORAGE_FILENAME;
-use polkadex_sgx_primitives::BalancesData;
+use sp_runtime::MultiSignature;
+use substratee_worker_primitives::signed::SignedData;
 
 static BALANCES_MIRROR: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 #[derive(Debug)]
 pub struct BalancesMirror<D: PermanentStorageHandler> {
     general_db: GeneralDB<D>,
-}
-
-#[derive(Encode, Decode, PartialEq, Debug)]
-pub struct Balances {
-    free: u128,
-    reserved: u128,
-}
-
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub struct PolkadexBalanceKey {
-    asset_id: AssetId,
-    account_id: AccountId,
-}
-
-impl PolkadexBalanceKey {
-    pub fn from(asset_id: AssetId, account_id: AccountId) -> Self {
-        Self {
-            asset_id,
-            account_id,
-        }
-    }
+    pub signature: Option<MultiSignature>,
 }
 
 impl<D: PermanentStorageHandler> BalancesMirror<D> {
-    pub fn write(&mut self, balance_key: PolkadexBalanceKey, free: u128, reserved: u128) {
-        self.general_db
-            .write(balance_key.encode(), Balances { free, reserved }.encode());
+    pub fn append(&mut self, data: SignedData<Vec<BalancesData>>) {
+        self.general_db.db.extend(
+            data.data()
+                .iter()
+                .map(|entry| (entry.account.encode(), entry.balances.encode())),
+        );
+        self.signature = Some(data.signature().clone());
     }
 
     pub fn _find(&self, k: PolkadexBalanceKey) -> Result<Balances> {
@@ -96,23 +81,22 @@ impl<D: PermanentStorageHandler> BalancesMirror<D> {
         self.general_db.write_data_to_disk(data)
     }
 
-    pub fn prepare_for_sending(&self) -> Result<Vec<BalancesData>> {
-        self.general_db
-            .read_all()
-            .into_iter()
-            .map(|(left, right)| -> Result<BalancesData> {
-                let key = PolkadexBalanceKey::decode(&mut left.as_slice())
-                    .map_err(PolkadexDBError::DecodeError)?;
-                let balances = Balances::decode(&mut right.as_slice())
-                    .map_err(PolkadexDBError::DecodeError)?;
-                Ok(BalancesData {
-                    asset_id: key.asset_id,
-                    account_id: key.account_id,
-                    free: balances.free,
-                    reserved: balances.reserved,
+    pub fn prepare_for_sending(&self) -> Result<(Vec<BalancesData>, Option<MultiSignature>)> {
+        Ok((
+            self.general_db
+                .read_all()
+                .into_iter()
+                .map(|(left, right)| -> Result<BalancesData> {
+                    Ok(BalancesData {
+                        account: PolkadexBalanceKey::decode(&mut left.as_slice())
+                            .map_err(PolkadexDBError::DecodeError)?,
+                        balances: Balances::decode(&mut right.as_slice())
+                            .map_err(PolkadexDBError::DecodeError)?,
+                    })
                 })
-            })
-            .collect()
+                .collect::<Result<Vec<BalancesData>>>()?,
+            self.signature.clone(),
+        ))
     }
 }
 
@@ -123,6 +107,7 @@ pub fn initialize_balances_mirror() {
                 HashMap::new(),
                 DiskStorageHandler::open_default(PathBuf::from(BALANCE_DISK_STORAGE_FILENAME)),
             ),
+            signature: None,
         },
     ));
     let ptr = Arc::into_raw(storage_ptr);
@@ -144,12 +129,13 @@ pub fn load_balances_mirror() -> Result<&'static Mutex<BalancesMirror<DiskStorag
 mod tests {
     use super::GeneralDB;
     use crate::polkadex_db::mock::PermanentStorageMock;
-    use crate::polkadex_db::{Balances, BalancesMirror, PolkadexBalanceKey};
+    use crate::polkadex_db::BalancesMirror;
     use codec::Encode;
     use polkadex_primitives::AccountId;
-    use polkadex_sgx_primitives::{AssetId, BalancesData};
+    use polkadex_sgx_primitives::{AssetId, Balances, BalancesData, PolkadexBalanceKey};
     use sp_core::{ed25519 as ed25519_core, Pair};
     use std::collections::HashMap;
+    use substratee_worker_primitives::signed::SignedData;
 
     fn create_dummy_key() -> PolkadexBalanceKey {
         PolkadexBalanceKey::from(
@@ -169,30 +155,11 @@ mod tests {
     }
 
     #[test]
-    fn write() {
-        let dummy_key = create_dummy_key();
-        let mut balances_mirror = BalancesMirror {
-            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
-        };
-        assert_eq!(balances_mirror.general_db.db, HashMap::new());
-        balances_mirror.write(dummy_key.clone(), 42u128, 0u128);
-        assert_eq!(
-            balances_mirror.general_db.db.get(&dummy_key.encode()),
-            Some(
-                &Balances {
-                    free: 42u128,
-                    reserved: 0u128
-                }
-                .encode()
-            )
-        );
-    }
-
-    #[test]
     fn find() {
         let dummy_key = create_dummy_key();
         let mut balances_mirror = BalancesMirror {
             general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+            signature: None,
         };
         balances_mirror.general_db.db.insert(
             dummy_key.encode(),
@@ -213,10 +180,56 @@ mod tests {
     }
 
     #[test]
+    fn append() {
+        let dummy_key = create_dummy_key();
+        let mut balances_mirror = BalancesMirror {
+            general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+            signature: None,
+        };
+
+        let pair = ed25519_core::Pair::generate().0;
+
+        let signed_data = SignedData::new(
+            vec![BalancesData {
+                account: dummy_key.clone(),
+                balances: Balances {
+                    free: 42u128,
+                    reserved: 0u128,
+                },
+            }],
+            &pair,
+        );
+
+        let signature = signed_data.signature().clone();
+
+        balances_mirror.append(signed_data);
+        assert_eq!(
+            balances_mirror._find(dummy_key.clone()).unwrap(),
+            Balances {
+                free: 42u128,
+                reserved: 0u128,
+            }
+        );
+
+        assert!(SignedData::from(
+            vec![BalancesData {
+                account: dummy_key,
+                balances: Balances {
+                    free: 42u128,
+                    reserved: 0u128,
+                },
+            }],
+            signature.clone()
+        )
+        .verify_signature(AccountId::from(pair.public())));
+    }
+
+    #[test]
     fn delete() {
         let dummy_key = create_dummy_key();
         let mut balances_mirror = BalancesMirror {
             general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+            signature: None,
         };
         balances_mirror.general_db.db.insert(
             dummy_key.encode(),
@@ -243,6 +256,7 @@ mod tests {
         let secondary_dummy_key = create_secondary_dummy_key();
         let mut balances_mirror = BalancesMirror {
             general_db: GeneralDB::new(HashMap::new(), PermanentStorageMock::default()),
+            signature: None,
         };
         balances_mirror.general_db.db.insert(
             dummy_key.encode(),
@@ -264,26 +278,19 @@ mod tests {
             {
                 let mut balances_mirror = balances_mirror
                     .prepare_for_sending()
-                    .expect("Unexpected error while preparing to balances nonce data");
+                    .expect("Unexpected error while preparing to balances nonce data")
+                    .0;
                 balances_mirror.sort();
                 balances_mirror
             },
             vec![
                 BalancesData {
-                    asset_id: AssetId::POLKADEX,
-                    account_id: AccountId::from(
-                        ed25519_core::Pair::from_seed(b"12345678901234567890123456789012").public(),
-                    ),
-                    free: 42u128,
-                    reserved: 0u128
+                    account: create_dummy_key(),
+                    balances: Balances::from(42u128, 0u128),
                 },
                 BalancesData {
-                    asset_id: AssetId::DOT,
-                    account_id: AccountId::from(
-                        ed25519_core::Pair::from_seed(b"01234567890123456789012345678901").public(),
-                    ),
-                    free: 0u128,
-                    reserved: 42u128
+                    account: create_secondary_dummy_key(),
+                    balances: Balances::from(0u128, 42u128)
                 }
             ]
         )

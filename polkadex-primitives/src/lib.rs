@@ -123,12 +123,37 @@ impl OpenFinexUri {
     }
 }
 
-#[derive(Debug, Encode, Decode, PartialEq, PartialOrd, Ord, Eq, Clone)]
-pub struct BalancesData {
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PolkadexBalanceKey {
     pub asset_id: AssetId,
     pub account_id: AccountId,
-    pub free: Balance,
-    pub reserved: Balance,
+}
+
+impl PolkadexBalanceKey {
+    pub fn from(asset_id: AssetId, account_id: AccountId) -> Self {
+        Self {
+            asset_id,
+            account_id,
+        }
+    }
+}
+
+#[derive(Encode, Decode, PartialEq, Debug, Clone, Eq, Ord, PartialOrd, Copy)]
+pub struct Balances {
+    pub free: u128,
+    pub reserved: u128,
+}
+
+impl Balances {
+    pub fn from(free: Balance, reserved: Balance) -> Self {
+        Self { free, reserved }
+    }
+}
+
+#[derive(Debug, Encode, Decode, PartialEq, PartialOrd, Ord, Eq, Clone)]
+pub struct BalancesData {
+    pub account: PolkadexBalanceKey,
+    pub balances: Balances,
 }
 
 #[derive(Debug, Encode, Decode, PartialEq, PartialOrd, Ord, Eq, Clone)]
@@ -147,6 +172,7 @@ pub struct StorageData {
     pub balances: Vec<BalancesData>,
     pub nonce: Vec<NonceData>,
     pub orderbook: Vec<OrderbookData>,
+    pub balances_signature: Option<Signature>,
 }
 
 // TODO: Add unit tests

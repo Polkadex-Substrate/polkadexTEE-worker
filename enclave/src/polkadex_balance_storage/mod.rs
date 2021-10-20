@@ -19,22 +19,17 @@
 use crate::polkadex_gateway::GatewayError;
 use crate::Vec;
 use log::*;
-use polkadex_sgx_primitives::BalancesData;
-use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
+use polkadex_sgx_primitives::{AccountId, AssetId, Balance, BalancesData};
+pub use polkadex_sgx_primitives::{Balances, PolkadexBalanceKey};
 use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
 
-static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
-
 pub mod balance_storage;
-pub mod balances;
-pub mod polkadex_balance_key;
-
 pub use balance_storage::*;
-pub use balances::*;
-pub use polkadex_balance_key::*;
+
+static GLOBAL_POLKADEX_BALANCE_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 
 pub fn create_in_memory_balance_storage() -> Result<(), GatewayError> {
     let balances_storage = PolkadexBalanceStorage::create();
@@ -67,7 +62,7 @@ pub fn lock_storage_and_reserve_balance(
             GatewayError::UnableToLock
         })?;
     let balance = match balance_storage.read_balance(token, main_acc.clone()) {
-        Some(balance) => balance.clone(),
+        Some(balance) => *balance,
         None => {
             error!("Account does not have a balance storage for this asset id yet");
             return Err(GatewayError::NotEnoughFreeBalance);
@@ -106,7 +101,7 @@ pub fn lock_storage_unreserve_balance(
             GatewayError::UnableToLock
         })?;
     let balance = match balance_storage.read_balance(token, main_acc.clone()) {
-        Some(balance) => balance.clone(),
+        Some(balance) => *balance,
         None => {
             error!("Account does not have a balance storage for this asset id yet");
             return Err(GatewayError::NotEnoughFreeBalance);

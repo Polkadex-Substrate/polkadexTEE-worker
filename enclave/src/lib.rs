@@ -49,8 +49,7 @@ use constants::{
 };
 use core::ops::Deref;
 use log::*;
-use polkadex_sgx_primitives::{AssetId, PolkadexAccount};
-use polkadex_sgx_primitives::{BalancesData, NonceData, OrderbookData};
+use polkadex_sgx_primitives::{AssetId, BalancesData, NonceData, OrderbookData, PolkadexAccount};
 use rpc::author::{hash::TrustedOperationOrHash, Author, AuthorApi};
 use rpc::worker_api_direct;
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
@@ -79,10 +78,11 @@ use substratee_stf::State as StfState;
 use substratee_stf::{
     AccountId, Getter, ShardIdentifier, Stf, TrustedCall, TrustedCallSigned, TrustedGetterSigned,
 };
-use substratee_worker_primitives::block::{
-    Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload,
+use substratee_worker_primitives::{
+    block::{Block as SidechainBlock, SignedBlock as SignedSidechainBlock, StatePayload},
+    signed::SignedData,
+    BlockHash,
 };
-use substratee_worker_primitives::BlockHash;
 use utils::write_slice_and_whitespace_pad;
 
 mod accounts_nonce_storage;
@@ -470,7 +470,21 @@ pub unsafe extern "C" fn send_disk_data(encoded_data: *const u8, data_size: usiz
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
 
-    if initialize_and_extend_storages(decoded.balances, decoded.nonce, decoded.orderbook).is_err() {
+    let balances = if let Some(signature) = decoded.balances_signature.clone() {
+        if SignedData::from(decoded.balances.clone(), signature)
+            .verify_signature(AccountId::from(ed25519::unseal_pair().unwrap().public()))
+        {
+            decoded.balances.clone()
+        } else {
+            error!("Balances were modified, TEE won't run with modified data.");
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        }
+    } else {
+        error!("Balances is missing the signature, proceeding without balances");
+        vec![]
+    };
+
+    if initialize_and_extend_storages(balances, decoded.nonce, decoded.orderbook).is_err() {
         sgx_status_t::SGX_ERROR_UNEXPECTED
     } else {
         sgx_status_t::SGX_SUCCESS
@@ -487,13 +501,8 @@ extern "C" {
 
     pub fn ocall_send_balances(
         ret_val: *mut sgx_status_t,
-        account_encoded: *const u8,
-        account_size: u32,
-        token_encoded: *const u8,
-        token_size: u32,
-        free: *mut u8,
-        reserved: *mut u8,
-        balance_size: u32,
+        balances_signed: *const u8,
+        balances_size: u32,
     ) -> sgx_status_t;
 }
 
@@ -513,22 +522,18 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
 
                 ocall_send_nonce(&mut rt as *mut sgx_status_t, slice.as_ptr(), 32, nonce);
             }
-            Ok(ChannelType::Balances(account, balances)) => {
+            Ok(ChannelType::Balances(balances)) => {
                 let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-                let account_slice: &[u8] = account.account_id.as_ref();
-                let token_slice = account.asset_id.encode();
-                let token_slice: &[u8] = token_slice.as_ref();
-                let (mut free, mut reserved) = (balances.free.encode(), balances.reserved.encode());
+
+                let signed_balances = SignedData::new(balances, &ed25519::unseal_pair().unwrap());
+
+                let balances_encoded = signed_balances.encode();
+                let balances_encoded: &[u8] = balances_encoded.as_ref();
 
                 ocall_send_balances(
                     &mut rt as *mut sgx_status_t,
-                    account_slice.as_ptr(),
-                    32,
-                    token_slice.as_ptr(),
-                    token_slice.len() as u32,
-                    free.as_mut_ptr(),
-                    reserved.as_mut_ptr(),
-                    free.len() as u32,
+                    balances_encoded.as_ptr(),
+                    balances_encoded.len() as u32,
                 );
             }
             Ok(ChannelType::Order(order)) => {

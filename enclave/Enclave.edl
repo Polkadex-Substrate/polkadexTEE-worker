@@ -172,13 +172,8 @@ enclave {
             uint32_t nonce
         );
         sgx_status_t ocall_send_balances(
-            [in, size = account_size] uint8_t * account_encoded,
-            uint32_t account_size,
-            [in, size = token_size] uint8_t * token_encoded,
-            uint32_t token_size,
-            [in, size = balance_size] uint8_t * free,
-            [in, size = balance_size] uint8_t * reserved,
-            uint32_t balance_size
+            [in, size = balances_size] uint8_t * balances_signed,
+            uint32_t balances_size
         );
 	};
 };

@@ -125,7 +125,7 @@ impl RpcGateway for RpcGatewayMock {
 
     fn get_balances(&self, _main_account: AccountId, _asset_it: AssetId) -> SgxResult<Balances> {
         match &self.balance_to_return {
-            Some(b) => Ok(b.clone()),
+            Some(b) => Ok(*b),
             None => Err(sgx_status_t::SGX_ERROR_UNEXPECTED),
         }
     }

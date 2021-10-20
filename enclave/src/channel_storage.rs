@@ -16,10 +16,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polkadex_balance_storage::{Balances, PolkadexBalanceKey};
 use lazy_static::lazy_static;
 use polkadex_sgx_primitives::types::SignedOrder;
 use polkadex_sgx_primitives::AccountId;
+use polkadex_sgx_primitives::BalancesData;
 use sp_std::prelude::*;
 use std::sync::{
     mpsc::{channel, Receiver, Sender},
@@ -47,7 +47,7 @@ pub fn create_channel_get_receiver() -> Result<Receiver<ChannelType>, ChannelSto
 
 pub enum ChannelType {
     Nonce(AccountId, u32),
-    Balances(PolkadexBalanceKey, Balances),
+    Balances(Vec<BalancesData>),
     Order(SignedOrder),
 }
 

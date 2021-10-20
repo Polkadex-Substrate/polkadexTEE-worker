@@ -17,31 +17,22 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::polkadex_gateway::GatewayError;
-use codec::Encode;
+use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::BalancesData;
-use polkadex_sgx_primitives::{AccountId, AssetId, Balance};
+use polkadex_sgx_primitives::{
+    AccountId, AssetId, Balance, Balances, BalancesData, PolkadexBalanceKey,
+};
 use sgx_tstd::collections::HashMap;
 use sgx_tstd::vec::Vec;
 
 use crate::channel_storage::{load_sender, ChannelType};
-use crate::polkadex_balance_storage::balances::*;
-use crate::polkadex_balance_storage::polkadex_balance_key::*;
 
 pub type EncodedKey = Vec<u8>;
 
 #[derive(Debug)]
 pub struct PolkadexBalanceStorage {
     /// map (tokenID, AccountID) -> (balance free, balance reserved)
-    pub storage: HashMap<EncodedKey, Balances>,
-}
-
-fn balance_change(account: PolkadexBalanceKey, new_balance: Balances) -> Result<(), GatewayError> {
-    load_sender()
-        .map_err(|_| GatewayError::UnableToLoadPointer)?
-        .send(ChannelType::Balances(account, new_balance))
-        .map_err(|_| GatewayError::UndefinedBehaviour)?;
-    Ok(())
+    pub storage: HashMap<EncodedKey, polkadex_sgx_primitives::Balances>,
 }
 
 impl PolkadexBalanceStorage {
@@ -63,13 +54,10 @@ impl PolkadexBalanceStorage {
         acc: AccountId,
         free: Balance,
     ) -> Result<(), GatewayError> {
-        let key = PolkadexBalanceKey::from(token, acc.clone()).encode();
+        let key = PolkadexBalanceKey::from(token, acc).encode();
         debug!("creating new entry for key: {:?}", key);
         self.storage.insert(key, Balances::from(free, 0u128));
-        balance_change(
-            PolkadexBalanceKey::from(token, acc),
-            Balances::from(free, 0u128),
-        )?;
+        self.balance_change()?;
         Ok(())
     }
 
@@ -81,14 +69,11 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
         {
             Some(balance) => {
                 balance.free = amt;
-                balance_change(
-                    PolkadexBalanceKey::from(token, acc),
-                    Balances::from(amt, balance.reserved),
-                )?;
+                self.balance_change()?;
                 Ok(())
             }
             None => {
@@ -106,14 +91,11 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
         {
             Some(balance) => {
                 balance.reserved = amt;
-                balance_change(
-                    PolkadexBalanceKey::from(token, acc),
-                    Balances::from(balance.free, amt),
-                )?;
+                self.balance_change()?;
                 Ok(())
             }
             None => {
@@ -135,10 +117,7 @@ impl PolkadexBalanceStorage {
         {
             Some(balance) => {
                 balance.free = balance.free.saturating_add(amt);
-                balance_change(
-                    PolkadexBalanceKey::from(token, acc),
-                    Balances::from(balance.free, balance.reserved),
-                )?;
+                self.balance_change()?;
                 Ok(())
             }
             None => {
@@ -157,14 +136,11 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
         {
             Some(balance) => {
                 balance.free = balance.free.saturating_sub(amt);
-                balance_change(
-                    PolkadexBalanceKey::from(token, acc),
-                    Balances::from(balance.free, balance.reserved),
-                )?;
+                self.balance_change()?;
                 Ok(())
             }
             None => {
@@ -182,17 +158,14 @@ impl PolkadexBalanceStorage {
     ) -> Result<(), GatewayError> {
         match self
             .storage
-            .get_mut(&PolkadexBalanceKey::from(token, acc.clone()).encode())
+            .get_mut(&PolkadexBalanceKey::from(token, acc).encode())
         {
             Some(balance) => {
                 balance.free = balance
                     .free
                     .checked_sub(amt)
                     .ok_or(GatewayError::LimitOrderPriceNotFound)?; //FIXME Error type
-                balance_change(
-                    PolkadexBalanceKey::from(token, acc),
-                    Balances::from(balance.free, balance.reserved),
-                )?;
+                self.balance_change()?;
                 Ok(())
             }
             None => {
@@ -217,10 +190,7 @@ impl PolkadexBalanceStorage {
                     .free
                     .checked_add(amt)
                     .ok_or(GatewayError::LimitOrderPriceNotFound)?; //FIXME Error Type
-                balance_change(
-                    PolkadexBalanceKey::from(token, acc),
-                    Balances::from(balance.free, balance.reserved),
-                )?;
+                self.balance_change()?;
                 Ok(())
             }
             None => {
@@ -230,13 +200,32 @@ impl PolkadexBalanceStorage {
         }
     }
 
+    fn balance_change(&mut self) -> Result<(), GatewayError> {
+        load_sender()
+            .map_err(|_| GatewayError::UnableToLoadPointer)?
+            .send(ChannelType::Balances(self.prepare_to_export()))
+            .map_err(|_| GatewayError::UndefinedBehaviour)?;
+        Ok(())
+    }
+
     pub fn extend_from_disk_data(&mut self, data: Vec<BalancesData>) {
-        self.storage.extend(data.into_iter().map(|entry| {
-            (
-                PolkadexBalanceKey::from(entry.asset_id, entry.account_id).encode(),
-                Balances::from(entry.free, entry.reserved),
-            )
-        }));
+        self.storage.extend(
+            data.into_iter()
+                .map(|entry| (entry.account.encode(), entry.balances)),
+        );
+    }
+
+    pub fn prepare_to_export(&mut self) -> Vec<BalancesData> {
+        self.storage
+            .iter()
+            .map(|(account, balances)| {
+                let account = PolkadexBalanceKey::decode(&mut account.as_slice()).unwrap();
+                BalancesData {
+                    account,
+                    balances: *balances,
+                }
+            })
+            .collect::<Vec<BalancesData>>()
     }
 
     // We can write functions which settle balances for two trades but we need to know the trade structure for it

@@ -18,11 +18,9 @@ use sgx_types::*;
 
 use crate::polkadex_db::balances::load_balances_mirror;
 use crate::polkadex_db::nonce::load_nonce_mirror;
-use crate::polkadex_db::PolkadexBalanceKey;
 use codec::{Decode, Encode};
 use log::*;
-use polkadex_sgx_primitives::RequestId;
-use polkadex_sgx_primitives::{AccountId, AssetId};
+use polkadex_sgx_primitives::{AccountId, BalancesData, RequestId};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::slice;
@@ -317,33 +315,10 @@ pub unsafe extern "C" fn ocall_send_nonce(
 
 #[no_mangle]
 pub unsafe extern "C" fn ocall_send_balances(
-    account_encoded: *const u8,
-    account_size: u32,
-    token_encoded: *const u8,
-    token_size: u32,
-    free: *mut u8,
-    reserved: *mut u8,
-    balance_size: u32,
+    balances_signed: *const u8,
+    balances_size: u32,
 ) -> sgx_status_t {
-    let account_slice: [u8; 32] = if let Ok(account) =
-        slice::from_raw_parts(account_encoded, account_size as usize).try_into()
-    {
-        account
-    } else {
-        error!("Failed to decode account");
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
-    let account = AccountId::from(account_slice);
-
-    let mut token_slice = slice::from_raw_parts(token_encoded, token_size as usize);
-    let token = if let Ok(token) = AssetId::decode(&mut token_slice) {
-        token
-    } else {
-        error!("Failed to decode AssetId");
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
-
-    let account = PolkadexBalanceKey::from(token, account);
+    let mut balances_slice: &[u8] = slice::from_raw_parts(balances_signed, balances_size as usize);
 
     let mutex = if let Ok(mutex) = load_balances_mirror() {
         mutex
@@ -358,16 +333,12 @@ pub unsafe extern "C" fn ocall_send_balances(
         return sgx_status_t::SGX_ERROR_UNEXPECTED;
     };
 
-    let (free, reserved) = if let (Ok(free), Ok(reserved)) = (
-        u128::decode(&mut slice::from_raw_parts(free, balance_size as usize)),
-        u128::decode(&mut slice::from_raw_parts(reserved, balance_size as usize)),
-    ) {
-        (free, reserved)
-    } else {
-        error!("Failed to decode balances");
-        return sgx_status_t::SGX_ERROR_UNEXPECTED;
-    };
+    balances_mirror.append(
+        substratee_worker_primitives::signed::SignedData::<Vec<BalancesData>>::decode(
+            &mut balances_slice,
+        )
+        .unwrap(),
+    );
 
-    balances_mirror.write(account, free, reserved);
     sgx_status_t::SGX_SUCCESS
 }

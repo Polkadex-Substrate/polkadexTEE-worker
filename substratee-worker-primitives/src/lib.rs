@@ -2,6 +2,7 @@
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
 pub mod block;
+pub mod signed;
 
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
