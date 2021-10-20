@@ -76,7 +76,7 @@ pub mod enclave {
 pub mod node {
     // you may have to update these indices upon new builds of the runtime
     // you can get the index from metadata, counting modules starting with zero
-    pub static SUBSTRATEE_REGISTRY_MODULE: u8 = 35u8;
+    pub static SUBSTRATEE_REGISTRY_MODULE: u8 = 36u8;
     pub static REGISTER_ENCLAVE: u8 = 0u8;
     //pub static UNREGISTER_ENCLAVE: u8 = 1u8;
     pub static CALL_WORKER: u8 = 2u8;
@@ -89,7 +89,7 @@ pub mod node {
     pub static RUNTIME_TRANSACTION_VERSION: u32 = 2;
 
     // Polkadex Module Constants ( this should be updated if order of modules in the runtime is changed
-    pub static OCEX_MODULE: u8 = 36u8;
+    pub static OCEX_MODULE: u8 = 37u8;
     pub static OCEX_REGISTER: u8 = 3u8;
     pub static OCEX_ADD_PROXY: u8 = 4u8;
     pub static OCEX_REMOVE_PROXY: u8 = 5u8;

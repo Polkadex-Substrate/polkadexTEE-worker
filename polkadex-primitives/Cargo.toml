@@ -15,7 +15,7 @@ sp-std = { branch = "master", version = "4.0.0-dev", default-features = false, g
 sp-core = { branch = "master", version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git"}
 
 # polkadex
-polkadex-primitives = { git = "https://github.com/Polkadex-Substrate/polkadex-primitives", branch = "main", default-features=false}
+polkadex-primitives = { git = "https://github.com/Polkadex-Substrate/polkadex-primitives", branch = "master", default-features = false }
 
 # sgx
 sgx_tstd = { rev = "v1.1.3", default-features = false, features = ["untrusted_fs","net","backtrace"], git = "https://github.com/apache/teaclave-sgx-sdk.git", optional = true}

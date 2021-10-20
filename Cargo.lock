@@ -913,7 +913,7 @@ dependencies = [
 [[package]]
 name = "erc20-pdex-migration-pallet"
 version = "1.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#2274b5acbd4319e395f9f049da9e2c96af1c827c"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2406,7 +2406,7 @@ dependencies = [
 [[package]]
 name = "node-polkadex-runtime"
 version = "3.0.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#2274b5acbd4319e395f9f049da9e2c96af1c827c"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
 dependencies = [
  "erc20-pdex-migration-pallet",
  "frame-election-provider-support",
@@ -2419,6 +2419,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "orml-vesting",
+ "pallet-assets",
  "pallet-authority-discovery",
  "pallet-authorship",
  "pallet-babe",
@@ -2437,6 +2438,7 @@ dependencies = [
  "pallet-membership",
  "pallet-multisig",
  "pallet-offences",
+ "pallet-polkadex-ido-primitives",
  "pallet-polkapool",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -2454,8 +2456,10 @@ dependencies = [
  "pallet-treasury",
  "pallet-utility",
  "parity-scale-codec",
+ "polkadex-ido",
+ "polkadex-ido-runtime-api",
  "polkadex-ocex",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=master)",
+ "polkadex-primitives",
  "smallvec 1.7.0",
  "sp-api",
  "sp-authority-discovery",
@@ -2718,6 +2722,19 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-io 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=master)",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-assets"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=master#dd297887c653e344c566e976c050b01f7dea8eef"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
  "sp-runtime",
  "sp-std",
 ]
@@ -3041,9 +3058,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-polkadex-ido-primitives"
+version = "0.1.0"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
+dependencies = [
+ "parity-scale-codec",
+ "polkadex-primitives",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-polkapool"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#2274b5acbd4319e395f9f049da9e2c96af1c827c"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3051,7 +3081,7 @@ dependencies = [
  "orml-traits",
  "pallet-babe",
  "parity-scale-codec",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=master)",
+ "polkadex-primitives",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "sp-arithmetic",
@@ -3541,9 +3571,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 
 [[package]]
+name = "polkadex-ido"
+version = "0.1.0"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-polkadex-ido-primitives",
+ "parity-scale-codec",
+ "polkadex-primitives",
+ "rand 0.8.4",
+ "rand_chacha 0.3.1",
+ "rustc-hex",
+ "serde",
+ "sp-core",
+ "sp-io 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=master)",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "polkadex-ido-runtime-api"
+version = "0.1.0"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
+dependencies = [
+ "pallet-polkadex-ido-primitives",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "polkadex-ocex"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#2274b5acbd4319e395f9f049da9e2c96af1c827c"
+source = "git+https://github.com/Polkadex-Substrate/Polkadex?branch=develop#6d1884cef6b25a25298b86726c1797997d40404b"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3554,7 +3621,7 @@ dependencies = [
  "pallet-teerex",
  "pallet-timestamp",
  "parity-scale-codec",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=master)",
+ "polkadex-primitives",
  "polkadex-sgx-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadexTEE-worker?branch=mz-substrate-master)",
  "rustc-hex",
  "serde",
@@ -3567,38 +3634,10 @@ dependencies = [
 [[package]]
 name = "polkadex-primitives"
 version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/polkadex-primitives?branch=main#672e9e9a85b46452535835a4d0b8e8fe8d0216c6"
+source = "git+https://github.com/Polkadex-Substrate/polkadex-primitives?branch=master#381884d509f28f43afb7171b887c10b58cc78709"
 dependencies = [
  "frame-system",
  "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-application-crypto",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
-name = "polkadex-primitives"
-version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=master#a36166b4786317c832f4dace9b828a558c651af2"
-dependencies = [
- "frame-system",
- "parity-scale-codec",
- "serde",
- "sp-application-crypto",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
-name = "polkadex-primitives"
-version = "0.1.0"
-source = "git+https://github.com/Polkadex-Substrate/polkadex-primitives#672e9e9a85b46452535835a4d0b8e8fe8d0216c6"
-dependencies = [
- "frame-system",
- "parity-scale-codec",
- "scale-info",
  "serde",
  "sp-application-crypto",
  "sp-core",
@@ -3611,7 +3650,7 @@ version = "0.1.0"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives?branch=main)",
+ "polkadex-primitives",
  "sgx_tstd",
  "sp-core",
  "sp-std",
@@ -3624,7 +3663,7 @@ source = "git+https://github.com/Polkadex-Substrate/polkadexTEE-worker?branch=mz
 dependencies = [
  "frame-support",
  "parity-scale-codec",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives.git?branch=master)",
+ "polkadex-primitives",
  "sp-core",
  "sp-std",
 ]
@@ -5861,7 +5900,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "parking_lot 0.11.2",
- "polkadex-primitives 0.1.0 (git+https://github.com/Polkadex-Substrate/polkadex-primitives)",
+ "polkadex-primitives",
  "polkadex-sgx-primitives 0.1.0",
  "primitive-types",
  "rust-crypto",
@@ -6372,7 +6411,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
  "cfg-if 1.0.0",
- "rand 0.3.23",
+ "rand 0.6.5",
  "static_assertions",
 ]
 
