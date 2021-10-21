@@ -25,32 +25,32 @@ jobs:
     runs-on: self-hosted
     container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Rust and WASM Environment
-        run: ./ci/install_rust.sh
-      - name: Build Enclave and TEE-Worker
-        run: make
-      - name: Run Enclave
-        run: ./bin/substratee-worker mrenclave > ./mrenclave.b58
-      - name: Run Client
-        run: cd client && ./integration_testing.py -p 9994 -P 2094
-      - name: Check out Polkadex repo
+      - name: Check out openware-images repo
         uses: actions/checkout@v2
         with:
-          repository: Polkadex-Substrate/Polkadex
-          ref: old-dev
-          path: Polkadex
-      - name: Build Polkadex Node
-        run: cd Polkadex && cargo build --release
-      - name: Run Polkadex Node as Nohup
-        run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
-      # - name: Check out openware-images repo
+          repository: Polkadex-Substrate/openware-images
+          ref: master
+          path: openware-images
+          token: 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
+      # - uses: actions/checkout@v2
+      # - name: Install Rust and WASM Environment
+      #   run: ./ci/install_rust.sh
+      # - name: Build Enclave and TEE-Worker
+      #   run: make
+      # - name: Run Enclave
+      #   run: ./bin/substratee-worker mrenclave > ./mrenclave.b58
+      # - name: Run Client
+      #   run: cd client && ./integration_testing.py -p 9994 -P 2094
+      # - name: Check out Polkadex repo
       #   uses: actions/checkout@v2
       #   with:
-      #     repository: Polkadex-Substrate/openware-images
-      #     ref: master
-      #     path: openware-images
-      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     repository: Polkadex-Substrate/Polkadex
+      #     ref: old-dev
+      #     path: Polkadex  
+      # - name: Build Polkadex Node
+      #   run: cd Polkadex && cargo build --release
+      # - name: Run Polkadex Node as Nohup
+      #   run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &      
       # - name: Reset openware-images
       #   run: cd openware-images && make reset init
       
