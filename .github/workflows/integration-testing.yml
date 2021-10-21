@@ -29,8 +29,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: Polkadex-Substrate/openware-images
+          ref: master
           path: openware-images
-          token: abc
+          token: ${{ secrets.SSH_KEY_OPENWARE }}
       # - uses: actions/checkout@v2
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
