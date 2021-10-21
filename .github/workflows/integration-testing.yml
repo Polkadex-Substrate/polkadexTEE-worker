@@ -28,10 +28,7 @@ jobs:
       - name: Prepare ssh key inside ssh folder
         env:
             SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo `${{ secrets.SSH_KEY_OPENWARE }}` > /home/runner/.ssh/id_rsa && \
-          chmod 600 /home/runner/.ssh/id_rsa && \
-          ssh-agent -a $SSH_AUTH_SOCK > /dev/null && \
-          ssh-add /home/runner/.ssh/id_rsa
+        run: mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo `${{ secrets.SSH_KEY_OPENWARE }}` > /home/runner/.ssh/id_rsa && chmod 600 /home/runner/.ssh/id_rsa && ssh-agent -a $SSH_AUTH_SOCK > /dev/null && ssh-add /home/runner/.ssh/id_rsa
       - name: Check out openware-images repo
         run: git clone git@github.com:Polkadex-Substrate/openware-images.git
       # - uses: actions/checkout@v2
