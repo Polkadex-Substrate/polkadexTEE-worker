@@ -30,6 +30,10 @@ jobs:
         run: ./ci/install_rust.sh
       - name: Build Enclave and TEE-Worker
         run: make
+      - name: Run Enclave
+        run: ./bin/substratee-worker mrenclave > ./mrenclave.b58
+      - name: Run Client
+        run: cd client && ./integration_testing.py -p 9994 -P 2094
       - name: Check out Polkadex repo
         uses: actions/checkout@v2
         with:
