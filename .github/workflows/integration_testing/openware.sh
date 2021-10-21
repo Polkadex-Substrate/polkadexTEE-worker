@@ -1,7 +1,7 @@
 #!/usr/bin/expect
 
 set timeout -1
-spawn ./openware-exec.sh
+spawn ./.github/workflows/integration_testing/openware-exec.sh
 
 expect "mysql>"
 send -- "INSERT INTO members(uid,email,level,role,state,created_at,updated_at,username) VALUES('ALICE','protected',3,'member','active','2021-05-20 14:43:58','2021-05-20 14:41:41', '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY');\n"

@@ -49,7 +49,6 @@ jobs:
       - name: Run SQL queries
         run: |
             chmod 700 ./.github/workflows/integration_testing/openware.sh
-            chmod 700 ./.github/workflows/integration_testing/openware-exec.sh
             ./.github/workflows/integration_testing/openware.sh
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
