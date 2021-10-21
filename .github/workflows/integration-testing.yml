@@ -26,15 +26,10 @@ jobs:
     container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
       - uses: actions/checkout@v2
-      - name: Install Docker
-        run: sudo apt update && \
-          sudo apt install apt-transport-https ca-certificates curl software-properties-common && \
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && \
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable" && \
-          sudo apt update && \
-          apt-cache policy docker-ce
-      - name: Docker start
-        run: chmod 700 ./docker-start.sh && ./docker-start.sh
+      - name: Install Rust and WASM Environment
+        run: ./ci/install_rust.sh
+      - name: Build Enclave and TEE-Worker
+        run: make
       - name: Check out Polkadex repo
         uses: actions/checkout@v2
         with:
