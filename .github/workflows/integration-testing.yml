@@ -34,7 +34,7 @@ jobs:
       - name: Build Polkadex Node
         run: cd Polkadex && cargo build --release
       - name: Run Polkadex Node as Nohup
-        run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994
+        run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
       - name: Check out openware-images repo
         uses: actions/checkout@v2
         with:
