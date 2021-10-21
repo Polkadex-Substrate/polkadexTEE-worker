@@ -203,7 +203,7 @@ impl PolkadexBalanceStorage {
     fn balance_change(&mut self) -> Result<(), GatewayError> {
         load_sender()
             .map_err(|_| GatewayError::UnableToLoadPointer)?
-            .send(ChannelType::Balances(self.prepare_to_export()))
+            .send(ChannelType::Balances(self.prepare_to_export()?))
             .map_err(|_| GatewayError::UndefinedBehaviour)?;
         Ok(())
     }
@@ -215,17 +215,20 @@ impl PolkadexBalanceStorage {
         );
     }
 
-    pub fn prepare_to_export(&mut self) -> Vec<BalancesData> {
+    pub fn prepare_to_export(&mut self) -> Result<Vec<BalancesData>, GatewayError> {
         self.storage
             .iter()
-            .map(|(account, balances)| {
-                let account = PolkadexBalanceKey::decode(&mut account.as_slice()).unwrap();
-                BalancesData {
-                    account,
-                    balances: *balances,
-                }
-            })
-            .collect::<Vec<BalancesData>>()
+            .map(
+                |(account, balances)| -> Result<BalancesData, GatewayError> {
+                    let account = PolkadexBalanceKey::decode(&mut account.as_slice())
+                        .map_err(|_| GatewayError::UndefinedBehaviour)?;
+                    Ok(BalancesData {
+                        account,
+                        balances: *balances,
+                    })
+                },
+            )
+            .collect::<Result<Vec<BalancesData>, GatewayError>>()
     }
 
     // We can write functions which settle balances for two trades but we need to know the trade structure for it

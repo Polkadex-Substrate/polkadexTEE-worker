@@ -334,10 +334,15 @@ pub unsafe extern "C" fn ocall_send_balances(
     };
 
     balances_mirror.append(
-        substratee_worker_primitives::signed::SignedData::<Vec<BalancesData>>::decode(
-            &mut balances_slice,
-        )
-        .unwrap(),
+        if let Ok(signed_data) =
+            substratee_worker_primitives::signed::SignedData::<Vec<BalancesData>>::decode(
+                &mut balances_slice,
+            )
+        {
+            signed_data
+        } else {
+            return sgx_status_t::SGX_ERROR_UNEXPECTED;
+        },
     );
 
     sgx_status_t::SGX_SUCCESS

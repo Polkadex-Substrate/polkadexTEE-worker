@@ -470,9 +470,15 @@ pub unsafe extern "C" fn send_disk_data(encoded_data: *const u8, data_size: usiz
             return sgx_status_t::SGX_ERROR_UNEXPECTED;
         };
 
+    let pair = if let Ok(pair) = ed25519::unseal_pair() {
+        pair
+    } else {
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    };
+
     let balances = if let Some(signature) = decoded.balances_signature.clone() {
         if SignedData::from(decoded.balances.clone(), signature)
-            .verify_signature(AccountId::from(ed25519::unseal_pair().unwrap().public()))
+            .verify_signature(AccountId::from(pair.public()))
         {
             decoded.balances.clone()
         } else {
@@ -525,7 +531,13 @@ pub unsafe extern "C" fn run_db_thread() -> sgx_status_t {
             Ok(ChannelType::Balances(balances)) => {
                 let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
 
-                let signed_balances = SignedData::new(balances, &ed25519::unseal_pair().unwrap());
+                let pair = if let Ok(pair) = ed25519::unseal_pair() {
+                    pair
+                } else {
+                    return sgx_status_t::SGX_ERROR_UNEXPECTED;
+                };
+
+                let signed_balances = SignedData::new(balances, &pair);
 
                 let balances_encoded = signed_balances.encode();
                 let balances_encoded: &[u8] = balances_encoded.as_ref();
