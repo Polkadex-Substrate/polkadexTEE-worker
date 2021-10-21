@@ -31,7 +31,7 @@ jobs:
           repository: Polkadex-Substrate/openware-images
           ref: master
           path: openware-images
-          token: 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
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out Polkadex repo
         uses: actions/checkout@v2
         with:
