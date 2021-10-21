@@ -25,10 +25,12 @@ jobs:
     runs-on: self-hosted
     container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
-      - name: Prepare ssh key inside ssh folder
-        env:
-            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa && echo `${{ secrets.SSH_KEY_OPENWARE }}` > /home/runner/.ssh/id_rsa && chmod 600 /home/runner/.ssh/id_rsa && ssh-agent -a $SSH_AUTH_SOCK > /dev/null && ssh-add /home/runner/.ssh/id_rsa
+      - name: Create ssh folder
+        run: mkdir -p /home/runner/.ssh && touch /home/runner/.ssh/id_rsa
+      - name: Fill id_rsa file content
+        run: echo `${{ secrets.SSH_KEY_OPENWARE }}` > /home/runner/.ssh/id_rsa
+      - name: Change permission of id_rsa file
+        run: chmod 600 /home/runner/.ssh/id_rsa && ssh-agent -a /tmp/ssh_agent.sock > /dev/null && ssh-add /home/runner/.ssh/id_rsa
       - name: Check out openware-images repo
         run: git clone git@github.com:Polkadex-Substrate/openware-images.git
       # - uses: actions/checkout@v2
