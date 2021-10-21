@@ -36,12 +36,12 @@ jobs:
       # - name: Check out openware-images repo
       #   run: git clone git@github.com:Polkadex-Substrate/openware-images.git
       - name: Check out Openware repo
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           repository: Polkadex-Substrate/openware-images
           ref: master
           path: openware-images
-          token: abd
+          token: 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
       # - uses: actions/checkout@v2
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
