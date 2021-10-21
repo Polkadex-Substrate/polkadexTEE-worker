@@ -25,13 +25,9 @@ jobs:
     runs-on: self-hosted
     container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
-      - name: Check out openware-images repo
-        uses: actions/checkout@v2
-        with:
-          repository: Polkadex-Substrate/openware-images
-          ref: master
-          path: openware-images
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
+      - name: Docker start
+        run: ./docker-start.sh
       - name: Check out Polkadex repo
         uses: actions/checkout@v2
         with:
@@ -42,8 +38,13 @@ jobs:
         run: cd Polkadex && cargo build --release
       - name: Run Polkadex Node as Nohup
         run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
-      - name: Reset openware-images
-        run: cd openware-images && make reset init
-      - uses: actions/checkout@v2
-        with:
-          path: polkadexTEE-worker
+      # - name: Check out openware-images repo
+      #   uses: actions/checkout@v2
+      #   with:
+      #     repository: Polkadex-Substrate/openware-images
+      #     ref: master
+      #     path: openware-images
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Reset openware-images
+      #   run: cd openware-images && make reset init
+      
