@@ -30,7 +30,9 @@ jobs:
       - name: Fill id_rsa file content
         run: echo `${{ secrets.SSH_KEY_OPENWARE }}` > /home/runner/.ssh/id_rsa
       - name: Change permission of id_rsa file
-        run: chmod 600 /home/runner/.ssh/id_rsa && ssh-add /home/runner/.ssh/id_rsa
+        run: chmod 600 /home/runner/.ssh/id_rsa
+      - name: Add ssh file
+        run: ssh-add /home/runner/.ssh/id_rsa
       - name: Check out openware-images repo
         run: git clone git@github.com:Polkadex-Substrate/openware-images.git
       # - uses: actions/checkout@v2
