@@ -39,6 +39,7 @@ jobs:
         uses: actions/checkout@v1
         with:
           repository: Polkadex-Substrate/openware-images
+          ref: master
           path: openware-images
           token: abd
       # - uses: actions/checkout@v2
