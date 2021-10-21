@@ -36,7 +36,7 @@ jobs:
       # - name: Check out openware-images repo
       #   run: git clone git@github.com:Polkadex-Substrate/openware-images.git
       - name: Check out Openware repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v1
         with:
           repository: Polkadex-Substrate/openware-images
           path: openware-images
