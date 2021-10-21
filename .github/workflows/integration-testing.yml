@@ -44,8 +44,8 @@ jobs:
             apt --assume-yes install docker-ce
       - name: Install Docker compose
         run: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
-      - name: Reset openware-images docker containers
-        run: cd openware-images && docker container prune && docker volume prune && make reset init
+      # - name: Reset openware-images docker containers
+      #   run: cd openware-images && docker container prune && docker volume prune && make reset init
       - name: Run SQL queries
         run: |
             chmod 700 ./.github/workflows/integration_testing/openware.sh
