@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Docker start
-        run: ./docker-start.sh
+        run: chmod 700 ./docker-start.sh && ./docker-start.sh
       - name: Check out Polkadex repo
         uses: actions/checkout@v2
         with:
