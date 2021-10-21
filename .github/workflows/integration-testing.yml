@@ -25,13 +25,13 @@ jobs:
     runs-on: self-hosted
     container: "scssubstratee/substratee_dev:1804-2.12-1.1.3-001"
     steps:
+      - name: Prepare ssh key inside ssh folder
+        run: cd ~/.ssh && touch ./id_rsa && echo "${{ secrets.SSH_KEY_OPENWARE }}"" >> ./id_rsa
       - name: Check out openware-images repo
         uses: actions/checkout@v2
         with:
           repository: Polkadex-Substrate/openware-images
-          ref: master
           path: openware-images
-          token: ${{ secrets.SSH_KEY_OPENWARE }}
       # - uses: actions/checkout@v2
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
