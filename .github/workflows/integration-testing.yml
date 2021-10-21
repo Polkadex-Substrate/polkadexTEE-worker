@@ -30,7 +30,7 @@ jobs:
         with:
           repository: Polkadex-Substrate/openware-images
           path: openware-images
-          token: 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
+          token: abc
       # - uses: actions/checkout@v2
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
