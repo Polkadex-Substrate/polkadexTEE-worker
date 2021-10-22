@@ -58,6 +58,16 @@ jobs:
         run: |
             chmod 700 ./.github/workflows/integration_testing/openware.sh
             ./.github/workflows/integration_testing/openware.sh
+      - name: Check out Polkadex repo
+        uses: actions/checkout@v2
+        with:
+          repository: Polkadex-Substrate/Polkadex
+          ref: old-dev
+          path: Polkadex  
+      - name: Build Polkadex Node
+        run: cd Polkadex && cargo build --release
+      - name: Run Polkadex Node as Nohup
+        run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
       # - name: Build Enclave and TEE-Worker
@@ -69,16 +79,5 @@ jobs:
       #     ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
       # - name: Run Client
       #   run: cd client && ./integration_testing.py -p 9994 -P 2094
-      # - name: Check out Polkadex repo
-      #   uses: actions/checkout@v2
-      #   with:
-      #     repository: Polkadex-Substrate/Polkadex
-      #     ref: old-dev
-      #     path: Polkadex  
-      # - name: Build Polkadex Node
-      #   run: cd Polkadex && cargo build --release
-      # - name: Run Polkadex Node as Nohup
-      #   run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &      
-      # - name: Reset openware-images
-      #   run: cd openware-images && make reset init
+      
       
