@@ -34,18 +34,18 @@ jobs:
           token: ${{ secrets.INTEGRATION_TOKEN }}
       - name: Install Docker
         run: |
-            apt update
-            apt --assume-yes install apt-transport-https ca-certificates curl software-properties-common 
+            sudo apt update
+            sudo apt --assume-yes install apt-transport-https ca-certificates curl software-properties-common 
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-            apt update
-            apt-cache policy docker-ce
-            apt --assume-yes install docker-ce
+            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+            sudo apt update
+            sudo apt-cache policy docker-ce
+            sudo apt --assume-yes install docker-ce
             docker --version
       - name: Install Docker compose
         run: |
-            curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose
+            sudo curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
             docker-compose --version
       - name: Reset openware-images docker containers
         run: cd openware-images && make up init
