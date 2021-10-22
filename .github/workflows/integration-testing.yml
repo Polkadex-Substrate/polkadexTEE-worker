@@ -43,6 +43,7 @@ jobs:
             apt-cache policy docker-ce
             apt --assume-yes install docker-ce
             docker --version
+            docker-compose --version
       - name: Install Docker compose
         run: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
       - name: Reset openware-images docker containers
@@ -54,9 +55,12 @@ jobs:
       # - name: Install Rust and WASM Environment
       #   run: ./ci/install_rust.sh
       # - name: Build Enclave and TEE-Worker
-      #   run: make
+      #   run: BENCHMARK=1 make
       # - name: Run Enclave
-      #   run: ./bin/substratee-worker mrenclave > ./mrenclave.b58
+      #   run: |
+      #     cd bin
+      #     ./substratee-worker mrenclave > ./mrenclave.b58
+      #     ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
       # - name: Run Client
       #   run: cd client && ./integration_testing.py -p 9994 -P 2094
       # - name: Check out Polkadex repo
