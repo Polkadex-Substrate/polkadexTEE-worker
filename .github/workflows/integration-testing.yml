@@ -32,6 +32,8 @@ jobs:
           ref: master
           path: openware-images
           token: ${{ secrets.INTEGRATION_TOKEN }}
+      - name: Install Expect command
+        run: sudo apt install expect
       - name: Install Docker
         run: |
             sudo apt update
@@ -48,7 +50,10 @@ jobs:
             sudo chmod +x /usr/local/bin/docker-compose
             docker-compose --version
       - name: Reset openware-images docker containers
-        run: cd openware-images && make up init
+        run: |
+            cd openware-images
+            make up init
+            make reset init
       - name: Run SQL queries
         run: |
             chmod 700 ./.github/workflows/integration_testing/openware.sh
