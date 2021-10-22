@@ -1,9 +1,9 @@
 #!/usr/bin/expect
 
 set timeout -1
-spawn polkadexTEE-worker/docker-start.sh
+spawn ./docker-start.sh
 
 expect "root@"
-send -- "cd work\rcd polkadexTEE-worker\r./ci/install_rust.sh\rmake\rexit\r"
+send -- "cd work\rcd polkadexTEE-worker\r./ci/install_rust.sh\rBENCHMARK=1 make\rexit\r"
 
 expect eof

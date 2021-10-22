@@ -70,14 +70,21 @@ jobs:
         run: cd Polkadex && cargo build --release
       - name: Run Polkadex Node as Nohup
         run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
-      # - name: Build Enclave and TEE-Worker
-      #   run: BENCHMARK=1 make
-      # - name: Run Enclave
-      #   run: |
-      #     cd bin
-      #     ./substratee-worker mrenclave > ./mrenclave.b58
-      #     ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
-      # - name: Run Client
-      #   run: cd client && ./integration_testing.py -p 9994 -P 2094
+      - name: Run docker container for enclave
+        run: |
+            chmod 700 ./docker-start.sh
+            chmod 700 ./.github/workflows/integration_testing/tee.sh
+            ./.github/workflows/integration_testing/tee.sh
+      - name: Run Enclave
+        run: |
+          cd bin
+          touch spid.txt key.txt
+          ./substratee-worker init-shard
+          ./substratee-worker shielding-key
+          ./substratee-worker shielding-key
+          ./substratee-worker mrenclave > ./mrenclave.b58
+          ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
+      - name: Run Client
+        run: cd client && ./integration_testing.py -p 9994 -P 2094
       
       
