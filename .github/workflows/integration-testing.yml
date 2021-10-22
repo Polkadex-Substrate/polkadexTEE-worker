@@ -43,9 +43,11 @@ jobs:
             apt-cache policy docker-ce
             apt --assume-yes install docker-ce
             docker --version
-            docker-compose --version
       - name: Install Docker compose
-        run: curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+        run: |
+            curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+            docker-compose --version
       - name: Reset openware-images docker containers
         run: cd openware-images && make up init
       - name: Run SQL queries
