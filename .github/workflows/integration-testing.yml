@@ -49,27 +49,27 @@ jobs:
             sudo curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
             docker-compose --version
-      - name: Reset openware-images docker containers
-        run: |
-            cd openware-images
-            make up init
-            make reset init
-      - name: Run SQL queries
-        run: |
-            chmod 700 ./.github/workflows/integration_testing/openware.sh
-            ./.github/workflows/integration_testing/openware.sh
-      - name: Check out Polkadex repo
-        uses: actions/checkout@v2
-        with:
-          repository: Polkadex-Substrate/Polkadex
-          ref: old-dev
-          path: Polkadex  
-      - name: Install Rust and WASM Environment
-        run: ./ci/install_rust.sh
-      - name: Build Polkadex Node
-        run: cd Polkadex && cargo build --release
-      - name: Run Polkadex Node as Nohup
-        run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
+      # - name: Reset openware-images docker containers
+      #   run: |
+      #       cd openware-images
+      #       make up init
+      #       make reset init
+      # - name: Run SQL queries
+      #   run: |
+      #       chmod 700 ./.github/workflows/integration_testing/openware.sh
+      #       ./.github/workflows/integration_testing/openware.sh
+      # - name: Check out Polkadex repo
+      #   uses: actions/checkout@v2
+      #   with:
+      #     repository: Polkadex-Substrate/Polkadex
+      #     ref: old-dev
+      #     path: Polkadex  
+      # - name: Install Rust and WASM Environment
+      #   run: ./ci/install_rust.sh
+      # - name: Build Polkadex Node
+      #   run: cd Polkadex && cargo build --release
+      # - name: Run Polkadex Node as Nohup
+      #   run: cd Polkadex && nohup target/release/polkadex-node --dev --tmp --ws-port 9994 >/dev/null 2>&1 &
       - name: Run docker container for enclave
         run: |
             chmod 700 ./docker-start.sh
@@ -80,17 +80,15 @@ jobs:
           cd bin
           ls
           touch spid.txt key.txt
-          echo "init-shard"
-          ./substratee-worker init-shard
-          echo "shielding-key"
-          ./substratee-worker shielding-key
-          echo "signing-key"
-          ./substratee-worker signing-key
+          # echo "init-shard"
+          # ./substratee-worker init-shard
+          # echo "shielding-key"
+          # ./substratee-worker shielding-key
+          # echo "signing-key"
+          # ./substratee-worker signing-key
           echo "mrenclave"
           ./substratee-worker mrenclave > ./mrenclave.b58
           echo "run"
           ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
       - name: Run Client
         run: cd client && ./integration_testing.py -p 9994 -P 2094
-      
-      
