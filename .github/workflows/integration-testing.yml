@@ -49,6 +49,8 @@ jobs:
             sudo curl -L https://github.com/docker/compose/releases/download/1.29.2/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
             sudo chmod +x /usr/local/bin/docker-compose
             docker-compose --version
+      - name: Install additional packages
+        run: sudo apt-get install build-essential pkg-config
       # - name: Reset openware-images docker containers
       #   run: |
       #       cd openware-images
@@ -89,6 +91,6 @@ jobs:
           echo "mrenclave"
           ./substratee-worker mrenclave > ./mrenclave.b58
           echo "run"
-          ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
+          SGX_MODE=SIM ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
       - name: Run Client
         run: cd client && ./integration_testing.py -p 9994 -P 2094
