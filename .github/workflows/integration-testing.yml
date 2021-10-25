@@ -22,7 +22,7 @@ on:
 
 jobs:
   test-polkadexTEE:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
       - name: Check out openware-images repo
@@ -77,7 +77,7 @@ jobs:
             chmod 700 ./docker-start.sh
             chmod 700 ./.github/workflows/integration_testing/tee.sh
             ./.github/workflows/integration_testing/tee.sh
-      - name: Run Enclave
+      - name: Run Enclave (outside of docker.)
         run: |
           cd bin
           touch spid.txt key.txt
