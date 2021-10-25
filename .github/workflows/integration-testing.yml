@@ -80,17 +80,11 @@ jobs:
       - name: Run Enclave
         run: |
           cd bin
-          ls
           touch spid.txt key.txt
-          # echo "init-shard"
-          # ./substratee-worker init-shard
-          # echo "shielding-key"
-          # ./substratee-worker shielding-key
-          # echo "signing-key"
-          # ./substratee-worker signing-key
-          echo "mrenclave"
+          ./substratee-worker init-shard
+          ./substratee-worker shielding-key
+          ./substratee-worker signing-key
           ./substratee-worker mrenclave > ./mrenclave.b58
-          echo "run"
-          SGX_MODE=SIM ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
+          ./substratee-worker -P 2094 -p 9994 -F 8001/api/v2/ws -f 127.0.0.1 run --skip-ra
       - name: Run Client
         run: cd client && ./integration_testing.py -p 9994 -P 2094
