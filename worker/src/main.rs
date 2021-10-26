@@ -341,7 +341,7 @@ fn start_worker<E, T, W>(
     } else {
         enclave
             .perform_ra(
-                genesis_hash,
+                genesis_hash.clone(),
                 nonce,
                 config.ext_api_url.unwrap().as_bytes().to_vec(),
             )
@@ -356,25 +356,27 @@ fn start_worker<E, T, W>(
     let tx_hash = node_api.send_extrinsic(xthex, XtStatus::Finalized).unwrap();
     println!("[<] Extrinsic got finalized. Hash: {:?}\n", tx_hash);
 
-    //crate::db_handler::DBHandler::initialize_mirrors();
+    // ------------------------------------------------------------------------
+    // Load from permanent storage
+    crate::db_handler::DBHandler::initialize_mirrors();
 
-    //crate::db_handler::DBHandler::load_balances_from_ipfs(&api, eid)
-    //    .expect("Failed to load balances from ipfs");
+    crate::db_handler::DBHandler::load_balances_from_ipfs(&node_api, enclave.as_ref())
+        .expect("Failed to load balances from ipfs");
 
-    //crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
+    crate::db_handler::DBHandler::load_from_disk().expect("Failed to load data from disk");
 
     // ------------------------------------------------------------------------
     // Start DB Handler Thread
-    //crate::db_handler::DBHandler::initialize(enclave.get_eid());
+    crate::db_handler::DBHandler::initialize(enclave.get_eid());
 
     let mut latest_head = init_chain_relay(&node_api, enclave.as_ref());
     println!("*** [+] Finished syncing chain relay\n");
 
-    //crate::db_handler::DBHandler::send_data_to_enclave(eid)
-    //    .expect("Failed to send data to enclave");
+    crate::db_handler::DBHandler::send_data_to_enclave(eid)
+        .expect("Failed to send data to enclave");
 
     // start disk & ipfs snapshotting
-    //polkadex_db::start_snapshot_loop(node_api.clone(), enclave.get_eid(), genesis_hash);
+    polkadex_db::start_snapshot_loop(node_api.clone(), enclave.get_eid(), genesis_hash);
 
     // ------------------------------------------------------------------------
     // subscribe to events and react on firing

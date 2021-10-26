@@ -44,7 +44,6 @@ impl DBHandler {
         initialize_orderbook_mirror();
     }
 
-    #[allow(dead_code)]
     pub fn load_balances_from_ipfs<E: EnclaveBase>(
         api: &Api<sr25519::Pair, WsRpcClient>,
         enclave: &E,
