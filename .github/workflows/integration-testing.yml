@@ -44,7 +44,7 @@ jobs:
           path: openware-images
           token: ${{ secrets.INTEGRATION_TOKEN }}
       - name: Install Expect command
-        run: sudo apt --asume-yes install expect
+        run: sudo apt --assume-yes install expect
       - name: Install Docker
         run: |
             sudo apt update
