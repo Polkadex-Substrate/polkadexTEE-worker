@@ -47,7 +47,6 @@ jobs:
         run: sudo apt --assume-yes install expect
       - name: Install Docker
         run: |
-            # source /opt/intel/sgxsdk/environment
             curl https://ipinfo.io/ip
             sudo apt update
             sudo apt --assume-yes install apt-transport-https ca-certificates curl software-properties-common 
