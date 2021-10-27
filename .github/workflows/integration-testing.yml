@@ -47,8 +47,8 @@ jobs:
         run: sudo apt --assume-yes install expect
       - name: Install Docker
         run: |
-            ifconfig -a
-            source /opt/intel/sgxsdk/environmnet
+            source /opt/intel/sgxsdk/environment
+            ifconfig
             sudo apt update
             sudo apt --assume-yes install apt-transport-https ca-certificates curl software-properties-common 
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
