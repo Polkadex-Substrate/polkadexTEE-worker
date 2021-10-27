@@ -178,6 +178,38 @@ pub struct CancelOrder {
     pub order_id: OrderUUID,
 }
 
+impl CancelOrder {
+    pub fn from_order(order: Order, order_id: OrderUUID) -> Self {
+        CancelOrder {
+            user_uid: order.user_uid,
+            market_id: order.market_id,
+            order_id,
+        }
+    }
+}
+
+// Edit Order
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+pub struct EditOrder {
+    pub order_id: OrderUUID,
+    pub value: EditOrderInput,
+}
+
+#[derive(Debug, Clone, Encode, Decode, PartialEq)]
+pub struct EditOrderInput {
+    pub price: Option<PriceAndQuantityType>,
+    pub quantity: PriceAndQuantityType,
+}
+
+impl Order {
+    pub fn edit(&self, edit_order_input: EditOrderInput) -> Self {
+        let mut edited = self.clone();
+        edited.price = edit_order_input.price;
+        edited.quantity = edit_order_input.quantity;
+        edited
+    }
+}
+
 // Deposit Funds
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub struct DepositFund {

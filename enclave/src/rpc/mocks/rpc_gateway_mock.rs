@@ -34,6 +34,7 @@ pub struct RpcGatewayMock {
     pub do_authorize: bool,
     pub balance_to_return: Option<Balances>,
     pub order_uuid: Option<OrderUUID>,
+    pub order: Option<Order>,
     pub nonce: u32,
 }
 
@@ -44,6 +45,7 @@ impl RpcGatewayMock {
             do_authorize: false,
             balance_to_return: None,
             order_uuid: None,
+            order: None,
             nonce: 0u32,
         }
     }
@@ -67,6 +69,18 @@ impl RpcGatewayMock {
         get_place_order_mock.order_uuid = order_uuid;
         get_place_order_mock.do_authorize = do_authorize;
         get_place_order_mock
+    }
+
+    pub fn mock_edit_order(
+        order_uuid: Option<OrderUUID>,
+        order: Option<Order>,
+        do_authorize: bool,
+    ) -> Self {
+        let mut get_edit_order_mock = RpcGatewayMock::default();
+        get_edit_order_mock.order_uuid = order_uuid;
+        get_edit_order_mock.order = order;
+        get_edit_order_mock.do_authorize = do_authorize;
+        get_edit_order_mock
     }
 
     pub fn mock_withdraw(do_authorize: bool) -> Self {

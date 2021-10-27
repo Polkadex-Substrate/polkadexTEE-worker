@@ -73,7 +73,7 @@ use rpc::author::{Author, AuthorApi};
 use rpc::{api::SideChainApi, basic_pool::BasicPool};
 use rpc::{
     io_handler_extensions, polkadex_rpc_gateway, rpc_call_encoder, rpc_cancel_order,
-    rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
+    rpc_edit_order, rpc_get_balance, rpc_withdraw, trusted_operation_verifier,
 };
 
 #[no_mangle]
@@ -180,6 +180,8 @@ pub extern "C" fn test_main_entrance() -> size_t {
         //rpc_place_order::tests::test_given_valid_call_return_order_uuid, TODO: @Bigna this test case is failing ... I need your help with this
         rpc_cancel_order::tests::test_given_valid_order_id_return_success,
         rpc_cancel_order::tests::test_given_order_id_mismatch_then_fail,
+        rpc_edit_order::tests::test_given_valid_order_id_return_success,
+        rpc_edit_order::tests::test_given_order_id_mismatch_then_fail,
         rpc_withdraw::tests::test_given_valid_call_then_succeed,
         rpc_withdraw::tests::test_given_unauthorized_access_then_return_error,
         trusted_operation_verifier::tests::given_valid_operation_in_request_then_decode_succeeds,

@@ -19,7 +19,8 @@
 use crate::ShardIdentifier;
 use codec::Encode;
 use polkadex_sgx_primitives::types::{
-    CancelOrder, DirectRequest, MarketId, Order, OrderSide, OrderType, OrderUUID,
+    CancelOrder, DirectRequest, EditOrder, EditOrderInput, MarketId, Order, OrderSide, OrderType,
+    OrderUUID,
 };
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sp_core::{ed25519 as ed25519_core, Pair, H256};
@@ -59,6 +60,16 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
             base: AssetId::POLKADEX,
         },
         order_id,
+    }
+}
+
+pub fn create_dummy_edit_order(order_id: OrderUUID) -> EditOrder {
+    EditOrder {
+        order_id,
+        value: EditOrderInput {
+            price: Some(100),
+            quantity: 200,
+        },
     }
 }
 

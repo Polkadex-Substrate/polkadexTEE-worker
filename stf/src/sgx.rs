@@ -395,6 +395,7 @@ impl Stf {
             TrustedCall::balance_shield(_, _) => debug!("No storage updates needed..."),
             TrustedCall::place_order(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::cancel_order(_, _, _) => debug!("No storage updates needed..."),
+            TrustedCall::edit_order(_, _, _) => debug!("No storage updates needed..."),
             TrustedCall::withdraw(_, _, _, _) => debug!("No storage updates needed..."),
         };
         key_hashes

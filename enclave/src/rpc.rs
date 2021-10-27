@@ -30,6 +30,7 @@ pub mod rpc_info;
 
 pub mod polkadex_rpc_gateway;
 pub mod rpc_cancel_order;
+pub mod rpc_edit_order;
 pub mod rpc_get_balance;
 pub mod rpc_nonce;
 pub mod rpc_place_order;

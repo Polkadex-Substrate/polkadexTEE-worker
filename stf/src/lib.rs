@@ -41,7 +41,7 @@ pub use sgx_runtime::Index;
 
 use sp_core::crypto::AccountId32;
 
-use polkadex_sgx_primitives::types::{CancelOrder, CurrencyId, Order};
+use polkadex_sgx_primitives::types::{CancelOrder, CurrencyId, EditOrder, Order};
 
 use sp_core::{ed25519, sr25519, Pair, H256};
 use sp_runtime::{traits::Verify, MultiSignature};
@@ -181,6 +181,7 @@ pub enum TrustedCall {
 
     place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
     cancel_order(AccountId, CancelOrder, Option<AccountId>), // (SignerAccount, Order ID, MainAccount (if signer is proxy))
+    edit_order(AccountId, EditOrder, Option<AccountId>),
     withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
 }
 
@@ -195,6 +196,7 @@ impl TrustedCall {
 
             TrustedCall::place_order(signer, _, _) => signer,
             TrustedCall::cancel_order(signer, _, _) => signer,
+            TrustedCall::edit_order(signer, _, _) => signer,
             TrustedCall::withdraw(signer, _, _, _) => signer,
         }
     }
@@ -221,6 +223,11 @@ impl TrustedCall {
                 }
             }
 
+            TrustedCall::edit_order(signer, _, main_account_option) => match main_account_option {
+                Some(main_account) => main_account,
+                None => signer,
+            },
+
             TrustedCall::withdraw(signer, _, _, main_account_option) => match main_account_option {
                 Some(main_account) => main_account,
                 None => signer,
@@ -242,6 +249,10 @@ impl TrustedCall {
             }
 
             TrustedCall::cancel_order(signer, _, main_account_option) => {
+                main_account_option.as_ref().map(|_| signer.clone())
+            }
+
+            TrustedCall::edit_order(signer, _, main_account_option) => {
                 main_account_option.as_ref().map(|_| signer.clone())
             }
 

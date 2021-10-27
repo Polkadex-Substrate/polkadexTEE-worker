@@ -153,6 +153,16 @@ pub fn lock_storage_and_add_order(
     Ok(orderbook.add_order(order_uuid, order))
 }
 
+pub fn lock_storage_and_read_order(order_uuid: OrderUUID) -> Result<Order, GatewayError> {
+    let mutex = load_orderbook()?;
+    // TODO: Handle this unwrap
+    let orderbook: SgxMutexGuard<OrderbookStorage> = mutex.lock().unwrap();
+    Ok(orderbook
+        .read_order(&order_uuid)
+        .ok_or(GatewayError::OrderNotFound)?
+        .clone())
+}
+
 // pub fn lock_storage_and_check_order_in_orderbook(
 //     order_uuid: OrderUUID,
 // ) -> Result<bool, GatewayError> {
