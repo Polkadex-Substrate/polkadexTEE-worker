@@ -28,11 +28,11 @@ use substratee_sgx_io::{seal, unseal, SealedIO};
 pub struct Ed25519Seal;
 
 impl SealedIO for Ed25519Seal {
-	type Error = Error;
-	type Unsealed = ed25519::Pair;
+    type Error = Error;
+    type Unsealed = ed25519::Pair;
 
-	fn unseal() -> Result<ed25519::Pair> {
-		let raw = unseal(SEALED_SIGNER_SEED_FILE)?;
+    fn unseal() -> Result<ed25519::Pair> {
+        let raw = unseal(SEALED_SIGNER_SEED_FILE)?;
 
         let key = ed25519::Pair::from_seed_slice(&raw)
             .map_err(|e| Error::Other(format!("{:?}", e).into()))?;
@@ -40,9 +40,11 @@ impl SealedIO for Ed25519Seal {
         Ok(key.into())
     }
 
-	fn seal(unsealed: Self::Unsealed) -> Result<()> {
-		Ok(unsealed.seed().using_encoded(|bytes| seal(bytes, SEALED_SIGNER_SEED_FILE))?)
-	}
+    fn seal(unsealed: Self::Unsealed) -> Result<()> {
+        Ok(unsealed
+            .seed()
+            .using_encoded(|bytes| seal(bytes, SEALED_SIGNER_SEED_FILE))?)
+    }
 }
 
 pub fn create_sealed_if_absent() -> Result<()> {

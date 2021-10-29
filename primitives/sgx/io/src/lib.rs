@@ -31,11 +31,11 @@ pub trait IO: Sized {
 pub trait SealedIO: Sized {
     type Error: From<std::io::Error>;
 
-	/// Type that is unsealed.
-	type Unsealed;
+    /// Type that is unsealed.
+    type Unsealed;
 
-	fn unseal() -> Result<Self::Unsealed, Self::Error>;
-	fn seal(unsealed: Self::Unsealed) -> Result<(), Self::Error>;
+    fn unseal() -> Result<Self::Unsealed, Self::Error>;
+    fn seal(unsealed: Self::Unsealed) -> Result<(), Self::Error>;
 }
 
 pub fn read(path: &str) -> IOResult<Vec<u8>> {

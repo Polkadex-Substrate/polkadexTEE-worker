@@ -53,28 +53,28 @@ impl Aes {
 pub struct AesSeal;
 
 impl SealedIO for AesSeal {
-	type Error = Error;
-	type Unsealed = Aes;
+    type Error = Error;
+    type Unsealed = Aes;
 
-	fn unseal() -> Result<Self::Unsealed> {
-		Ok(unseal(AES_KEY_FILE_AND_INIT_V).map(|b| Decode::decode(&mut b.as_slice()))??)
-	}
+    fn unseal() -> Result<Self::Unsealed> {
+        Ok(unseal(AES_KEY_FILE_AND_INIT_V).map(|b| Decode::decode(&mut b.as_slice()))??)
+    }
 
-	fn seal(unsealed: Self::Unsealed) -> Result<()> {
-		Ok(unsealed.using_encoded(|bytes| seal(bytes, AES_KEY_FILE_AND_INIT_V))?)
-	}
+    fn seal(unsealed: Self::Unsealed) -> Result<()> {
+        Ok(unsealed.using_encoded(|bytes| seal(bytes, AES_KEY_FILE_AND_INIT_V))?)
+    }
 }
 
 impl StateCrypto for Aes {
     type Error = Error;
 
-	fn encrypt(data: &mut [u8]) -> Result<()> {
-		AesSeal::unseal().map(|aes| de_or_encrypt(&aes, data))?
-	}
+    fn encrypt(data: &mut [u8]) -> Result<()> {
+        AesSeal::unseal().map(|aes| de_or_encrypt(&aes, data))?
+    }
 
-	fn decrypt(data: &mut [u8]) -> Result<()> {
-		AesSeal::unseal().map(|aes| de_or_encrypt(&aes, data))?
-	}
+    fn decrypt(data: &mut [u8]) -> Result<()> {
+        AesSeal::unseal().map(|aes| de_or_encrypt(&aes, data))?
+    }
 }
 
 impl TryFrom<&Aes> for AesOfb {
@@ -102,9 +102,9 @@ pub fn create_sealed() -> Result<()> {
 
     let mut rand = StdRng::new()?;
 
-	rand.fill_bytes(&mut key);
-	rand.fill_bytes(&mut iv);
-	AesSeal::seal(Aes::new(key, iv))
+    rand.fill_bytes(&mut key);
+    rand.fill_bytes(&mut iv);
+    AesSeal::seal(Aes::new(key, iv))
 }
 
 /// If AES acts on the encrypted data it decrypts and vice versa
