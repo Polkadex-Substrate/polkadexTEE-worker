@@ -655,10 +655,7 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair, WsRpcClient>, accountid
         api.signer = Some(alice);
 
         println!("[+] bootstrap funding Enclave form Alice's funds");
-        let xt = api.balance_transfer(
-            GenericAddress::Id(accountid.clone()),
-            10_000_000_000_000,
-        );
+        let xt = api.balance_transfer(GenericAddress::Id(accountid.clone()), 10_000_000_000_000);
         let xt_hash = api
             .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
             .unwrap();
