@@ -641,7 +641,7 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair, WsRpcClient>, accountid
     let alice_acc = AccountId32::from(*alice.public().as_array_ref());
     info!("encoding Alice's AccountId = {:?}", alice_acc.encode());
 
-    let free = api.get_free_balance(&alice_acc);
+    let free = api.get_free_balance(&alice_acc).unwrap();
     info!("    Alice's free balance = {:?}", free);
     let nonce = api.get_nonce_of(&alice_acc).unwrap();
     info!("    Alice's Account Nonce is {}", nonce);
@@ -650,14 +650,14 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair, WsRpcClient>, accountid
     let free = api.get_free_balance(&accountid).unwrap();
     info!("TEE's free balance = {:?}", free);
 
-    if free < 100_000_000_000_000_000_000 {
+    if free < 10_000_000_000_000 {
         let signer_orig = api.signer.clone();
         api.signer = Some(alice);
 
         println!("[+] bootstrap funding Enclave form Alice's funds");
         let xt = api.balance_transfer(
             GenericAddress::Id(accountid.clone()),
-            100_000_000_000_000_000_000,
+            10_000_000_000_000,
         );
         let xt_hash = api
             .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
@@ -665,7 +665,7 @@ fn ensure_account_has_funds(api: &mut Api<sr25519::Pair, WsRpcClient>, accountid
         info!("[<] Extrinsic got finalized. Hash: {:?}\n", xt_hash);
 
         //verify funds have arrived
-        let free = api.get_free_balance(&accountid);
+        let free = api.get_free_balance(&accountid).unwrap();
         info!("TEE's NEW free balance = {:?}", free);
 
         api.signer = signer_orig;
