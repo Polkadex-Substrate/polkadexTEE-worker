@@ -1,9 +1,10 @@
 use crate::{
-    ed25519::Ed25519, nonce_handler, utils::hash_from_slice, write_slice_and_whitespace_pad,
+    nonce_handler, utils::hash_from_slice, write_slice_and_whitespace_pad,
 };
 use codec::Encode;
 use sgx_types::sgx_status_t;
 use sp_application_crypto::Pair;
+use substratee_sgx_crypto::Ed25519Seal;
 use std::slice;
 use substrate_api_client::compose_extrinsic_offline;
 use substratee_settings::node::{
@@ -24,7 +25,7 @@ pub unsafe extern "C" fn send_cid(
     let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
     let extrinsic_slice =
         slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
-    let signer = match Ed25519::unseal() {
+    let signer = match Ed25519Seal::unseal() {
         Ok(pair) => pair,
         Err(status) => return status.into(),
     };

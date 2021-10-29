@@ -109,7 +109,6 @@ use utils::write_slice_and_whitespace_pad;
 
 mod attestation;
 pub mod cert;
-mod cid;
 pub mod error;
 pub mod hex;
 mod io;
@@ -132,6 +131,7 @@ pub mod polkadex_cache;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
 pub mod ss58check;
+mod cid;
 pub use crate::cid::*;
 //FIXME: It would probably be alot nicer to move all these test files into the test folder
 #[cfg(feature = "test")]
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn mock_register_enclave_xt(
 fn create_extrinsics<V>(
     validator: &V,
     calls_buffer: Vec<OpaqueCall>,
-    mut _nonce: u32,
+    mut nonce: u32,
 ) -> Result<Vec<Vec<u8>>>
 where
     V: Validator,
@@ -1323,7 +1323,7 @@ fn execute_ocex_release_extrinsic(acc: AccountId, token: AssetId, amount: u128) 
     let call: OpaqueCall = OpaqueCall((xt_block, token, amount, acc).encode());
 
     // Load the enclave's key pair
-    let signer = Ed25519::unseal()?;
+    let signer = Ed25519Seal::unseal()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
 
     let mutex = nonce_handler::load_nonce_storage()?;

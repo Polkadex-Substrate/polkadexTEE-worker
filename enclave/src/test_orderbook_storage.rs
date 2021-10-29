@@ -59,7 +59,7 @@ pub fn get_dummy_orders() -> Vec<Order> {
 #[allow(unused)]
 pub fn test_create_orderbook_storage() {
     let mut signed_orders: Vec<SignedOrder> = vec![];
-    let signer_pair = Ed25519::unseal().unwrap();
+    let signer_pair = Ed25519Seal::unseal().unwrap();
     for (counter, order) in get_dummy_orders().into_iter().enumerate() {
         let mut signed_order = SignedOrder {
             order_id: vec![counter as u8],
