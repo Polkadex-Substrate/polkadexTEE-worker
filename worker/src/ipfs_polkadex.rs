@@ -23,7 +23,7 @@ pub use cid::Cid;
 use std::convert::TryFrom;
 
 #[tokio::main]
-async fn write_to_ipfs(data: &'static [u8]) -> Result<Cid, String> {
+async fn _write_to_ipfs(data: &'static [u8]) -> Result<Cid, String> {
     // Creates an `IpfsClient` connected to the endpoint specified in ~/.ipfs/api.
     // If not found, tries to connect to `localhost:5001`.
     let client = IpfsClient::default();

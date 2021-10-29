@@ -168,38 +168,41 @@ type BPool = BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>;
 
 #[no_mangle]
 pub unsafe extern "C" fn init() -> sgx_status_t {
-	// initialize the logging environment in the enclave
-	env_logger::init();
+    // initialize the logging environment in the enclave
+    env_logger::init();
 
-	if let Err(e) = ed25519::create_sealed_if_absent().map_err(Error::Crypto) {
-		return e.into()
-	}
+    if let Err(e) = ed25519::create_sealed_if_absent().map_err(Error::Crypto) {
+        return e.into();
+    }
 
-	let signer = match Ed25519Seal::unseal().map_err(Error::Crypto) {
-		Ok(pair) => pair,
-		Err(e) => return e.into(),
-	};
-	info!("[Enclave initialized] Ed25519 prim raw : {:?}", signer.public().0);
+    let signer = match Ed25519Seal::unseal().map_err(Error::Crypto) {
+        Ok(pair) => pair,
+        Err(e) => return e.into(),
+    };
+    info!(
+        "[Enclave initialized] Ed25519 prim raw : {:?}",
+        signer.public().0
+    );
 
-	if let Err(e) = rsa3072::create_sealed_if_absent() {
-		return e.into()
-	}
+    if let Err(e) = rsa3072::create_sealed_if_absent() {
+        return e.into();
+    }
 
-	// create the aes key that is used for state encryption such that a key is always present in tests.
-	// It will be overwritten anyway if mutual remote attastation is performed with the primary worker
-	if let Err(e) = aes::create_sealed_if_absent().map_err(Error::Crypto) {
-		return e.into()
-	}
+    // create the aes key that is used for state encryption such that a key is always present in tests.
+    // It will be overwritten anyway if mutual remote attastation is performed with the primary worker
+    if let Err(e) = aes::create_sealed_if_absent().map_err(Error::Crypto) {
+        return e.into();
+    }
 
-	// for debug purposes, list shards. no problem to panic if fails
-	let shards = state::list_shards().unwrap();
-	debug!("found the following {} shards on disk:", shards.len());
-	for s in shards {
-		debug!("{}", s.encode().to_base58())
-	}
-	//shards.into_iter().map(|s| debug!("{}", s.encode().to_base58()));
+    // for debug purposes, list shards. no problem to panic if fails
+    let shards = state::list_shards().unwrap();
+    debug!("found the following {} shards on disk:", shards.len());
+    for s in shards {
+        debug!("{}", s.encode().to_base58())
+    }
+    //shards.into_iter().map(|s| debug!("{}", s.encode().to_base58()));
 
-	sgx_status_t::SGX_SUCCESS
+    sgx_status_t::SGX_SUCCESS
 }
 
 #[no_mangle]
@@ -231,15 +234,15 @@ pub unsafe extern "C" fn get_rsa_encryption_pubkey(
 
 #[no_mangle]
 pub unsafe extern "C" fn get_ecc_signing_pubkey(pubkey: *mut u8, pubkey_size: u32) -> sgx_status_t {
-	if let Err(e) = ed25519::create_sealed_if_absent().map_err(Error::Crypto) {
-		return e.into()
-	}
+    if let Err(e) = ed25519::create_sealed_if_absent().map_err(Error::Crypto) {
+        return e.into();
+    }
 
-	let signer = match Ed25519Seal::unseal().map_err(Error::Crypto) {
-		Ok(pair) => pair,
-		Err(e) => return e.into(),
-	};
-	debug!("Restored ECC pubkey: {:?}", signer.public());
+    let signer = match Ed25519Seal::unseal().map_err(Error::Crypto) {
+        Ok(pair) => pair,
+        Err(e) => return e.into(),
+    };
+    debug!("Restored ECC pubkey: {:?}", signer.public());
 
     let pubkey_slice = slice::from_raw_parts_mut(pubkey, pubkey_size as usize);
     pubkey_slice.clone_from_slice(&signer.public());
@@ -257,39 +260,39 @@ pub unsafe extern "C" fn mock_register_enclave_xt(
     unchecked_extrinsic: *mut u8,
     unchecked_extrinsic_size: u32,
 ) -> sgx_status_t {
-	let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
-	let genesis_hash = hash_from_slice(genesis_hash_slice);
+    let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
+    let genesis_hash = hash_from_slice(genesis_hash_slice);
 
-	let mut url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
-	let url: String = Decode::decode(&mut url_slice).unwrap();
-	let extrinsic_slice =
-		slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
+    let mut url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
+    let url: String = Decode::decode(&mut url_slice).unwrap();
+    let extrinsic_slice =
+        slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
 
-	let ocall_api = OCallComponentFactory::attestation_api();
+    let ocall_api = OCallComponentFactory::attestation_api();
 
-	let signer = Ed25519Seal::unseal().unwrap();
-	let call = (
-		[SUBSTRATEE_REGISTRY_MODULE, REGISTER_ENCLAVE],
-		ocall_api
-			.get_mrenclave_of_self()
-			.map_or_else(|_| Vec::<u8>::new(), |m| m.m.encode()),
-		url,
-	);
+    let signer = Ed25519Seal::unseal().unwrap();
+    let call = (
+        [SUBSTRATEE_REGISTRY_MODULE, REGISTER_ENCLAVE],
+        ocall_api
+            .get_mrenclave_of_self()
+            .map_or_else(|_| Vec::<u8>::new(), |m| m.m.encode()),
+        url,
+    );
 
-	let xt = compose_extrinsic_offline!(
-		signer,
-		call,
-		*nonce,
-		Era::Immortal,
-		genesis_hash,
-		genesis_hash,
-		RUNTIME_SPEC_VERSION,
-		RUNTIME_TRANSACTION_VERSION
-	)
-	.encode();
+    let xt = compose_extrinsic_offline!(
+        signer,
+        call,
+        *nonce,
+        Era::Immortal,
+        genesis_hash,
+        genesis_hash,
+        RUNTIME_SPEC_VERSION,
+        RUNTIME_TRANSACTION_VERSION
+    )
+    .encode();
 
-	write_slice_and_whitespace_pad(extrinsic_slice, xt);
-	sgx_status_t::SGX_SUCCESS
+    write_slice_and_whitespace_pad(extrinsic_slice, xt);
+    sgx_status_t::SGX_SUCCESS
 }
 
 fn create_extrinsics<V>(
@@ -300,30 +303,30 @@ fn create_extrinsics<V>(
 where
     V: Validator,
 {
-	// get information for composing the extrinsic
-	let signer = Ed25519Seal::unseal()?;
-	debug!("Restored ECC pubkey: {:?}", signer.public());
+    // get information for composing the extrinsic
+    let signer = Ed25519Seal::unseal()?;
+    debug!("Restored ECC pubkey: {:?}", signer.public());
 
-	let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
-		.into_iter()
-		.map(|call| {
-			let xt = compose_extrinsic_offline!(
-				signer.clone(),
-				call,
-				nonce,
-				Era::Immortal,
-				validator.genesis_hash(validator.num_relays()).unwrap(),
-				validator.genesis_hash(validator.num_relays()).unwrap(),
-				RUNTIME_SPEC_VERSION,
-				RUNTIME_TRANSACTION_VERSION
-			)
-			.encode();
-			nonce += 1;
-			xt
-		})
-		.collect();
+    let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
+        .into_iter()
+        .map(|call| {
+            let xt = compose_extrinsic_offline!(
+                signer.clone(),
+                call,
+                nonce,
+                Era::Immortal,
+                validator.genesis_hash(validator.num_relays()).unwrap(),
+                validator.genesis_hash(validator.num_relays()).unwrap(),
+                RUNTIME_SPEC_VERSION,
+                RUNTIME_TRANSACTION_VERSION
+            )
+            .encode();
+            nonce += 1;
+            xt
+        })
+        .collect();
 
-	Ok(extrinsics_buffer)
+    Ok(extrinsics_buffer)
 }
 
 #[no_mangle]
@@ -998,49 +1001,52 @@ pub fn compose_block_and_confirmation(
     state_hash_apriori: H256,
     state: &mut StfState,
 ) -> Result<(OpaqueCall, SignedSidechainBlock)> {
-	let signer_pair = Ed25519Seal::unseal()?;
-	let layer_one_head = latest_onchain_header.hash();
+    let signer_pair = Ed25519Seal::unseal()?;
+    let layer_one_head = latest_onchain_header.hash();
 
-	let block_number = Stf::get_sidechain_block_number(state)
-		.map(|n| n + 1)
-		.ok_or(Error::Sgx(sgx_status_t::SGX_ERROR_UNEXPECTED))?;
+    let block_number = Stf::get_sidechain_block_number(state)
+        .map(|n| n + 1)
+        .ok_or(Error::Sgx(sgx_status_t::SGX_ERROR_UNEXPECTED))?;
 
-	Stf::update_sidechain_block_number(state, block_number);
+    Stf::update_sidechain_block_number(state, block_number);
 
-	let block_number: u64 = block_number; //FIXME! Should be either u64 or u32! Not both..
-	let parent_hash =
-		Stf::get_last_block_hash(state).ok_or(Error::Sgx(sgx_status_t::SGX_ERROR_UNEXPECTED))?;
+    let block_number: u64 = block_number; //FIXME! Should be either u64 or u32! Not both..
+    let parent_hash =
+        Stf::get_last_block_hash(state).ok_or(Error::Sgx(sgx_status_t::SGX_ERROR_UNEXPECTED))?;
 
-	// hash previous of state
-	let state_hash_aposteriori = state::hash_of(state.state.clone())?;
-	let state_update = state.state_diff.clone().encode();
+    // hash previous of state
+    let state_hash_aposteriori = state::hash_of(state.state.clone())?;
+    let state_update = state.state_diff.clone().encode();
 
-	// create encrypted payload
-	let mut payload: Vec<u8> =
-		StatePayload::new(state_hash_apriori, state_hash_aposteriori, state_update).encode();
-	Aes::encrypt(&mut payload)?;
+    // create encrypted payload
+    let mut payload: Vec<u8> =
+        StatePayload::new(state_hash_apriori, state_hash_aposteriori, state_update).encode();
+    Aes::encrypt(&mut payload)?;
 
-	let block = SidechainBlock::new(
-		signer_pair.public().into(),
-		block_number,
-		parent_hash,
-		layer_one_head,
-		shard,
-		top_call_hashes,
-		payload,
-		SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
-	);
+    let block = SidechainBlock::new(
+        signer_pair.public().into(),
+        block_number,
+        parent_hash,
+        layer_one_head,
+        shard,
+        top_call_hashes,
+        payload,
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64,
+    );
 
-	let block_hash = blake2_256(&block.encode());
-	let signed_block = block.sign_block(&signer_pair);
+    let block_hash = blake2_256(&block.encode());
+    let signed_block = block.sign_block(&signer_pair);
 
-	debug!("Block hash 0x{}", hex::encode_hex(&block_hash));
-	Stf::update_last_block_hash(state, block_hash.into());
+    debug!("Block hash 0x{}", hex::encode_hex(&block_hash));
+    Stf::update_last_block_hash(state, block_hash.into());
 
-	let xt_block = [SUBSTRATEE_REGISTRY_MODULE, BLOCK_CONFIRMED];
-	let opaque_call =
-		OpaqueCall((xt_block, shard, block_hash, state_hash_aposteriori.encode()).encode());
-	Ok((opaque_call, signed_block))
+    let xt_block = [SUBSTRATEE_REGISTRY_MODULE, BLOCK_CONFIRMED];
+    let opaque_call =
+        OpaqueCall((xt_block, shard, block_hash, state_hash_aposteriori.encode()).encode());
+    Ok((opaque_call, signed_block))
 }
 
 pub fn update_states<O>(header: Header, on_chain_ocall_api: &O) -> Result<()>

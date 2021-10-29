@@ -55,10 +55,10 @@ use substratee_settings::{
 };
 
 use crate::{
-	cert, hex, io,
-	ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
-	utils::{hash_from_slice, write_slice_and_whitespace_pad, UnwrapOrSgxErrorUnexpected},
-	Result as EnclaveResult,
+    cert, hex, io,
+    ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
+    utils::{hash_from_slice, write_slice_and_whitespace_pad, UnwrapOrSgxErrorUnexpected},
+    Result as EnclaveResult,
 };
 use substratee_ocall_api::EnclaveAttestationOCallApi;
 use substratee_sgx_crypto::Ed25519Seal;
@@ -437,55 +437,58 @@ fn get_ias_api_key() -> SgxResult<String> {
 }
 
 pub fn create_ra_report_and_signature<A: EnclaveAttestationOCallApi>(
-	sign_type: sgx_quote_sign_type_t,
-	ocall_api: Arc<A>,
-	skip_ra: bool,
+    sign_type: sgx_quote_sign_type_t,
+    ocall_api: Arc<A>,
+    skip_ra: bool,
 ) -> EnclaveResult<(Vec<u8>, Vec<u8>)> {
-	let chain_signer = Ed25519Seal::unseal()?;
-	info!("[Enclave Attestation] Ed25519 pub raw : {:?}", chain_signer.public().0);
+    let chain_signer = Ed25519Seal::unseal()?;
+    info!(
+        "[Enclave Attestation] Ed25519 pub raw : {:?}",
+        chain_signer.public().0
+    );
 
-	info!("    [Enclave] Generate keypair");
-	let ecc_handle = SgxEccHandle::new();
-	let _result = ecc_handle.open();
-	let (prv_k, pub_k) = ecc_handle.create_key_pair()?;
-	info!("    [Enclave] Generate ephemeral ECDSA keypair successful");
-	debug!("     pubkey X is {:02x}", pub_k.gx.iter().format(""));
-	debug!("     pubkey Y is {:02x}", pub_k.gy.iter().format(""));
+    info!("    [Enclave] Generate keypair");
+    let ecc_handle = SgxEccHandle::new();
+    let _result = ecc_handle.open();
+    let (prv_k, pub_k) = ecc_handle.create_key_pair()?;
+    info!("    [Enclave] Generate ephemeral ECDSA keypair successful");
+    debug!("     pubkey X is {:02x}", pub_k.gx.iter().format(""));
+    debug!("     pubkey Y is {:02x}", pub_k.gy.iter().format(""));
 
-	let payload = if !skip_ra {
-		info!("    [Enclave] Create attestation report");
-		let (attn_report, sig, cert) =
-			match create_attestation_report(&chain_signer.public().0, sign_type, ocall_api) {
-				Ok(r) => r,
-				Err(e) => {
-					error!("    [Enclave] Error in create_attestation_report: {:?}", e);
-					return Err(e.into())
-				},
-			};
-		println!("    [Enclave] Create attestation report successful");
-		debug!("              attn_report = {:?}", attn_report);
-		debug!("              sig         = {:?}", sig);
-		debug!("              cert        = {:?}", cert);
+    let payload = if !skip_ra {
+        info!("    [Enclave] Create attestation report");
+        let (attn_report, sig, cert) =
+            match create_attestation_report(&chain_signer.public().0, sign_type, ocall_api) {
+                Ok(r) => r,
+                Err(e) => {
+                    error!("    [Enclave] Error in create_attestation_report: {:?}", e);
+                    return Err(e.into());
+                }
+            };
+        println!("    [Enclave] Create attestation report successful");
+        debug!("              attn_report = {:?}", attn_report);
+        debug!("              sig         = {:?}", sig);
+        debug!("              cert        = {:?}", cert);
 
-		// concat the information
-		attn_report + "|" + &sig + "|" + &cert
-	} else {
-		Default::default()
-	};
+        // concat the information
+        attn_report + "|" + &sig + "|" + &cert
+    } else {
+        Default::default()
+    };
 
-	// generate an ECC certificate
-	info!("    [Enclave] Generate ECC Certificate");
-	let (key_der, cert_der) = match cert::gen_ecc_cert(payload, &prv_k, &pub_k, &ecc_handle) {
-		Ok(r) => r,
-		Err(e) => {
-			error!("    [Enclave] gen_ecc_cert failed: {:?}", e);
-			return Err(e.into())
-		},
-	};
+    // generate an ECC certificate
+    info!("    [Enclave] Generate ECC Certificate");
+    let (key_der, cert_der) = match cert::gen_ecc_cert(payload, &prv_k, &pub_k, &ecc_handle) {
+        Ok(r) => r,
+        Err(e) => {
+            error!("    [Enclave] gen_ecc_cert failed: {:?}", e);
+            return Err(e.into());
+        }
+    };
 
-	let _ = ecc_handle.close();
-	info!("    [Enclave] Generate ECC Certificate successful");
-	Ok((key_der, cert_der))
+    let _ = ecc_handle.close();
+    info!("    [Enclave] Generate ECC Certificate successful");
+    Ok((key_der, cert_der))
 }
 
 #[no_mangle]
@@ -498,77 +501,77 @@ pub unsafe extern "C" fn perform_ra(
     unchecked_extrinsic: *mut u8,
     unchecked_extrinsic_size: u32,
 ) -> sgx_status_t {
-	// our certificate is unlinkable
-	let sign_type = sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE;
+    // our certificate is unlinkable
+    let sign_type = sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE;
 
-	let ocall_api = OCallComponentFactory::attestation_api();
+    let ocall_api = OCallComponentFactory::attestation_api();
 
-	let (_key_der, cert_der) = match create_ra_report_and_signature(sign_type, ocall_api, false) {
-		Ok(r) => r,
-		Err(e) => return e.into(),
-	};
+    let (_key_der, cert_der) = match create_ra_report_and_signature(sign_type, ocall_api, false) {
+        Ok(r) => r,
+        Err(e) => return e.into(),
+    };
 
-	info!("    [Enclave] Compose extrinsic");
-	let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
-	//let mut nonce_slice     = slice::from_raw_parts(nonce, nonce_size as usize);
-	let url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
-	let extrinsic_slice =
-		slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
-	let signer = match Ed25519Seal::unseal() {
-		Ok(pair) => pair,
-		Err(e) => return e.into(),
-	};
-	info!("[Enclave] Restored ECC pubkey: {:?}", signer.public());
+    info!("    [Enclave] Compose extrinsic");
+    let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
+    //let mut nonce_slice     = slice::from_raw_parts(nonce, nonce_size as usize);
+    let url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
+    let extrinsic_slice =
+        slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
+    let signer = match Ed25519Seal::unseal() {
+        Ok(pair) => pair,
+        Err(e) => return e.into(),
+    };
+    info!("[Enclave] Restored ECC pubkey: {:?}", signer.public());
 
-	debug!("decoded nonce: {}", *nonce);
-	let genesis_hash = hash_from_slice(genesis_hash_slice);
-	debug!("decoded genesis_hash: {:?}", genesis_hash_slice);
-	debug!("worker url: {}", str::from_utf8(url_slice).unwrap());
-	let call = [SUBSTRATEE_REGISTRY_MODULE, REGISTER_ENCLAVE];
+    debug!("decoded nonce: {}", *nonce);
+    let genesis_hash = hash_from_slice(genesis_hash_slice);
+    debug!("decoded genesis_hash: {:?}", genesis_hash_slice);
+    debug!("worker url: {}", str::from_utf8(url_slice).unwrap());
+    let call = [SUBSTRATEE_REGISTRY_MODULE, REGISTER_ENCLAVE];
 
-	let xt = compose_extrinsic_offline!(
-		signer,
-		(call, cert_der.to_vec(), url_slice.to_vec()),
-		*nonce,
-		Era::Immortal,
-		genesis_hash,
-		genesis_hash,
-		RUNTIME_SPEC_VERSION,
-		RUNTIME_TRANSACTION_VERSION
-	);
+    let xt = compose_extrinsic_offline!(
+        signer,
+        (call, cert_der.to_vec(), url_slice.to_vec()),
+        *nonce,
+        Era::Immortal,
+        genesis_hash,
+        genesis_hash,
+        RUNTIME_SPEC_VERSION,
+        RUNTIME_TRANSACTION_VERSION
+    );
 
-	let encoded = xt.encode();
-	debug!(
-		"    [Enclave] Encoded extrinsic ( len = {} B) = {}",
-		encoded.len(),
-		hex::encode_hex(&encoded)
-	);
+    let encoded = xt.encode();
+    debug!(
+        "    [Enclave] Encoded extrinsic ( len = {} B) = {}",
+        encoded.len(),
+        hex::encode_hex(&encoded)
+    );
 
-	write_slice_and_whitespace_pad(extrinsic_slice, encoded);
+    write_slice_and_whitespace_pad(extrinsic_slice, encoded);
 
-	sgx_status_t::SGX_SUCCESS
+    sgx_status_t::SGX_SUCCESS
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dump_ra_to_disk() -> sgx_status_t {
-	// our certificate is unlinkable
-	let sign_type = sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE;
+    // our certificate is unlinkable
+    let sign_type = sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE;
 
-	let ocall_api = OCallComponentFactory::attestation_api();
+    let ocall_api = OCallComponentFactory::attestation_api();
 
-	let (_key_der, cert_der) = match create_ra_report_and_signature(sign_type, ocall_api, false) {
-		Ok(r) => r,
-		Err(e) => return e.into(),
-	};
+    let (_key_der, cert_der) = match create_ra_report_and_signature(sign_type, ocall_api, false) {
+        Ok(r) => r,
+        Err(e) => return e.into(),
+    };
 
-	if let Err(err) = io::write(&cert_der, RA_DUMP_CERT_DER_FILE) {
-		error!(
-			"    [Enclave] failed to write RA file ({}), status: {:?}",
-			RA_DUMP_CERT_DER_FILE, err
-		);
-		return sgx_status_t::SGX_ERROR_UNEXPECTED
-	}
-	info!("    [Enclave] dumped ra cert to {}", RA_DUMP_CERT_DER_FILE);
+    if let Err(err) = io::write(&cert_der, RA_DUMP_CERT_DER_FILE) {
+        error!(
+            "    [Enclave] failed to write RA file ({}), status: {:?}",
+            RA_DUMP_CERT_DER_FILE, err
+        );
+        return sgx_status_t::SGX_ERROR_UNEXPECTED;
+    }
+    info!("    [Enclave] dumped ra cert to {}", RA_DUMP_CERT_DER_FILE);
 
-	sgx_status_t::SGX_SUCCESS
+    sgx_status_t::SGX_SUCCESS
 }

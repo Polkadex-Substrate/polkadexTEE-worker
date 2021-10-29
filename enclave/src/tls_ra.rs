@@ -1,10 +1,10 @@
 use crate::{
-	attestation::{create_ra_report_and_signature, DEV_HOSTNAME},
-	cert,
-	error::Result as EnclaveResult,
-	ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
-	rsa3072,
-	utils::UnwrapOrSgxErrorUnexpected,
+    attestation::{create_ra_report_and_signature, DEV_HOSTNAME},
+    cert,
+    error::Result as EnclaveResult,
+    ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
+    rsa3072,
+    utils::UnwrapOrSgxErrorUnexpected,
 };
 use log::*;
 use rustls::{ClientConfig, ClientSession, ServerConfig, ServerSession, Stream};
@@ -195,9 +195,9 @@ fn tls_server_config<A: EnclaveAttestationOCallApi + 'static>(
 }
 
 fn read_files_to_send() -> SgxResult<(Vec<u8>, Aes)> {
-	let shielding_key = rsa3072::unseal_pair().sgx_error()?;
-	let aes = AesSeal::unseal().sgx_error()?;
-	let rsa_pair = serde_json::to_string(&shielding_key).sgx_error()?;
+    let shielding_key = rsa3072::unseal_pair().sgx_error()?;
+    let aes = AesSeal::unseal().sgx_error()?;
+    let rsa_pair = serde_json::to_string(&shielding_key).sgx_error()?;
 
     let rsa_len = rsa_pair.as_bytes().len();
     info!("    [Enclave] Read Shielding Key: {:?}", rsa_len);
@@ -252,35 +252,45 @@ pub extern "C" fn request_key_provisioning(
 }
 
 fn receive_files(tls: &mut Stream<ClientSession, TcpStream>) -> EnclaveResult<()> {
-	let mut key_len_arr = [0u8; 8];
+    let mut key_len_arr = [0u8; 8];
 
-	let key_len = tls
-		.read(&mut key_len_arr)
-		.map(|_| usize::from_le_bytes(key_len_arr))
-		.sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving shielding key length")?;
+    let key_len = tls
+        .read(&mut key_len_arr)
+        .map(|_| usize::from_le_bytes(key_len_arr))
+        .sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving shielding key length")?;
 
-	let mut rsa_pair = vec![0u8; key_len];
-	tls.read(&mut rsa_pair)
-		.map(|_| info!("    [Enclave] Received Shielding key"))
-		.sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving shielding key")?;
+    let mut rsa_pair = vec![0u8; key_len];
+    tls.read(&mut rsa_pair)
+        .map(|_| info!("    [Enclave] Received Shielding key"))
+        .sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving shielding key")?;
 
-	rsa3072::seal(&rsa_pair)?;
+    rsa3072::seal(&rsa_pair)?;
 
-	let mut aes_key = [0u8; 16];
-	tls.read(&mut aes_key)
-		.map(|_| info!("    [Enclave] (MU-RA-Client)Received AES key: {:?}", &aes_key[..]))
-		.sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving aes key ")?;
+    let mut aes_key = [0u8; 16];
+    tls.read(&mut aes_key)
+        .map(|_| {
+            info!(
+                "    [Enclave] (MU-RA-Client)Received AES key: {:?}",
+                &aes_key[..]
+            )
+        })
+        .sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving aes key ")?;
 
-	let mut aes_iv = [0u8; 16];
-	tls.read(&mut aes_iv)
-		.map(|_| info!("    [Enclave] (MU-RA-Client) Received AES IV: {:?}", &aes_iv[..]))
-		.sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving aes iv")?;
+    let mut aes_iv = [0u8; 16];
+    tls.read(&mut aes_iv)
+        .map(|_| {
+            info!(
+                "    [Enclave] (MU-RA-Client) Received AES IV: {:?}",
+                &aes_iv[..]
+            )
+        })
+        .sgx_error_with_log("    [Enclave] (MU-RA-Client) Error receiving aes iv")?;
 
-	AesSeal::seal(Aes::new(aes_key, aes_iv))?;
+    AesSeal::seal(Aes::new(aes_key, aes_iv))?;
 
-	println!("    [Enclave] (MU-RA-Client) Successfully received keys.");
+    println!("    [Enclave] (MU-RA-Client) Successfully received keys.");
 
-	Ok(())
+    Ok(())
 }
 
 fn tls_client_session_stream(
