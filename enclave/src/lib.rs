@@ -298,7 +298,7 @@ pub unsafe extern "C" fn mock_register_enclave_xt(
 fn create_extrinsics<V>(
     validator: &V,
     calls_buffer: Vec<OpaqueCall>,
-    mut nonce: u32,
+    mut _nonce: u32,
 ) -> Result<Vec<Vec<u8>>>
 where
     V: Validator,
@@ -306,6 +306,10 @@ where
     // get information for composing the extrinsic
     let signer = Ed25519Seal::unseal()?;
     debug!("Restored ECC pubkey: {:?}", signer.public());
+
+    let mutex = nonce_handler::load_nonce_storage()?;
+    let mut nonce_storage: SgxMutexGuard<NonceHandler> = mutex.lock().unwrap();
+    let mut nonce = nonce_storage.nonce;
 
     let extrinsics_buffer: Vec<Vec<u8>> = calls_buffer
         .into_iter()
@@ -325,6 +329,10 @@ where
             xt
         })
         .collect();
+
+    // update nonce storage
+    debug!("Update to new new nonce: {:?}", nonce);
+    nonce_storage.update(nonce);
 
     Ok(extrinsics_buffer)
 }
