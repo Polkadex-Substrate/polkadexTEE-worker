@@ -21,7 +21,7 @@ pub mod error;
 pub mod nonce_storage;
 pub mod test_proxy;
 
-use chain_relay::{storage_proof::StorageProofChecker, Header};
+use chain_relay::Header;
 use codec::Encode;
 use error::{Error, Result};
 use frame_support::{metadata::StorageHasher, PalletId};
@@ -35,6 +35,7 @@ use std::sync::{
     atomic::{AtomicPtr, Ordering},
     Arc, SgxMutex, SgxMutexGuard,
 };
+use substratee_storage::StorageProofChecker;
 
 use crate::utils::UnwrapOrSgxErrorUnexpected;
 
@@ -306,6 +307,7 @@ pub fn auth_user_validate_increment_nonce(
     Ok(())
 }
 
+#[cfg(feature = "test")]
 pub mod tests {
     use super::{create_in_memory_accounts_and_nonce_storage, load_registry, AccountsNonceStorage};
     use codec::Encode;

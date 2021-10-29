@@ -98,6 +98,7 @@ impl CreateOrderCache {
     }
 }
 
+#[cfg(feature = "test")]
 pub mod tests {
     use super::*;
     use crate::test_orderbook_storage;

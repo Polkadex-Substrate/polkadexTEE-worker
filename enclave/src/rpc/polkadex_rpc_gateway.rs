@@ -270,7 +270,7 @@ pub mod tests {
         let key_pair = create_dummy_account();
         let account_id: AccountId = key_pair.public().into();
 
-        let trusted_call = TrustedCall::withdraw(account_id, AssetId::DOT, 1000, None);
+        let trusted_call = TrustedCall::withdraw(account_id, AssetId::Asset(840), 1000, None);
 
         let trusted_call_signed = sign_trusted_call(trusted_call, key_pair, nonce);
 

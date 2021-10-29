@@ -18,19 +18,21 @@
 
 use core::option::Option;
 
+use crate::{
+    cli_utils::common_types::OperationRunner,
+    commands::{
+        account_details::AccountDetails, common_args::*,
+        common_args_processing::get_order_from_matches,
+    },
+};
+use crate::{
+    cli_utils::{account_parsing::*, common_operations::get_trusted_nonce},
+    KeyPair, TrustedCall, TrustedOperation,
+};
 use clap::ArgMatches;
 use clap_nested::Command;
-use log::*;
-
-use crate::cli_utils::account_parsing::*;
-use crate::cli_utils::common_operations::get_trusted_nonce;
-use crate::{KeyPair, TrustedCall, TrustedOperation};
-
-use crate::cli_utils::common_types::OperationRunner;
-use crate::commands::account_details::AccountDetails;
-use crate::commands::common_args::*;
-use crate::commands::common_args_processing::get_order_from_matches;
 use codec::Decode;
+use log::*;
 
 pub fn place_order_cli_command<'a>(
     perform_operation: &'a dyn Fn(&ArgMatches<'_>, &TrustedOperation) -> Option<Vec<u8>>,

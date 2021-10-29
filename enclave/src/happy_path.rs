@@ -16,8 +16,8 @@
 //     let gateway = create_mock_gateway();
 //     let alice: AccountId = get_account("happy_path_user_alice");
 //     let bob: AccountId = get_account("happy_path_user_bob");
-//     let token_a = AssetId::BTC;
-//     let token_b = AssetId::USD;
+//     let token_a = AssetId::Asset(4294967297);
+//     let token_b = AssetId::Asset(840);
 //     // Create Account
 //     assert!(add_main_account(alice.clone()).is_ok());
 //     assert!(add_main_account(bob.clone()).is_ok());

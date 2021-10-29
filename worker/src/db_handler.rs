@@ -19,11 +19,13 @@
 use crate::constants::CHUNK_SIZE;
 use crate::enclave::api::{enclave_run_db_thread, enclave_send_disk_data};
 use crate::enclave_account;
-use crate::ipfs::Cid;
+use crate::ipfs_polkadex::Cid;
 use crate::polkadex_db::{
     initialize_balances_mirror, initialize_nonce_mirror, initialize_orderbook_mirror,
     load_balances_mirror, load_nonce_mirror, load_orderbook_mirror, PolkadexDBError,
 };
+use crate::EnclaveBase;
+use crate::WsRpcClient;
 use codec::Encode;
 use frame_support::sp_runtime::app_crypto::sp_core::sr25519;
 use log::debug;
@@ -42,13 +44,12 @@ impl DBHandler {
         initialize_orderbook_mirror();
     }
 
-    #[allow(dead_code)]
-    pub fn load_balances_from_ipfs(
-        api: &Api<sr25519::Pair>,
-        eid: sgx_enclave_id_t,
+    pub fn load_balances_from_ipfs<E: EnclaveBase>(
+        api: &Api<sr25519::Pair, WsRpcClient>,
+        enclave: &E,
     ) -> Result<(), PolkadexDBError> {
         let get_cid: Option<Vec<u8>> = api
-            .get_storage_map("PolkadexOcex", "Snapshot", enclave_account(eid), None)
+            .get_storage_map("PolkadexOcex", "Snapshot", enclave_account(enclave), None)
             .map_err(|_| {
                 PolkadexDBError::IpfsError(String::from("Failed to get CID from the chain"))
             })?;
@@ -61,7 +62,7 @@ impl DBHandler {
                 .map_err(|_| PolkadexDBError::UnableToLockMutex)?;
 
             balances.write_data_to_disk(
-                crate::ipfs::read_from_ipfs(Cid::try_from(cid).map_err(|_| {
+                crate::ipfs_polkadex::read_from_ipfs(Cid::try_from(cid).map_err(|_| {
                     PolkadexDBError::IpfsError(String::from("Failed to build CID"))
                 })?)
                 .map_err(|_| {

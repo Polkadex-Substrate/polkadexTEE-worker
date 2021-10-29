@@ -26,48 +26,52 @@ extern crate log;
 mod ocex_commands;
 
 extern crate chrono;
-use chrono::{DateTime, Utc};
-
 use base58::{FromBase58, ToBase58};
+use chrono::{DateTime, Utc};
 use clap::{AppSettings, Arg, ArgMatches};
 use clap_nested::{Command, Commander};
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::{
-    pallet_substratee_registry::{Enclave, Request},
-    AccountId, BalancesCall, Call, Event, Hash,
+    pallet_substratee_registry::Request, AccountId, BalancesCall, Call, Event, Hash,
 };
 use orml_tokens::AccountData;
-use polkadex_sgx_primitives::types::DirectRequest;
-use polkadex_sgx_primitives::{AssetId, Balance};
+use polkadex_sgx_primitives::{types::DirectRequest, AssetId, Balance};
 use sgx_crypto_helper::rsa3072::Rsa3072PubKey;
 use sp_application_crypto::{ed25519, sr25519};
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair, H256};
 use sp_keyring::AccountKeyring;
 use sp_runtime::MultiSignature;
-use std::convert::TryFrom;
-use std::result::Result as StdResult;
-use std::sync::mpsc::channel;
-use std::thread;
-use std::time::{Duration, UNIX_EPOCH};
+use std::path::PathBuf;
+use std::{
+    convert::TryFrom,
+    result::Result as StdResult,
+    sync::mpsc::channel,
+    thread,
+    time::{Duration, UNIX_EPOCH},
+};
 use substrate_api_client::{
     compose_extrinsic, compose_extrinsic_offline,
-    events::EventsDecoder,
     extrinsic::xt_primitives::{GenericAddress, UncheckedExtrinsicV4},
-    node_metadata::Metadata,
+    rpc::{
+        ws_client::{EventsDecoder, Subscriber},
+        WsRpcClient,
+    },
     utils::FromHexString,
-    Api, XtStatus,
+    Api, Metadata, RpcClient, XtStatus,
 };
-use substrate_client_keystore::LocalKeystore;
+use substrate_client_keystore::{KeystoreExt, LocalKeystore};
+use substratee_api_client_extensions::{PalletTeerexApi, TEEREX};
 use substratee_stf::cli_utils::account_parsing::*;
 use substratee_stf::commands::{common_args, common_args_processing};
 use substratee_stf::top::get_rpc_function_name_from_top;
 use substratee_stf::{ShardIdentifier, TrustedCallSigned, TrustedOperation};
-use substratee_worker_api::direct_client::DirectApi as DirectWorkerApi;
+use substratee_worker_api::direct_client::{DirectApi, DirectClient as DirectWorkerApi};
 use substratee_worker_primitives::{DirectRequestStatus, RpcRequest, RpcResponse, RpcReturnValue};
 
 const PREFUNDING_AMOUNT: u128 = 1_000_000_000;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const KEYSTORE_PATH: &str = "my_keystore";
 
 fn main() {
     env_logger::init();
@@ -75,58 +79,58 @@ fn main() {
     let res = Commander::new()
         .options(|app| {
             app.setting(AppSettings::ColoredHelp)
-            .arg(
-                Arg::with_name("node-url")
-                    .short("u")
-                    .long("node-url")
-                    .global(true)
-                    .takes_value(true)
-                    .value_name("STRING")
-                    .default_value("ws://127.0.0.1")
-                    .help("node url"),
-            )
-            .arg(
-                Arg::with_name("node-port")
-                    .short("p")
-                    .long("node-port")
-                    .global(true)
-                    .takes_value(true)
-                    .value_name("STRING")
-                    .default_value("9944")
-                    .help("node port"),
-            )
-            .arg(
-                Arg::with_name("worker-url")
-                    .short("U")
-                    .long("worker-url")
-                    .global(true)
-                    .takes_value(true)
-                    .value_name("STRING")
-                    .default_value("ws://127.0.0.1")
-                    .help("worker url"),
-            )
-            .arg(
-                Arg::with_name("worker-rpc-port")
-                    .short("P")
-                    .long("worker-rpc-port")
-                    .global(true)
-                    .takes_value(true)
-                    .value_name("STRING")
-                    .default_value("2000")
-                    .help("worker direct invocation port"),
-            )
-            .name("substratee-client")
-            .version(VERSION)
-            .author("Supercomputing Systems AG <info@scs.ch>")
-            .about("interact with substratee-node and workers")
-            .after_help("stf subcommands depend on the stf crate this has been built against")
+                .arg(
+                    Arg::with_name("node-url")
+                        .short("u")
+                        .long("node-url")
+                        .global(true)
+                        .takes_value(true)
+                        .value_name("STRING")
+                        .default_value("ws://127.0.0.1")
+                        .help("node url"),
+                )
+                .arg(
+                    Arg::with_name("node-port")
+                        .short("p")
+                        .long("node-port")
+                        .global(true)
+                        .takes_value(true)
+                        .value_name("STRING")
+                        .default_value("9944")
+                        .help("node port"),
+                )
+                .arg(
+                    Arg::with_name("worker-url")
+                        .short("U")
+                        .long("worker-url")
+                        .global(true)
+                        .takes_value(true)
+                        .value_name("STRING")
+                        .default_value("ws://127.0.0.1")
+                        .help("worker url"),
+                )
+                .arg(
+                    Arg::with_name("worker-rpc-port")
+                        .short("P")
+                        .long("worker-rpc-port")
+                        .global(true)
+                        .takes_value(true)
+                        .value_name("STRING")
+                        .default_value("2000")
+                        .help("worker direct invocation port"),
+                )
+                .name("substratee-client")
+                .version(VERSION)
+                .author("Supercomputing Systems AG <info@scs.ch>")
+                .about("interact with substratee-node and workers")
+                .after_help("stf subcommands depend on the stf crate this has been built against")
         })
         .args(|_args, matches| matches.value_of("environment").unwrap_or("dev"))
         .add_cmd(
             Command::new("new-account")
                 .description("generates a new account for the substraTEE chain")
                 .runner(|_args: &str, _matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
+                    let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None).unwrap();
                     let key: sr25519::AppPair = store.generate().unwrap();
                     drop(store);
                     println!("{}", key.public().to_ss58check());
@@ -137,21 +141,13 @@ fn main() {
             Command::new("list-accounts")
                 .description("lists all accounts in keystore for the substraTEE chain")
                 .runner(|_args: &str, _matches: &ArgMatches<'_>| {
-                    let store = LocalKeystore::open(get_untrusted_keystore_path(), None).unwrap();
+                    let store = LocalKeystore::open(PathBuf::from(&KEYSTORE_PATH), None).unwrap();
                     println!("sr25519 keys:");
-                    for pubkey in store
-                        .public_keys::<sr25519::AppPublic>()
-                        .unwrap()
-                        .into_iter()
-                    {
+                    for pubkey in store.public_keys::<sr25519::AppPublic>().unwrap().into_iter() {
                         println!("{}", pubkey.to_ss58check());
                     }
                     println!("ed25519 keys:");
-                    for pubkey in store
-                        .public_keys::<ed25519::AppPublic>()
-                        .unwrap()
-                        .into_iter()
-                    {
+                    for pubkey in store.public_keys::<ed25519::AppPublic>().unwrap().into_iter() {
                         println!("{}", pubkey.to_ss58check());
                     }
                     drop(store);
@@ -184,15 +180,16 @@ fn main() {
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
                     let api = get_chain_api(matches);
                     let _api = api.set_signer(AccountKeyring::Alice.pair());
+                    let accounts = matches.values_of("accounts").unwrap();
 
                     let mut nonce = _api.get_nonce().unwrap();
-                    for account in matches.values_of("accounts").unwrap().into_iter() {
+                    for account in accounts {
                         let to = get_accountid_from_str(account);
                         #[allow(clippy::redundant_clone)]
                         let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
                             _api.clone().signer.unwrap(),
                             Call::Balances(BalancesCall::transfer(
-                                MultiAddress::<AccountId,u32>::Id(to.clone()),
+                                MultiAddress::Id(to.clone()),
                                 PREFUNDING_AMOUNT
                             )),
                             nonce,
@@ -204,9 +201,8 @@ fn main() {
                         );
                         // send and watch extrinsic until finalized
                         println!("Faucet drips to {} (Alice's nonce={})", to, nonce);
-                        let _blockh = _api
-                            .send_extrinsic(xt.hex_encode(), XtStatus::Ready)
-                            .unwrap();
+                        let _blockh =
+                            _api.send_extrinsic(xt.hex_encode(), XtStatus::Ready).unwrap();
                         nonce += 1;
                     }
                     Ok(())
@@ -306,7 +302,10 @@ fn main() {
                     let api = get_chain_api(matches);
                     let arg_from = matches.value_of("from").unwrap();
                     let arg_to = matches.value_of("to").unwrap();
-                    let amount =matches.value_of("amount").unwrap().parse::<u128>()
+                    let amount = matches
+                        .value_of("amount")
+                        .unwrap()
+                        .parse()
                         .expect("amount can be converted to u128");
                     let from = get_pair_from_str_untrusted(arg_from);
                     let to = get_accountid_from_str(arg_to);
@@ -314,9 +313,7 @@ fn main() {
                     info!("to ss58 is {}", to.to_ss58check());
                     let _api = api.set_signer(sr25519_core::Pair::from(from));
                     let xt = _api.balance_transfer(GenericAddress::Id(to.clone()), amount);
-                    let tx_hash = _api
-                        .send_extrinsic(xt.hex_encode(), XtStatus::InBlock)
-                        .unwrap();
+                    let tx_hash = _api.send_extrinsic(xt.hex_encode(), XtStatus::InBlock).unwrap();
                     println!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
                     let result = _api.get_account_data(&to).unwrap().unwrap();
                     println!("balance for {} is now {}", to, result.free);
@@ -328,13 +325,13 @@ fn main() {
                 .description("query enclave registry and list all workers")
                 .runner(|_args: &str, matches: &ArgMatches<'_>| {
                     let api = get_chain_api(matches);
-                    let wcount = get_enclave_count(&api);
+                    let wcount = api.enclave_count().unwrap();
                     println!("number of workers registered: {}", wcount);
                     for w in 1..=wcount {
-                        let enclave = get_enclave(&api, w);
+                        let enclave = api.enclave(w).unwrap();
                         if enclave.is_none() {
                             println!("error reading enclave data");
-                            continue;
+                            continue
                         };
                         let enclave = enclave.unwrap();
                         let timestamp = DateTime::<Utc>::from(
@@ -344,7 +341,7 @@ fn main() {
                         println!("   AccountId: {}", enclave.pubkey.to_ss58check());
                         println!("   MRENCLAVE: {}", enclave.mr_enclave.to_base58());
                         println!("   RA timestamp: {}", timestamp);
-                        println!("   URL: {}", String::from_utf8(enclave.url).unwrap());
+                        println!("   URL: {}", enclave.url);
                     }
                     Ok(())
                 }),
@@ -409,7 +406,10 @@ fn main() {
                 })
                 .runner(move |_args: &str, matches: &ArgMatches<'_>| {
                     let chain_api = get_chain_api(matches);
-                    let amount = matches.value_of("amount").unwrap().parse::<u128>()
+                    let amount = matches
+                        .value_of("amount")
+                        .unwrap()
+                        .parse()
                         .expect("amount can't be converted to u128");
 
                     let shard_opt = match matches.value_of("shard") {
@@ -417,7 +417,9 @@ fn main() {
                             Ok(s) => ShardIdentifier::decode(&mut &s[..]),
                             _ => panic!("shard argument must be base58 encoded"),
                         },
-                        _ => panic!("at least one of `mrenclave` or `shard` arguments must be supplied")
+                        _ => panic!(
+                            "at least one of `mrenclave` or `shard` arguments must be supplied"
+                        ),
                     };
                     let shard = match shard_opt {
                         Ok(shard) => shard,
@@ -426,29 +428,28 @@ fn main() {
 
                     // get the sender
                     let arg_from = matches.value_of("from").unwrap();
-                    let from = get_pair_from_str_untrusted( arg_from);
+                    let from = get_pair_from_str_untrusted(arg_from);
                     let chain_api = chain_api.set_signer(sr25519_core::Pair::from(from));
 
                     // get the recipient
                     let arg_to = matches.value_of("to").unwrap();
                     let to = get_accountid_from_str(arg_to);
-                    let (_to_encoded, to_encrypted) = match encode_encrypt(matches, to){
+                    let (_to_encoded, to_encrypted) = match encode_encrypt(matches, to) {
                         Ok((encoded, encrypted)) => (encoded, encrypted),
                         Err(e) => panic!("{}", e),
                     };
                     // compose the extrinsic
                     let xt: UncheckedExtrinsicV4<([u8; 2], Vec<u8>, u128, H256)> = compose_extrinsic!(
                         chain_api,
-                        "SubstrateeRegistry",
+                        TEEREX,
                         "shield_funds",
                         to_encrypted,
                         amount,
                         shard
                     );
 
-                    let tx_hash = chain_api
-                        .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
-                        .unwrap();
+                    let tx_hash =
+                        chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap();
                     println!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
                     Ok(())
                 }),
@@ -469,14 +470,14 @@ fn main() {
     }
 }
 
-fn get_chain_api(matches: &ArgMatches<'_>) -> Api<sr25519::Pair> {
+fn get_chain_api(matches: &ArgMatches<'_>) -> Api<sr25519::Pair, WsRpcClient> {
     let url = format!(
         "{}:{}",
         matches.value_of("node-url").unwrap(),
         matches.value_of("node-port").unwrap()
     );
     info!("connecting to {}", url);
-    Api::<sr25519::Pair>::new(url).unwrap()
+    Api::<sr25519::Pair, WsRpcClient>::new(WsRpcClient::new(&url)).unwrap()
 }
 
 fn perform_trusted_operation(matches: &ArgMatches<'_>, top: &TrustedOperation) -> Option<Vec<u8>> {
@@ -810,7 +811,7 @@ fn listen(matches: &ArgMatches<'_>) {
                                 }
                             }
                         },*/
-                        Event::pallet_substratee_registry(ee) => {
+                        Event::SubstrateeRegistry(ee) => {
                             println!(">>>>>>>>>> substraTEE event: {:?}", ee);
                             count += 1;
                             match &ee {
@@ -842,9 +843,7 @@ fn listen(matches: &ArgMatches<'_>) {
                                         ipfs_hash
                                     );
                                 }
-                                my_node_runtime::pallet_substratee_registry::RawEvent::Forwarded(
-                                    shard,
-                                ) => {
+                                my_node_runtime::pallet_substratee_registry::RawEvent::Forwarded(shard) => {
                                     println!(
                                         "Forwarded request for shard {}",
                                         shard.encode().to_base58()
@@ -889,10 +888,11 @@ fn listen(matches: &ArgMatches<'_>) {
     }
 }
 
-// subscribes to he pallet_substratee_registry events of type CallConfirmed
-pub fn subscribe_to_call_confirmed<P: Pair>(api: Api<P>) -> H256
+// subscribes to he pallet_teerex events of type CallConfirmed
+pub fn subscribe_to_call_confirmed<P: Pair, Client: 'static>(api: Api<P, Client>) -> H256
 where
     MultiSignature: From<P::Signature>,
+    Client: RpcClient + Subscriber + Send,
 {
     let (events_in, events_out) = channel();
 
@@ -913,7 +913,7 @@ where
         if let Ok(evts) = _events {
             for evr in &evts {
                 info!("received event {:?}", evr.event);
-                if let Event::pallet_substratee_registry(pe) = &evr.event {
+                if let Event::SubstrateeRegistry(pe) = &evr.event {
                     if let my_node_runtime::pallet_substratee_registry::RawEvent::CallConfirmed(
                         sender,
                         payload,
@@ -922,29 +922,10 @@ where
                         println!("[+] Received confirm call from {}", sender);
                         return payload.clone().to_owned();
                     } else {
-                        debug!(
-                            "received unknown event from SubstraTeeRegistry: {:?}",
-                            evr.event
-                        )
+                        debug!("received unknown event from Teerex: {:?}", evr.event)
                     }
                 }
             }
         }
     }
-}
-
-fn get_enclave_count(api: &Api<sr25519::Pair>) -> u64 {
-    if let Some(count) = api
-        .get_storage_value("SubstrateeRegistry", "EnclaveCount", None)
-        .unwrap()
-    {
-        count
-    } else {
-        0
-    }
-}
-
-fn get_enclave(api: &Api<sr25519::Pair>, eindex: u64) -> Option<Enclave<AccountId, Vec<u8>>> {
-    api.get_storage_map("SubstrateeRegistry", "EnclaveRegistry", eindex, None)
-        .unwrap()
 }

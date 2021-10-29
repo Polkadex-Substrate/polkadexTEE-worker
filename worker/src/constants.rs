@@ -16,28 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-pub static ENCRYPTED_STATE_FILE: &str = "state.bin";
-pub static SHARDS_PATH: &str = "./shards";
-pub static ENCLAVE_TOKEN: &str = "../bin/enclave.token";
-pub static ENCLAVE_FILE: &str = "../bin/enclave.signed.so";
-pub static SHIELDING_KEY_FILE: &str = "enclave-shielding-pubkey.json";
-pub static SIGNING_KEY_FILE: &str = "enclave-signing-pubkey.bin";
-//pub static ORDERBOOK_LAST_COUNTER: &str = "LAST_ORDER_COUNTER";
-
-#[cfg(feature = "production")]
-pub static RA_SPID_FILE: &str = "../bin/spid_production.txt";
-#[cfg(feature = "production")]
-pub static RA_API_KEY_FILE: &str = "../bin/key_production.txt";
-
-#[cfg(not(feature = "production"))]
-pub static RA_SPID_FILE: &str = "../bin/spid.txt";
-#[cfg(not(feature = "production"))]
-pub static RA_API_KEY_FILE: &str = "../bin/key.txt";
-
-// the maximum size of any extrinsic that the enclave will ever generate in B
-pub static EXTRINSIC_MAX_SIZE: usize = 4196;
-// the maximum size of a value that will be queried from the state in B
-pub static STATE_VALUE_MAX_SIZE: usize = 1024;
+// FIXME: deprecated file location. Should probably be moved to polkadex_primitives or something like that
 
 // Iterator for orderbook mirror returns these many elements in a single yield
 pub static ORDERBOOK_MIRROR_ITERATOR_YIELD_LIMIT: usize = 1000;

@@ -100,7 +100,7 @@ pub fn add_market_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .takes_value(true)
             .required(true)
             .value_name("STRING")
-            .help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
+            .help("Market base asset ID, e.g.: 'usd', 'btc'"),
     )
     .arg(
         Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
@@ -108,7 +108,7 @@ pub fn add_market_id_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .takes_value(true)
             .required(true)
             .value_name("STRING")
-            .help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
+            .help("Market quote asset ID, e.g.: 'usd', 'btc'"),
     )
 }
 
@@ -119,7 +119,7 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .takes_value(true)
             .required(true)
             .value_name("STRING")
-            .help("Market base asset ID, e.g.: 'polkadex', 'dot'"),
+            .help("Market base asset ID, e.g.: 'usd', 'btc'"),
     )
     .arg(
         Arg::with_name(MARKET_ID_QUOTE_ARG_NAME)
@@ -127,7 +127,7 @@ pub fn add_order_args<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
             .takes_value(true)
             .required(true)
             .value_name("STRING")
-            .help("Market quote asset ID, e.g.: 'polkadex', 'dot'"),
+            .help("Market quote asset ID, e.g.: 'usd', 'btc'"),
     )
     .arg(
         Arg::with_name(MARKET_TYPE_ARG_NAME)

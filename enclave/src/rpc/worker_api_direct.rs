@@ -24,9 +24,7 @@ use crate::rpc::{
     rpc_cancel_order::RpcCancelOrder, rpc_get_balance::RpcGetBalance, rpc_nonce::RpcNonce,
     rpc_place_order::RpcPlaceOrder, rpc_withdraw::RpcWithdraw,
 };
-use crate::rsa3072;
 use crate::top_pool::pool::Options as PoolOptions;
-use crate::utils::write_slice_and_whitespace_pad;
 use alloc::{
     borrow::ToOwned,
     boxed::Box,
@@ -40,35 +38,20 @@ use base58::FromBase58;
 use chain_relay::Block;
 use codec::{Decode, Encode};
 use core::result::Result;
-use jsonrpc_core::*;
 use log::*;
 use serde_json::*;
 use sgx_types::*;
-use std::{
-    sync::atomic::{AtomicPtr, Ordering},
-    sync::{Arc, SgxMutex},
+use std::sync::{
+    atomic::{AtomicPtr, Ordering},
+    Arc, SgxMutex,
 };
-use substratee_stf::ShardIdentifier;
-use substratee_worker_primitives::RpcReturnValue;
-use substratee_worker_primitives::{DirectRequestStatus, TrustedOperationStatus};
 
-static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+use crate::{ocall::rpc_ocall::EnclaveRpcOCall, rsa3072, utils::write_slice_and_whitespace_pad};
+use jsonrpc_core::*;
+use substratee_stf::ShardIdentifier;
+use substratee_worker_primitives::{DirectRequestStatus, RpcReturnValue};
 
 extern "C" {
-    pub fn ocall_update_status_event(
-        ret_val: *mut sgx_status_t,
-        hash_encoded: *const u8,
-        hash_size: u32,
-        status_update_encoded: *const u8,
-        status_size: u32,
-    ) -> sgx_status_t;
-    pub fn ocall_send_status(
-        ret_val: *mut sgx_status_t,
-        hash_encoded: *const u8,
-        hash_size: u32,
-        status_update_encoded: *const u8,
-        status_size: u32,
-    ) -> sgx_status_t;
     pub fn ocall_send_response_with_uuid(
         ret_val: *mut sgx_status_t,
         request_id_encoded: *const u8,
@@ -78,23 +61,26 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
+static GLOBAL_TX_POOL: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
+
 #[no_mangle]
 // initialise tx pool and store within static atomic pointer
 pub unsafe extern "C" fn initialize_pool() -> sgx_status_t {
     let api = Arc::new(SideChainApi::new());
     let tx_pool = BasicPool::create(PoolOptions::default(), api);
-    let pool_ptr = Arc::new(SgxMutex::<BasicPool<SideChainApi<Block>, Block>>::new(
-        tx_pool,
-    ));
+    let pool_ptr = Arc::new(SgxMutex::<
+        BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>,
+    >::new(tx_pool));
     let ptr = Arc::into_raw(pool_ptr);
     GLOBAL_TX_POOL.store(ptr as *mut (), Ordering::SeqCst);
 
     sgx_status_t::SGX_SUCCESS
 }
 
-pub fn load_top_pool() -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>, Block>>> {
+pub fn load_top_pool(
+) -> Option<&'static SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>> {
     let ptr = GLOBAL_TX_POOL.load(Ordering::SeqCst)
-        as *mut SgxMutex<BasicPool<SideChainApi<Block>, Block>>;
+        as *mut SgxMutex<BasicPool<SideChainApi<Block>, Block, EnclaveRpcOCall>>;
     if ptr.is_null() {
         None
     } else {
@@ -224,63 +210,6 @@ pub unsafe extern "C" fn call_rpc_methods(
     let response_slice = from_raw_parts_mut(response, response_len as usize);
     write_slice_and_whitespace_pad(response_slice, response_string.as_bytes().to_vec());
     sgx_status_t::SGX_SUCCESS
-}
-
-pub fn update_status_event<H: Encode>(
-    hash: H,
-    status_update: TrustedOperationStatus,
-) -> Result<(), String> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-
-    let hash_encoded = hash.encode();
-    let status_update_encoded = status_update.encode();
-
-    let res = unsafe {
-        ocall_update_status_event(
-            &mut rt as *mut sgx_status_t,
-            hash_encoded.as_ptr(),
-            hash_encoded.len() as u32,
-            status_update_encoded.as_ptr(),
-            status_update_encoded.len() as u32,
-        )
-    };
-
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("rt not successful"));
-    }
-
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("res not successful"));
-    }
-
-    Ok(())
-}
-
-pub fn send_state<H: Encode>(hash: H, value_opt: Option<Vec<u8>>) -> Result<(), String> {
-    let mut rt: sgx_status_t = sgx_status_t::SGX_ERROR_UNEXPECTED;
-
-    let hash_encoded = hash.encode();
-    let value_encoded = value_opt.encode();
-
-    let res = unsafe {
-        ocall_send_status(
-            &mut rt as *mut sgx_status_t,
-            hash_encoded.as_ptr(),
-            hash_encoded.len() as u32,
-            value_encoded.as_ptr(),
-            value_encoded.len() as u32,
-        )
-    };
-
-    if rt != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("rt not successful"));
-    }
-
-    if res != sgx_status_t::SGX_SUCCESS {
-        return Err(String::from("res not successful"));
-    }
-
-    Ok(())
 }
 
 pub fn send_uuid(request_id: u128, uuid: Vec<u8>) -> Result<(), String> {

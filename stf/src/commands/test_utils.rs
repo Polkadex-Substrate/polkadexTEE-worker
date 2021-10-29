@@ -19,18 +19,20 @@
 #[cfg(test)]
 pub mod utils {
 
-    use crate::commands::common_args::{
-        ACCOUNT_ID_ARG_NAME, MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME,
-        MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
-        ORDER_UUID_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
+    use crate::{
+        commands::common_args::{
+            ACCOUNT_ID_ARG_NAME, MARKET_ID_BASE_ARG_NAME, MARKET_ID_QUOTE_ARG_NAME,
+            MARKET_TYPE_ARG_NAME, MRENCLAVE_ARG_NAME, ORDER_SIDE_ARG_NAME, ORDER_TYPE_ARG_NAME,
+            ORDER_UUID_ARG_NAME, QUANTITY_ARG_NAME, SHARD_ARG_NAME,
+        },
+        Getter, Index, TrustedGetter, TrustedOperation,
     };
-    use crate::{Getter, Index, TrustedGetter, TrustedOperation};
     use clap::{App, Arg, ArgMatches};
     use codec::Encode;
 
     pub fn create_order_args() -> Vec<String> {
-        let market_id_base_arg = format!("--{}=polkadex", MARKET_ID_BASE_ARG_NAME);
-        let market_id_quote_arg = format!("--{}=dot", MARKET_ID_QUOTE_ARG_NAME);
+        let market_id_base_arg = format!("--{}=usd", MARKET_ID_BASE_ARG_NAME);
+        let market_id_quote_arg = format!("--{}=btc", MARKET_ID_QUOTE_ARG_NAME);
         let market_type_arg = format!("--{}=market_type_002", MARKET_TYPE_ARG_NAME);
         let order_type_arg = format!("--{}=market", ORDER_TYPE_ARG_NAME);
         let order_side_arg = format!("--{}=bid", ORDER_SIDE_ARG_NAME);
@@ -55,8 +57,8 @@ pub mod utils {
     }
 
     pub fn create_market_id_args() -> Vec<String> {
-        let market_id_base_arg = format!("--{}=polkadex", MARKET_ID_BASE_ARG_NAME);
-        let market_id_quote_arg = format!("--{}=dot", MARKET_ID_QUOTE_ARG_NAME);
+        let market_id_base_arg = format!("--{}=btc", MARKET_ID_BASE_ARG_NAME);
+        let market_id_quote_arg = format!("--{}=usd", MARKET_ID_QUOTE_ARG_NAME);
 
         vec![market_id_base_arg, market_id_quote_arg]
     }
@@ -110,9 +112,7 @@ pub mod utils {
                 TrustedOperation::get(get) => match get {
                     Getter::public(_) => {}
                     Getter::trusted(tgs) => match &tgs.getter {
-                        TrustedGetter::nonce(_account_id) => {
-                            return Some(Index::encode(&145));
-                        }
+                        TrustedGetter::nonce(_account_id) => return Some(Index::encode(&145)),
                         TrustedGetter::free_balance(_) => {}
                         TrustedGetter::reserved_balance(_) => {}
                         TrustedGetter::get_balance(_, _, _) => {}

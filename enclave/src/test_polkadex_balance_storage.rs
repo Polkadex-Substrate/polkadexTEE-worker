@@ -224,11 +224,15 @@ pub fn test_increase_free_balance() {
     initialize_dummy();
     let main_account: AccountId = get_account("first_account");
     assert_eq!(
-        lock_storage_increase_free_balance(AssetId::BTC, main_account.clone(), 200u128),
+        lock_storage_increase_free_balance(
+            AssetId::Asset(4294967297),
+            main_account.clone(),
+            200u128
+        ),
         Ok(())
     );
     assert_eq!(
-        lock_storage_and_get_balances(main_account, AssetId::BTC),
+        lock_storage_and_get_balances(main_account, AssetId::Asset(4294967297)),
         Ok(Balances::from(200u128, 0u128))
     )
 }

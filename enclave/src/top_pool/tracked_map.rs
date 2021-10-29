@@ -21,8 +21,11 @@ use alloc::sync::Arc;
 
 use std::collections::{hash_map::Values, HashMap};
 
-use core::sync::atomic::{AtomicIsize, Ordering as AtomicOrdering};
-use core::{clone::Clone, cmp, hash};
+use core::{
+    clone::Clone,
+    cmp, hash,
+    sync::atomic::{AtomicIsize, Ordering as AtomicOrdering},
+};
 
 //use parking_lot::{RwLock, RwLockWriteGuard, RwLockReadGuard};
 

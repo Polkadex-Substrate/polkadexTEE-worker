@@ -95,6 +95,7 @@ impl PolkadexAccountsStorage {
         Err(Error::AccountNotRegistered)
     }
 }
+#[cfg(feature = "test")]
 pub mod tests {
     use super::*;
     use polkadex_sgx_primitives::{AccountId, LinkedAccount, PolkadexAccount};

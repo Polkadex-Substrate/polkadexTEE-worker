@@ -22,11 +22,11 @@ use crate::polkadex_db::{
     orderbook::initialize_orderbook_mirror, orderbook::load_orderbook_mirror, DiskStorageHandler,
     OrderbookMirror, PolkadexDBError,
 };
+use polkadex_sgx_primitives::accounts::get_account;
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
 use polkadex_sgx_primitives::AssetId;
 use sp_core::ed25519::Signature;
 use std::sync::MutexGuard;
-use substratee_worker_primitives::get_account;
 
 #[test]
 fn test_db_initialization() {
@@ -44,7 +44,7 @@ fn test_write_and_delete() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT,
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -125,7 +125,7 @@ fn test_read_all() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT,
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -141,7 +141,7 @@ fn test_read_all() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT,
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,
@@ -157,7 +157,7 @@ fn test_read_all() {
             user_uid: get_account("FOO"),
             market_id: MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT,
+                quote: AssetId::Asset(840),
             },
             market_type: "SOME_MARKET_TYPE".to_string().into_bytes(),
             order_type: OrderType::LIMIT,

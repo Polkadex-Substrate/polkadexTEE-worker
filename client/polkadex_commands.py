@@ -179,3 +179,9 @@ def direct_withdraw(acc, proxy, token, quantity):
     ret = subprocess.run(cli + ["trusted", "withdraw"] + accs + quantity_arg(quantity) + token_arg(token) + direct_tail(), stdout=subprocess.PIPE)
     print(ret.stdout)
     return ret.stdout.decode("utf-8").strip()
+
+def prefund_bob():
+    """ ./substratee-client -p 9994 -P 2094 balance //Alice //Bob 10_000_000_000_000"""
+    ret = subprocess.run(cli + ["transfer", "//Alice", "//Bob", "10000000000000"] , stdout=subprocess.PIPE)
+    print("Prefunding Bob..")
+    return ret.stdout.decode("utf-8").strip()

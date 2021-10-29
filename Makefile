@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ######## Update SGX SDK ########
-# include UpdateRustSGXSDK.mk
+include UpdateRustSGXSDK.mk
 
 ######## SGX SDK Settings ########
 SGX_SDK ?= /opt/intel/sgxsdk
@@ -168,10 +168,9 @@ $(Worker_Enclave_u_Object): worker/Enclave_u.o
 $(Worker_Name): $(Worker_Enclave_u_Object) $(Worker_SRC_Files)
 	@echo
 	@echo "Building the substraTEE-worker"
-	@cd worker && SGX_SDK=$(SGX_SDK) cargo build $(Worker_Rust_Flags)
+	@cd worker && SGX_SDK=$(SGX_SDK) SGX_MODE=$(SGX_MODE) cargo build $(Worker_Rust_Flags)
 	@echo "Cargo  =>  $@"
 	cp $(Worker_Rust_Path)/substratee-worker ./bin
-	cp $(Worker_Rust_Path)/substratee-worker ./bin2
 
 ######## SubstraTEE-client objects ########
 $(Client_Name): $(Client_SRC_Files)
@@ -212,7 +211,11 @@ enclave:
 .PHONY: clean
 clean:
 	@echo "Removing the compiled files"
-	@rm -f $(Client_Name) $(Worker_Name) $(RustEnclave_Name) $(Signed_RustEnclave_Name) enclave/*_t.* worker/*_u.* lib/*.a bin/*.bin
+	@rm -f $(Client_Name) $(Worker_Name) $(RustEnclave_Name) $(Signed_RustEnclave_Name) \
+ 			enclave/*_t.* \
+ 			worker/*_u.* \
+ 			lib/*.a \
+ 			bin/*.bin
 	@echo "cargo clean in enclave directory"
 	@cd enclave && cargo clean
 	@echo "cargo clean in root directory"
@@ -226,21 +229,12 @@ mrsigner:
 
 .PHONY: update
 update:
-
 	@echo "Running cargo update.."
 	@cargo update
 	@echo "cargo update in enclave directory"
 	@cd enclave && cargo update
-	@cd enclave && cargo update -p jsonrpc-core --precise e5ee60bc30dedf513743843be2523dc384bbcae1
-	@cd enclave && cargo update -p jsonrpc-core --precise e5ee60bc30dedf513743843be2523dc384bbcae1
-	@cd enclave && cargo update -p sp-std --precise e5437efefa82bd8eb567f1245f0a7443ac4e4fe7
-	@cd enclave && cargo update -p sp-std --precise e5437efefa82bd8eb567f1245f0a7443ac4e4fe7
-	@cd enclave && cargo update -p sgx_tstd --precise ed9e7cce4fd40efd7a256d5c4be1c5f00778a5bb
-	@cd enclave && cargo update -p sgx_tstd --precise ed9e7cce4fd40efd7a256d5c4be1c5f00778a5bb
-	@cargo update -p sp-std --precise e5437efefa82bd8eb567f1245f0a7443ac4e4fe7
-	@cargo update -p sp-std --precise e5437efefa82bd8eb567f1245f0a7443ac4e4fe7
-	@cargo update -p sgx_tstd --precise ed9e7cce4fd40efd7a256d5c4be1c5f00778a5bb
-	@cargo update -p sgx_tstd --precise ed9e7cce4fd40efd7a256d5c4be1c5f00778a5bb
+	@cd enclave && cargo update -p sgx_tstd --precise 7c07ce0bfbacd3f4f2af53a2cdef9539018be73c
+	@cargo update -p sgx_tstd --precise 7c07ce0bfbacd3f4f2af53a2cdef9539018be73c
 .PHONY: identity
 identity: mrenclave mrsigner
 

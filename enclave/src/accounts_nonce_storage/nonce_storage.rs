@@ -80,7 +80,7 @@ impl PolkadexNonceStorage {
         );
     }
 }
-
+#[cfg(feature = "test")]
 pub mod tests {
     use super::PolkadexNonceStorage;
     use codec::Encode;

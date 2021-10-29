@@ -19,8 +19,7 @@
 use std::{
     collections::{HashMap, HashSet},
     string::String,
-    sync::Arc,
-    sync::{SgxMutex, SgxRwLock},
+    sync::{Arc, SgxMutex, SgxRwLock},
     time::Instant,
     untrusted::time::InstantEx,
     vec::Vec,
@@ -51,6 +50,7 @@ use jsonrpc_core::futures::channel::mpsc::{channel, Sender};
 
 use codec::Encode;
 use retain_mut::RetainMut;
+use substratee_ocall_api::EnclaveRpcOCallApi;
 
 /// Pre-validated operation. Validated pool only accepts operations wrapped in this enum.
 #[derive(Debug)]
@@ -94,19 +94,21 @@ impl<Hash, Ex, Error> ValidatedOperation<Hash, Ex, Error> {
 /// A type of validated operation stored in the pool.
 pub type ValidatedOperationFor<B> =
     ValidatedOperation<ExtrinsicHash<B>, StfTrustedOperation, <B as ChainApi>::Error>;
+
 /// Pool that deals with validated operations.
-pub struct ValidatedPool<B: ChainApi> {
+pub struct ValidatedPool<B: ChainApi, R: EnclaveRpcOCallApi> {
     api: Arc<B>,
     options: Options,
-    listener: SgxRwLock<Listener<ExtrinsicHash<B>>>,
+    listener: SgxRwLock<Listener<ExtrinsicHash<B>, R>>,
     pool: SgxRwLock<base::BasePool<ExtrinsicHash<B>, StfTrustedOperation>>,
     import_notification_sinks: SgxMutex<Vec<Sender<ExtrinsicHash<B>>>>,
     rotator: PoolRotator<ExtrinsicHash<B>>,
 }
 
-impl<B: ChainApi> ValidatedPool<B>
+impl<B: ChainApi, R> ValidatedPool<B, R>
 where
-//<<B as ChainApi>::Block as sp_runtime::traits::Block>::Hash: Serialize
+    //<<B as ChainApi>::Block as sp_runtime::traits::Block>::Hash: Serialize
+    R: EnclaveRpcOCallApi,
 {
     /// Create a new operation pool.
     pub fn new(options: Options, api: Arc<B>) -> Self {
@@ -191,20 +193,18 @@ where
                 let imported = self.pool.write().unwrap().import(tx, shard)?;
 
                 if let base::Imported::Ready { ref hash, .. } = imported {
-                    self.import_notification_sinks.lock().unwrap()
-					.retain_mut(|sink| {
-							match sink.try_send(*hash) {
-								Ok(()) => true,
-								Err(e) => {
-									if e.is_full() {
-										log::warn!(target: "txpool", "[{:?}] Trying to notify an import but the channel is full", hash);
-										true
-									} else {
-										false
-									}
+                    self.import_notification_sinks.lock().unwrap().retain_mut(|sink| {
+						match sink.try_send(*hash) {
+							Ok(()) => true,
+							Err(e) =>
+								if e.is_full() {
+									log::warn!(target: "txpool", "[{:?}] Trying to notify an import but the channel is full", hash);
+									true
+								} else {
+									false
 								},
-							}
-						});
+						}
+					});
                 }
 
                 let mut listener = self.listener.write().unwrap();
@@ -696,9 +696,10 @@ where
     }
 }
 
-fn fire_events<H, Ex>(listener: &mut Listener<H>, imported: &base::Imported<H, Ex>)
+fn fire_events<H, R, Ex>(listener: &mut Listener<H, R>, imported: &base::Imported<H, Ex>)
 where
     H: hash::Hash + Eq + traits::Member + Encode, // + Serialize,
+    R: EnclaveRpcOCallApi,
 {
     match *imported {
         base::Imported::Ready {

@@ -39,7 +39,7 @@ pub type Result<T> = std::result::Result<T, PolkadexDBError>;
 
 use crate::constants::SNAPSHOT_INTERVAL;
 use crate::enclave::api::enclave_send_cid;
-use crate::{enclave_account, get_nonce};
+use crate::WsRpcClient;
 use codec::{Decode, Encode};
 use log::*;
 use my_node_runtime::UncheckedExtrinsic;
@@ -47,6 +47,7 @@ use sgx_types::sgx_enclave_id_t;
 use sp_core::sr25519;
 use std::thread;
 use std::time::{Duration, SystemTime};
+use substrate_api_client::ApiClientError;
 use substrate_api_client::{Api, XtStatus};
 
 #[derive(Debug)]
@@ -70,6 +71,8 @@ pub enum PolkadexDBError {
     SendToNodeError,
     /// Could not send IPFS snapshot
     IpfsError(String),
+    /// Could retrieve nonce
+    CouldNotRetrieveNonce(ApiClientError),
 }
 
 /// Trait for handling permanante storage
@@ -81,7 +84,11 @@ pub trait PermanentStorageHandler {
 }
 
 // Disk snapshot loop
-pub fn start_snapshot_loop(api: Api<sr25519::Pair>, eid: sgx_enclave_id_t, genesis_hash: Vec<u8>) {
+pub fn start_snapshot_loop(
+    api: Api<sr25519::Pair, WsRpcClient>,
+    eid: sgx_enclave_id_t,
+    genesis_hash: Vec<u8>,
+) {
     thread::spawn(move || {
         println!("Successfully started snapshot loop");
         let snapshot_interval = Duration::from_millis(SNAPSHOT_INTERVAL);
@@ -125,7 +132,7 @@ fn take_orderbook_snapshot() -> Result<()> {
 
 // take a snapshot of balances mirror
 fn take_balance_snapshot(
-    api: Api<sr25519::Pair>,
+    api: Api<sr25519::Pair, WsRpcClient>,
     eid: sgx_enclave_id_t,
     genesis_hash: Vec<u8>,
     old_cid: &[u8],
@@ -141,14 +148,11 @@ fn take_balance_snapshot(
     if cid_bytes == old_cid {
         return Ok(cid_bytes);
     }
-
-    let uxt = enclave_send_cid(
-        eid,
-        genesis_hash,
-        get_nonce(&api, &enclave_account(eid)),
-        cid_bytes.clone(),
-    )
-    .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
+    let nonce = api
+        .get_nonce()
+        .map_err(PolkadexDBError::CouldNotRetrieveNonce)?;
+    let uxt = enclave_send_cid(eid, genesis_hash, nonce, cid_bytes.clone())
+        .map_err(|_| PolkadexDBError::SendToEnclaveError)?;
 
     let ue =
         UncheckedExtrinsic::decode(&mut uxt.as_slice()).map_err(PolkadexDBError::DecodeError)?;

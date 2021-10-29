@@ -27,7 +27,6 @@ use polkadex_sgx_primitives::{AccountId, AssetId};
 use std::sync::Arc;
 
 use crate::accounts_nonce_storage;
-use crate::constants::UNIT;
 use crate::openfinex::openfinex_api::{OpenFinexApi, OpenFinexApiError};
 use crate::openfinex::openfinex_types::RequestId;
 use crate::polkadex_balance_storage;
@@ -38,6 +37,7 @@ use crate::polkadex_gateway;
 use crate::polkadex_orderbook_storage;
 use crate::rpc::worker_api_direct::send_uuid;
 use accounts_nonce_storage::error::Error as AccountRegistryError;
+use substratee_settings::node::UNIT;
 
 /// Trait for callbacks coming from the OpenFinex side
 pub trait PolkaDexGatewayCallback {

@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait};
 use crate::ShardIdentifier;
 use codec::Encode;
 use polkadex_sgx_primitives::types::{
@@ -23,6 +24,7 @@ use polkadex_sgx_primitives::types::{
 };
 use polkadex_sgx_primitives::{AccountId, AssetId};
 use sp_core::{ed25519 as ed25519_core, Pair, H256};
+use substratee_ocall_api::EnclaveAttestationOCallApi;
 use substratee_stf::{KeyPair, TrustedCall, TrustedCallSigned};
 
 pub fn create_dummy_request() -> DirectRequest {
@@ -40,7 +42,7 @@ pub fn create_dummy_order(account: AccountId) -> Order {
     Order {
         user_uid: account,
         market_id: MarketId {
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(840),
             base: AssetId::POLKADEX,
         },
         side: OrderSide::ASK,
@@ -55,7 +57,7 @@ pub fn create_dummy_cancel_order(account: AccountId, order_id: OrderUUID) -> Can
     CancelOrder {
         user_uid: account,
         market_id: MarketId {
-            quote: AssetId::DOT,
+            quote: AssetId::Asset(840),
             base: AssetId::POLKADEX,
         },
         order_id,
@@ -68,7 +70,9 @@ pub fn sign_trusted_call(
     signer: ed25519_core::Pair,
     nonce: u32,
 ) -> TrustedCallSigned {
-    let mr_enclave = crate::attestation::get_mrenclave_of_self()
+    let ocall_api = OCallComponentFactory::attestation_api();
+    let mr_enclave = ocall_api
+        .get_mrenclave_of_self()
         .expect("Failed to get mrenclave")
         .m;
     let shard_identifier = ShardIdentifier::default();

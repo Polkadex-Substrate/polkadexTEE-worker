@@ -17,16 +17,17 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 pub extern crate alloc;
-use alloc::{string::String, string::ToString};
-
-use crate::attestation;
+use crate::ocall::ocall_component_factory::OCallComponentFactoryTrait;
 use crate::rpc::rpc_info::RpcCallStatus;
+use crate::OCallComponentFactory;
+use alloc::{string::String, string::ToString};
 use base58::ToBase58;
 use codec::Decode;
 use log::*;
 use polkadex_sgx_primitives::types::DirectRequest;
 use polkadex_sgx_primitives::ShardIdentifier;
 use sgx_types::sgx_measurement_t;
+use substratee_ocall_api::EnclaveAttestationOCallApi;
 use substratee_stf::{Getter, TrustedCallSigned, TrustedOperation};
 
 pub trait TrustedOperationExtractor: Send + Sync {
@@ -80,7 +81,8 @@ fn verify_signature(
 ) -> Result<(), RpcCallStatus> {
     debug!("verify signature of TrustedOperation");
     debug!("query mrenclave of self");
-    let mrenclave = match attestation::get_mrenclave_of_self() {
+    let ocall_api = OCallComponentFactory::attestation_api();
+    let mrenclave = match ocall_api.get_mrenclave_of_self() {
         Ok(m) => m,
         Err(_) => return Err(RpcCallStatus::mrenclave_failure),
     };

@@ -33,8 +33,10 @@ use sp_runtime::{
     },
 };
 
-use crate::top_pool::pool::{ChainApi, ExtrinsicHash, NumberFor};
-use crate::top_pool::primitives::TrustedOperationSource;
+use crate::top_pool::{
+    pool::{ChainApi, ExtrinsicHash, NumberFor},
+    primitives::TrustedOperationSource,
+};
 
 use substratee_stf::{Getter, ShardIdentifier, TrustedOperation as StfTrustedOperation};
 use substratee_worker_primitives::BlockHash as SidechainBlockHash;

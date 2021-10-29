@@ -204,38 +204,26 @@ fn string_to_order_state(order_state_str: &str) -> Result<OrderState, String> {
 }
 
 pub mod asset_id_mapping {
-
     use super::*;
 
     const POLKADEX_ASSET_STR: &str = "pdx";
-    const DOT_ASSET_STR: &str = "dot";
-    const CHAIN_SAFE_ASSET_STR: &str = "chs";
     const BTC_ASSET_STR: &str = "btc";
     const USD_ASSET_STR: &str = "usd";
 
     pub fn asset_id_to_string(asset_id: AssetId) -> String {
         match asset_id {
             AssetId::POLKADEX => POLKADEX_ASSET_STR.to_string(),
-            AssetId::DOT => DOT_ASSET_STR.to_string(),
-
-            // TODO: the string representation for these might have to include the hash?
-            AssetId::CHAINSAFE(_) => CHAIN_SAFE_ASSET_STR.to_string(),
-            AssetId::BTC => BTC_ASSET_STR.to_string(),
-            AssetId::USD => USD_ASSET_STR.to_string(),
+            AssetId::Asset(4294967297) => BTC_ASSET_STR.to_string(),
+            AssetId::Asset(840) => USD_ASSET_STR.to_string(),
+            _ => unimplemented!(),
         }
     }
 
     pub fn string_to_asset_id(asset_id_str: &str) -> Result<AssetId, String> {
-        // TODO: we're using just dummy values here
-        let dummy_token_hash = dummy_hash();
-
         match asset_id_str {
             POLKADEX_ASSET_STR => Ok(AssetId::POLKADEX),
-            DOT_ASSET_STR => Ok(AssetId::DOT),
-
-            CHAIN_SAFE_ASSET_STR => Ok(AssetId::CHAINSAFE(dummy_token_hash)),
-            BTC_ASSET_STR => Ok(AssetId::BTC),
-            USD_ASSET_STR => Ok(AssetId::USD),
+            BTC_ASSET_STR => Ok(AssetId::Asset(4294967297)),
+            USD_ASSET_STR => Ok(AssetId::Asset(840)),
             _ => Err(format!(
                 "unknown asset id string ({}), cannot map to AssetId",
                 asset_id_str
@@ -272,13 +260,10 @@ pub mod tests {
     }
 
     pub fn test_map_asset_ids() {
-        let dummy_hash = H160::from([2u8; 20]);
         let asset_ids = vec![
-            AssetId::DOT,
             AssetId::POLKADEX,
-            AssetId::USD,
-            AssetId::BTC,
-            AssetId::CHAINSAFE(dummy_hash),
+            AssetId::Asset(840),
+            AssetId::Asset(4294967297),
         ];
 
         for asset_id in asset_ids {
@@ -333,38 +318,38 @@ pub mod tests {
         market_cache.set_markets(
             market_cache.request_id(),
             vec![
-                create_market("dotdot", "dot", "dot"),
-                create_market("pdxdot", "pdx", "dot"),
-                create_market("chspdx", "chs", "pdx"),
+                create_market("usdusd", "usd", "usd"),
+                create_market("pdxusd", "pdx", "usd"),
                 create_market("pdxbtc", "pdx", "btc"),
                 create_market("btcusd", "btc", "usd"),
                 create_market("usdpdx", "usd", "pdx"),
+                create_market("btcpdx", "btc", "pdx"),
             ],
         );
 
         let market_ids = vec![
             MarketId {
-                base: AssetId::DOT,
-                quote: AssetId::DOT,
+                base: AssetId::Asset(840),
+                quote: AssetId::Asset(840),
             },
             MarketId {
                 base: AssetId::POLKADEX,
-                quote: AssetId::DOT,
+                quote: AssetId::Asset(840),
             },
             MarketId {
-                base: AssetId::CHAINSAFE(asset_id_mapping::dummy_hash()),
+                base: AssetId::POLKADEX,
+                quote: AssetId::Asset(4294967297),
+            },
+            MarketId {
+                base: AssetId::Asset(4294967297),
+                quote: AssetId::Asset(840),
+            },
+            MarketId {
+                base: AssetId::Asset(840),
                 quote: AssetId::POLKADEX,
             },
             MarketId {
-                base: AssetId::POLKADEX,
-                quote: AssetId::BTC,
-            },
-            MarketId {
-                base: AssetId::BTC,
-                quote: AssetId::USD,
-            },
-            MarketId {
-                base: AssetId::USD,
+                base: AssetId::Asset(4294967297),
                 quote: AssetId::POLKADEX,
             },
         ];

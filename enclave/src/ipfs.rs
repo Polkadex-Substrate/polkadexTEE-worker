@@ -2,8 +2,7 @@ use cid::{Cid, Result as CidResult};
 use ipfs_unixfs::file::adder::FileAdder;
 use log::*;
 use multibase::Base;
-use std::convert::TryFrom;
-use std::vec::Vec;
+use std::{convert::TryFrom, vec::Vec};
 
 pub struct IpfsContent {
     pub cid: CidResult<Cid>,
