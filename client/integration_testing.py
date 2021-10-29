@@ -62,6 +62,8 @@ if __name__ == '__main__':
     time.sleep(30)
 
     read_mrenclave()
+    prefund_bob()
+    await_block()
 
     #ACCOUNT REGISTER
     register_account(alice)
