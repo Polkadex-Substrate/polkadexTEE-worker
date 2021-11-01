@@ -123,6 +123,7 @@ mod utils;
 // added by polkadex
 mod accounts_nonce_storage;
 pub mod channel_storage;
+mod cid;
 mod happy_path;
 pub mod nonce_handler;
 pub mod openfinex;
@@ -131,7 +132,6 @@ pub mod polkadex_cache;
 mod polkadex_gateway;
 mod polkadex_orderbook_storage;
 pub mod ss58check;
-mod cid;
 pub use crate::cid::*;
 //FIXME: It would probably be alot nicer to move all these test files into the test folder
 #[cfg(feature = "test")]

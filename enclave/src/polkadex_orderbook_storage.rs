@@ -18,7 +18,6 @@
 
 //use crate::_write_order_to_disk;
 use crate::channel_storage::{load_sender, ChannelType};
-use substratee_sgx_crypto::Ed25519Seal;
 use crate::polkadex_gateway::GatewayError;
 use log::error;
 use log::*;
@@ -32,6 +31,7 @@ use std::sync::{
     Arc, SgxMutex, SgxMutexGuard,
 };
 use std::vec::Vec;
+use substratee_sgx_crypto::Ed25519Seal;
 use substratee_sgx_io::SealedIO;
 
 static GLOBAL_ORDERBOOK_STORAGE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
