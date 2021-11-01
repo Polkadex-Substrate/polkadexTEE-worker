@@ -23,7 +23,6 @@ use crate::polkadex_cache;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
 
-use crate::Timeout;
 use log::*;
 
 use sgx_tunittest::*;

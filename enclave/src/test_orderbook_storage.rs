@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ed25519::Ed25519;
+use crate::ed25519::Ed25519Seal;
 use crate::polkadex_orderbook_storage::create_in_memory_orderbook_storage;
 use crate::polkadex_orderbook_storage::{load_orderbook, OrderbookStorage};
 use polkadex_sgx_primitives::types::{MarketId, Order, OrderSide, OrderType, SignedOrder};
@@ -26,7 +26,6 @@ use sgx_tstd::sync::SgxMutexGuard;
 use sgx_tstd::vec::Vec;
 use sgx_tstd::{thread, time};
 use sp_core::ed25519::Signature;
-use substratee_sgx_io::SealedIO;
 
 pub fn get_dummy_orders() -> Vec<Order> {
     let order: Order = Order {
