@@ -26,6 +26,7 @@ use sgx_tstd::sync::SgxMutexGuard;
 use sgx_tstd::vec::Vec;
 use sgx_tstd::{thread, time};
 use sp_core::ed25519::Signature;
+use substratee_sgx_io::SealedIO;
 
 pub fn get_dummy_orders() -> Vec<Order> {
     let order: Order = Order {
