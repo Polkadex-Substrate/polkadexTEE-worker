@@ -55,13 +55,13 @@ use substratee_settings::{
 };
 
 use crate::{
-    cert,
-    ed25519::Ed25519,
-    hex, io,
+    cert, hex, io,
     ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
     utils::{hash_from_slice, write_slice_and_whitespace_pad, UnwrapOrSgxErrorUnexpected},
+    Result as EnclaveResult,
 };
 use substratee_ocall_api::EnclaveAttestationOCallApi;
+use substratee_sgx_crypto::Ed25519Seal;
 use substratee_sgx_io::SealedIO;
 
 pub const DEV_HOSTNAME: &str = "api.trustedservices.intel.com";
@@ -440,8 +440,8 @@ pub fn create_ra_report_and_signature<A: EnclaveAttestationOCallApi>(
     sign_type: sgx_quote_sign_type_t,
     ocall_api: Arc<A>,
     skip_ra: bool,
-) -> SgxResult<(Vec<u8>, Vec<u8>)> {
-    let chain_signer = Ed25519::unseal()?;
+) -> EnclaveResult<(Vec<u8>, Vec<u8>)> {
+    let chain_signer = Ed25519Seal::unseal()?;
     info!(
         "[Enclave Attestation] Ed25519 pub raw : {:?}",
         chain_signer.public().0
@@ -462,7 +462,7 @@ pub fn create_ra_report_and_signature<A: EnclaveAttestationOCallApi>(
                 Ok(r) => r,
                 Err(e) => {
                     error!("    [Enclave] Error in create_attestation_report: {:?}", e);
-                    return Err(e);
+                    return Err(e.into());
                 }
             };
         println!("    [Enclave] Create attestation report successful");
@@ -482,7 +482,7 @@ pub fn create_ra_report_and_signature<A: EnclaveAttestationOCallApi>(
         Ok(r) => r,
         Err(e) => {
             error!("    [Enclave] gen_ecc_cert failed: {:?}", e);
-            return Err(e);
+            return Err(e.into());
         }
     };
 
@@ -508,7 +508,7 @@ pub unsafe extern "C" fn perform_ra(
 
     let (_key_der, cert_der) = match create_ra_report_and_signature(sign_type, ocall_api, false) {
         Ok(r) => r,
-        Err(e) => return e,
+        Err(e) => return e.into(),
     };
 
     info!("    [Enclave] Compose extrinsic");
@@ -517,7 +517,7 @@ pub unsafe extern "C" fn perform_ra(
     let url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
     let extrinsic_slice =
         slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
-    let signer = match Ed25519::unseal() {
+    let signer = match Ed25519Seal::unseal() {
         Ok(pair) => pair,
         Err(e) => return e.into(),
     };
@@ -561,7 +561,7 @@ pub unsafe extern "C" fn dump_ra_to_disk() -> sgx_status_t {
 
     let (_key_der, cert_der) = match create_ra_report_and_signature(sign_type, ocall_api, false) {
         Ok(r) => r,
-        Err(e) => return e,
+        Err(e) => return e.into(),
     };
 
     if let Err(err) = io::write(&cert_der, RA_DUMP_CERT_DER_FILE) {

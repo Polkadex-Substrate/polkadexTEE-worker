@@ -23,7 +23,6 @@ use crate::polkadex_cache;
 use crate::test_orderbook_storage;
 use crate::test_polkadex_gateway;
 
-use crate::Timeout;
 use log::*;
 
 use sgx_tunittest::*;
@@ -32,11 +31,10 @@ use sgx_types::size_t;
 use crate::ss58check;
 use crate::test_polkadex_balance_storage;
 use crate::{
-    ed25519::Ed25519,
     ocall::ocall_component_factory::{OCallComponentFactory, OCallComponentFactoryTrait},
     rpc, rsa3072, state,
     test::{cert_tests::*, mocks::enclave_rpc_ocall_mock::EnclaveRpcOCallMock},
-    top_pool,
+    top_pool, Timeout,
 };
 use chain_relay::{Block, Header};
 use codec::{Decode, Encode};
@@ -66,7 +64,7 @@ use substratee_settings::{
     enclave::GETTER_TIMEOUT,
     node::{BLOCK_CONFIRMED, SUBSTRATEE_REGISTRY_MODULE},
 };
-use substratee_sgx_crypto::{Aes, StateCrypto};
+use substratee_sgx_crypto::{Aes, Ed25519Seal, StateCrypto};
 use substratee_sgx_io::SealedIO;
 use substratee_sidechain_primitives::traits::{Block as BlockT, SignedBlock as SignedBlockT};
 use substratee_stf::{
@@ -388,14 +386,14 @@ fn test_submit_trusted_call_to_top_pool() {
     // ensure state starts empty
     state::init_shard(&shard).unwrap();
     Stf::init_state();
-    let signer_pair = Ed25519::unseal().unwrap();
+    let signer_pair = Ed25519Seal::unseal().unwrap();
     let call = TrustedCall::balance_set_balance(
         signer_pair.public().into(),
         signer_pair.public().into(),
         42,
         42,
     );
-    let signed_call = call.sign(&signer_pair.0.into(), nonce, &mrenclave, &shard);
+    let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
     let trusted_operation: TrustedOperation = signed_call.clone().into_trusted_operation(true);
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -438,9 +436,9 @@ fn test_submit_trusted_getter_to_top_pool() {
     // ensure state starts empty
     state::init_shard(&shard).unwrap();
     Stf::init_state();
-    let signer_pair = Ed25519::unseal().unwrap();
+    let signer_pair = Ed25519Seal::unseal().unwrap();
     let getter = TrustedGetter::free_balance(signer_pair.public().into());
-    let signed_getter = getter.sign(&signer_pair.0.into());
+    let signed_getter = getter.sign(&signer_pair.into());
     let trusted_operation: TrustedOperation = signed_getter.clone().into();
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -483,9 +481,9 @@ fn test_differentiate_getter_and_call_works() {
     state::init_shard(&shard).unwrap();
     Stf::init_state();
 
-    let signer_pair = Ed25519::unseal().unwrap();
+    let signer_pair = Ed25519Seal::unseal().unwrap();
     let getter = TrustedGetter::free_balance(signer_pair.public().into());
-    let signed_getter = getter.sign(&signer_pair.0.clone().into());
+    let signed_getter = getter.sign(&signer_pair.clone().into());
     let trusted_operation: TrustedOperation = signed_getter.clone().into();
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -503,7 +501,7 @@ fn test_differentiate_getter_and_call_works() {
         42,
         42,
     );
-    let signed_call = call.sign(&signer_pair.0.into(), nonce, &mrenclave, &shard);
+    let signed_call = call.sign(&signer_pair.into(), nonce, &mrenclave, &shard);
     let trusted_operation_call: TrustedOperation = signed_call.clone().into_trusted_operation(true);
     // encrypt call
     let rsa_pubkey = rsa3072::unseal_pubkey().unwrap();
@@ -652,7 +650,7 @@ fn test_create_state_diff() {
     let index = get_current_shard_index(&shard);
 
     // create accounts
-    let signer_without_money = Ed25519::unseal().unwrap();
+    let signer_without_money = Ed25519Seal::unseal().unwrap();
     let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
     let account_with_money = pair_with_money.public();
     let account_without_money = signer_without_money.public();
@@ -765,7 +763,7 @@ fn test_executing_call_updates_account_nonce() {
     let mut state = Stf::init_state();
 
     // create accounts
-    let signer_without_money = Ed25519::unseal().unwrap();
+    let signer_without_money = Ed25519Seal::unseal().unwrap();
     let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
     let account_with_money = pair_with_money.public();
     let account_without_money = signer_without_money.public();
@@ -849,7 +847,7 @@ fn test_invalid_nonce_call_is_not_executed() {
     let mut state = Stf::init_state();
 
     // create accounts
-    let signer_without_money = Ed25519::unseal().unwrap();
+    let signer_without_money = Ed25519Seal::unseal().unwrap();
     let pair_with_money = spEd25519::Pair::from_seed(b"12345678901234567890123456789012");
     let account_with_money = pair_with_money.public();
     let account_without_money = signer_without_money.public();
