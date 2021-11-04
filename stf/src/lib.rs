@@ -182,6 +182,8 @@ pub enum TrustedCall {
     place_order(AccountId, Order, Option<AccountId>), // (SignerAccount, Order, MainAccount (if signer is proxy))
     cancel_order(AccountId, CancelOrder, Option<AccountId>), // (SignerAccount, Order ID, MainAccount (if signer is proxy))
     withdraw(AccountId, CurrencyId, Balance, Option<AccountId>), // (SignerAccount, TokenId, Quantity, MainAccount (if signer is proxy))
+
+    register_account(AccountId, AccountId),
 }
 
 impl TrustedCall {
@@ -196,6 +198,7 @@ impl TrustedCall {
             TrustedCall::place_order(signer, _, _) => signer,
             TrustedCall::cancel_order(signer, _, _) => signer,
             TrustedCall::withdraw(signer, _, _, _) => signer,
+            TrustedCall::register_account(_, proxy_account) => proxy_account,
         }
     }
 
@@ -208,6 +211,7 @@ impl TrustedCall {
             TrustedCall::balance_transfer(main_account, _, _) => main_account,
             TrustedCall::balance_unshield(main_account, _, _, _) => main_account,
             TrustedCall::balance_shield(main_account, _) => main_account,
+            TrustedCall::register_account(main_account, _) => main_account,
 
             TrustedCall::place_order(signer, _, main_account_option) => match main_account_option {
                 Some(main_account) => main_account,
@@ -236,6 +240,7 @@ impl TrustedCall {
             TrustedCall::balance_transfer(_, _, _) => None,
             TrustedCall::balance_unshield(_, _, _, _) => None,
             TrustedCall::balance_shield(_, _) => None,
+            TrustedCall::register_account(_, proxy_account) => Some(proxy_account.clone()),
 
             TrustedCall::place_order(signer, _, main_account_option) => {
                 main_account_option.as_ref().map(|_| signer.clone())

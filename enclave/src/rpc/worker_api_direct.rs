@@ -18,6 +18,7 @@
 pub extern crate alloc;
 use crate::rpc::polkadex_rpc_gateway::PolkadexRpcGateway;
 use crate::rpc::return_value_encoding::compute_encoded_return_error;
+use crate::rpc::rpc_register_account::RpcRegisterAccount;
 use crate::rpc::trusted_operation_verifier::TrustedOperationVerifier;
 use crate::rpc::{
     api::SideChainApi, basic_pool::BasicPool, io_handler_extensions, rpc_call_encoder::RpcCall,
@@ -159,6 +160,15 @@ fn init_io_handler() -> IoHandler {
     io.add_sync_method(
         &RpcNonce::name(),
         RpcNonce::new(
+            Box::new(TrustedOperationVerifier {}),
+            Box::new(PolkadexRpcGateway {}),
+        ),
+    );
+
+    // REGISTER ACCOUNT
+    io.add_sync_method(
+        &RpcRegisterAccount::name(),
+        &RpcRegisterAccount::new(
             Box::new(TrustedOperationVerifier {}),
             Box::new(PolkadexRpcGateway {}),
         ),

@@ -221,6 +221,12 @@ pub fn add_main_account(main_acc: AccountId) -> Result<()> {
     Ok(())
 }
 
+pub fn register_account(main_acc: AccountId, proxy_acc: AccountId) -> Result<()> {
+    add_main_account(main_acc.clone())?;
+    add_proxy(main_acc, proxy_acc)?;
+    Ok(())
+}
+
 pub fn remove_main_account(main_acc: AccountId) -> Result<()> {
     // Aquire lock on proxy_registry
     let mutex = load_registry()?;

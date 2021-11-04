@@ -37,3 +37,4 @@ pub mod rpc_withdraw;
 pub mod trusted_operation_verifier;
 
 pub mod mocks;
+pub mod rpc_register_account;

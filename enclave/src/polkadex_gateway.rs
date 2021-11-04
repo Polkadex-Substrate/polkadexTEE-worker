@@ -380,6 +380,11 @@ pub fn authenticate_user(
     Ok(())
 }
 
+pub fn register_account(main_acc: AccountId, proxy_acc: AccountId) -> Result<(), GatewayError> {
+    accounts_nonce_storage::register_account(main_acc, proxy_acc)?;
+    Ok(())
+}
+
 //static CREATE_ORDER_NONCE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 //static CREATE_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());
 //static CANCEL_ORDER_CACHE: AtomicPtr<()> = AtomicPtr::new(0 as *mut ());

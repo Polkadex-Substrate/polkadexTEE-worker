@@ -29,7 +29,8 @@ use crate::polkadex_balance_storage::{
 };
 use crate::polkadex_cache::cache_api::RequestId;
 use crate::polkadex_gateway::{
-    authenticate_user, authenticate_user_and_validate_nonce, GatewayError, OpenfinexPolkaDexGateway,
+    authenticate_user, authenticate_user_and_validate_nonce, register_account, GatewayError,
+    OpenfinexPolkaDexGateway,
 };
 use crate::rpc::rpc_info::RpcCallStatus;
 use polkadex_sgx_primitives::types::{CancelOrder, Order};
@@ -44,6 +45,13 @@ pub trait RpcGateway: Send + Sync {
         &self,
         main_account: AccountId,
         proxy_account: Option<AccountId>,
+    ) -> Result<(), GatewayError>;
+
+    /// Register account.
+    fn register_account(
+        &self,
+        main_account: AccountId,
+        proxy_account: AccountId,
     ) -> Result<(), GatewayError>;
 
     /// verifies that the proxy account (if any) is authorized to represent the main account and also verifies if the provided nonce matches the one in the storage
@@ -96,6 +104,14 @@ impl RpcGateway for PolkadexRpcGateway {
         proxy_account: Option<AccountId>,
     ) -> Result<(), GatewayError> {
         authenticate_user(main_account, proxy_account)
+    }
+
+    fn register_account(
+        &self,
+        main_account: AccountId,
+        proxy_account: AccountId,
+    ) -> Result<(), GatewayError> {
+        register_account(main_account, proxy_account)
     }
 
     fn authorize_user_nonce(
