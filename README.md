@@ -64,4 +64,4 @@ now bootstrap a new bot community
 ./bot-community.py benchmark
 ```
 
-now you should see the community growing from 10 to hundreds, increasing with every ceremony
+now you should see the community growing from 10 to hundreds, increasing with every ceremony.

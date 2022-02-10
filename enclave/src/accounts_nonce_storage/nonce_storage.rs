@@ -104,6 +104,8 @@ pub mod tests {
                     current: account_id.clone(),
                     next: None,
                     proxies: vec![proxy_id.clone()],
+                    own_referral_id: None,
+                    referral_account_id: None,
                 },
                 proof: vec![],
             }]);
@@ -141,6 +143,8 @@ pub mod tests {
                     current: account_id.clone(),
                     next: None,
                     proxies: vec![],
+                    own_referral_id: None,
+                    referral_account_id: None,
                 },
                 proof: vec![],
             }]);
@@ -170,6 +174,8 @@ pub mod tests {
                     current: account_id.clone(),
                     next: None,
                     proxies: vec![],
+                    own_referral_id: None,
+                    referral_account_id: None,
                 },
                 proof: vec![],
             }]);
